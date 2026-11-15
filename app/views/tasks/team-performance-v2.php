@@ -525,7 +525,7 @@
         <div class="d-flex align-items-center flex-wrap gap-3">
             <!-- Mode Switch (My Performance vs My Team) -->
             <div class="team-mode-pills">
-                <a href="<?= $GLOBALS['base_url'] ?>/my-created-tasks" class="team-mode-pill">My Performance</a>
+                <a href="<?= $GLOBALS['base_url'] ?>/my-work-dashboard" class="team-mode-pill">My Performance</a>
                 <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" class="team-mode-pill active">My Team</a>
             </div>
 
@@ -533,11 +533,6 @@
             <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?export=csv&<?= http_build_query($_GET) ?>" class="team-btn-export">
                 <i class="bi bi-box-arrow-down"></i> Export
             </a>
-
-            <!-- New Team Project Button -->
-            <button type="button" class="btn btn-outline-success rounded-pill fw-semibold px-3 py-2 d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalCreateTeamProject" style="font-size: 13px;">
-                <i class="bi bi-folder-plus"></i> New Team Project
-            </button>
 
             <!-- Assign Task Button -->
             <button type="button" class="team-btn-add" data-bs-toggle="modal" data-bs-target="#modalAssignTask">
@@ -1220,9 +1215,16 @@ document.addEventListener("DOMContentLoaded", function () {
             fontFamily: 'inherit'
         },
         stroke: {
-            width: [0, 3, 2],
+            width: [0, 3, 3],
             curve: 'smooth',
-            dashArray: [0, 0, 5]
+            dashArray: [0, 0, 4]
+        },
+        markers: {
+            size: [0, 4, 4],
+            strokeWidth: 2,
+            hover: {
+                size: 6
+            }
         },
         plotOptions: {
             bar: {
@@ -1240,9 +1242,50 @@ document.addEventListener("DOMContentLoaded", function () {
             axisBorder: { show: false },
             axisTicks: { show: false }
         },
-        yaxis: {
-            labels: {
-                style: { colors: '#94a3b8', fontSize: '11px' }
+        yaxis: [
+            {
+                seriesName: 'Assigned',
+                min: 0,
+                forceNiceScale: true,
+                labels: {
+                    style: { colors: '#94a3b8', fontSize: '11px' },
+                    formatter: function (val) {
+                        return Math.round(val);
+                    }
+                },
+                title: {
+                    text: 'Assigned / Completed',
+                    style: { color: '#94a3b8', fontSize: '10.5px', fontWeight: 500 }
+                }
+            },
+            {
+                seriesName: 'Completed',
+                show: false
+            },
+            {
+                seriesName: 'Overdue',
+                opposite: true,
+                min: 0,
+                forceNiceScale: true,
+                labels: {
+                    style: { colors: '#ef4444', fontSize: '11px' },
+                    formatter: function (val) {
+                        return Math.round(val);
+                    }
+                },
+                title: {
+                    text: 'Overdue',
+                    style: { color: '#ef4444', fontSize: '10.5px', fontWeight: 500 }
+                }
+            }
+        ],
+        tooltip: {
+            shared: true,
+            intersect: false,
+            y: {
+                formatter: function (val) {
+                    return val + ' tasks';
+                }
             }
         },
         grid: {

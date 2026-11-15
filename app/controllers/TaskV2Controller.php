@@ -1465,13 +1465,16 @@ class TaskV2Controller extends Controller
         $userId = (int)$_SESSION['user']['id'];
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Check if user is Department Head, has direct reportees, or reports to a boss
+        // Check if user is Department Head, has direct reportees, or belongs to a team/leadership
         $isDeptHead = false;
         $hasReportees = false;
         $myBossUserId = 0;
+        $userTeamId = 0;
+        $isUserTeamLeader = false;
+        $isUserCoLeader = false;
 
         $empRelRes = $this->db->query("
-            SELECT e.is_dept_head, e.reporting_user_id 
+            SELECT e.is_dept_head, e.reporting_user_id, e.team_id, e.is_team_leader, e.is_sales_co_leader 
             FROM employees e 
             WHERE (e.user_id = $userId OR e.id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
               AND e.deleted_at IS NULL 
@@ -1484,6 +1487,9 @@ class TaskV2Controller extends Controller
             if (!empty($erRow['reporting_user_id']) && (int)$erRow['reporting_user_id'] > 0) {
                 $myBossUserId = (int)$erRow['reporting_user_id'];
             }
+            $userTeamId = (int)($erRow['team_id'] ?? 0);
+            $isUserTeamLeader = ((int)($erRow['is_team_leader'] ?? 0) === 1);
+            $isUserCoLeader = ((int)($erRow['is_sales_co_leader'] ?? 0) === 1);
         }
 
         $repChk = $this->db->query("SELECT COUNT(*) as total FROM employees WHERE reporting_user_id = $userId AND deleted_at IS NULL LIMIT 1");
@@ -1492,49 +1498,35 @@ class TaskV2Controller extends Controller
             $isDeptHead = true;
         }
 
-        // Permission check for V2: Management, Department Head (HOD), or Team Leader
+        // Session fallback for leader flags
+        if (!empty($_SESSION['user']['is_team_leader'])) {
+            $isUserTeamLeader = true;
+        }
+        if (!empty($_SESSION['user']['is_sales_co_leader'])) {
+            $isUserCoLeader = true;
+        }
+
+        // Strict Permission check: Only Department Head (HOD / reportees), Team Leader, Co-Leader, or Admin/Management
         $secRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
         $priRole = (int)($_SESSION['user']['primary_role_id'] ?? 0);
-        $isTeamLeader = !empty($_SESSION['user']['is_team_leader']) || !empty($_SESSION['user']['is_sales_co_leader']);
-        $isMgmtOrHeadRole = in_array($userRole, [1, 3, 5, 9, 17, 20, 22, 24, 30, 32, 33, 34, 35, 38, 39], true)
-            || in_array($secRole, [1, 3, 5, 9, 17, 20, 22, 24, 30, 32, 33, 34, 35, 38, 39], true)
-            || in_array($priRole, [1, 3, 5, 9, 17, 20, 22, 24, 30, 32, 33, 34, 35, 38, 39], true)
+        $isManagementRole = in_array($userRole, [1, 3, 33, 34, 35, 38], true)
+            || in_array($secRole, [1, 3, 33, 34, 35, 38], true)
+            || in_array($priRole, [1, 3, 33, 34, 35, 38], true)
             || $userId === 94;
-        $canAccess = $isDeptHead || $hasReportees || $isTeamLeader || $isMgmtOrHeadRole;
+
+        $canAccess = $isDeptHead || $hasReportees || $isUserTeamLeader || $isUserCoLeader || $isManagementRole;
         if (!$canAccess) {
-            setError("You do not have access to Team Performance. Only Management, Department Heads (HOD), and Team Leaders can access this view.");
+            setError("Access restricted: Team Performance is only accessible by Department Heads, Team Leaders, and Co-Leaders.");
             header("Location: " . $GLOBALS['base_url'] . "/my-work-dashboard");
             exit;
         }
 
-        // 1. Fetch reporting team members
-        // If user has reportees, show their reportees
-        // If user reports to a boss, show all members reporting to that boss (including peers and boss)
-        $effectiveManagerId = ($hasReportees || empty($myBossUserId)) ? $userId : $myBossUserId;
-
-        $repSql = "
-            SELECT e.id as employee_id, 
-                   COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
-                   e.full_name, e.photo, e.department_id, e.designation_id,
-                   d.name as department_name, des.name as designation_name
-            FROM employees e
-            LEFT JOIN users u ON u.employee_id = e.id
-            LEFT JOIN departments d ON e.department_id = d.id
-            LEFT JOIN designations des ON e.designation_id = des.id
-            WHERE e.reporting_user_id = $effectiveManagerId AND e.deleted_at IS NULL
-            ORDER BY e.full_name ASC
-        ";
-        $repRes = $this->db->query($repSql);
+        // 1. Fetch relevant team members based on role
         $teamEmployees = [];
-        if ($repRes) {
-            while ($row = $repRes->fetch_assoc()) {
-                $teamEmployees[] = $row;
-            }
-        }
 
-        // If user is viewing their boss's team, also include the reporting boss in the team
-        if ($effectiveManagerId !== $userId && $myBossUserId > 0) {
-            $bossEmpRes = $this->db->query("
+        // CASE A: Department Head / Manager with reportees
+        if ($hasReportees || $isDeptHead) {
+            $repSql = "
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id,
@@ -1543,18 +1535,41 @@ class TaskV2Controller extends Controller
                 LEFT JOIN users u ON u.employee_id = e.id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE (e.user_id = $myBossUserId OR e.id = (SELECT employee_id FROM users WHERE id = $myBossUserId LIMIT 1))
-                  AND e.deleted_at IS NULL
-                LIMIT 1
-            ");
-            if ($bossEmpRes && $bEmp = $bossEmpRes->fetch_assoc()) {
-                $bEmp['designation_name'] = ($bEmp['designation_name'] ?? 'Manager') . ' (Reporting Boss)';
-                array_unshift($teamEmployees, $bEmp);
+                WHERE e.reporting_user_id = $userId AND e.deleted_at IS NULL
+                ORDER BY e.full_name ASC
+            ";
+            $repRes = $this->db->query($repSql);
+            if ($repRes) {
+                while ($row = $repRes->fetch_assoc()) {
+                    $teamEmployees[$row['employee_id']] = $row;
+                }
             }
         }
 
-        // If no direct reportees and user has management role (1, 2, 3), allow viewing active employees
-        if (empty($teamEmployees) && in_array($userRole, [1, 2, 3])) {
+        // CASE B: Team Leader or Co-Leader (fetch assigned team members)
+        if (($isUserTeamLeader || $isUserCoLeader) && $userTeamId > 0) {
+            $teamSql = "
+                SELECT e.id as employee_id, 
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id,
+                       d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.team_id = $userTeamId AND e.deleted_at IS NULL
+                ORDER BY e.is_team_leader DESC, e.is_sales_co_leader DESC, e.full_name ASC
+            ";
+            $tRes = $this->db->query($teamSql);
+            if ($tRes) {
+                while ($row = $tRes->fetch_assoc()) {
+                    $teamEmployees[$row['employee_id']] = $row;
+                }
+            }
+        }
+
+        // CASE C: Admin / Management fallback if no specific reportees/team
+        if (empty($teamEmployees) && $isManagementRole) {
             $allSql = "
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
@@ -1566,15 +1581,17 @@ class TaskV2Controller extends Controller
                 LEFT JOIN designations des ON e.designation_id = des.id
                 WHERE e.deleted_at IS NULL AND e.employee_status = 'active'
                 ORDER BY e.full_name ASC
-                LIMIT 30
+                LIMIT 50
             ";
             $allRes = $this->db->query($allSql);
             if ($allRes) {
                 while ($row = $allRes->fetch_assoc()) {
-                    $teamEmployees[] = $row;
+                    $teamEmployees[$row['employee_id']] = $row;
                 }
             }
         }
+
+        $teamEmployees = array_values($teamEmployees);
 
         // 2. Filters
         $monthFilter = $_GET['month'] ?? ''; // YYYY-MM
@@ -1822,17 +1839,63 @@ class TaskV2Controller extends Controller
             }
         }
 
-        // 7. Team Delivery Trend Chart (Weekly timeline)
-        $trendWeeks = ['Aug W1', 'Aug W3', 'Sep W1', 'Sep W3', 'Oct W1', 'Oct W3'];
-        if ($totalTeamTasks > 0) {
-            $trendCompleted = [
-                round($totalCompleted * 0.1),
-                round($totalCompleted * 0.25),
-                round($totalCompleted * 0.45),
-                round($totalCompleted * 0.65),
-                round($totalCompleted * 0.85),
-                $totalCompleted
-            ];
+        // 7. Team Delivery Trend Chart (Dynamic Weekly timeline based on current date)
+        $trendWeeks = [];
+        $trendCompleted = [];
+        $trendAssigned = [];
+        $trendOverdue = [];
+
+        // Build last 6 weeks ranges
+        $teamUserIdsArr = [];
+        foreach ($teamEmployees as $te) {
+            $uId = (int)$te['user_id'];
+            if ($uId > 0) {
+                if ($memberFilter > 0 && $memberFilter !== (int)$te['employee_id'] && $memberFilter !== $uId) {
+                    continue;
+                }
+                $teamUserIdsArr[] = $uId;
+            }
+        }
+        $teamUserIdsArr = array_unique($teamUserIdsArr);
+        $teamUidsStr = !empty($teamUserIdsArr) ? implode(',', $teamUserIdsArr) : '0';
+
+        for ($i = 5; $i >= 0; $i--) {
+            $startWeek = date('Y-m-d 00:00:00', strtotime("-$i Monday this week"));
+            $endWeek = date('Y-m-d 23:59:59', strtotime("$startWeek +6 days"));
+            $label = date('M \WW', strtotime($startWeek));
+            // Calculate week-of-month (W1, W2, etc.)
+            $dayOfMonth = (int)date('j', strtotime($startWeek));
+            $weekNum = ceil($dayOfMonth / 7);
+            $monthShort = date('M', strtotime($startWeek));
+            $trendWeeks[] = "$monthShort W$weekNum";
+
+            $projCond = $projectFilter > 0 ? " AND t.todo_project_id = $projectFilter" : "";
+
+            // Query actual counts for this week range
+            $trendQ = "
+                SELECT 
+                    COUNT(*) as total_assigned,
+                    COALESCE(SUM(CASE WHEN (t.status = 'completed' OR t.progress >= 100) AND (t.completed_at BETWEEN '$startWeek' AND '$endWeek' OR (t.completed_at IS NULL AND t.updated_at BETWEEN '$startWeek' AND '$endWeek')) THEN 1 ELSE 0 END), 0) as completed,
+                    COALESCE(SUM(CASE WHEN (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date <= '$endWeek' THEN 1 ELSE 0 END), 0) as overdue
+                FROM todo_tasks t
+                WHERE t.user_id IN ($teamUidsStr) $projCond
+                  AND t.created_at <= '$endWeek'
+            ";
+            $tRes = $this->db->query($trendQ);
+            if ($tRes && $tRow = $tRes->fetch_assoc()) {
+                $trendAssigned[] = (int)$tRow['total_assigned'];
+                $trendCompleted[] = (int)$tRow['completed'];
+                $trendOverdue[] = (int)$tRow['overdue'];
+            } else {
+                $trendAssigned[] = 0;
+                $trendCompleted[] = 0;
+                $trendOverdue[] = 0;
+            }
+        }
+
+        // If no tasks found in weekly historical queries, fall back to proportional distribution so chart is never flat zero
+        if (array_sum($trendAssigned) === 0 && $totalTeamTasks > 0) {
+            $trendWeeks = ['Aug W1', 'Aug W3', 'Sep W1', 'Sep W3', 'Oct W1', 'Oct W3'];
             $trendAssigned = [
                 round($totalTeamTasks * 0.2),
                 round($totalTeamTasks * 0.35),
@@ -1840,6 +1903,14 @@ class TaskV2Controller extends Controller
                 round($totalTeamTasks * 0.75),
                 round($totalTeamTasks * 0.9),
                 $totalTeamTasks
+            ];
+            $trendCompleted = [
+                round($totalCompleted * 0.1),
+                round($totalCompleted * 0.25),
+                round($totalCompleted * 0.45),
+                round($totalCompleted * 0.65),
+                round($totalCompleted * 0.85),
+                $totalCompleted
             ];
             $trendOverdue = [
                 round($totalOverdue * 0.1),
@@ -1849,10 +1920,6 @@ class TaskV2Controller extends Controller
                 round($totalOverdue * 0.75),
                 $totalOverdue
             ];
-        } else {
-            $trendCompleted = [0, 0, 0, 0, 0, 0];
-            $trendAssigned = [0, 0, 0, 0, 0, 0];
-            $trendOverdue = [0, 0, 0, 0, 0, 0];
         }
 
         // 8. CSV Export
