@@ -1878,6 +1878,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                     <form action="<?= $base_url ?>/con-vendor-payment-approve/<?= $request['id'] ?>" method="POST"
                         id="approveVprForm" class="mb-0">
                         <input type="hidden" name="status" value="Approved">
+                        <input type="hidden" name="approve_mode" id="vprApproveModeInput" value="override">
                         <div class="mb-3">
                             <?php if ($isApproved): ?>
                                 <div class="p-3 mb-3 rounded-2 border border-info bg-info-subtle text-dark small lh-base">
@@ -2406,15 +2407,23 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                 if (mgmtOverrideStage) {
                     Swal.fire({
                         title: 'Pending ' + mgmtOverrideStage + ' Approval!',
-                        html: 'This bill is pending for <strong>' + mgmtOverrideStage + '\'s</strong> approval.<br>Are you ready to approve for <strong>' + mgmtOverrideStage + '</strong> first?<br><small class="text-muted">(Your name will be recorded across all bypassed stages and final Management approval)</small>',
+                        html: 'This bill is pending for <strong>' + mgmtOverrideStage + '\'s</strong> approval.<br>Choose whether to approve <strong>only ' + mgmtOverrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.',
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonColor: '#198754',
+                        showDenyButton: true,
+                        confirmButtonColor: '#0d6efd',
+                        denyButtonColor: '#198754',
                         cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, Approve & Override',
+                        confirmButtonText: 'Approve Only ' + mgmtOverrideStage,
+                        denyButtonText: 'Approve All & Finalize',
                         cancelButtonText: 'Cancel'
                     }).then(function (result) {
+                        var modeInput = document.getElementById('vprApproveModeInput');
                         if (result.isConfirmed) {
+                            if (modeInput) modeInput.value = 'single';
+                            approveForm.submit();
+                        } else if (result.isDenied) {
+                            if (modeInput) modeInput.value = 'override';
                             approveForm.submit();
                         }
                     });

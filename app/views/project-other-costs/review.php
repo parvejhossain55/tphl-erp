@@ -587,6 +587,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
 
                             <?php if ($canMgmtApprove): ?>
                                 <form id="pocMgmtApproveForm" method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>">
+                                    <input type="hidden" name="approve_mode" id="pocApproveModeInput" value="override">
                                     <input type="hidden" name="action" id="pocMgmtActionInput" value="approve">
                                     <?php if ($isOpHeadAction): ?>
                                         <div class="d-flex align-items-start gap-2 p-3 mb-3 rounded-2 border border-primary bg-primary-subtle text-dark small lh-base">
@@ -626,7 +627,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                                 ? 'Pending ' + overrideStage + "'s Approval"
                                                 : (isOpHead ? 'Approve as Head of Operation?' : 'Final Management Approval?');
                                             var htmlMsg = overrideStage !== ''
-                                                ? 'This request is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>'
+                                                ? 'This request is pending for <strong>' + overrideStage + "'s</strong> approval. Choose whether to approve <strong>only " + overrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.'
                                                 : (isOpHead
                                                     ? 'Confirm Head of Operation approval and forward to Accounts Head?'
                                                     : 'Confirm final Management approval for this request?');
@@ -636,11 +637,19 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                                     html: htmlMsg,
                                                     icon: overrideStage !== '' ? 'warning' : 'question',
                                                     showCancelButton: true,
-                                                    confirmButtonColor: isOpHead ? '#0d6efd' : '#198754',
+                                                    showDenyButton: overrideStage !== '',
+                                                    confirmButtonColor: overrideStage !== '' ? '#0d6efd' : (isOpHead ? '#0d6efd' : '#198754'),
+                                                    denyButtonColor: '#198754',
                                                     cancelButtonColor: '#6c757d',
-                                                    confirmButtonText: overrideStage !== '' ? 'Yes, Approve All Stages' : 'Yes, Approve'
+                                                    confirmButtonText: overrideStage !== '' ? 'Approve Only ' + overrideStage : 'Yes, Approve',
+                                                    denyButtonText: 'Approve All & Finalize'
                                                 }).then(function(result) {
+                                                    var modeInput = document.getElementById('pocApproveModeInput');
                                                     if (result.isConfirmed) {
+                                                        if (modeInput) modeInput.value = (overrideStage !== '') ? 'single' : 'override';
+                                                        formPoc.submit();
+                                                    } else if (result.isDenied && overrideStage !== '') {
+                                                        if (modeInput) modeInput.value = 'override';
                                                         formPoc.submit();
                                                     }
                                                 });

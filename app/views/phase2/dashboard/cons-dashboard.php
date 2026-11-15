@@ -1683,7 +1683,7 @@ $statusColor = [
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:var(--clr-theme-secondary)"></div>
               <i class="fal fa-file-check me-2" style="color:var(--clr-theme-secondary)"></i>
-              Pending Material Receivings (GRN) &mdash; PM Approval Required
+              Pending Material Receivings (GRN) &mdash; Dept. Head Approval Required
               <span
                 style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(var(--clr-theme-secondary-rgb),.12);color:var(--clr-theme-secondary)">
                 <?= count($pendingGRNsPM) ?> Awaiting
@@ -1816,7 +1816,7 @@ $statusColor = [
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
               <i class="fal fa-file-contract me-2" style="color:var(--cd-blue)"></i>
-              Pending Purchase Orders &mdash; Management/PM Approval Required
+              Pending Purchase Orders &mdash; Management / Dept. Head Approval Required
               <span
                 style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:var(--cd-blue)">
                 <?= count($pendingPOsForPM) ?> Awaiting
@@ -1880,7 +1880,7 @@ $statusColor = [
         <div class="sec-title" style="margin-bottom:0">
           <div class="sec-title-dot" style="background:#0f5132"></div>
           <i class="fal fa-calendar-week me-2" style="color:#0f5132"></i>
-          Pending Weekly Reports &mdash; PM Approval Required
+          Pending Weekly Reports &mdash; Dept. Head Approval Required
           <span
             style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(16,185,129,.12);color:#0f5132">
             <?= count($pendingWeeklyReportsPM) ?> Awaiting
@@ -1928,7 +1928,7 @@ $statusColor = [
         <?php else: ?>
         <div class="empty-state">
           <div class="empty-state-icon" style="color:#0f5132"><i class="fal fa-calendar-week"></i></div>
-          <div class="empty-state-text text-muted">No pending weekly progress reports awaiting PM approval.</div>
+          <div class="empty-state-text text-muted">No pending weekly progress reports awaiting Dept. Head approval.</div>
         </div>
         <?php endif; ?>
       </div>
@@ -2166,7 +2166,7 @@ $statusColor = [
             <div class="sec-title" style="margin-bottom:0">
               <div class="sec-title-dot" style="background:var(--cd-blue)"></div>
               <i class="fal fa-box-check me-2" style="color:var(--cd-blue)"></i>
-              Pending Material Receivings (GRN) &mdash; PM Approval Required
+              Pending Material Receivings (GRN) &mdash; Dept. Head Approval Required
               <span
                 style="margin-left:8px;font-size:9px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:var(--cd-blue)">
                 <?= count($pendingGRNsPM) ?> Awaiting
