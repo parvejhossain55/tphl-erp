@@ -2139,10 +2139,30 @@ class TaskV2Controller extends Controller
             }
         }
 
+        $monthFilter = $_GET['month'] ?? '';
         $projectFilter = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+        $statusFilter = $_GET['status'] ?? '';
+        $typeFilter = $_GET['type'] ?? 'assigned_self';
+
         $tWhere = "t.user_id = $targetUserId";
+        if (!empty($monthFilter) && $monthFilter !== 'all_time') {
+            $mSafe = $this->db->real_escape_string($monthFilter);
+            $tWhere .= " AND DATE_FORMAT(t.created_at, '%Y-%m') = '$mSafe'";
+        }
         if ($projectFilter > 0) {
             $tWhere .= " AND t.todo_project_id = $projectFilter";
+        }
+        if ($typeFilter === 'assigned') {
+            $tWhere .= " AND (t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id)";
+        } elseif ($typeFilter === 'self') {
+            $tWhere .= " AND (t.assigned_by IS NULL OR t.assigned_by = t.user_id)";
+        }
+        if ($statusFilter === 'completed') {
+            $tWhere .= " AND (t.status = 'completed' OR t.progress >= 100)";
+        } elseif ($statusFilter === 'in_progress') {
+            $tWhere .= " AND (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.deadline IS NULL OR CONCAT(DATE(t.deadline), ' 23:59:59') >= NOW())";
+        } elseif ($statusFilter === 'overdue') {
+            $tWhere .= " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline IS NOT NULL AND CONCAT(DATE(t.deadline), ' 23:59:59') < NOW()";
         }
 
         $tasks = [];
@@ -2153,7 +2173,7 @@ class TaskV2Controller extends Controller
                 LEFT JOIN todo_projects p ON t.todo_project_id = p.id
                 WHERE $tWhere 
                 ORDER BY t.id DESC 
-                LIMIT 50
+                LIMIT 200
             ");
             if ($tRes) {
                 while ($r = $tRes->fetch_assoc()) {

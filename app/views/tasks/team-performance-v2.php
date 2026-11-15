@@ -1521,6 +1521,17 @@ function openWorkloadFormulaInfo() {
     alert("Workload Balance Calculation Formula:\n\n1. In Progress Tasks: Status is pending/in-progress with <100% progress and deadline has not passed.\n2. Overdue Tasks: Deadline has passed and task is <100% progress.\n\nTotal Open Tasks = In Progress + Overdue.\n\nCompleted tasks (100%) are excluded from the workload count.");
 }
 
+function getMemberTasksQueryUrl(empId) {
+    const curParams = new URLSearchParams(window.location.search);
+    const qs = new URLSearchParams();
+    ['month', 'project_id', 'status', 'type'].forEach(k => {
+        const val = curParams.get(k);
+        if (val) qs.set(k, val);
+    });
+    const qStr = qs.toString();
+    return '<?= $GLOBALS['base_url'] ?>/team-performance-v2/member/' + empId + (qStr ? '?' + qStr : '');
+}
+
 function openWorkloadBreakdown(wb) {
     if (!wb) return;
     currentWbMember = wb;
@@ -1545,7 +1556,7 @@ function openWorkloadBreakdown(wb) {
     loading.style.display = 'block';
     list.style.display = 'none';
 
-    fetch('<?= $GLOBALS['base_url'] ?>/team-performance-v2/member/' + wb.employee_id + '<?= $projectFilter > 0 ? "?project_id=" . $projectFilter : "" ?>')
+    fetch(getMemberTasksQueryUrl(wb.employee_id))
         .then(res => res.json())
         .then(data => {
             loading.style.display = 'none';
@@ -1668,26 +1679,31 @@ function openMemberTasksOffcanvas(empId, empName) {
     const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl) || new bootstrap.Offcanvas(offcanvasEl);
     bsOffcanvas.show();
 
-    fetch('<?= $GLOBALS['base_url'] ?>/team-performance-v2/member/' + empId + '<?= $projectFilter > 0 ? "?project_id=" . $projectFilter : "" ?>')
+    fetch(getMemberTasksQueryUrl(empId))
         .then(res => res.json())
         .then(data => {
             loading.style.display = 'none';
             list.style.display = 'block';
             
             if (data.success && data.tasks && data.tasks.length > 0) {
+                const todayStr = new Date().toISOString().split('T')[0];
                 let html = '<div class="list-group list-group-flush">';
                 data.tasks.forEach(t => {
                     const isComp = (t.status === 'completed' || t.progress >= 100);
+                    const isOverdue = !isComp && t.due_date_raw && t.due_date_raw < todayStr;
                     const isTeam = t.is_team_project == 1;
+                    const statusBadge = isComp
+                        ? '<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 11px;">Completed</span>'
+                        : (isOverdue
+                            ? '<span class="badge bg-danger text-white" style="font-size: 11px;">Overdue</span>'
+                            : '<span class="badge bg-warning-subtle text-dark border border-warning-subtle" style="font-size: 11px;">In Progress</span>');
                     html += `
                         <div class="list-group-item px-0 py-3 border-bottom">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
+                            <div class="d-flex align-items-center justify-content-between mb-1 gap-2">
                                 <span class="fw-bold text-dark" style="font-size: 14px; ${isComp ? 'text-decoration: line-through; opacity: 0.75;' : ''}">${t.title}</span>
-                                <div class="d-flex align-items-center gap-1">
-                                    <span class="badge ${isComp ? 'bg-success-subtle text-success' : 'bg-light text-secondary border'}" style="font-size: 11px;">
-                                        ${isComp ? 'Completed' : 'In Progress'}
-                                    </span>
-                                    <span class="badge ${isComp ? 'bg-success text-white' : (t.progress > 0 ? 'bg-warning-subtle text-dark border' : 'bg-light text-secondary border')}" style="font-size: 11px; min-width: 44px; text-align: center;">
+                                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                    ${statusBadge}
+                                    <span class="badge ${isComp ? 'bg-success text-white' : (isOverdue ? 'bg-danger-subtle text-danger border border-danger-subtle' : (t.progress > 0 ? 'bg-warning-subtle text-dark border' : 'bg-light text-secondary border'))}" style="font-size: 11px; min-width: 44px; text-align: center;">
                                         ${t.progress}%
                                     </span>
                                 </div>
@@ -1697,11 +1713,11 @@ function openMemberTasksOffcanvas(empId, empName) {
                                     ${isTeam ? '<span class="badge bg-success-subtle text-success py-0 px-1 me-1"><i class="bi bi-people-fill me-1"></i>Team</span>' : '<i class="bi bi-folder2 text-secondary me-1"></i>'}
                                     ${t.project_name}
                                 </span>
-                                <span><i class="bi bi-calendar3 me-1"></i> ${t.due_date}</span>
+                                <span class="${isOverdue ? 'text-danger fw-semibold' : ''}"><i class="bi bi-calendar3 me-1"></i> ${t.due_date}</span>
                             </div>
                             <div class="d-flex align-items-center gap-2 mt-2">
                                 <div class="progress flex-grow-1" style="height: 7px; background: #e2e8f0; border-radius: 4px;">
-                                    <div class="progress-bar ${isComp ? 'bg-success' : (t.progress >= 50 ? 'bg-success' : (t.progress > 0 ? 'bg-warning' : 'bg-secondary'))}" style="width: ${t.progress}%;"></div>
+                                    <div class="progress-bar ${isComp ? 'bg-success' : (isOverdue ? 'bg-danger' : (t.progress >= 50 ? 'bg-success' : (t.progress > 0 ? 'bg-warning' : 'bg-secondary')))}" style="width: ${t.progress}%;"></div>
                                 </div>
                                 <span class="fw-bold text-dark" style="font-size: 11.5px; min-width: 34px; text-align: right;">${t.progress}%</span>
                             </div>
