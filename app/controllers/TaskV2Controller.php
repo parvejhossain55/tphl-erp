@@ -1630,6 +1630,33 @@ class TaskV2Controller extends Controller
             }
         }
 
+        // If a specific project is selected, ensure all employees who have tasks in that project are included
+        if ($projectFilter > 0) {
+            $existingEmpIds = array_column($teamEmployees, 'employee_id');
+            $projEmpSql = "
+                SELECT DISTINCT e.id as employee_id,
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id,
+                       d.name as department_name, des.name as designation_name
+                FROM todo_tasks tt
+                INNER JOIN users u ON tt.user_id = u.id
+                INNER JOIN employees e ON (e.user_id = u.id OR u.employee_id = e.id)
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE tt.todo_project_id = $projectFilter AND e.deleted_at IS NULL
+                ORDER BY e.full_name ASC
+            ";
+            $peRes = $this->db->query($projEmpSql);
+            if ($peRes) {
+                while ($peRow = $peRes->fetch_assoc()) {
+                    if (!in_array((int)$peRow['employee_id'], $existingEmpIds, true)) {
+                        $teamEmployees[] = $peRow;
+                        $existingEmpIds[] = (int)$peRow['employee_id'];
+                    }
+                }
+            }
+        }
+
         // 3. Process each team member's performance metrics
         $memberStats = [];
         $totalTeamTasks = 0;
@@ -1803,15 +1830,23 @@ class TaskV2Controller extends Controller
         $avgTeamScore = $totalTeamTasks > 0 && $onTimeCount > 0 ? round($scoreSum / $onTimeCount, 1) : 0;
         $teamHealthLabel = $totalTeamTasks === 0 ? "No tasks recorded" : ($avgTeamScore >= 75 ? "Healthy team performance" : "Needs attention");
 
-        // 6. Workload Balance Ranking (Top members with open workload)
+        // 6. Workload Balance Ranking (All filtered team/project members with open workload)
         $workloadList = $memberStats;
+        if ($projectFilter > 0) {
+            $workloadList = array_values(array_filter($workloadList, function($w) {
+                return ($w['total'] ?? 0) > 0;
+            }));
+        }
         usort($workloadList, function($a, $b) {
             $openA = $a['in_progress'] + $a['overdue'];
             $openB = $b['in_progress'] + $b['overdue'];
-            return $openB <=> $openA;
+            if ($openB !== $openA) {
+                return $openB <=> $openA;
+            }
+            return strcmp($a['full_name'] ?? '', $b['full_name'] ?? '');
         });
 
-        $topWorkload = array_slice($workloadList, 0, 5);
+        $topWorkload = $workloadList;
         $maxOpen = 1;
         foreach ($topWorkload as $tw) {
             $op = $tw['in_progress'] + $tw['overdue'];

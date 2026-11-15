@@ -242,6 +242,11 @@
 }
 
 /* Workload Balance List */
+.workload-list {
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
 .workload-item {
     display: flex;
     align-items: center;
@@ -1226,134 +1231,72 @@
 </div>
 
 <!-- ========================================================================
-     Modal: Update Member Task Progress (HOD Action)
-     ======================================================================== -->
-<div class="modal fade" id="modalUpdateMemberTask" tabindex="-1" aria-labelledby="modalUpdateMemberTaskLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow">
-            <div class="modal-header border-bottom-0 pb-0">
-                <div>
-                    <span class="team-header-tag">TASK MANAGEMENT</span>
-                    <h5 class="modal-title fw-bold text-dark" id="modalUpdateMemberTaskLabel">Update Task Progress</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="<?= $GLOBALS['base_url'] ?>/my-created-tasks/update-progress" method="POST" id="formUpdateMemberTask">
-                <input type="hidden" name="ajax" value="1">
-                <input type="hidden" name="task_id" id="memberUpdateTaskId" value="">
-                <div class="modal-body pt-3">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Task Title</label>
-                        <input type="text" id="memberUpdateTaskTitle" class="form-control rounded-3 bg-light" readonly>
-                    </div>
-
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold text-secondary">Status</label>
-                            <select name="status" id="memberUpdateStatus" class="form-select rounded-3">
-                                <option value="pending">In Progress</option>
-                                <option value="completed">Completed</option>
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-bold text-secondary">Deadline</label>
-                            <input type="date" name="due_date" id="memberUpdateDueDate" class="form-control rounded-3">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label small fw-bold text-secondary mb-0">Progress</label>
-                            <span class="fw-bold text-success" id="memberProgressDisplay">0%</span>
-                        </div>
-                        <input type="range" name="progress" id="memberUpdateProgress" class="form-range" min="0" max="100" step="5" value="0">
-                        <div class="d-flex justify-content-between text-muted" style="font-size: 11px;">
-                            <span>0%</span>
-                            <span>25%</span>
-                            <span>50%</span>
-                            <span>75%</span>
-                            <span>100%</span>
-                        </div>
-                    </div>
-
-                    <div id="memberUpdateFeedback" class="mt-2 text-center" style="display: none;"></div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light rounded-3 fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" id="btnSaveMemberTask" class="btn btn-success rounded-3 fw-semibold px-4 text-white" style="background-color: #15803d; border-color: #15803d;">Save Update</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- ========================================================================
-     Modal: Workload Balance Breakdown (Calculation Details)
+     Modal: Workload Balance Breakdown (Read-Only Calculation Details)
      ======================================================================== -->
 <div class="modal fade" id="modalWorkloadBreakdown" tabindex="-1" aria-labelledby="modalWorkloadBreakdownLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content rounded-4 border-0 shadow">
-            <div class="modal-header border-bottom pb-3">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <div class="modal-header border-bottom py-3 px-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%);">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="workload-avatar shadow-sm" id="wbModalAvatar" style="width: 46px; height: 46px; font-size: 17px; background: #e8f5e9; color: #166534; border: 2px solid #bbf7d0;"></div>
+                    <div class="workload-avatar shadow-sm me-2" id="wbModalAvatar" style="width: 48px; height: 48px; font-size: 17px; background: #dcfce7; color: #15803d; border: 2px solid #86efac;"></div>
                     <div>
-                        <div class="team-header-tag mb-0" style="color: #059669;">WORKLOAD CALCULATION BREAKDOWN</div>
+                        <div class="team-header-tag mb-0" style="color: #059669;">WORKLOAD BREAKDOWN</div>
                         <h5 class="modal-title fw-bold text-dark mb-0" id="wbModalMemberName">Member Name</h5>
                         <div class="text-muted" style="font-size: 12px;" id="wbModalDesignation">Designation</div>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-4" style="background: #ffffff;">
                 <!-- Calculation Formula Banner -->
-                <div class="p-3 rounded-3 mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                    <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                <div class="p-3 rounded-4 mb-4" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <span class="fw-bold text-dark" style="font-size: 13px;">
-                            <i class="bi bi-calculator me-1 text-success"></i> Workload Formula & Count Summary:
+                            <i class="bi bi-calculator me-1 text-success"></i> Workload Summary
                         </span>
-                        <span class="badge bg-success-subtle text-success px-2.5 py-1 rounded-pill fw-semibold" style="font-size: 11px;">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-semibold" style="font-size: 11px;">
                             Open Tasks = In Progress + Overdue
                         </span>
                     </div>
 
-                    <div class="row g-2 text-center mt-1">
+                    <div class="row g-2.5 text-center">
                         <div class="col-sm-4 col-12">
-                            <div class="p-2.5 rounded bg-white border h-100">
-                                <div class="text-muted text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.5px;">In Progress Tasks</div>
-                                <div class="fw-bold text-warning-emphasis fs-4 my-1" id="wbModalInProgress">0</div>
-                                <div class="text-muted" style="font-size: 11px;">Status pending, &lt;100%</div>
+                            <div class="p-3 rounded-3 bg-white border shadow-sm h-100">
+                                <div class="text-muted text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.6px;">In Progress</div>
+                                <div class="fw-bold text-warning-emphasis fs-3 my-1" id="wbModalInProgress">0</div>
+                                <div class="text-muted" style="font-size: 11px;">Pending, &lt;100%</div>
                             </div>
                         </div>
                         <div class="col-sm-4 col-12">
-                            <div class="p-2.5 rounded bg-white border h-100">
-                                <div class="text-muted text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.5px;">Overdue Tasks</div>
-                                <div class="fw-bold text-danger fs-4 my-1" id="wbModalOverdue">0</div>
+                            <div class="p-3 rounded-3 bg-white border shadow-sm h-100">
+                                <div class="text-muted text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.6px;">Overdue</div>
+                                <div class="fw-bold text-danger fs-3 my-1" id="wbModalOverdue">0</div>
                                 <div class="text-muted" style="font-size: 11px;">Deadline passed, &lt;100%</div>
                             </div>
                         </div>
                         <div class="col-sm-4 col-12">
-                            <div class="p-2.5 rounded bg-white border h-100" style="border-color: #10b981 !important; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%) !important;">
-                                <div class="text-success text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.5px;">Total Open Workload</div>
-                                <div class="fw-bold text-success fs-4 my-1" id="wbModalTotalOpen">0</div>
-                                <div class="text-success small fw-semibold" style="font-size: 11px;">Counted in Workload Balance</div>
+                            <div class="p-3 rounded-3 border shadow-sm h-100" style="border-color: #86efac !important; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%) !important;">
+                                <div class="text-success text-uppercase fw-bold" style="font-size: 10px; letter-spacing: 0.6px;">Total Open Workload</div>
+                                <div class="fw-bold text-success fs-3 my-1" id="wbModalTotalOpen">0</div>
+                                <div class="text-success fw-semibold" style="font-size: 11px;">Active Workload Count</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mt-2.5 pt-2 border-top d-flex align-items-center justify-content-between text-muted small" style="font-size: 11.5px;">
-                        <span><i class="bi bi-check-circle me-1 text-success"></i> Completed tasks (<strong id="wbModalCompleted">0</strong>) are excluded from active workload.</span>
-                        <span>Total Assigned: <strong id="wbModalTotal">0</strong></span>
+                    <div class="mt-3 pt-2.5 border-top d-flex align-items-center justify-content-between flex-wrap gap-2 text-muted" style="font-size: 11.5px;">
+                        <span><i class="bi bi-check-circle-fill me-1 text-success"></i> Completed tasks (<strong class="text-dark" id="wbModalCompleted">0</strong>) are excluded from active workload.</span>
+                        <span>Total Tasks: <strong class="text-dark" id="wbModalTotal">0</strong></span>
                     </div>
                 </div>
 
                 <!-- Tasks Listing Header & Filter Tabs -->
-                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
-                    <h6 class="fw-bold text-dark mb-0" style="font-size: 13.5px;">
-                        <i class="bi bi-list-task me-1 text-primary"></i> Detailed Task Breakdown
+                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                    <h6 class="fw-bold text-dark mb-0" style="font-size: 14px;">
+                        <i class="bi bi-list-check me-1 text-success"></i> Task Breakdown
                     </h6>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary active py-0.5 px-2.5" id="wbFilterBtnOpen" onclick="filterWbModalTasks('open')">Open Tasks (<span id="wbTabOpenCount">0</span>)</button>
-                        <button type="button" class="btn btn-outline-secondary py-0.5 px-2.5" id="wbFilterBtnAll" onclick="filterWbModalTasks('all')">All Tasks (<span id="wbTabAllCount">0</span>)</button>
+                    <div class="btn-group btn-group-sm rounded-pill overflow-hidden border" role="group">
+                        <button type="button" class="btn btn-light active py-1 px-3 fw-semibold" style="font-size: 12px;" id="wbFilterBtnOpen" onclick="filterWbModalTasks('open')">Open (<span id="wbTabOpenCount">0</span>)</button>
+                        <button type="button" class="btn btn-light py-1 px-3 fw-semibold" style="font-size: 12px;" id="wbFilterBtnAll" onclick="filterWbModalTasks('all')">All (<span id="wbTabAllCount">0</span>)</button>
                     </div>
                 </div>
 
@@ -1364,13 +1307,13 @@
                 </div>
 
                 <!-- Tasks List -->
-                <div id="wbModalTasksList" style="display: none; max-height: 360px; overflow-y: auto;"></div>
+                <div id="wbModalTasksList" style="display: none; max-height: 360px; overflow-y: auto; padding-right: 4px;"></div>
             </div>
-            <div class="modal-footer border-top bg-light py-2 px-4 d-flex justify-content-between align-items-center">
+            <div class="modal-footer border-top bg-light py-2.5 px-4 d-flex justify-content-between align-items-center">
                 <span class="text-muted small">
-                    <i class="bi bi-info-circle me-1 text-primary"></i> Click any task's "Update" button to modify its progress.
+                    <i class="bi bi-shield-check me-1 text-success"></i> Workload summary view
                 </span>
-                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success btn-sm rounded-pill px-4 fw-semibold" style="background-color: #15803d; border-color: #15803d;" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1613,48 +1556,44 @@ function renderWbModalTasks() {
         return;
     }
 
-    let html = '<div class="list-group list-group-flush">';
+    let html = '<div class="d-flex flex-column gap-2">';
     filtered.forEach(t => {
         const isTeam = t.is_team_project == 1;
-        const taskJson = JSON.stringify(t).replace(/"/g, '&quot;');
 
         let statusBadge = '';
         if (t.isComp) {
-            statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5" style="font-size: 10.5px;"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>';
+            statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill" style="font-size: 10.5px;"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>';
         } else if (t.isOverdue) {
-            statusBadge = '<span class="badge bg-danger text-white px-2 py-0.5" style="font-size: 10.5px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Overdue</span>';
+            statusBadge = '<span class="badge bg-danger text-white px-2.5 py-1 rounded-pill" style="font-size: 10.5px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>Overdue</span>';
         } else {
-            statusBadge = '<span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-0.5" style="font-size: 10.5px;"><i class="bi bi-hourglass-split me-1"></i>In Progress</span>';
+            statusBadge = '<span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2.5 py-1 rounded-pill" style="font-size: 10.5px;"><i class="bi bi-hourglass-split me-1"></i>In Progress</span>';
         }
 
-        const prioBadge = t.priority === 1 ? '<span class="badge bg-danger-subtle text-danger py-0 px-1.5" style="font-size: 10px;">Urgent</span>' :
-                         (t.priority === 2 ? '<span class="badge bg-warning-subtle text-dark py-0 px-1.5" style="font-size: 10px;">High</span>' : '');
+        const prioBadge = t.priority === 1 ? '<span class="badge bg-danger-subtle text-danger py-0.5 px-2 rounded-pill" style="font-size: 10px;">Urgent</span>' :
+                         (t.priority === 2 ? '<span class="badge bg-warning-subtle text-dark py-0.5 px-2 rounded-pill" style="font-size: 10px;">High</span>' : '');
 
         html += `
-            <div class="list-group-item px-2 py-2.5 border-bottom rounded mb-1" style="background: ${t.isOverdue ? '#fff5f5' : '#ffffff'};">
-                <div class="d-flex align-items-center justify-content-between mb-1 gap-2">
-                    <div class="d-flex align-items-center gap-1.5 flex-grow-1 text-truncate">
+            <div class="p-3 border rounded-3 shadow-sm" style="background: ${t.isOverdue ? '#fff5f5' : '#ffffff'}; border-color: ${t.isOverdue ? '#fecaca' : '#e2e8f0'} !important;">
+                <div class="d-flex align-items-center justify-content-between mb-1.5 gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-grow-1 text-truncate">
                         ${prioBadge}
                         <span class="fw-bold text-dark text-truncate" style="font-size: 13.5px; ${t.isComp ? 'text-decoration: line-through; opacity: 0.7;' : ''}">${t.title}</span>
                     </div>
                     <div class="d-flex align-items-center gap-1 flex-shrink-0">
                         ${statusBadge}
-                        <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded-pill ms-1 text-success fw-semibold" style="font-size: 11px;" onclick="editMemberTaskProgress(${taskJson})" title="Update task progress">
-                            <i class="bi bi-sliders me-1"></i> Update
-                        </button>
                     </div>
                 </div>
-                <div class="d-flex align-items-center justify-content-between text-muted" style="font-size: 11.5px;">
+                <div class="d-flex align-items-center justify-content-between text-muted mb-2" style="font-size: 11.5px;">
                     <span>
-                        ${isTeam ? '<span class="badge bg-success-subtle text-success py-0 px-1 me-1"><i class="bi bi-people-fill me-1"></i>Team</span>' : '<i class="bi bi-folder2 text-secondary me-1"></i>'}
+                        ${isTeam ? '<span class="badge bg-success-subtle text-success py-0.5 px-1.5 me-1"><i class="bi bi-people-fill me-1"></i>Team</span>' : '<i class="bi bi-folder2 text-secondary me-1"></i>'}
                         ${t.project_name}
                     </span>
                     <span class="${t.isOverdue ? 'text-danger fw-bold' : ''}">
                         <i class="bi bi-calendar3 me-1"></i> Due: ${t.due_date}
                     </span>
                 </div>
-                <div class="d-flex align-items-center gap-2 mt-1.5">
-                    <div class="progress flex-grow-1" style="height: 6px; background: #e2e8f0; border-radius: 4px; cursor: pointer;" onclick="editMemberTaskProgress(${taskJson})" title="Click to update progress">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height: 6px; background: #e2e8f0; border-radius: 4px;">
                         <div class="progress-bar ${t.isComp ? 'bg-success' : (t.isOverdue ? 'bg-danger' : (t.progress >= 50 ? 'bg-success' : (t.progress > 0 ? 'bg-warning' : 'bg-secondary')))}" style="width: ${t.progress}%;"></div>
                     </div>
                     <span class="fw-bold text-dark" style="font-size: 11px; min-width: 32px; text-align: right;">${t.progress}%</span>
@@ -1691,8 +1630,6 @@ function openMemberTasksOffcanvas(empId, empName) {
                 data.tasks.forEach(t => {
                     const isComp = (t.status === 'completed' || t.progress >= 100);
                     const isTeam = t.is_team_project == 1;
-                    const prioColor = t.priority === 1 ? '#ef4444' : (t.priority === 2 ? '#f59e0b' : '#3b82f6');
-                    const taskJson = JSON.stringify(t).replace(/"/g, '&quot;');
                     html += `
                         <div class="list-group-item px-0 py-3 border-bottom">
                             <div class="d-flex align-items-center justify-content-between mb-1">
@@ -1704,9 +1641,6 @@ function openMemberTasksOffcanvas(empId, empName) {
                                     <span class="badge ${isComp ? 'bg-success text-white' : (t.progress > 0 ? 'bg-warning-subtle text-dark border' : 'bg-light text-secondary border')}" style="font-size: 11px; min-width: 44px; text-align: center;">
                                         ${t.progress}%
                                     </span>
-                                    <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded-pill ms-1 text-success fw-semibold" style="font-size: 11px;" onclick="editMemberTaskProgress(${taskJson})" title="Update task progress">
-                                        <i class="bi bi-sliders me-1"></i> Update
-                                    </button>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center justify-content-between text-muted small">
@@ -1717,7 +1651,7 @@ function openMemberTasksOffcanvas(empId, empName) {
                                 <span><i class="bi bi-calendar3 me-1"></i> ${t.due_date}</span>
                             </div>
                             <div class="d-flex align-items-center gap-2 mt-2">
-                                <div class="progress flex-grow-1" style="height: 7px; background: #e2e8f0; border-radius: 4px; cursor: pointer;" onclick="editMemberTaskProgress(${taskJson})" title="Click to update progress">
+                                <div class="progress flex-grow-1" style="height: 7px; background: #e2e8f0; border-radius: 4px;">
                                     <div class="progress-bar ${isComp ? 'bg-success' : (t.progress >= 50 ? 'bg-success' : (t.progress > 0 ? 'bg-warning' : 'bg-secondary'))}" style="width: ${t.progress}%;"></div>
                                 </div>
                                 <span class="fw-bold text-dark" style="font-size: 11.5px; min-width: 34px; text-align: right;">${t.progress}%</span>
@@ -1744,117 +1678,7 @@ function openMemberTasksOffcanvas(empId, empName) {
         });
 }
 
-function editMemberTaskProgress(task) {
-    if (!task) return;
-    document.getElementById('memberUpdateTaskId').value = task.id;
-    document.getElementById('memberUpdateTaskTitle').value = task.title || '';
-    document.getElementById('memberUpdateDueDate').value = task.due_date_raw || '';
-    
-    const progressVal = parseInt(task.progress) || 0;
-    const progressRange = document.getElementById('memberUpdateProgress');
-    const progressDisplay = document.getElementById('memberProgressDisplay');
-    const statusSelect = document.getElementById('memberUpdateStatus');
-    
-    progressRange.value = progressVal;
-    progressDisplay.textContent = progressVal + '%';
-    
-    if (task.status === 'completed' || progressVal >= 100) {
-        statusSelect.value = 'completed';
-    } else {
-        statusSelect.value = 'pending';
-    }
-    
-    const feedback = document.getElementById('memberUpdateFeedback');
-    feedback.style.display = 'none';
-    feedback.innerHTML = '';
-    
-    const submitBtn = document.getElementById('btnSaveMemberTask');
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = 'Save Update';
-
-    const modalEl = document.getElementById('modalUpdateMemberTask');
-    const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-    bsModal.show();
-}
-
 document.addEventListener("DOMContentLoaded", function () {
-    const progressRange = document.getElementById('memberUpdateProgress');
-    const progressDisplay = document.getElementById('memberProgressDisplay');
-    const statusSelect = document.getElementById('memberUpdateStatus');
-
-    if (progressRange && progressDisplay && statusSelect) {
-        progressRange.addEventListener('input', function() {
-            const val = parseInt(this.value) || 0;
-            progressDisplay.textContent = val + '%';
-            if (val >= 100) {
-                statusSelect.value = 'completed';
-            } else if (statusSelect.value === 'completed') {
-                statusSelect.value = 'pending';
-            }
-        });
-
-        statusSelect.addEventListener('change', function() {
-            if (this.value === 'completed') {
-                progressRange.value = 100;
-                progressDisplay.textContent = '100%';
-            } else {
-                if (parseInt(progressRange.value) >= 100) {
-                    progressRange.value = 0;
-                    progressDisplay.textContent = '0%';
-                }
-            }
-        });
-    }
-
-    const updateForm = document.getElementById('formUpdateMemberTask');
-    if (updateForm) {
-        updateForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const submitBtn = document.getElementById('btnSaveMemberTask');
-            const feedback = document.getElementById('memberUpdateFeedback');
-            const originalText = submitBtn.innerHTML;
-
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Saving...';
-
-            const formData = new FormData(updateForm);
-            formData.append('ajax', '1');
-
-            fetch(updateForm.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i> Saved!';
-                    feedback.style.display = 'block';
-                    feedback.innerHTML = '<div class="alert alert-success py-2 px-3 small rounded-3 mb-0">' + (data.message || 'Task updated successfully!') + '</div>';
-                    setTimeout(() => {
-                        const modalEl = document.getElementById('modalUpdateMemberTask');
-                        const bsModal = bootstrap.Modal.getInstance(modalEl);
-                        if (bsModal) bsModal.hide();
-                        // Refresh the offcanvas task list immediately
-                        if (currentMemberEmpId > 0) {
-                            openMemberTasksOffcanvas(currentMemberEmpId, currentMemberEmpName);
-                        }
-                    }, 500);
-                } else {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                    feedback.style.display = 'block';
-                    feedback.innerHTML = '<div class="alert alert-danger py-2 px-3 small rounded-3 mb-0">' + (data.message || 'Failed to update task') + '</div>';
-                }
-            })
-            .catch(err => {
-                console.error("AJAX update failed:", err);
-                updateForm.submit();
-            });
-        });
-    }
 
     const formCreateProject = document.getElementById('formCreateTeamProject');
     if (formCreateProject) {
