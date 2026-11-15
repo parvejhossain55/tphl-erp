@@ -4452,7 +4452,7 @@
                             <?php if ($canViewMgmtOverviewV2): ?>
                             <li class="slide <?= isActive('management-task-overview-v2', $current_route) ?>">
                                 <a class="sidebar__menu-item <?= isActive('management-task-overview-v2', $current_route) ?>"
-                                    href="<?= $base_url ?>/management-task-overview-v2">Management Task Overview</a>
+                                    href="<?= $base_url ?>/management-task-overview-v2">Management Overview</a>
                             </li>
                             <?php endif; ?>
                             <li class="slide <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
