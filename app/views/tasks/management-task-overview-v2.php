@@ -406,14 +406,14 @@ $monthNames = [
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($hodList as $h): ?>
-                                    <tr class="searchable-row">
+                                    <tr class="searchable-row" style="cursor: pointer;" onclick="if (!event.target.closest('a, button')) window.location.href='<?= $GLOBALS['base_url'] ?>/team-performance-v2?hod_id=<?= (int)$h['employee_id'] ?>';">
                                         <td class="ps-3 py-3">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; font-size: 13px;">
                                                     <?= strtoupper(substr($h['full_name'], 0, 1)) ?>
                                                 </div>
                                                 <div>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" class="fw-bold text-dark text-decoration-none d-block small mb-0">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?hod_id=<?= (int)$h['employee_id'] ?>" class="fw-bold text-dark text-decoration-none d-block small mb-0">
                                                         <?= htmlspecialchars($h['full_name']) ?>
                                                     </a>
                                                     <span class="text-muted" style="font-size: 11px;">

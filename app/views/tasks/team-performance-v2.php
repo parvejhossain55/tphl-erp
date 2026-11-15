@@ -624,8 +624,22 @@
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div>
             <div class="team-header-tag mb-1">LEADERSHIP WORKSPACE</div>
-            <h3 class="team-header-title mb-1">HOD & Team Performance</h3>
-            <p class="text-muted small mb-0">Review delivery, workload and individual contribution across your team.</p>
+            <?php if (!empty($viewingHod)): ?>
+                <h3 class="team-header-title mb-1">
+                    <?= htmlspecialchars($viewingHod['full_name']) ?>'s Team Performance
+                </h3>
+                <p class="text-muted small mb-0">
+                    <?= htmlspecialchars($viewingHod['designation_name'] ?? 'Head of Department') ?> &bull;
+                    <span class="fw-semibold text-success"><?= htmlspecialchars($viewingHod['department_name'] ?? 'Department') ?></span>
+                    &nbsp;|&nbsp;
+                    <a href="<?= $GLOBALS['base_url'] ?>/management-task-overview-v2" class="text-decoration-none fw-semibold">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Management Overview
+                    </a>
+                </p>
+            <?php else: ?>
+                <h3 class="team-header-title mb-1">HOD & Team Performance</h3>
+                <p class="text-muted small mb-0">Review delivery, workload and individual contribution across your team.</p>
+            <?php endif; ?>
         </div>
         <div class="d-flex align-items-center flex-wrap gap-3">
             <!-- Mode Switch (My Performance vs My Team) -->
@@ -649,6 +663,9 @@
     <!-- Filter Bar Card -->
     <div class="team-filter-card">
         <form action="<?= $GLOBALS['base_url'] ?>/team-performance-v2" method="GET" id="teamFilterForm" class="d-flex align-items-center flex-wrap gap-2">
+            <?php if (!empty($viewingHod)): ?>
+                <input type="hidden" name="hod_id" value="<?= (int)$viewingHod['employee_id'] ?>">
+            <?php endif; ?>
             <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
             <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
 
@@ -711,7 +728,7 @@
                 <button type="submit" id="btnApplyFilters" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold text-white d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px; background-color: #15803d; border-color: #15803d;">
                     <i class="bi bi-funnel-fill"></i> Apply
                 </button>
-                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" id="btnResetFilters" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px;" title="Reset filters to default">
+                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2<?= !empty($viewingHod) ? '?hod_id=' . (int)$viewingHod['employee_id'] : '' ?>" id="btnResetFilters" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px;" title="Reset filters to default">
                     <i class="bi bi-arrow-counterclockwise"></i> Reset
                 </a>
             </div>

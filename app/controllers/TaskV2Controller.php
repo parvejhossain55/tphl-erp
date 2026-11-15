@@ -1521,11 +1521,111 @@ class TaskV2Controller extends Controller
             exit;
         }
 
-        // 1. Fetch relevant team members based on role
+        // 1. Fetch relevant team members based on role (or specific ?hod_id=... when Management/Admin drills down)
+        $hodIdParam = !empty($_GET['hod_id']) ? (int)$_GET['hod_id'] : 0;
+        $viewingHod = null;
         $teamEmployees = [];
 
-        // CASE A: Department Head / Manager with reportees
-        if ($hasReportees || $isDeptHead) {
+        if ($hodIdParam > 0 && $isManagementRole) {
+            $hodInfoRes = $this->db->query("
+                SELECT e.id as employee_id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.department_id, d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE (e.id = $hodIdParam OR e.user_id = $hodIdParam) AND e.deleted_at IS NULL
+                ORDER BY (e.id = $hodIdParam) DESC
+                LIMIT 1
+            ");
+            if ($hodInfoRes && $hodRow = $hodInfoRes->fetch_assoc()) {
+                $viewingHod = $hodRow;
+                $hodEmpId = (int)$hodRow['employee_id'];
+                $hodUid = (int)$hodRow['user_id'];
+                $hodDeptId = (int)($hodRow['department_id'] ?? 0);
+
+                $isSoleDeptHead = false;
+                if ($hodDeptId > 0) {
+                    $hdCntRes = $this->db->query("
+                        SELECT COUNT(*) as c FROM employees
+                        WHERE is_dept_head = 1 AND department_id = $hodDeptId AND deleted_at IS NULL
+                          AND (employee_status IS NULL OR LOWER(TRIM(employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                          AND (employee_type IS NULL OR LOWER(TRIM(employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                    ");
+                    $isSoleDeptHead = $hdCntRes && ((int)$hdCntRes->fetch_assoc()['c'] <= 1);
+                }
+
+                $deptCond = ($isSoleDeptHead && $hodDeptId > 0)
+                    ? "OR COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) = $hodDeptId"
+                    : "";
+
+                $hodTeamSql = "
+                    SELECT e.id as employee_id,
+                           COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                           e.full_name, e.photo,
+                           COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) as department_id,
+                           COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0), 0) as designation_id,
+                           e.employee_type, e.employee_status,
+                           d.name as department_name, des.name as designation_name
+                    FROM employees e
+                    LEFT JOIN users u ON (u.id = e.user_id OR u.employee_id = e.id)
+                    LEFT JOIN designations des ON COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0)) = des.id
+                    LEFT JOIN departments d ON COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0)) = d.id
+                    WHERE e.deleted_at IS NULL
+                      AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                      AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                      AND (e.reporting_user_id = $hodUid OR e.reporting_user_id = $hodEmpId OR e.id = $hodEmpId $deptCond)
+                    ORDER BY e.full_name ASC
+                ";
+                $htRes = $this->db->query($hodTeamSql);
+                $seenHodUids = [];
+                if ($htRes) {
+                    while ($row = $htRes->fetch_assoc()) {
+                        $teamEmployees[$row['employee_id']] = $row;
+                        if ((int)$row['user_id'] > 0) {
+                            $seenHodUids[(int)$row['user_id']] = true;
+                        }
+                    }
+                }
+
+                // Also include designation-linked users without an employees row if sole HOD of department
+                if ($isSoleDeptHead && $hodDeptId > 0) {
+                    $uOnlyHodRes = $this->db->query("
+                        SELECT u.id as user_id, u.full_name, u.photo,
+                               COALESCE(NULLIF(des.department_id, 0), 0) as department_id,
+                               u.designation_id, d.name as department_name, des.name as designation_name
+                        FROM users u
+                        LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                        LEFT JOIN designations des ON u.designation_id = des.id
+                        LEFT JOIN departments d ON des.department_id = d.id
+                        WHERE e.id IS NULL AND des.department_id = $hodDeptId
+                        ORDER BY u.full_name ASC
+                    ");
+                    if ($uOnlyHodRes) {
+                        while ($ur = $uOnlyHodRes->fetch_assoc()) {
+                            $uid = (int)$ur['user_id'];
+                            if (!isset($seenHodUids[$uid])) {
+                                $teamEmployees[-$uid] = [
+                                    'employee_id' => -$uid,
+                                    'user_id' => $uid,
+                                    'full_name' => $ur['full_name'],
+                                    'photo' => $ur['photo'] ?? '',
+                                    'department_id' => (int)$ur['department_id'],
+                                    'designation_id' => (int)$ur['designation_id'],
+                                    'employee_type' => '',
+                                    'employee_status' => 'active',
+                                    'department_name' => $ur['department_name'],
+                                    'designation_name' => $ur['designation_name']
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // CASE A: Department Head / Manager with reportees (when not drilling down via ?hod_id=)
+        if (empty($viewingHod) && ($hasReportees || $isDeptHead)) {
             $repSql = "
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
@@ -1550,7 +1650,7 @@ class TaskV2Controller extends Controller
         }
 
         // CASE B: Team Leader or Co-Leader (fetch assigned team members)
-        if (($isUserTeamLeader || $isUserCoLeader) && $userTeamId > 0) {
+        if (empty($viewingHod) && ($isUserTeamLeader || $isUserCoLeader) && $userTeamId > 0) {
             $teamSql = "
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
@@ -1575,7 +1675,7 @@ class TaskV2Controller extends Controller
         }
 
         // CASE C: Admin / Management fallback if no specific reportees/team (load ALL active employees without LIMIT)
-        if (empty($teamEmployees) && $isManagementRole) {
+        if (empty($viewingHod) && empty($teamEmployees) && $isManagementRole) {
             $allSql = "
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
@@ -2054,6 +2154,7 @@ class TaskV2Controller extends Controller
             "current_route"          => "team-performance-v2",
             "userId"                 => $userId,
             "isDeptHead"             => $isDeptHead,
+            "viewingHod"             => $viewingHod,
             "teamEmployees"          => $teamEmployees,
             "usersList"              => $usersList,
             "realEstateProjectsList" => $realEstateProjectsList,
@@ -2127,8 +2228,18 @@ class TaskV2Controller extends Controller
             ");
         }
         if (!$empRes || !($emp = $empRes->fetch_assoc())) {
-            echo json_encode(['success' => false, 'message' => 'Employee not found']);
-            exit;
+            $uFallbackId = abs($empId);
+            $uFallbackRes = $this->db->query("
+                SELECT 0 as id, u.id as user_id, u.full_name, des.name as designation_name
+                FROM users u
+                LEFT JOIN designations des ON u.designation_id = des.id
+                WHERE u.id = $uFallbackId
+                LIMIT 1
+            ");
+            if (!$uFallbackRes || !($emp = $uFallbackRes->fetch_assoc())) {
+                echo json_encode(['success' => false, 'message' => 'Employee not found']);
+                exit;
+            }
         }
 
         $targetUserId = (int)$emp['user_id'];
