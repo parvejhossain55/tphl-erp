@@ -635,7 +635,7 @@
             </div>
 
             <!-- Export Button -->
-            <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?export=csv&<?= http_build_query($_GET) ?>" class="team-btn-export">
+            <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?export=csv&<?= http_build_query($_GET) ?>" id="teamExportBtn" class="team-btn-export">
                 <i class="bi bi-box-arrow-down"></i> Export
             </a>
 
@@ -648,7 +648,7 @@
 
     <!-- Filter Bar Card -->
     <div class="team-filter-card">
-        <form action="<?= $GLOBALS['base_url'] ?>/team-performance-v2" method="GET" class="d-flex align-items-center flex-wrap gap-2">
+        <form action="<?= $GLOBALS['base_url'] ?>/team-performance-v2" method="GET" id="teamFilterForm" class="d-flex align-items-center flex-wrap gap-2">
             <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
             <input type="hidden" name="sort" value="<?= htmlspecialchars($sort) ?>">
 
@@ -708,16 +708,17 @@
 
             <!-- Action Buttons: Apply & Reset -->
             <div class="d-flex align-items-center gap-1 ms-1">
-                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold text-white d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px; background-color: #15803d; border-color: #15803d;">
+                <button type="submit" id="btnApplyFilters" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold text-white d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px; background-color: #15803d; border-color: #15803d;">
                     <i class="bi bi-funnel-fill"></i> Apply
                 </button>
-                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px;" title="Reset filters to default">
+                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" id="btnResetFilters" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px;" title="Reset filters to default">
                     <i class="bi bi-arrow-counterclockwise"></i> Reset
                 </a>
             </div>
         </form>
     </div>
 
+    <div id="teamDashboardContent" style="transition: opacity 0.2s ease;">
     <!-- 6 KPI Cards Grid (Matching Screenshot) -->
     <div class="team-kpi-grid">
         <!-- 1. Team Tasks -->
@@ -807,7 +808,12 @@
             </div>
 
             <!-- ApexChart -->
-            <div id="teamDeliveryChart" style="min-height: 240px;"></div>
+            <div id="teamDeliveryChart"
+                 style="min-height: 240px;"
+                 data-weeks="<?= htmlspecialchars(json_encode($trendWeeks ?? []), ENT_QUOTES, 'UTF-8') ?>"
+                 data-completed="<?= htmlspecialchars(json_encode($trendCompleted ?? []), ENT_QUOTES, 'UTF-8') ?>"
+                 data-assigned="<?= htmlspecialchars(json_encode($trendAssigned ?? []), ENT_QUOTES, 'UTF-8') ?>"
+                 data-overdue="<?= htmlspecialchars(json_encode($trendOverdue ?? []), ENT_QUOTES, 'UTF-8') ?>"></div>
         </div>
 
         <!-- Right: Workload Balance -->
@@ -863,19 +869,19 @@
         <!-- Table Header Tabs & Action Buttons -->
         <div class="team-table-header">
             <div class="team-tabs">
-                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?tab=all&<?= http_build_query(array_diff_key($_GET, ['tab' => ''])) ?>" class="team-tab-item <?= $tab === 'all' ? 'active' : '' ?>">
+                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?tab=all&<?= http_build_query(array_diff_key($_GET, ['tab' => ''])) ?>" data-tab="all" class="team-tab-item <?= $tab === 'all' ? 'active' : '' ?>">
                     All Members <span class="team-tab-pill"><?= $allMembersCount ?></span>
                 </a>
-                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?tab=top_performers&<?= http_build_query(array_diff_key($_GET, ['tab' => ''])) ?>" class="team-tab-item <?= $tab === 'top_performers' ? 'active' : '' ?>">
+                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?tab=top_performers&<?= http_build_query(array_diff_key($_GET, ['tab' => ''])) ?>" data-tab="top_performers" class="team-tab-item <?= $tab === 'top_performers' ? 'active' : '' ?>">
                     Top Performers <span class="team-tab-pill"><?= $topPerformersCount ?></span>
                 </a>
-                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?tab=needs_attention&<?= http_build_query(array_diff_key($_GET, ['tab' => ''])) ?>" class="team-tab-item <?= $tab === 'needs_attention' ? 'active' : '' ?>">
+                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?tab=needs_attention&<?= http_build_query(array_diff_key($_GET, ['tab' => ''])) ?>" data-tab="needs_attention" class="team-tab-item <?= $tab === 'needs_attention' ? 'active' : '' ?>">
                     Needs Attention <span class="team-tab-pill"><?= $needsAttentionCount ?></span>
                 </a>
             </div>
 
             <div class="d-flex align-items-center gap-2">
-                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?sort=<?= $sort === 'score_desc' ? 'score_asc' : 'score_desc' ?>&<?= http_build_query(array_diff_key($_GET, ['sort' => ''])) ?>" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-secondary" style="font-size: 12.5px;">
+                <a id="teamSortScoreBtn" href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?sort=<?= $sort === 'score_desc' ? 'score_asc' : 'score_desc' ?>&<?= http_build_query(array_diff_key($_GET, ['sort' => ''])) ?>" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-secondary" style="font-size: 12.5px;">
                     <i class="bi bi-filter me-1"></i> Sort by Score
                 </a>
             </div>
@@ -910,12 +916,20 @@
                             </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($members as $m): 
+                        <?php $totalMembersRendered = count($members); $tabMatchIdx = 0; ?>
+                        <?php foreach ($members as $rowIdx => $m): 
                             $nameParts = preg_split('/\s+/', trim($m['full_name']));
                             $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
                             $isTrendUp = str_starts_with($m['trend'], '+');
+                            $isTopPerformer = !empty($m['is_top_performer']);
+                            $isNeedsAttention = !empty($m['needs_attention']);
+                            $matchesCurrentTab = ($tab === 'all')
+                                || ($tab === 'top_performers' && $isTopPerformer)
+                                || ($tab === 'needs_attention' && $isNeedsAttention);
+                            $hideRow = !$matchesCurrentTab || ($tabMatchIdx >= 25);
+                            if ($matchesCurrentTab) $tabMatchIdx++;
                         ?>
-                        <tr style="cursor: pointer;" onclick="openMemberTasksOffcanvas(<?= $m['employee_id'] ?>, '<?= htmlspecialchars($m['full_name'], ENT_QUOTES) ?>')">
+                        <tr class="team-member-row<?= $hideRow ? ' d-none' : '' ?>" data-top-performer="<?= $isTopPerformer ? '1' : '0' ?>" data-needs-attention="<?= $isNeedsAttention ? '1' : '0' ?>" data-tab-match="<?= $matchesCurrentTab ? '1' : '0' ?>" style="cursor: pointer;" onclick="openMemberTasksOffcanvas(<?= $m['employee_id'] ?>, '<?= htmlspecialchars($m['full_name'], ENT_QUOTES) ?>')">
                             <!-- Team Member -->
                             <td>
                                 <div class="d-flex align-items-center">
@@ -971,10 +985,25 @@
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
+                    <tr id="teamTabEmptyRow" class="d-none">
+                        <td colspan="10" class="text-center py-5 text-muted">
+                            <div class="mb-2 text-success" style="font-size: 40px; opacity: 0.6;">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">No team members found</h6>
+                            <p class="small text-muted mb-0">No members match this tab under the current filters.</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
+        <?php if (!empty($members)): ?>
+        <div id="teamTableScrollSentinel" class="text-center py-3 text-muted small border-top<?= ($tabMatchIdx ?? count($members)) <= 25 ? ' d-none' : '' ?>" style="background: #f8fafc;">
+            Showing <span id="teamTableVisibleCount"><?= min(25, $tabMatchIdx ?? count($members)) ?></span> of <span id="teamTableTotalCount"><?= $tabMatchIdx ?? count($members) ?></span> members — scroll down to load more
+        </div>
+        <?php endif; ?>
     </div>
+    </div><!-- /#teamDashboardContent -->
 </div>
 
 <!-- ========================================================================
@@ -1341,11 +1370,27 @@
 
 <!-- ApexCharts Script Initialization -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const trendWeeks = <?= json_encode($trendWeeks ?? []) ?>;
-    const completedSeries = <?= json_encode($trendCompleted ?? []) ?>;
-    const assignedSeries = <?= json_encode($trendAssigned ?? []) ?>;
-    const overdueSeries = <?= json_encode($trendOverdue ?? []) ?>;
+window.teamDeliveryChartInstance = null;
+
+window.renderTeamDeliveryChart = function () {
+    const chartEl = document.querySelector("#teamDeliveryChart");
+    if (!chartEl) return;
+
+    if (window.teamDeliveryChartInstance) {
+        try { window.teamDeliveryChartInstance.destroy(); } catch (e) {}
+        window.teamDeliveryChartInstance = null;
+    }
+
+    let trendWeeks = [];
+    let completedSeries = [];
+    let assignedSeries = [];
+    let overdueSeries = [];
+    try {
+        trendWeeks = JSON.parse(chartEl.dataset.weeks || '[]');
+        completedSeries = JSON.parse(chartEl.dataset.completed || '[]');
+        assignedSeries = JSON.parse(chartEl.dataset.assigned || '[]');
+        overdueSeries = JSON.parse(chartEl.dataset.overdue || '[]');
+    } catch (e) {}
 
     const deliveryOptions = {
         series: [
@@ -1452,8 +1497,12 @@ document.addEventListener("DOMContentLoaded", function () {
         legend: { show: false }
     };
 
-    const deliveryChart = new ApexCharts(document.querySelector("#teamDeliveryChart"), deliveryOptions);
-    deliveryChart.render();
+    window.teamDeliveryChartInstance = new ApexCharts(chartEl, deliveryOptions);
+    window.teamDeliveryChartInstance.render();
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+    window.renderTeamDeliveryChart();
 });
 
 function changeDeliveryTime(event, period) {
@@ -1993,4 +2042,239 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+// Client-side tab switching (without page reload) + on-scroll pagination (25 rows per batch)
+window.teamSentinelObserver = null;
+window.initTeamTableInteractions = function () {
+    const batchSize = 25;
+    const sentinel = document.getElementById('teamTableScrollSentinel');
+    const emptyRow = document.getElementById('teamTabEmptyRow');
+    const tabLinks = document.querySelectorAll('.team-tabs .team-tab-item[data-tab]');
+    let loading = false;
+
+    if (window.teamSentinelObserver) {
+        try { window.teamSentinelObserver.disconnect(); } catch (e) {}
+        window.teamSentinelObserver = null;
+    }
+
+    function updateSentinelCounts() {
+        const matchingRows = Array.from(document.querySelectorAll('tr.team-member-row[data-tab-match="1"]'));
+        const visibleCount = matchingRows.filter(r => !r.classList.contains('d-none')).length;
+        const totalMatching = matchingRows.length;
+
+        if (emptyRow) {
+            emptyRow.classList.toggle('d-none', totalMatching > 0);
+        }
+
+        if (sentinel) {
+            const visibleCountEl = document.getElementById('teamTableVisibleCount');
+            const totalCountEl = document.getElementById('teamTableTotalCount');
+            if (visibleCountEl) visibleCountEl.textContent = String(visibleCount);
+            if (totalCountEl) totalCountEl.textContent = String(totalMatching);
+            sentinel.classList.toggle('d-none', visibleCount >= totalMatching || totalMatching === 0);
+        }
+    }
+
+    function applyTeamTab(tabName, updateHistory) {
+        tabLinks.forEach(link => {
+            link.classList.toggle('active', link.dataset.tab === tabName);
+        });
+
+        const tabInput = document.querySelector('#teamFilterForm input[name="tab"]');
+        if (tabInput) tabInput.value = tabName;
+
+        const allRows = document.querySelectorAll('tr.team-member-row');
+        let shownInBatch = 0;
+        allRows.forEach(row => {
+            let matches = true;
+            if (tabName === 'top_performers') {
+                matches = row.dataset.topPerformer === '1';
+            } else if (tabName === 'needs_attention') {
+                matches = row.dataset.needsAttention === '1';
+            }
+            row.dataset.tabMatch = matches ? '1' : '0';
+            if (matches && shownInBatch < batchSize) {
+                row.classList.remove('d-none');
+                shownInBatch++;
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+
+        updateSentinelCounts();
+
+        if (updateHistory) {
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', tabName);
+                window.history.replaceState({}, '', url.toString());
+
+                const sortBtn = document.getElementById('teamSortScoreBtn');
+                if (sortBtn) {
+                    const sortUrl = new URL(sortBtn.href, window.location.origin);
+                    sortUrl.searchParams.set('tab', tabName);
+                    sortBtn.href = sortUrl.toString();
+                }
+            } catch (e) {}
+        }
+    }
+
+    tabLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            applyTeamTab(this.dataset.tab || 'all', true);
+        });
+    });
+
+    updateSentinelCounts();
+
+    function revealNextBatch() {
+        const curSentinel = document.getElementById('teamTableScrollSentinel');
+        if (loading || !curSentinel) return;
+        const hiddenMatchingRows = document.querySelectorAll('tr.team-member-row[data-tab-match="1"].d-none');
+        if (hiddenMatchingRows.length === 0) {
+            updateSentinelCounts();
+            return;
+        }
+        loading = true;
+        const countToReveal = Math.min(batchSize, hiddenMatchingRows.length);
+        for (let i = 0; i < countToReveal; i++) {
+            hiddenMatchingRows[i].classList.remove('d-none');
+        }
+        updateSentinelCounts();
+        loading = false;
+    }
+
+    if (sentinel && 'IntersectionObserver' in window) {
+        window.teamSentinelObserver = new IntersectionObserver((entries) => {
+            if (entries.some(entry => entry.isIntersecting)) {
+                revealNextBatch();
+            }
+        }, { rootMargin: '200px 0px' });
+        window.teamSentinelObserver.observe(sentinel);
+    }
+
+    window._teamRevealNextBatch = revealNextBatch;
+};
+
+window.addEventListener('scroll', function() {
+    const sentinel = document.getElementById('teamTableScrollSentinel');
+    if (!sentinel || sentinel.classList.contains('d-none')) return;
+    const rect = sentinel.getBoundingClientRect();
+    if (rect.top <= window.innerHeight + 200 && typeof window._teamRevealNextBatch === 'function') {
+        window._teamRevealNextBatch();
+    }
+}, { passive: true });
+
+window.initTeamTableInteractions();
+
+// AJAX Filter Apply & Reset (without full page reload)
+(function() {
+    const filterForm = document.getElementById('teamFilterForm');
+    const resetBtn = document.getElementById('btnResetFilters');
+    const applyBtn = document.getElementById('btnApplyFilters');
+    const defaultMonth = <?= json_encode(date('Y-m')) ?>;
+
+    function loadTeamPerformanceAjax(targetUrl, pushState) {
+        const contentWrap = document.getElementById('teamDashboardContent');
+        if (!contentWrap) {
+            window.location.href = targetUrl;
+            return;
+        }
+
+        const origApplyHtml = applyBtn ? applyBtn.innerHTML : '';
+        if (applyBtn) {
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Loading';
+        }
+        contentWrap.style.opacity = '0.5';
+        contentWrap.style.pointerEvents = 'none';
+
+        fetch(targetUrl, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+        })
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newContent = doc.getElementById('teamDashboardContent');
+            if (!newContent) {
+                window.location.href = targetUrl;
+                return;
+            }
+
+            contentWrap.innerHTML = newContent.innerHTML;
+            contentWrap.style.opacity = '1';
+            contentWrap.style.pointerEvents = '';
+
+            // Sync Export button href
+            const newExport = doc.getElementById('teamExportBtn');
+            const curExport = document.getElementById('teamExportBtn');
+            if (newExport && curExport) {
+                curExport.href = newExport.href;
+            }
+
+            // Update browser URL without reload
+            if (pushState) {
+                window.history.pushState({ url: targetUrl }, '', targetUrl);
+            }
+
+            // Re-render ApexChart & Table interactions
+            if (typeof window.renderTeamDeliveryChart === 'function') {
+                window.renderTeamDeliveryChart();
+            }
+            if (typeof window.initTeamTableInteractions === 'function') {
+                window.initTeamTableInteractions();
+            }
+        })
+        .catch(() => {
+            window.location.href = targetUrl;
+        })
+        .finally(() => {
+            if (applyBtn) {
+                applyBtn.disabled = false;
+                applyBtn.innerHTML = origApplyHtml;
+            }
+        });
+    }
+
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const params = new URLSearchParams(new FormData(filterForm));
+            const targetUrl = filterForm.action + '?' + params.toString();
+            loadTeamPerformanceAjax(targetUrl, true);
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const monthEl = document.getElementById('filterMonth');
+            const memberEl = document.getElementById('filterMember');
+            const projectEl = document.getElementById('filterProject');
+            const statusEl = document.getElementById('filterStatus');
+            const typeEl = document.getElementById('filterType');
+            const tabEl = filterForm ? filterForm.querySelector('input[name="tab"]') : null;
+            const sortEl = filterForm ? filterForm.querySelector('input[name="sort"]') : null;
+
+            if (monthEl) monthEl.value = defaultMonth;
+            if (memberEl) memberEl.value = '';
+            if (projectEl) projectEl.value = '';
+            if (statusEl) statusEl.value = '';
+            if (typeEl) typeEl.value = 'assigned_self';
+            if (tabEl) tabEl.value = 'all';
+            if (sortEl) sortEl.value = 'score_desc';
+
+            loadTeamPerformanceAjax(resetBtn.href, true);
+        });
+    }
+
+    window.addEventListener('popstate', function() {
+        loadTeamPerformanceAjax(window.location.href, false);
+    });
+})();
 </script>

@@ -3,7 +3,7 @@
  * Management Task Overview View
  * Executive dashboard for organizational task tracking, department health, and HOD performance.
  */
-$page_title = "Management Task Overview";
+$page_title = "Management Overview";
 $show_breadcrumb = false;
 
 // Format numbers
@@ -30,7 +30,7 @@ $monthNames = [
     <div class="row align-items-center mb-3">
         <div class="col-md-7">
             <h4 class="fw-bold mb-1 text-dark" style="letter-spacing: -0.4px;">
-                <i class="fa-sharp fa-solid fa-chart-pie me-2 text-primary"></i>Management Task Overview
+                <i class="fa-sharp fa-solid fa-chart-pie me-2 text-primary"></i>Management Overview
             </h4>
             <p class="text-muted small mb-0">Executive monitoring of organization-wide task delivery, department health, and HOD performance.</p>
         </div>

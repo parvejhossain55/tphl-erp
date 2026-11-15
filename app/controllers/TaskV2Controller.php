@@ -1530,12 +1530,15 @@ class TaskV2Controller extends Controller
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id,
+                       e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e
                 LEFT JOIN users u ON u.employee_id = e.id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
                 WHERE e.reporting_user_id = $userId AND e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
                 ORDER BY e.full_name ASC
             ";
             $repRes = $this->db->query($repSql);
@@ -1552,12 +1555,15 @@ class TaskV2Controller extends Controller
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id,
+                       e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e
                 LEFT JOIN users u ON u.employee_id = e.id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
                 WHERE e.team_id = $userTeamId AND e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
                 ORDER BY e.is_team_leader DESC, e.is_sales_co_leader DESC, e.full_name ASC
             ";
             $tRes = $this->db->query($teamSql);
@@ -1568,20 +1574,22 @@ class TaskV2Controller extends Controller
             }
         }
 
-        // CASE C: Admin / Management fallback if no specific reportees/team
+        // CASE C: Admin / Management fallback if no specific reportees/team (load ALL active employees without LIMIT)
         if (empty($teamEmployees) && $isManagementRole) {
             $allSql = "
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id,
+                       e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e
                 LEFT JOIN users u ON u.employee_id = e.id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE e.deleted_at IS NULL AND e.employee_status = 'active'
+                WHERE e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
                 ORDER BY e.full_name ASC
-                LIMIT 50
             ";
             $allRes = $this->db->query($allSql);
             if ($allRes) {
@@ -1616,7 +1624,7 @@ class TaskV2Controller extends Controller
         $pRes = $this->db->query("
             SELECT DISTINCT p.id, p.name, p.is_team_project, p.user_id 
             FROM todo_projects p 
-            LEFT JOIN todo_tasks t ON t.todo_project_id = p.id
+            LEFT JOIN tasks t ON t.todo_project_id = p.id
             WHERE p.user_id = $userId 
                OR p.manager_user_id = $userId
                OR p.is_team_project = 1
@@ -1637,13 +1645,16 @@ class TaskV2Controller extends Controller
                 SELECT DISTINCT e.id as employee_id,
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id,
+                       e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
-                FROM todo_tasks tt
+                FROM tasks tt
                 INNER JOIN users u ON tt.user_id = u.id
                 INNER JOIN employees e ON (e.user_id = u.id OR u.employee_id = e.id)
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
                 WHERE tt.todo_project_id = $projectFilter AND e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
                 ORDER BY e.full_name ASC
             ";
             $peRes = $this->db->query($projEmpSql);
@@ -1685,6 +1696,8 @@ class TaskV2Controller extends Controller
                 'photo' => $m['photo'] ?? '',
                 'designation' => $m['designation_name'] ?? 'Team Member',
                 'department' => $m['department_name'] ?? 'General',
+                'employee_type' => $m['employee_type'] ?? '',
+                'employee_status' => $m['employee_status'] ?? '',
                 'total' => 0,
                 'assigned' => 0,
                 'self' => 0,
@@ -1708,29 +1721,38 @@ class TaskV2Controller extends Controller
                 if ($projectFilter > 0) {
                     $where .= " AND t.todo_project_id = $projectFilter";
                 }
+                if ($typeFilter === 'assigned') {
+                    $where .= " AND (t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id)";
+                } elseif ($typeFilter === 'self') {
+                    $where .= " AND (t.assigned_by IS NULL OR t.assigned_by = t.user_id)";
+                }
                 if ($statusFilter === 'completed') {
                     $where .= " AND (t.status = 'completed' OR t.progress >= 100)";
                 } elseif ($statusFilter === 'in_progress') {
-                    $where .= " AND (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW())";
+                    $where .= " AND (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.deadline IS NULL OR CONCAT(DATE(t.deadline), ' 23:59:59') >= NOW())";
                 } elseif ($statusFilter === 'overdue') {
-                    $where .= " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date < NOW()";
+                    $where .= " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline IS NOT NULL AND CONCAT(DATE(t.deadline), ' 23:59:59') < NOW()";
                 }
 
                 $q = "
                     SELECT 
                         COUNT(*) as total,
+                        COALESCE(SUM(CASE WHEN t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id THEN 1 ELSE 0 END), 0) as assigned_count,
+                        COALESCE(SUM(CASE WHEN t.assigned_by IS NULL OR t.assigned_by = t.user_id THEN 1 ELSE 0 END), 0) as self_count,
                         COALESCE(SUM(CASE WHEN t.status = 'completed' OR t.progress >= 100 THEN 1 ELSE 0 END), 0) as completed,
-                        COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW()) THEN 1 ELSE 0 END), 0) as in_progress,
-                        COALESCE(SUM(CASE WHEN (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date < NOW() THEN 1 ELSE 0 END), 0) as overdue,
-                        COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) as due_this_week,
+                        COALESCE(SUM(CASE WHEN (t.status = 'completed' OR t.progress >= 100) AND (t.deadline IS NULL OR t.updated_at <= CONCAT(DATE(t.deadline), ' 23:59:59')) THEN 1 ELSE 0 END), 0) as on_time_completed,
+                        COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.deadline IS NULL OR CONCAT(DATE(t.deadline), ' 23:59:59') >= NOW()) THEN 1 ELSE 0 END), 0) as in_progress,
+                        COALESCE(SUM(CASE WHEN (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline IS NOT NULL AND CONCAT(DATE(t.deadline), ' 23:59:59') < NOW() THEN 1 ELSE 0 END), 0) as overdue,
+                        COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) as due_this_week,
                         COALESCE(SUM(CASE WHEN t.created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01') THEN 1 ELSE 0 END), 0) as tasks_this_month
-                    FROM todo_tasks t
+                    FROM tasks t
                     WHERE $where
                 ";
                 $res = $this->db->query($q);
                 if ($res && $r = $res->fetch_assoc()) {
                     $tot = (int)$r['total'];
                     $comp = (int)$r['completed'];
+                    $onTimeComp = (int)$r['on_time_completed'];
                     $inp = (int)$r['in_progress'];
                     $over = (int)$r['overdue'];
                     $dueWk = (int)$r['due_this_week'];
@@ -1740,18 +1762,14 @@ class TaskV2Controller extends Controller
                     $stat['completed'] = $comp;
                     $stat['in_progress'] = $inp;
                     $stat['overdue'] = $over;
-                    $stat['assigned'] = $tot;
-                    $stat['self'] = 0;
+                    $stat['assigned'] = (int)$r['assigned_count'];
+                    $stat['self'] = (int)$r['self_count'];
 
                     if ($tot > 0) {
                         $stat['completion_rate'] = round(($comp / $tot) * 100);
                         
-                        // On-time delivery rate
-                        if ($comp > 0) {
-                            $onTimePct = max(0, min(100, round((($comp - ($over * 0.3)) / $comp) * 100)));
-                        } else {
-                            $onTimePct = 0;
-                        }
+                        // Actual On-Time Delivery Rate (completed on or before deadline)
+                        $onTimePct = $comp > 0 ? round(($onTimeComp / $comp) * 100) : 0;
                         $stat['on_time_pct'] = $onTimePct;
 
                         // Composite Performance Score
@@ -1810,8 +1828,8 @@ class TaskV2Controller extends Controller
 
         $filteredMembers = [];
         foreach ($memberStats as $ms) {
-            if ($tab === 'top_performers' && $ms['score'] < 80) continue;
-            if ($tab === 'needs_attention' && ($ms['score'] >= 74 || $ms['total'] == 0)) continue;
+            $ms['is_top_performer'] = ($ms['score'] >= 80);
+            $ms['needs_attention'] = ($ms['score'] < 74 && $ms['total'] > 0);
             $filteredMembers[] = $ms;
         }
 
@@ -1830,13 +1848,25 @@ class TaskV2Controller extends Controller
         $avgTeamScore = $totalTeamTasks > 0 && $onTimeCount > 0 ? round($scoreSum / $onTimeCount, 1) : 0;
         $teamHealthLabel = $totalTeamTasks === 0 ? "No tasks recorded" : ($avgTeamScore >= 75 ? "Healthy team performance" : "Needs attention");
 
-        // 6. Workload Balance Ranking (All filtered team/project members with open workload)
-        $workloadList = $memberStats;
-        if ($projectFilter > 0) {
-            $workloadList = array_values(array_filter($workloadList, function($w) {
-                return ($w['total'] ?? 0) > 0;
-            }));
-        }
+        // 6. Workload Balance Ranking (Exclude interns, resigned, and inactive employees)
+        $workloadList = array_values(array_filter($memberStats, function($w) use ($projectFilter) {
+            if ($projectFilter > 0 && ($w['total'] ?? 0) <= 0) {
+                return false;
+            }
+            $empType = strtolower(trim((string)($w['employee_type'] ?? '')));
+            $empStatus = strtolower(trim((string)($w['employee_status'] ?? '')));
+            $desig = strtolower(trim((string)($w['designation'] ?? '')));
+            if (in_array($empStatus, ['resigned', 'inactive', 'terminated'], true) ||
+                in_array($empType, ['resigned', 'inactive', 'terminated'], true)) {
+                return false;
+            }
+            if (strpos($empType, 'intern') !== false ||
+                strpos($empStatus, 'intern') !== false ||
+                strpos($desig, 'intern') !== false) {
+                return false;
+            }
+            return true;
+        }));
         usort($workloadList, function($a, $b) {
             $openA = $a['in_progress'] + $a['overdue'];
             $openB = $b['in_progress'] + $b['overdue'];
@@ -1917,13 +1947,13 @@ class TaskV2Controller extends Controller
 
             $projCond = $projectFilter > 0 ? " AND t.todo_project_id = $projectFilter" : "";
 
-            // Query actual counts for this week range
+            // Query actual counts for this week range from tasks table
             $trendQ = "
                 SELECT 
                     COUNT(*) as total_assigned,
-                    COALESCE(SUM(CASE WHEN (t.status = 'completed' OR t.progress >= 100) AND (t.completed_at BETWEEN '$startWeek' AND '$endWeek' OR (t.completed_at IS NULL AND t.updated_at BETWEEN '$startWeek' AND '$endWeek')) THEN 1 ELSE 0 END), 0) as completed,
-                    COALESCE(SUM(CASE WHEN (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date <= '$endWeek' THEN 1 ELSE 0 END), 0) as overdue
-                FROM todo_tasks t
+                    COALESCE(SUM(CASE WHEN (t.status = 'completed' OR t.progress >= 100) AND t.updated_at BETWEEN '$startWeek' AND '$endWeek' THEN 1 ELSE 0 END), 0) as completed,
+                    COALESCE(SUM(CASE WHEN (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline IS NOT NULL AND CONCAT(DATE(t.deadline), ' 23:59:59') <= '$endWeek' THEN 1 ELSE 0 END), 0) as overdue
+                FROM tasks t
                 WHERE t.user_id IN ($teamUidsStr) $projCond
                   AND t.created_at <= '$endWeek'
             ";
@@ -2117,38 +2147,9 @@ class TaskV2Controller extends Controller
 
         $tasks = [];
         if ($targetUserId > 0) {
-            // Keep todo_tasks synchronized with tasks table for this user
-            $tMainRes = $this->db->query("
-                SELECT t.*, tp.name as project_name, tp.is_team_project
-                FROM tasks t
-                LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
-                WHERE t.user_id = $targetUserId
-            ");
-            if ($tMainRes) {
-                while ($tm = $tMainRes->fetch_assoc()) {
-                    $tmTitle = $this->db->real_escape_string($tm['title']);
-                    $tmProj = !empty($tm['todo_project_id']) ? (int)$tm['todo_project_id'] : "NULL";
-                    $chkExist = $this->db->query("SELECT id, progress, status FROM todo_tasks WHERE user_id = $targetUserId AND title = '$tmTitle' LIMIT 1");
-                    if ($chkExist && $chkRow = $chkExist->fetch_assoc()) {
-                        if ((int)$chkRow['progress'] !== (int)$tm['progress'] || $chkRow['status'] !== $tm['status']) {
-                            $synStatus = ((int)$tm['progress'] >= 100 || $tm['status'] === 'completed') ? 'completed' : 'pending';
-                            $this->db->query("UPDATE todo_tasks SET progress = {$tm['progress']}, status = '$synStatus' WHERE id = {$chkRow['id']}");
-                        }
-                    } else {
-                        $tmPrio = ($tm['priority'] === 'urgent') ? 1 : (($tm['priority'] === 'high') ? 2 : (($tm['priority'] === 'low') ? 4 : 3));
-                        $tmStatus = ($tm['progress'] >= 100 || $tm['status'] === 'completed') ? 'completed' : 'pending';
-                        $tmDue = !empty($tm['deadline']) ? "'" . $this->db->real_escape_string($tm['deadline']) . "'" : "NULL";
-                        $this->db->query("
-                            INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, status, progress, due_date)
-                            VALUES ($targetUserId, $tmProj, '$tmTitle', '{$this->db->real_escape_string($tm['description'])}', $tmPrio, '$tmStatus', {$tm['progress']}, $tmDue)
-                        ");
-                    }
-                }
-            }
-
             $tRes = $this->db->query("
                 SELECT t.*, p.name as project_name, p.is_team_project 
-                FROM todo_tasks t 
+                FROM tasks t 
                 LEFT JOIN todo_projects p ON t.todo_project_id = p.id
                 WHERE $tWhere 
                 ORDER BY t.id DESC 
@@ -2156,18 +2157,20 @@ class TaskV2Controller extends Controller
             ");
             if ($tRes) {
                 while ($r = $tRes->fetch_assoc()) {
+                    $prioStr = strtolower(trim((string)($r['priority'] ?? 'medium')));
+                    $prioInt = $prioStr === 'urgent' ? 1 : ($prioStr === 'high' ? 2 : ($prioStr === 'low' ? 4 : 3));
                     $tasks[] = [
                         'id' => (int)$r['id'],
                         'title' => $r['title'],
                         'description' => $r['description'] ?? '',
                         'project_name' => $r['project_name'] ?? 'Inbox',
                         'is_team_project' => (int)($r['is_team_project'] ?? 0),
-                        'priority' => (int)$r['priority'],
+                        'priority' => $prioInt,
                         'status' => $r['status'],
                         'status_raw' => $r['status'],
-                        'progress' => (int)$r['progress'],
-                        'due_date' => !empty($r['due_date']) ? date('d M Y', strtotime($r['due_date'])) : 'No Deadline',
-                        'due_date_raw' => !empty($r['due_date']) ? date('Y-m-d', strtotime($r['due_date'])) : ''
+                        'progress' => (int)($r['progress'] ?? 0),
+                        'due_date' => !empty($r['deadline']) ? date('d M Y', strtotime($r['deadline'])) : 'No Deadline',
+                        'due_date_raw' => !empty($r['deadline']) ? date('Y-m-d', strtotime($r['deadline'])) : ''
                     ];
                 }
             }
@@ -2329,7 +2332,7 @@ class TaskV2Controller extends Controller
 
         if ($period !== 'all' && !empty($period)) {
             $escPeriod = $this->db->real_escape_string($period);
-            $whereClauses[] = "(DATE_FORMAT(t.created_at, '%Y-%m') = '$escPeriod' OR DATE_FORMAT(t.due_date, '%Y-%m') = '$escPeriod')";
+            $whereClauses[] = "(DATE_FORMAT(t.created_at, '%Y-%m') = '$escPeriod' OR DATE_FORMAT(t.deadline, '%Y-%m') = '$escPeriod')";
         }
 
         if ($deptFilter > 0) {
@@ -2352,14 +2355,14 @@ class TaskV2Controller extends Controller
         }
 
         if ($typeFilter === 'assigned') {
-            $whereClauses[] = "p.is_team_project = 1";
+            $whereClauses[] = "(t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id)";
         } elseif ($typeFilter === 'self') {
-            $whereClauses[] = "(p.is_team_project = 0 OR p.is_team_project IS NULL)";
+            $whereClauses[] = "(t.assigned_by IS NULL OR t.assigned_by = t.user_id)";
         }
 
         $whereSql = implode(' AND ', $whereClauses);
 
-        // Fetch all matching tasks
+        // Fetch all matching tasks from tasks table
         $tasksQuery = "
             SELECT t.*, 
                    u.full_name as user_name, u.photo as user_photo,
@@ -2368,7 +2371,7 @@ class TaskV2Controller extends Controller
                    des.name as designation_name,
                    p.name as project_name, p.is_team_project,
                    r_u.full_name as reporting_boss_name
-            FROM todo_tasks t
+            FROM tasks t
             LEFT JOIN users u ON t.user_id = u.id
             LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id)
             LEFT JOIN departments d ON e.department_id = d.id
@@ -2397,7 +2400,7 @@ class TaskV2Controller extends Controller
 
         foreach ($allTasks as $t) {
             $st = strtolower($t['status'] ?? 'pending');
-            $due = !empty($t['due_date']) ? $t['due_date'] : null;
+            $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
 
             if ($due && $due < $curDate && $st !== 'completed') {
                 $totalOverdue++;
@@ -2412,7 +2415,7 @@ class TaskV2Controller extends Controller
                 $totalActive++;
             }
 
-            if (!empty($t['is_team_project'])) {
+            if (!empty($t['assigned_by']) && (int)$t['assigned_by'] !== (int)$t['user_id']) {
                 $totalHodAssigned++;
             }
         }
@@ -2461,7 +2464,7 @@ class TaskV2Controller extends Controller
             }
             $deptAgg[$did]['total']++;
             $st = strtolower($t['status'] ?? 'pending');
-            $due = !empty($t['due_date']) ? $t['due_date'] : null;
+            $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
 
             if ($st === 'completed') {
                 $deptAgg[$did]['completed']++;
@@ -2525,7 +2528,7 @@ class TaskV2Controller extends Controller
                 if ($isHodSelf || $isTeamTask) {
                     $hTotalTasks++;
                     $st = strtolower($t['status'] ?? 'pending');
-                    $due = !empty($t['due_date']) ? $t['due_date'] : null;
+                    $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
 
                     if ($isHodSelf) {
                         $hSelfTasks++;
@@ -2535,7 +2538,7 @@ class TaskV2Controller extends Controller
                     }
 
                     if ($isTeamTask) {
-                        if (!empty($t['is_team_project'])) {
+                        if (!empty($t['assigned_by']) && (int)$t['assigned_by'] !== (int)$t['user_id']) {
                             $hAssignedByHod++;
                         }
                         if ($st === 'completed') {
@@ -2618,7 +2621,7 @@ class TaskV2Controller extends Controller
             }
             $indivMap[$uId]['total']++;
             $st = strtolower($t['status'] ?? 'pending');
-            $due = !empty($t['due_date']) ? $t['due_date'] : null;
+            $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
 
             if ($st === 'completed') {
                 $indivMap[$uId]['completed']++;
@@ -2666,7 +2669,7 @@ class TaskV2Controller extends Controller
         // Render the executive view
         $this->view("tasks/management-task-overview-v2", [
             "current_route"       => "management-task-overview-v2",
-            "page_title"          => "Management Task Overview",
+            "page_title"          => "Management Overview",
             "period"              => $period,
             "deptFilter"          => $deptFilter,
             "hodFilter"           => $hodFilter,
