@@ -55,7 +55,7 @@ $monthNames = [
                     <!-- Period Filter -->
                     <div class="col-lg-3 col-md-4 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">Period</label>
-                        <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <select name="period" id="mgmtFilterPeriod" class="form-select form-select-sm">
                             <option value="all" <?= ($period === 'all') ? 'selected' : '' ?>>All Time</option>
                             <?php foreach ($monthNames as $mKey => $mLabel): ?>
                                 <option value="<?= $mKey ?>" <?= ($period === $mKey) ? 'selected' : '' ?>><?= $mLabel ?></option>
@@ -66,7 +66,7 @@ $monthNames = [
                     <!-- Department Filter -->
                     <div class="col-lg-3 col-md-4 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">Department</label>
-                        <select name="department_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <select name="department_id" id="mgmtFilterDepartment" class="form-select form-select-sm">
                             <option value="0">All Departments</option>
                             <?php foreach ($departments as $d): ?>
                                 <option value="<?= $d['id'] ?>" <?= ($deptFilter == $d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['name']) ?></option>
@@ -77,7 +77,7 @@ $monthNames = [
                     <!-- Employee Filter -->
                     <div class="col-lg-2 col-md-4 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">Employee</label>
-                        <select name="employee_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <select name="employee_id" id="mgmtFilterEmployee" class="form-select form-select-sm">
                             <option value="0">All Employees</option>
                             <?php foreach ($employees as $e): ?>
                                 <option value="<?= $e['id'] ?>" <?= ($empFilter == $e['id']) ? 'selected' : '' ?>><?= htmlspecialchars($e['full_name']) ?></option>
@@ -88,7 +88,7 @@ $monthNames = [
                     <!-- Task Type Filter -->
                     <div class="col-lg-2 col-md-4 col-sm-6">
                         <label class="form-label small fw-semibold text-secondary mb-1">Task Type</label>
-                        <select name="type" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <select name="type" id="mgmtFilterType" class="form-select form-select-sm">
                             <option value="all" <?= ($typeFilter === 'all') ? 'selected' : '' ?>>Assigned + Self</option>
                             <option value="assigned" <?= ($typeFilter === 'assigned') ? 'selected' : '' ?>>Team Projects Only</option>
                             <option value="self" <?= ($typeFilter === 'self') ? 'selected' : '' ?>>Self Tasks Only</option>
@@ -97,12 +97,12 @@ $monthNames = [
 
                     <!-- Action Buttons -->
                     <div class="col-lg-2 col-md-4 col-sm-6 d-flex gap-2">
-                        <button type="submit" class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-1">
+                        <button type="submit" id="btnMgmtApplyFilters" class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-1">
                             <i class="fa-solid fa-filter"></i> Apply
                         </button>
-                        <a href="<?= $GLOBALS['base_url'] ?>/management-task-overview-v2" class="btn btn-sm btn-outline-secondary w-50 d-inline-flex align-items-center justify-content-center">
+                        <button type="button" id="btnMgmtResetFilters" class="btn btn-sm btn-outline-secondary w-50 d-inline-flex align-items-center justify-content-center">
                             Reset
-                        </a>
+                        </button>
                     </div>
                 </div>
                 <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>" id="mgmtTabInput">
@@ -110,6 +110,7 @@ $monthNames = [
         </div>
     </div>
 
+    <div id="mgmtDashboardContent" style="transition: opacity 0.18s ease;">
     <!-- 6 KPI Metric Cards Row -->
     <div class="row  mb-4">
         <!-- 1. Organization Tasks -->
@@ -311,7 +312,11 @@ $monthNames = [
                 <div class="card-body p-3 d-flex flex-column justify-content-between">
                     <!-- Donut Chart Canvas Container -->
                     <div style="position: relative; height: 180px;" class="mb-3">
-                        <canvas id="mgmtHealthDonutChart"></canvas>
+                        <canvas id="mgmtHealthDonutChart"
+                                data-completed="<?= (int)$totalComp ?>"
+                                data-active="<?= (int)$totalAct ?>"
+                                data-overdue="<?= (int)$totalOvd ?>"
+                                data-total="<?= max(1, (int)$totalOrg) ?>"></canvas>
                         <!-- Center Label Overlay -->
                         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
                             <div class="fw-bold text-dark" style="font-size: 22px; line-height: 1;"><?= number_format($totalOrg) ?></div>
@@ -339,7 +344,7 @@ $monthNames = [
     </div>
 
     <!-- Leaderboard & Performance Tabs Section -->
-    <div class="card border-0 shadow-sm" style="border-radius: 14px; background: #ffffff;">
+    <div class="card border-0 shadow-sm mb-5" style="border-radius: 14px; background: #ffffff;">
         <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <!-- Nav Tabs -->
@@ -370,7 +375,7 @@ $monthNames = [
                 <!-- Instant Table Search -->
                 <div class="position-relative" style="min-width: 240px;">
                     <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; pointer-events: none;"></i>
-                    <input type="text" id="mgmtTableSearch" class="form-control form-control-sm" style="padding-left: 32px;" placeholder="Filter rows in view..." onkeyup="filterMgmtTable()">
+                    <input type="text" id="mgmtTableSearch" class="form-control form-control-sm" style="padding-left: 34px !important; padding-inline-start: 34px !important;" placeholder="Filter rows in view..." onkeyup="filterMgmtTable()">
                 </div>
             </div>
         </div>
@@ -384,7 +389,7 @@ $monthNames = [
                             <tr>
                                 <th class="ps-3 py-3">HOD / Department</th>
                                 <th class="text-center py-3">Total Tasks</th>
-                                <th class="text-center py-3">Assigned by HOD</th>
+                                <th class="text-center py-3" title="Non-self tasks assigned to team members">Team Assigned</th>
                                 <th class="text-center py-3">HOD Self</th>
                                 <th class="text-center py-3">HOD Comp</th>
                                 <th class="text-center py-3">Team Comp</th>
@@ -499,7 +504,14 @@ $monthNames = [
                                         <td class="text-center small fw-semibold text-dark"><?= $d['completion_pct'] ?>%</td>
                                         <td class="text-center small fw-semibold text-info"><?= $d['on_time_pct'] ?>%</td>
                                         <td class="pe-3 text-center">
-                                            <span class="badge bg-success-subtle text-success fw-bold px-2 py-1" style="font-size: 11px;">
+                                            <?php
+                                                $deptScoreClass = $d['total'] === 0
+                                                    ? 'bg-light text-secondary border'
+                                                    : ($d['score'] >= 80 ? 'bg-success-subtle text-success'
+                                                    : ($d['score'] >= 50 ? 'bg-primary-subtle text-primary'
+                                                    : ($d['score'] > 0 ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger')));
+                                            ?>
+                                            <span class="badge <?= $deptScoreClass ?> fw-bold px-2 py-1" style="font-size: 11px;" title="60% Completion Rate + 40% On-Time %">
                                                 <?= $d['score'] ?> / 100
                                             </span>
                                         </td>
@@ -561,7 +573,12 @@ $monthNames = [
                                         </td>
                                         <td class="text-center small fw-semibold text-dark"><?= $ind['completion_pct'] ?>%</td>
                                         <td class="pe-3 text-center">
-                                            <span class="badge bg-primary-subtle text-primary fw-bold px-2 py-1" style="font-size: 11px;">
+                                            <?php
+                                                $indScoreClass = $ind['score'] >= 80 ? 'bg-success-subtle text-success'
+                                                    : ($ind['score'] >= 50 ? 'bg-primary-subtle text-primary'
+                                                    : ($ind['score'] > 0 ? 'bg-warning-subtle text-warning' : 'bg-light text-secondary border'));
+                                            ?>
+                                            <span class="badge <?= $indScoreClass ?> fw-bold px-2 py-1" style="font-size: 11px;" title="70% Completion + 30% On-Time (On-Time: <?= $ind['on_time_pct'] ?>%)">
                                                 <?= $ind['score'] ?> / 100
                                             </span>
                                         </td>
@@ -574,6 +591,7 @@ $monthNames = [
             </div>
         </div>
     </div>
+    </div><!-- /#mgmtDashboardContent -->
 </div>
 
 <!-- ========================================================================
@@ -1199,53 +1217,167 @@ $monthNames = [
         document.body.removeChild(link);
     }
 
-    // Initialize Donut Chart
-    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize / Re-initialize Donut Chart
+    window.mgmtHealthChartInstance = null;
+    window.renderMgmtHealthChart = function() {
         const ctx = document.getElementById('mgmtHealthDonutChart');
-        if (ctx && typeof Chart !== 'undefined') {
-            const completed = <?= (int)$totalComp ?>;
-            const active = <?= (int)$totalAct ?>;
-            const overdue = <?= (int)$totalOvd ?>;
+        if (!ctx || typeof Chart === 'undefined') return;
 
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Completed', 'Active', 'Overdue'],
-                    datasets: [{
-                        data: [completed, active, overdue],
-                        backgroundColor: ['#10b981', '#3b82f6', '#ef4444'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff',
-                        hoverOffset: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '72%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 10,
-                                padding: 12,
-                                font: { size: 11, weight: '500' },
-                                color: '#64748b'
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const val = context.raw || 0;
-                                    const total = <?= max(1, $totalOrg) ?>;
-                                    const pct = Math.round((val / total) * 100);
-                                    return ' ' + context.label + ': ' + val + ' (' + pct + '%)';
-                                }
+        if (window.mgmtHealthChartInstance) {
+            try { window.mgmtHealthChartInstance.destroy(); } catch (e) {}
+            window.mgmtHealthChartInstance = null;
+        }
+
+        const completed = parseInt(ctx.dataset.completed || '0', 10);
+        const active = parseInt(ctx.dataset.active || '0', 10);
+        const overdue = parseInt(ctx.dataset.overdue || '0', 10);
+        const total = Math.max(1, parseInt(ctx.dataset.total || '1', 10));
+
+        window.mgmtHealthChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Active', 'Overdue'],
+                datasets: [{
+                    data: [completed, active, overdue],
+                    backgroundColor: ['#10b981', '#3b82f6', '#ef4444'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '72%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 10,
+                            padding: 12,
+                            font: { size: 11, weight: '500' },
+                            color: '#64748b'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const val = context.raw || 0;
+                                const pct = Math.round((val / total) * 100);
+                                return ' ' + context.label + ': ' + val + ' (' + pct + '%)';
                             }
                         }
                     }
                 }
+            }
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        window.renderMgmtHealthChart();
+
+        const filterForm = document.getElementById('mgmtFilterForm');
+        const applyBtn = document.getElementById('btnMgmtApplyFilters');
+        const resetBtn = document.getElementById('btnMgmtResetFilters');
+        const defaultPeriod = <?= json_encode(date('Y-m')) ?>;
+
+        function loadMgmtOverviewAjax(targetUrl, pushState) {
+            const contentWrap = document.getElementById('mgmtDashboardContent');
+            if (!contentWrap) {
+                window.location.href = targetUrl;
+                return;
+            }
+
+            const origApplyHtml = applyBtn ? applyBtn.innerHTML : '';
+            if (applyBtn) {
+                applyBtn.disabled = true;
+                applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Loading';
+            }
+            contentWrap.style.opacity = '0.5';
+            contentWrap.style.pointerEvents = 'none';
+
+            fetch(targetUrl, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.text();
+            })
+            .then(html => {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const newContent = doc.getElementById('mgmtDashboardContent');
+                if (!newContent) {
+                    window.location.href = targetUrl;
+                    return;
+                }
+
+                contentWrap.innerHTML = newContent.innerHTML;
+                contentWrap.style.opacity = '1';
+                contentWrap.style.pointerEvents = '';
+
+                if (pushState) {
+                    window.history.pushState({ url: targetUrl }, '', targetUrl);
+                }
+
+                window.renderMgmtHealthChart();
+                filterMgmtTable();
+            })
+            .catch(() => {
+                window.location.href = targetUrl;
+            })
+            .finally(() => {
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.innerHTML = origApplyHtml;
+                }
             });
         }
+
+        if (filterForm) {
+            filterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const params = new URLSearchParams(new FormData(filterForm));
+                const baseAction = filterForm.getAttribute('action').split('?')[0];
+                loadMgmtOverviewAjax(`${baseAction}?${params.toString()}`, true);
+            });
+        }
+
+        if (resetBtn && filterForm) {
+            resetBtn.addEventListener('click', function() {
+                const pEl = document.getElementById('mgmtFilterPeriod');
+                const dEl = document.getElementById('mgmtFilterDepartment');
+                const eEl = document.getElementById('mgmtFilterEmployee');
+                const tEl = document.getElementById('mgmtFilterType');
+                const tabEl = document.getElementById('mgmtTabInput');
+
+                if (pEl) pEl.value = defaultPeriod;
+                if (dEl) dEl.value = '0';
+                if (eEl) eEl.value = '0';
+                if (tEl) tEl.value = 'all';
+                if (tabEl) tabEl.value = 'hods';
+
+                const baseAction = filterForm.getAttribute('action').split('?')[0];
+                loadMgmtOverviewAjax(baseAction, true);
+            });
+        }
+
+        window.addEventListener('popstate', function() {
+            const urlObj = new URL(window.location.href);
+            const params = urlObj.searchParams;
+            const pEl = document.getElementById('mgmtFilterPeriod');
+            const dEl = document.getElementById('mgmtFilterDepartment');
+            const eEl = document.getElementById('mgmtFilterEmployee');
+            const tEl = document.getElementById('mgmtFilterType');
+            const tabEl = document.getElementById('mgmtTabInput');
+
+            if (pEl) pEl.value = params.get('period') || defaultPeriod;
+            if (dEl) dEl.value = params.get('department_id') || '0';
+            if (eEl) eEl.value = params.get('employee_id') || '0';
+            if (tEl) tEl.value = params.get('type') || 'all';
+            if (tabEl) tabEl.value = params.get('tab') || 'hods';
+
+            loadMgmtOverviewAjax(window.location.href, false);
+        });
     });
 </script>
