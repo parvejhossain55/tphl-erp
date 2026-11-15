@@ -1602,16 +1602,27 @@ class TaskV2Controller extends Controller
         $tab = $_GET['tab'] ?? 'all'; // all, top_performers, needs_attention
         $sort = $_GET['sort'] ?? 'score_desc'; // score_desc, score_asc, total_desc, name_asc
 
-        // Fetch todo projects for filter (prioritizing shared team projects)
+        // Collect all team user IDs for project querying and filtering
+        $teamUserIds = [];
+        foreach ($teamEmployees as $te) {
+            $u = (int)($te['user_id'] ?? 0);
+            if ($u > 0) $teamUserIds[] = $u;
+        }
+        $teamUserIds = array_values(array_unique($teamUserIds));
+        $teamUserIdsList = !empty($teamUserIds) ? implode(',', $teamUserIds) : "$userId";
+
+        // Fetch todo projects for filter (user projects, team projects, projects created by or assigned to team members)
         $projects = [];
         $pRes = $this->db->query("
-            SELECT id, name, is_team_project, user_id 
-            FROM todo_projects 
-            WHERE user_id = $userId 
-               OR user_id = $effectiveManagerId
-               OR manager_user_id = $effectiveManagerId
-               OR is_team_project = 1
-            ORDER BY is_team_project DESC, name ASC
+            SELECT DISTINCT p.id, p.name, p.is_team_project, p.user_id 
+            FROM todo_projects p 
+            LEFT JOIN todo_tasks t ON t.todo_project_id = p.id
+            WHERE p.user_id = $userId 
+               OR p.manager_user_id = $userId
+               OR p.is_team_project = 1
+               OR p.user_id IN ($teamUserIdsList)
+               OR t.user_id IN ($teamUserIdsList)
+            ORDER BY p.is_team_project DESC, p.name ASC
         ");
         if ($pRes) {
             while ($p = $pRes->fetch_assoc()) {
@@ -1948,11 +1959,39 @@ class TaskV2Controller extends Controller
             exit;
         }
 
+        // Fetch usersList and realEstateProjectsList for Create/Assign Task Drawer
+        $usersList = [];
+        $resUsers = $this->db->query("
+            SELECT
+                u.id, 
+                u.full_name,
+                COALESCE(e.employee_id, u.employee_id) AS employee_code,
+                des.name AS designation
+            FROM users AS u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations des ON u.designation_id = des.id
+            WHERE (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+            ORDER BY u.full_name ASC
+        ");
+        if ($resUsers) {
+            $usersList = $resUsers->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $realEstateProjectsList = [];
+        $resProj = $this->db->query("SELECT id, name FROM projects ORDER BY name ASC");
+        if ($resProj) {
+            $realEstateProjectsList = $resProj->fetch_all(MYSQLI_ASSOC);
+        }
+
         // Render view
         $this->view("tasks/team-performance-v2", [
             "current_route"          => "team-performance-v2",
+            "userId"                 => $userId,
             "isDeptHead"             => $isDeptHead,
             "teamEmployees"          => $teamEmployees,
+            "usersList"              => $usersList,
+            "realEstateProjectsList" => $realEstateProjectsList,
             "members"                => $filteredMembers,
             "allMembersCount"        => count($memberStats),
             "topPerformersCount"     => $topPerformersCount,

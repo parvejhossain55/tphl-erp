@@ -493,6 +493,106 @@
     margin-right: 10px;
     border: 1px solid #e2e8f0;
 }
+
+/* My Work Slide Drawer & Form Styles */
+.mw-btn-create {
+    background-color: #087F5B;
+    color: #FFFFFF !important;
+    font-weight: 700;
+    font-size: 12.5px;
+    line-height: 15px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+.mw-btn-create:hover {
+    background-color: #066649;
+    color: #FFFFFF !important;
+}
+.mw-toast-wrap { position: fixed; top: 20px; right: 24px; z-index: 10050; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.mw-toast { pointer-events: auto; min-width: 280px; max-width: 420px; padding: 12px 16px; border-radius: 8px; background: #fff; border: 1px solid #E2EAE5; border-left: 4px solid #087F5B; box-shadow: 0 10px 28px rgba(20,45,38,.14); display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #142D26; animation: mwToastIn .22s ease; }
+.mw-toast.error { border-left-color: #C92A2A; }
+.mw-toast .mw-toast-icon { font-size: 16px; color: #087F5B; flex-shrink: 0; }
+.mw-toast.error .mw-toast-icon { color: #C92A2A; }
+.mw-toast .mw-toast-close { margin-left: auto; background: none; border: 0; color: #65776F; cursor: pointer; padding: 2px 4px; font-size: 13px; }
+@keyframes mwToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.mw-multi { position: relative; }
+.mw-multi-btn { text-align: left; width: 100%; cursor: pointer; }
+.mw-multi-panel { display: none; position: absolute; z-index: 50; left: 0; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid #E2EAE5; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,.08); max-height: 240px; overflow-y: auto; padding: 8px; }
+.mw-multi.open .mw-multi-panel { display: block; }
+.mw-multi-search { margin-bottom: 6px; position: sticky; top: 0; z-index: 1; background: #fff; }
+.mw-multi-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; margin: 0; }
+.mw-multi-item:hover { background: #F4FAF7; }
+
+.mw-drawer-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(20, 45, 38, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+.mw-drawer-backdrop.show { opacity: 1; visibility: visible; }
+.mw-drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    left: 54.38%;
+    background: #FFFFFF;
+    z-index: 9999;
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.16);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    border-left: 1px solid #E2EAE5;
+}
+.mw-drawer.show { transform: translateX(0); }
+@media (max-width: 1100px) { .mw-drawer { left: 35%; } }
+@media (max-width: 768px) { .mw-drawer { left: 0; width: 100%; } }
+.mw-drawer-header { padding: 22px 28px 16px; border-bottom: 1px solid #E2EAE5; position: relative; flex-shrink: 0; }
+.mw-drawer-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.mw-drawer-title { font-weight: 700; font-size: 20px; line-height: 24px; color: #142D26; margin: 0; }
+.mw-drawer-close { background: transparent; border: none; font-size: 18px; color: #65776F; cursor: pointer; padding: 4px 8px; border-radius: 4px; line-height: 1; transition: all 0.15s ease; }
+.mw-drawer-close:hover { color: #142D26; background: #F5F7F6; }
+.mw-drawer-subtitle { font-weight: 400; font-size: 12px; line-height: 15px; color: #65776F; margin: 0; }
+.mw-drawer-meta-bar { padding: 10px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #F0F4F2; background: #FAFCFA; flex-shrink: 0; }
+.mw-status-badge-todo { background: #F5F7F6; border: 1px solid #E2EAE5; border-radius: 4px; font-weight: 600; font-size: 11px; line-height: 13px; color: #142D26; padding: 4px 10px; display: inline-block; }
+.mw-required-note { font-weight: 400; font-size: 11px; line-height: 13px; color: #65776F; }
+.mw-drawer-body { padding: 24px 28px; overflow-y: auto; flex-grow: 1; }
+.mw-form-group { margin-bottom: 18px; }
+.mw-form-label { display: block; font-weight: 600; font-size: 12px; line-height: 15px; color: #142D26; margin-bottom: 6px; }
+.mw-form-label span.req { color: #DC2626; }
+.mw-form-input, .mw-form-select, .mw-form-textarea {
+    width: 100%; background: #FFFFFF; border: 1px solid #D1DDD6; border-radius: 6px;
+    padding: 9px 12px; font-size: 13px; line-height: 18px; color: #142D26; outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease; box-sizing: border-box;
+}
+.mw-form-input:focus, .mw-form-select:focus, .mw-form-textarea:focus {
+    border-color: #087F5B; box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.12);
+}
+.mw-form-row { display: flex; gap: 16px; }
+.mw-form-col { flex: 1; min-width: 0; }
+.mw-checkbox-wrap { display: flex; align-items: center; gap: 8px; margin: 14px 0 16px; cursor: pointer; user-select: none; }
+.mw-checkbox-wrap input[type="checkbox"] { width: 16px; height: 16px; accent-color: #087F5B; cursor: pointer; }
+.mw-checkbox-wrap span { font-weight: 500; font-size: 12.5px; color: #142D26; }
+.mw-callout-box { background: #EBF7EE; border: 1px solid #C3E6CD; border-radius: 8px; padding: 12px 16px; display: flex; gap: 12px; align-items: flex-start; margin-top: 18px; margin-bottom: 12px; }
+.mw-callout-icon { color: #087F5B; font-size: 16px; margin-top: 1px; }
+.mw-callout-title { font-weight: 600; font-size: 12.5px; line-height: 16px; color: #087F5B; margin-bottom: 2px; }
+.mw-callout-sub { font-weight: 400; font-size: 11.5px; line-height: 15px; color: #4A6B5D; }
+.mw-drawer-footer { padding: 16px 28px 18px; border-top: 1px solid #E2EAE5; background: #FFFFFF; flex-shrink: 0; }
+.mw-drawer-footer-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mw-drawer-btn { padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; line-height: 16px; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; }
+.mw-drawer-btn.secondary { background: #FFFFFF; border: 1px solid #D1DDD6; color: #142D26; }
+.mw-drawer-btn.secondary:hover { background: #F5F7F6; border-color: #B5C6BC; }
+.mw-drawer-btn.primary { background: #087F5B; border: 1px solid #087F5B; color: #FFFFFF; }
+.mw-drawer-btn.primary:hover { background: #066649; border-color: #066649; }
 </style>
 
 <div class="tphl-team-container py-3 px-3">
@@ -534,8 +634,8 @@
                 <i class="bi bi-box-arrow-down"></i> Export
             </a>
 
-            <!-- Assign Task Button -->
-            <button type="button" class="team-btn-add" data-bs-toggle="modal" data-bs-target="#modalAssignTask">
+            <!-- Assign Task Button (Opens Right Drawer) -->
+            <button type="button" class="team-btn-add" onclick="openAssignTaskDrawer()">
                 <i class="bi bi-plus-lg"></i> Assign Task
             </button>
         </div>
@@ -550,25 +650,24 @@
             <span class="team-filter-label">FILTER BY</span>
 
             <!-- Month Filter -->
-            <select name="month" class="team-select-pill" onchange="this.form.submit()">
-                <option value=""><?= date('F Y') ?></option>
-                <option value="all_time" <?= $monthFilter === 'all_time' ? 'selected' : '' ?>>All Time</option>
+            <select name="month" id="filterMonth" class="team-select-pill">
+                <option value="all_time" <?= ($monthFilter === 'all_time') ? 'selected' : '' ?>>All Time</option>
                 <?php 
                     for ($m = 0; $m < 6; $m++) {
                         $ym = date('Y-m', strtotime("-$m months"));
                         $label = date('F Y', strtotime("-$m months"));
-                        $sel = ($monthFilter === $ym) ? 'selected' : '';
+                        $sel = ($monthFilter === $ym || (empty($monthFilter) && $m === 0)) ? 'selected' : '';
                         echo "<option value=\"$ym\" $sel>$label</option>";
                     }
                 ?>
             </select>
 
             <!-- Team Members Filter -->
-            <select name="member_id" class="team-select-pill" onchange="this.form.submit()">
+            <select name="member_id" id="filterMember" class="team-select-pill">
                 <option value="">All Team Members</option>
                 <?php if (!empty($teamEmployees)): ?>
                     <?php foreach ($teamEmployees as $te): ?>
-                        <option value="<?= $te['employee_id'] ?>" <?= ($memberFilter == $te['employee_id'] || $memberFilter == $te['user_id']) ? 'selected' : '' ?>>
+                        <option value="<?= $te['employee_id'] ?>" <?= (!empty($memberFilter) && ((int)$memberFilter === (int)$te['employee_id'] || (int)$memberFilter === (int)($te['user_id'] ?? 0))) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($te['full_name']) ?>
                         </option>
                     <?php endforeach; ?>
@@ -576,7 +675,7 @@
             </select>
 
             <!-- Project Filter -->
-            <select name="project_id" class="team-select-pill" onchange="this.form.submit()">
+            <select name="project_id" id="filterProject" class="team-select-pill">
                 <option value="">All Projects</option>
                 <?php if (!empty($projects)): ?>
                     <?php foreach ($projects as $proj): ?>
@@ -588,7 +687,7 @@
             </select>
 
             <!-- Status Filter -->
-            <select name="status" class="team-select-pill" onchange="this.form.submit()">
+            <select name="status" id="filterStatus" class="team-select-pill">
                 <option value="">All Status</option>
                 <option value="completed" <?= $statusFilter === 'completed' ? 'selected' : '' ?>>Completed</option>
                 <option value="in_progress" <?= $statusFilter === 'in_progress' ? 'selected' : '' ?>>In Progress</option>
@@ -596,14 +695,21 @@
             </select>
 
             <!-- Type Filter -->
-            <select name="type" class="team-select-pill" onchange="this.form.submit()">
+            <select name="type" id="filterType" class="team-select-pill">
                 <option value="assigned_self" <?= $typeFilter === 'assigned_self' ? 'selected' : '' ?>>Assigned + Self</option>
                 <option value="assigned" <?= $typeFilter === 'assigned' ? 'selected' : '' ?>>Assigned Only</option>
                 <option value="self" <?= $typeFilter === 'self' ? 'selected' : '' ?>>Self Only</option>
             </select>
 
-            <!-- Reset Link -->
-            <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" class="btn btn-link text-decoration-none text-success small fw-semibold px-2 ms-auto">Reset</a>
+            <!-- Action Buttons: Apply & Reset -->
+            <div class="d-flex align-items-center gap-1 ms-1">
+                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold text-white d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px; background-color: #15803d; border-color: #15803d;">
+                    <i class="bi bi-funnel-fill"></i> Apply
+                </button>
+                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px;" title="Reset filters to default">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </a>
+            </div>
         </form>
     </div>
 
@@ -767,9 +873,6 @@
                 <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?sort=<?= $sort === 'score_desc' ? 'score_asc' : 'score_desc' ?>&<?= http_build_query(array_diff_key($_GET, ['sort' => ''])) ?>" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-secondary" style="font-size: 12.5px;">
                     <i class="bi bi-filter me-1"></i> Sort by Score
                 </a>
-                <button type="button" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-secondary" style="font-size: 12.5px;" onclick="window.print()">
-                    <i class="bi bi-layout-three-columns me-1"></i> Columns
-                </button>
             </div>
         </div>
 
@@ -914,101 +1017,212 @@
 </div>
 
 <!-- ========================================================================
-     Modal: Assign Task to Team Member
+     Right Slide Drawer: Assign Task (My Work Full Task Creator)
      ======================================================================== -->
-<div class="modal fade" id="modalAssignTask" tabindex="-1" aria-labelledby="modalAssignTaskLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow">
-            <div class="modal-header border-bottom-0 pb-0">
-                <div>
-                    <span class="team-header-tag">TEAM WORKSPACE</span>
-                    <h5 class="modal-title fw-bold text-dark" id="modalAssignTaskLabel">Assign Task to Team Member</h5>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="<?= $GLOBALS['base_url'] ?>/team-performance-v2/assign-task" method="POST">
-                <div class="modal-body pt-3">
-                    <!-- Member Selection -->
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Assign To Team Member</label>
-                        <select name="assigned_user_id" class="form-select rounded-3" required>
-                            <option value="">Select team member...</option>
-                            <?php foreach ($teamEmployees as $te): ?>
-                                <?php if (!empty($te['user_id'])): ?>
-                                    <option value="<?= $te['user_id'] ?>">
-                                        <?= htmlspecialchars($te['full_name']) ?> (<?= htmlspecialchars($te['designation_name'] ?? 'Staff') ?>)
-                                    </option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <!-- Task Title -->
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Task Title</label>
-                        <input type="text" name="title" class="form-control rounded-3" placeholder="Enter task title..." required autocomplete="off">
-                    </div>
-
-                    <!-- Project Selection -->
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Project / Team Project</label>
-                        <select name="project_id" id="assignTaskProjectId" class="form-select rounded-3" onchange="toggleAssignNewProject(this.value)">
-                            <option value="">No Project (Inbox)</option>
-                            <?php if (!empty($projects)): ?>
-                                <optgroup label="Shared Team Projects">
-                                    <?php foreach ($projects as $pr): ?>
-                                        <?php if (!empty($pr['is_team_project'])): ?>
-                                            <option value="<?= $pr['id'] ?>">👥 <?= htmlspecialchars($pr['name']) ?></option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                                <optgroup label="Other Projects">
-                                    <?php foreach ($projects as $pr): ?>
-                                        <?php if (empty($pr['is_team_project'])): ?>
-                                            <option value="<?= $pr['id'] ?>">📁 <?= htmlspecialchars($pr['name']) ?></option>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                            <?php endif; ?>
-                            <option value="new">+ Create New Team Project...</option>
-                        </select>
-                        <div id="assignNewProjectWrap" style="display: none;" class="mt-2 p-2 bg-light rounded-3 border">
-                            <label class="form-label small fw-bold text-dark mb-1">New Team Project Name</label>
-                            <input type="text" name="new_team_project_name" id="assign_new_project_name" class="form-control form-control-sm mb-1" placeholder="e.g. Sales Campaign Q4, ERP Module">
-                            <span class="text-muted" style="font-size: 11px;">This project will be automatically shared with the team.</span>
-                        </div>
-                    </div>
-
-                    <!-- Priority & Deadline -->
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold text-secondary">Priority</label>
-                            <select name="priority" class="form-select rounded-3">
-                                <option value="1">Urgent</option>
-                                <option value="2">High</option>
-                                <option value="3" selected>Medium</option>
-                                <option value="4">Low</option>
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-bold text-secondary">Deadline</label>
-                            <input type="date" name="due_date" class="form-control rounded-3" value="<?= date('Y-m-d', strtotime('+3 days')) ?>">
-                        </div>
-                    </div>
-
-                    <!-- Description -->
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold text-secondary">Task Description</label>
-                        <textarea name="description" class="form-control rounded-3" rows="3" placeholder="Provide deliverables and instructions..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light rounded-3 fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success rounded-3 fw-semibold px-4 text-white" style="background-color: #15803d; border-color: #15803d;">Assign Task</button>
-                </div>
-            </form>
+<div class="mw-drawer-backdrop" id="mwDrawerBackdrop" onclick="closeAssignTaskDrawer()"></div>
+<div class="mw-drawer" id="mwCreateTaskDrawer">
+    <!-- Header -->
+    <div class="mw-drawer-header">
+        <div class="mw-drawer-title-row">
+            <h3 class="mw-drawer-title" id="mwDrawerTitle">Assign Task to Team Member</h3>
+            <button type="button" class="mw-drawer-close" id="btnCloseCreateTask" onclick="closeAssignTaskDrawer()" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
+        <p class="mw-drawer-subtitle" id="mwDrawerSubtitle">Define the output, owner and deadline.</p>
     </div>
+
+    <!-- Status & Required Meta Bar -->
+    <div class="mw-drawer-meta-bar">
+        <span class="mw-status-badge-todo" id="mwDrawerStatusBadge">Status: To do</span>
+        <span class="mw-required-note">Required fields marked <span class="text-danger">*</span></span>
+    </div>
+
+    <!-- Form & Body -->
+    <form id="mwCreateTaskForm" enctype="multipart/form-data" class="d-flex flex-column flex-grow-1 overflow-hidden" style="margin: 0;">
+        <input type="hidden" name="edit_task_id" id="drawerEditTaskId" value="">
+        <div class="mw-drawer-body">
+            <!-- Task Title -->
+            <div class="mw-form-group">
+                <label class="mw-form-label">Task title <span class="req">*</span></label>
+                <input type="text" name="title" id="drawerTaskTitle" class="mw-form-input" 
+                       placeholder="Client ledger: verify opening balances" required autocomplete="off">
+            </div>
+
+            <?php
+            $currentUserId = (int)($userId ?? ($_SESSION['user']['id'] ?? 0));
+            $mwMulti = function (string $name, string $placeholder, bool $single = false, ?int $selectedId = null, string $id = '') use ($usersList) { ?>
+                <div class="mw-multi" <?= $id !== '' ? 'id="' . htmlspecialchars($id) . '"' : '' ?> data-single="<?= $single ? '1' : '0' ?>" data-clearable="<?= ($single && $selectedId === null) ? '1' : '0' ?>" data-placeholder="<?= htmlspecialchars($placeholder) ?>">
+                    <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
+                    <div class="mw-multi-panel">
+                        <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
+                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; 
+                            $rawCode = !empty($u['employee_code']) ? trim((string)$u['employee_code']) : '';
+                            $empCode = preg_replace('/^EMP-?/i', '', $rawCode);
+                            $displayName = trim((string)$u['full_name']) . ($empCode !== '' ? " ({$empCode})" : '');
+                        ?>
+                            <label class="mw-multi-item">
+                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($displayName) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($displayName) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php }; ?>
+
+            <!-- Row 1: Owner & Due Date -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Owner</label>
+                    <?php
+                    $ownerName = $_SESSION['user']['full_name'] ?? ($_SESSION['user']['name'] ?? '');
+                    $ownerEmpCode = !empty($_SESSION['user']['employee_id']) ? $_SESSION['user']['employee_id'] : '';
+                    foreach (($usersList ?? []) as $u) {
+                        if ((int)$u['id'] === $currentUserId) {
+                            $ownerName = $u['full_name'];
+                            if (!empty($u['employee_code'])) {
+                                $ownerEmpCode = $u['employee_code'];
+                            }
+                            break;
+                        }
+                    }
+                    $ownerEmpCode = preg_replace('/^EMP-?/i', '', trim((string)$ownerEmpCode));
+                    $ownerDisplay = trim($ownerName) . ($ownerEmpCode !== '' ? " ({$ownerEmpCode})" : '');
+                    ?>
+                    <div id="taskOwnerSelect">
+                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerDisplay) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
+                    </div>
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" required>
+                </div>
+            </div>
+
+            <!-- Row 2: Priority -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Priority</label>
+                    <select name="priority" class="mw-form-select">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 3: Real estate project -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Real estate project</label>
+                    <select name="project_id" class="mw-form-select">
+                        <option value="">Not linked</option>
+                        <?php foreach (($realEstateProjectsList ?? []) as $rp): ?>
+                            <option value="<?= (int)$rp['id'] ?>"><?= htmlspecialchars($rp['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">&nbsp;</label>
+                    <label class="mw-checkbox-wrap" style="margin-top:8px;">
+                        <input type="checkbox" name="is_recurring" value="1" id="chkIsRecurring">
+                        <span>Is Recurring</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mw-form-group" id="rowRecurrenceEnd" style="display:none;">
+                <label class="mw-form-label">Repeat</label>
+                <select name="recurrence_type" id="taskRecurrenceType" class="mw-form-select">
+                    <option value="">Select...</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                </select>
+            </div>
+
+            <!-- Expected output (textarea) -->
+            <div class="mw-form-group">
+                <label class="mw-form-label">Expected output</label>
+                <textarea name="expected_output" id="drawerExpectedOutput" class="mw-form-textarea" rows="2" 
+                          placeholder="Describe the expected deliverable, results, or outcome..."></textarea>
+            </div>
+
+            <!-- Acceptance Checklist (multiple allowed, optional) -->
+            <div class="mw-form-group">
+                <label class="mw-form-label">Acceptance checklist</label>
+                <div id="expectedOutputList">
+                    <div class="d-flex align-items-start gap-2 mb-2 mw-expected-row">
+                        <textarea name="description[]" id="drawerDescription" class="mw-form-textarea" rows="1" 
+                                  placeholder="e.g. Verify report totals, send summary to team..."></textarea>
+                        <button type="button" class="mw-btn-create" id="btnAddExpectedOutput" title="Add another checklist item" style="white-space:nowrap;">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned to & CC -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Assigned to</label>
+                    <?php $mwMulti('assigned_to_id', 'Select Assigned to...', true, $currentUserId, 'taskAssignedToSelect'); ?>
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">CC</label>
+                    <?php $mwMulti('cc_ids[]', 'Select CC...'); ?>
+                </div>
+            </div>
+
+            <!-- Row 4: Reviewer & Collaborators -->
+            <div id="sectionReviewFields" class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Reviewer</label>
+                    <?php $mwMulti('reviewer_id', 'Select Reviewer...', true, null, 'taskReviewerSelect'); ?>
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Collaborators</label>
+                    <?php $mwMulti('collaborator_ids[]', 'Select Collaborators...'); ?>
+                </div>
+            </div>
+
+            <!-- Attachment -->
+            <div class="mw-form-group">
+                <label class="mw-form-label">Attachment</label>
+                <input type="file" name="attachment" id="drawerAttachment" class="mw-form-input">
+            </div>
+
+            <!-- Start Date -->
+            <div class="mw-form-group">
+                <label class="mw-form-label">Start Date</label>
+                <input type="date" name="start_date" class="mw-form-input">
+            </div>
+
+            <!-- Callout Notice Box -->
+            <div class="mw-callout-box" id="mwTaskNoticeBox">
+                <div class="mw-callout-icon">
+                    <i class="fa-regular fa-bell"></i>
+                </div>
+                <div class="mw-callout-content">
+                    <div class="mw-callout-title" id="noticeOwnerText">Owner will receive the assignment.</div>
+                    <div class="mw-callout-sub" id="noticeReviewerText">Reviewer will be notified when the task is submitted for review.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mw-drawer-footer">
+            <div class="mw-drawer-footer-actions">
+                <div class="d-flex gap-2">
+                    <button type="button" class="mw-drawer-btn secondary" id="btnCancelDrawer" onclick="closeAssignTaskDrawer()">Cancel</button>
+                </div>
+                <button type="submit" class="mw-drawer-btn primary" id="btnSubmitDrawer">
+                    <i class="fa-solid fa-plus me-1"></i> Create & assign
+                </button>
+            </div>
+        </div>
+    </form>
 </div>
 
 <!-- ========================================================================
@@ -1699,14 +1913,260 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 
-function toggleAssignNewProject(val) {
-    const wrap = document.getElementById('assignNewProjectWrap');
-    if (wrap) {
-        wrap.style.display = (val === 'new') ? 'block' : 'none';
-        if (val === 'new') {
-            const input = document.getElementById('assign_new_project_name');
-            if (input) input.focus();
+// Right Slide Drawer (My Work Full Task Creator) Logic
+const mwBaseUrl = '<?= $GLOBALS['base_url'] ?>';
+const mwCurrentUserId = '<?= (int)($userId ?? ($_SESSION['user']['id'] ?? 0)) ?>';
+
+function showMwToast(message, type = 'success') {
+    let wrap = document.getElementById('mwToastWrap');
+    if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'mwToastWrap';
+        wrap.className = 'mw-toast-wrap';
+        document.body.appendChild(wrap);
+    }
+    const el = document.createElement('div');
+    const isErr = type === 'error';
+    el.className = 'mw-toast' + (isErr ? ' error' : '');
+    const icon = isErr ? 'fa-circle-exclamation' : 'fa-circle-check';
+    el.innerHTML = `<i class="fa-solid ${icon} mw-toast-icon"></i><span></span><button type="button" class="mw-toast-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>`;
+    el.querySelector('span').textContent = message;
+    el.querySelector('.mw-toast-close').addEventListener('click', () => el.remove());
+    wrap.appendChild(el);
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 4500);
+}
+
+function mwPicked(id) {
+    const i = document.querySelector('#' + id + ' input:checked');
+    return { value: i ? i.value : '', name: i ? i.dataset.name : '' };
+}
+
+function updateNoticeBox() {
+    const taskOwnerSelect = document.getElementById('taskAssignedToSelect');
+    const taskReviewerSelect = document.getElementById('taskReviewerSelect');
+    const noticeOwnerText = document.getElementById('noticeOwnerText');
+    const noticeReviewerText = document.getElementById('noticeReviewerText');
+
+    if (taskOwnerSelect && noticeOwnerText) {
+        const o = mwPicked('taskAssignedToSelect');
+        const firstName = (o.name || 'Owner').trim().split(' ')[0];
+        noticeOwnerText.innerText = `${firstName} will receive the assignment.`;
+    }
+    if (taskReviewerSelect && noticeReviewerText) {
+        const r = mwPicked('taskReviewerSelect');
+        if (r.value) {
+            const firstNameR = r.name.trim().split(' ')[0];
+            noticeReviewerText.innerText = `${firstNameR} will be notified when the task is submitted for review.`;
+            noticeReviewerText.style.display = 'block';
+        } else {
+            noticeReviewerText.style.display = 'none';
         }
     }
 }
+
+function resetAssignDrawerForm() {
+    const formCreateTask = document.getElementById('mwCreateTaskForm');
+    if (!formCreateTask) return;
+    formCreateTask.reset();
+
+    const editIdInput = document.getElementById('drawerEditTaskId');
+    if (editIdInput) editIdInput.value = '';
+
+    const expectedList = document.getElementById('expectedOutputList');
+    if (expectedList) {
+        expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
+    }
+
+    const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
+    if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
+    const selRec = document.getElementById('taskRecurrenceType');
+    if (selRec) selRec.required = false;
+
+    document.querySelectorAll('.mw-multi').forEach(b => {
+        const s = b.querySelector('.mw-multi-search');
+        if (s) s.value = '';
+        b.querySelectorAll('.mw-multi-item').forEach(l => l.style.display = '');
+        if (b._refresh) b._refresh();
+    });
+    updateNoticeBox();
+}
+
+function openAssignTaskDrawer(prefillUserId = null) {
+    const drawer = document.getElementById('mwCreateTaskDrawer');
+    const backdrop = document.getElementById('mwDrawerBackdrop');
+    if (!drawer) return;
+
+    resetAssignDrawerForm();
+
+    if (prefillUserId) {
+        const box = document.getElementById('taskAssignedToSelect');
+        if (box) {
+            const radios = box.querySelectorAll('input[type="radio"]');
+            radios.forEach(r => {
+                r.checked = (String(r.value) === String(prefillUserId));
+            });
+            if (box._refresh) box._refresh();
+            updateNoticeBox();
+        }
+    }
+
+    if (backdrop) backdrop.classList.add('show');
+    drawer.classList.add('show');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+        const titleInput = document.getElementById('drawerTaskTitle');
+        if (titleInput) titleInput.focus();
+    }, 320);
+}
+
+function closeAssignTaskDrawer() {
+    const drawer = document.getElementById('mwCreateTaskDrawer');
+    const backdrop = document.getElementById('mwDrawerBackdrop');
+    if (drawer) drawer.classList.remove('show');
+    if (backdrop) backdrop.classList.remove('show');
+    document.body.style.overflow = '';
+    resetAssignDrawerForm();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const taskOwnerSelect = document.getElementById('taskAssignedToSelect');
+    const taskReviewerSelect = document.getElementById('taskReviewerSelect');
+    if (taskOwnerSelect) taskOwnerSelect.addEventListener('change', updateNoticeBox);
+    if (taskReviewerSelect) taskReviewerSelect.addEventListener('change', updateNoticeBox);
+    updateNoticeBox();
+
+    // Recurring toggle
+    const chkIsRecurring = document.getElementById('chkIsRecurring');
+    const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
+    if (chkIsRecurring && rowRecurrenceEnd) {
+        chkIsRecurring.addEventListener('change', () => {
+            rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
+            const selRec = document.getElementById('taskRecurrenceType');
+            if (selRec) selRec.required = chkIsRecurring.checked;
+        });
+    }
+
+    // Multi-select dropdowns
+    document.querySelectorAll('.mw-multi').forEach(box => {
+        const txt = box.querySelector('.mw-multi-text');
+        const checks = box.querySelectorAll('input[type=checkbox], input[type=radio]');
+        const refresh = () => {
+            const names = [...checks].filter(i => i.checked).map(i => i.dataset.name);
+            txt.innerText = names.length === 0 ? box.dataset.placeholder : (names.length <= 2 ? names.join(', ') : names.length + ' selected');
+        };
+        box._refresh = refresh;
+        box.querySelector('.mw-multi-btn').addEventListener('click', () => {
+            const wasOpen = box.classList.contains('open');
+            document.querySelectorAll('.mw-multi.open').forEach(b => b.classList.remove('open'));
+            if (!wasOpen) box.classList.add('open');
+        });
+        checks.forEach(i => i.addEventListener('change', () => {
+            if (box.dataset.single === '1' && i.checked) {
+                checks.forEach(o => { if (o !== i) o.checked = false; });
+                box.classList.remove('open');
+            }
+            refresh();
+            box.dispatchEvent(new Event('change', { bubbles: true }));
+        }));
+        checks.forEach(i => i.addEventListener('click', () => {
+            if (i.type !== 'radio' || box.dataset.clearable !== '1') return;
+            if (i.dataset.was === '1') {
+                i.checked = false;
+                i.dataset.was = '0';
+                box.classList.remove('open');
+                refresh();
+                box.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                checks.forEach(o => o.dataset.was = '0');
+                i.dataset.was = '1';
+            }
+        }));
+        refresh();
+        box.querySelector('.mw-multi-search').addEventListener('input', function () {
+            const q = this.value.toLowerCase();
+            box.querySelectorAll('.mw-multi-item').forEach(l => l.style.display = l.innerText.toLowerCase().includes(q) ? '' : 'none');
+        });
+    });
+
+    document.addEventListener('click', e => {
+        document.querySelectorAll('.mw-multi.open').forEach(b => { if (!b.contains(e.target)) b.classList.remove('open'); });
+    }, true);
+
+    // Acceptance checklist dynamic rows
+    const expectedList = document.getElementById('expectedOutputList');
+    const btnAddExpected = document.getElementById('btnAddExpectedOutput');
+    if (expectedList && btnAddExpected) {
+        btnAddExpected.addEventListener('click', function () {
+            const row = document.createElement('div');
+            row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
+            row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another checklist item"></textarea>' +
+                '<button type="button" class="mw-btn-create" title="Remove" style="white-space:nowrap;background:#C92A2A;"><i class="fa-solid fa-xmark"></i></button>';
+            row.querySelector('button').addEventListener('click', () => row.remove());
+            expectedList.appendChild(row);
+            row.querySelector('textarea').focus();
+        });
+    }
+
+    // AJAX Form Submit to My Work store-task endpoint
+    const formCreateTask = document.getElementById('mwCreateTaskForm');
+    const btnSubmitDrawer = document.getElementById('btnSubmitDrawer');
+    if (formCreateTask) {
+        formCreateTask.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const ownerVal = mwPicked('taskAssignedToSelect').value || mwCurrentUserId;
+            const reviewerVal = mwPicked('taskReviewerSelect').value;
+            if (reviewerVal && ownerVal && String(reviewerVal) === String(ownerVal) &&
+                !confirm('Assignee and Reviewer are the same person. Continue?')) {
+                return;
+            }
+
+            if (btnSubmitDrawer) {
+                btnSubmitDrawer.disabled = true;
+                btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Creating...';
+            }
+
+            const formData = new FormData(formCreateTask);
+            fetch(`${mwBaseUrl}/my-work/store-task?ajax=1`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(async res => {
+                const text = await res.text();
+                try { return JSON.parse(text); }
+                catch (_) { throw new Error('Invalid server response.'); }
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    closeAssignTaskDrawer();
+                    showMwToast(data.message || 'Task created and assigned successfully.', 'success');
+                    setTimeout(() => window.location.reload(), 900);
+                } else {
+                    showMwToast(data.message || 'Failed to create task.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Error creating task:', err);
+                showMwToast(err.message || 'An error occurred while creating the task.', 'error');
+            })
+            .finally(() => {
+                if (btnSubmitDrawer) {
+                    btnSubmitDrawer.disabled = false;
+                    btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-plus me-1"></i> Create & assign';
+                }
+            });
+        });
+    }
+});
+
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const drawer = document.getElementById('mwCreateTaskDrawer');
+        if (drawer && drawer.classList.contains('show')) {
+            closeAssignTaskDrawer();
+        }
+    }
+});
 </script>
