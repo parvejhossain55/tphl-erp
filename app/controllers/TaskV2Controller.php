@@ -2315,15 +2315,18 @@ class TaskV2Controller extends Controller
             }
         }
 
-        // Fetch HODs (strictly is_dept_head = 1)
+        // Fetch HODs (strictly is_dept_head = 1, active only)
         $hods = [];
         $hRes = $this->db->query("
-            SELECT DISTINCT e.id as employee_id, e.user_id, e.full_name, e.department_id, d.name as department_name, des.name as designation_name
+            SELECT DISTINCT e.id as employee_id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id, e.full_name, e.department_id, d.name as department_name, des.name as designation_name
             FROM employees e
+            LEFT JOIN users u ON u.employee_id = e.id
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN designations des ON e.designation_id = des.id
             WHERE e.is_dept_head = 1
               AND e.deleted_at IS NULL
+              AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY e.full_name ASC
         ");
         if ($hRes) {
@@ -2332,23 +2335,65 @@ class TaskV2Controller extends Controller
             }
         }
 
-        // Fetch all active employees
+        // Fetch all active employees (and users linked via designations)
         $employees = [];
         $eRes = $this->db->query("
-            SELECT e.id, e.user_id, e.full_name, e.department_id, e.reporting_user_id, d.name as department_name
+            SELECT 
+                e.id, 
+                COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id, 
+                e.full_name, 
+                COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) as department_id, 
+                e.reporting_user_id, 
+                d.name as department_name
             FROM employees e
-            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN users u ON (u.id = e.user_id OR u.employee_id = e.id)
+            LEFT JOIN designations des ON COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0)) = des.id
+            LEFT JOIN departments d ON COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0)) = d.id
             WHERE e.deleted_at IS NULL
+              AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY e.full_name ASC
         ");
+        $seenUserIdsInEmp = [];
         if ($eRes) {
             while ($r = $eRes->fetch_assoc()) {
                 $employees[] = $r;
+                if ((int)$r['user_id'] > 0) {
+                    $seenUserIdsInEmp[(int)$r['user_id']] = true;
+                }
+            }
+        }
+
+        // Also include users who don't have an employees row but have a valid designation/department or tasks
+        $uOnlyRes = $this->db->query("
+            SELECT 
+                u.id as user_id,
+                u.full_name,
+                COALESCE(NULLIF(des.department_id, 0), 0) as department_id,
+                d.name as department_name
+            FROM users u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations des ON u.designation_id = des.id
+            LEFT JOIN departments d ON des.department_id = d.id
+            WHERE e.id IS NULL
+            ORDER BY u.full_name ASC
+        ");
+        $extraUsersByDept = [];
+        if ($uOnlyRes) {
+            while ($ur = $uOnlyRes->fetch_assoc()) {
+                $uid = (int)$ur['user_id'];
+                $did = (int)$ur['department_id'];
+                if ($did > 0 && !isset($seenUserIdsInEmp[$uid])) {
+                    $extraUsersByDept[$did][] = $uid;
+                }
             }
         }
 
         // 2. Base query building for tasks
-        $whereClauses = ["1=1"];
+        $whereClauses = [
+            "1=1",
+            "(e.id IS NULL OR (e.deleted_at IS NULL AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')) AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))))"
+        ];
 
         if ($period !== 'all' && !empty($period)) {
             $escPeriod = $this->db->real_escape_string($period);
@@ -2356,15 +2401,16 @@ class TaskV2Controller extends Controller
         }
 
         if ($deptFilter > 0) {
-            $whereClauses[] = "e.department_id = $deptFilter";
+            $whereClauses[] = "COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) = $deptFilter";
         }
 
         if ($hodFilter > 0) {
-            // Find reporting user id for this HOD
-            $hTargetRes = $this->db->query("SELECT user_id, id FROM employees WHERE id = $hodFilter OR user_id = $hodFilter LIMIT 1");
+            // Find reporting user id and department for this HOD
+            $hTargetRes = $this->db->query("SELECT user_id, id, department_id FROM employees WHERE id = $hodFilter OR user_id = $hodFilter LIMIT 1");
             if ($hTargetRes && $hTarget = $hTargetRes->fetch_assoc()) {
                 $hUId = (int)$hTarget['user_id'];
-                $whereClauses[] = "(e.reporting_user_id = $hUId OR t.user_id = $hUId)";
+                $hDeptId = (int)$hTarget['department_id'];
+                $whereClauses[] = "(e.reporting_user_id = $hUId OR t.user_id = $hUId OR t.assigned_by = $hUId" . ($hDeptId > 0 ? " OR COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) = $hDeptId" : "") . ")";
             }
         }
 
@@ -2382,20 +2428,24 @@ class TaskV2Controller extends Controller
 
         $whereSql = implode(' AND ', $whereClauses);
 
-        // Fetch all matching tasks from tasks table
+        // Fetch all matching tasks from tasks table (resolving department & designation from both employees and users)
         $tasksQuery = "
             SELECT t.*, 
-                   u.full_name as user_name, u.photo as user_photo,
-                   e.id as employee_id, e.department_id, e.designation_id, e.reporting_user_id,
+                   COALESCE(NULLIF(e.full_name, ''), u.full_name) as user_name, 
+                   u.photo as user_photo,
+                   e.id as employee_id, 
+                   COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) as department_id, 
+                   COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0), 0) as designation_id, 
+                   e.reporting_user_id,
                    d.name as department_name,
                    des.name as designation_name,
                    p.name as project_name, p.is_team_project,
                    r_u.full_name as reporting_boss_name
             FROM tasks t
             LEFT JOIN users u ON t.user_id = u.id
-            LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id)
-            LEFT JOIN departments d ON e.department_id = d.id
-            LEFT JOIN designations des ON e.designation_id = des.id
+            LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id) AND e.deleted_at IS NULL
+            LEFT JOIN designations des ON COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0)) = des.id
+            LEFT JOIN departments d ON COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0)) = d.id
             LEFT JOIN todo_projects p ON t.todo_project_id = p.id
             LEFT JOIN users r_u ON e.reporting_user_id = r_u.id
             WHERE $whereSql
@@ -2409,7 +2459,7 @@ class TaskV2Controller extends Controller
             }
         }
 
-        // 3. Compute 6 Global KPIs
+        // 3. Compute 6 Global KPIs (Mutually exclusive Completed, Active/In-Progress, and Overdue so Completed + Active + Overdue === Total)
         $totalOrgTasks = count($allTasks);
         $totalCompleted = 0;
         $totalActive = 0;
@@ -2419,18 +2469,19 @@ class TaskV2Controller extends Controller
         $curDate = date('Y-m-d H:i:s');
 
         foreach ($allTasks as $t) {
-            $st = strtolower($t['status'] ?? 'pending');
-            $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
+            $st = strtolower(trim($t['status'] ?? 'pending'));
+            $prog = (int)($t['progress'] ?? 0);
+            $isCompleted = ($st === 'completed' || $prog >= 100);
+            $due = !empty($t['deadline']) ? (strlen(trim($t['deadline'])) === 10 ? trim($t['deadline']) . ' 23:59:59' : trim($t['deadline'])) : null;
 
-            if ($due && $due < $curDate && $st !== 'completed') {
-                $totalOverdue++;
-            }
-
-            if ($st === 'completed') {
+            if ($isCompleted) {
                 $totalCompleted++;
-                if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                $compTime = !empty($t['completed_at']) ? $t['completed_at'] : (!empty($t['updated_at']) ? $t['updated_at'] : ($t['created_at'] ?? null));
+                if (!$due || ($compTime && $compTime <= $due)) {
                     $totalOnTime++;
                 }
+            } elseif ($due && $due < $curDate) {
+                $totalOverdue++;
             } else {
                 $totalActive++;
             }
@@ -2442,24 +2493,25 @@ class TaskV2Controller extends Controller
 
         $completionRate = $totalOrgTasks > 0 ? round(($totalCompleted / $totalOrgTasks) * 100) : 0;
         $overdueRate = $totalOrgTasks > 0 ? round(($totalOverdue / $totalOrgTasks) * 100) : 0;
-        $onTimeRate = $totalCompleted > 0 ? round(($totalOnTime / $totalCompleted) * 100) : 100;
+        $onTimeRate = $totalCompleted > 0 ? round(($totalOnTime / $totalCompleted) * 100) : 0;
 
         // 4. Department Performance Breakdown (for horizontal stacked bar chart & table)
         $deptAgg = [];
         foreach ($departments as $d) {
-            $deptAgg[$d['id']] = [
-                'id' => $d['id'],
+            $did = (int)$d['id'];
+            $deptAgg[$did] = [
+                'id' => $did,
                 'name' => $d['name'],
                 'total' => 0,
                 'completed' => 0,
                 'overdue' => 0,
                 'active' => 0,
                 'on_time' => 0,
-                'employees_count' => 0
+                'employees_count' => isset($extraUsersByDept[$did]) ? count($extraUsersByDept[$did]) : 0
             ];
         }
 
-        // Count employees per department
+        // Count active employees per department
         foreach ($employees as $e) {
             $did = (int)($e['department_id'] ?? 0);
             if (isset($deptAgg[$did])) {
@@ -2470,7 +2522,7 @@ class TaskV2Controller extends Controller
         foreach ($allTasks as $t) {
             $did = (int)($t['department_id'] ?? 0);
             if (!isset($deptAgg[$did])) {
-                $dName = $t['department_name'] ?: 'Unassigned';
+                $dName = !empty($t['department_name']) ? $t['department_name'] : 'Unassigned';
                 $deptAgg[$did] = [
                     'id' => $did,
                     'name' => $dName,
@@ -2483,19 +2535,21 @@ class TaskV2Controller extends Controller
                 ];
             }
             $deptAgg[$did]['total']++;
-            $st = strtolower($t['status'] ?? 'pending');
-            $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
+            $st = strtolower(trim($t['status'] ?? 'pending'));
+            $prog = (int)($t['progress'] ?? 0);
+            $isCompleted = ($st === 'completed' || $prog >= 100);
+            $due = !empty($t['deadline']) ? (strlen(trim($t['deadline'])) === 10 ? trim($t['deadline']) . ' 23:59:59' : trim($t['deadline'])) : null;
 
-            if ($st === 'completed') {
+            if ($isCompleted) {
                 $deptAgg[$did]['completed']++;
-                if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                $compTime = !empty($t['completed_at']) ? $t['completed_at'] : (!empty($t['updated_at']) ? $t['updated_at'] : ($t['created_at'] ?? null));
+                if (!$due || ($compTime && $compTime <= $due)) {
                     $deptAgg[$did]['on_time']++;
                 }
+            } elseif ($due && $due < $curDate) {
+                $deptAgg[$did]['overdue']++;
             } else {
                 $deptAgg[$did]['active']++;
-                if ($due && $due < $curDate) {
-                    $deptAgg[$did]['overdue']++;
-                }
             }
         }
 
@@ -2503,14 +2557,26 @@ class TaskV2Controller extends Controller
         $deptList = [];
         foreach ($deptAgg as $d) {
             if ($d['total'] > 0 || $d['employees_count'] > 0) {
-                $d['completion_pct'] = $d['total'] > 0 ? round(($d['completed'] / $d['total']) * 100) : 0;
-                $d['on_time_pct'] = $d['completed'] > 0 ? round(($d['on_time'] / $d['completed']) * 100) : 100;
-                $d['score'] = round(($d['completion_pct'] * 0.6) + ($d['on_time_pct'] * 0.4));
+                if ($d['total'] > 0) {
+                    $d['completion_pct'] = round(($d['completed'] / $d['total']) * 100);
+                    $d['on_time_pct'] = $d['completed'] > 0 ? round(($d['on_time'] / $d['completed']) * 100) : 0;
+                    $d['score'] = round(($d['completion_pct'] * 0.6) + ($d['on_time_pct'] * 0.4));
+                } else {
+                    $d['completion_pct'] = 0;
+                    $d['on_time_pct'] = 0;
+                    $d['score'] = 0;
+                }
                 $deptList[] = $d;
             }
         }
         usort($deptList, function($a, $b) {
-            return $b['total'] <=> $a['total'];
+            if ($b['total'] !== $a['total']) {
+                return $b['total'] <=> $a['total'];
+            }
+            if ($b['score'] !== $a['score']) {
+                return $b['score'] <=> $a['score'];
+            }
+            return $b['employees_count'] <=> $a['employees_count'];
         });
 
         // 5. HOD Performance List
@@ -2518,19 +2584,27 @@ class TaskV2Controller extends Controller
         foreach ($hods as $h) {
             $hUId = (int)$h['user_id'];
             $hEmpId = (int)$h['employee_id'];
+            $hDeptId = (int)($h['department_id'] ?? 0);
 
-            // Find all team members reporting to this HOD or in their department
+            // Find all team members reporting to this HOD or in their department (including users via designation)
             $teamEmpUserIds = [];
             foreach ($employees as $e) {
                 $repId = (int)($e['reporting_user_id'] ?? 0);
                 $eUId = (int)($e['user_id'] ?? 0);
                 if ($eUId > 0 && $eUId !== $hUId) {
-                    if ($repId === $hUId || $repId === $hEmpId || (int)($e['department_id'] ?? 0) === (int)$h['department_id']) {
+                    if ($repId === $hUId || $repId === $hEmpId || ($hDeptId > 0 && (int)($e['department_id'] ?? 0) === $hDeptId)) {
                         $teamEmpUserIds[] = $eUId;
                     }
                 }
             }
-            $teamEmpUserIds = array_unique($teamEmpUserIds);
+            if ($hDeptId > 0 && !empty($extraUsersByDept[$hDeptId])) {
+                foreach ($extraUsersByDept[$hDeptId] as $extraUId) {
+                    if ($extraUId !== $hUId) {
+                        $teamEmpUserIds[] = (int)$extraUId;
+                    }
+                }
+            }
+            $teamEmpUserIds = array_values(array_unique($teamEmpUserIds));
 
             $hTotalTasks = 0;
             $hAssignedByHod = 0;
@@ -2542,17 +2616,20 @@ class TaskV2Controller extends Controller
 
             foreach ($allTasks as $t) {
                 $tUId = (int)$t['user_id'];
-                $isHodSelf = ($tUId === $hUId);
-                $isTeamTask = in_array($tUId, $teamEmpUserIds, true);
+                $tDeptId = (int)($t['department_id'] ?? 0);
+                $isHodSelf = ($hUId > 0 && $tUId === $hUId);
+                $isTeamTask = !$isHodSelf && (in_array($tUId, $teamEmpUserIds, true) || ($hDeptId > 0 && $tDeptId === $hDeptId) || ($hUId > 0 && (int)($t['assigned_by'] ?? 0) === $hUId));
 
                 if ($isHodSelf || $isTeamTask) {
                     $hTotalTasks++;
-                    $st = strtolower($t['status'] ?? 'pending');
-                    $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
+                    $st = strtolower(trim($t['status'] ?? 'pending'));
+                    $prog = (int)($t['progress'] ?? 0);
+                    $isCompleted = ($st === 'completed' || $prog >= 100);
+                    $due = !empty($t['deadline']) ? (strlen(trim($t['deadline'])) === 10 ? trim($t['deadline']) . ' 23:59:59' : trim($t['deadline'])) : null;
 
                     if ($isHodSelf) {
                         $hSelfTasks++;
-                        if ($st === 'completed') {
+                        if ($isCompleted) {
                             $hCompleted++;
                         }
                     }
@@ -2561,13 +2638,14 @@ class TaskV2Controller extends Controller
                         if (!empty($t['assigned_by']) && (int)$t['assigned_by'] !== (int)$t['user_id']) {
                             $hAssignedByHod++;
                         }
-                        if ($st === 'completed') {
+                        if ($isCompleted) {
                             $hTeamCompleted++;
                         }
                     }
 
-                    if ($st === 'completed') {
-                        if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                    if ($isCompleted) {
+                        $compTime = !empty($t['completed_at']) ? $t['completed_at'] : (!empty($t['updated_at']) ? $t['updated_at'] : ($t['created_at'] ?? null));
+                        if (!$due || ($compTime && $compTime <= $due)) {
                             $hOnTime++;
                         }
                     } else {
@@ -2579,11 +2657,20 @@ class TaskV2Controller extends Controller
             }
 
             $allHCompleted = $hCompleted + $hTeamCompleted;
-            $hCompletionRate = $hTotalTasks > 0 ? round(($allHCompleted / $hTotalTasks) * 100) : 0;
-            $hOnTimeRate = $allHCompleted > 0 ? round(($hOnTime / $allHCompleted) * 100) : 100;
-            $leadershipScore = round(($hCompletionRate * 0.5) + ($hOnTimeRate * 0.3) + (min(100, $hTotalTasks * 10) * 0.2));
+            if ($hTotalTasks > 0) {
+                $hCompletionRate = round(($allHCompleted / $hTotalTasks) * 100);
+                $hOnTimeRate = $allHCompleted > 0 ? round(($hOnTime / $allHCompleted) * 100) : 0;
+                $leadershipScore = round(($hCompletionRate * 0.5) + ($hOnTimeRate * 0.3) + (min(100, $hTotalTasks * 10) * 0.2));
+            } else {
+                $hCompletionRate = 0;
+                $hOnTimeRate = 0;
+                $leadershipScore = 0;
+            }
 
-            if ($leadershipScore >= 80) {
+            if ($hTotalTasks === 0) {
+                $trendLabel = "No Tasks";
+                $trendClass = "bg-light text-secondary border";
+            } elseif ($leadershipScore >= 80) {
                 $trendLabel = "Exceptional";
                 $trendClass = "bg-success-subtle text-success";
             } elseif ($leadershipScore >= 60) {
@@ -2619,7 +2706,10 @@ class TaskV2Controller extends Controller
         }
 
         usort($hodList, function($a, $b) {
-            return $b['leadership_score'] <=> $a['leadership_score'];
+            if ($b['leadership_score'] !== $a['leadership_score']) {
+                return $b['leadership_score'] <=> $a['leadership_score'];
+            }
+            return $b['total_tasks'] <=> $a['total_tasks'];
         });
 
         // 6. Top Individuals Aggregation
@@ -2640,31 +2730,36 @@ class TaskV2Controller extends Controller
                 ];
             }
             $indivMap[$uId]['total']++;
-            $st = strtolower($t['status'] ?? 'pending');
-            $due = !empty($t['deadline']) ? (strlen($t['deadline']) === 10 ? $t['deadline'] . ' 23:59:59' : $t['deadline']) : null;
+            $st = strtolower(trim($t['status'] ?? 'pending'));
+            $prog = (int)($t['progress'] ?? 0);
+            $isCompleted = ($st === 'completed' || $prog >= 100);
+            $due = !empty($t['deadline']) ? (strlen(trim($t['deadline'])) === 10 ? trim($t['deadline']) . ' 23:59:59' : trim($t['deadline'])) : null;
 
-            if ($st === 'completed') {
+            if ($isCompleted) {
                 $indivMap[$uId]['completed']++;
-                if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                $compTime = !empty($t['completed_at']) ? $t['completed_at'] : (!empty($t['updated_at']) ? $t['updated_at'] : ($t['created_at'] ?? null));
+                if (!$due || ($compTime && $compTime <= $due)) {
                     $indivMap[$uId]['on_time']++;
                 }
+            } elseif ($due && $due < $curDate) {
+                $indivMap[$uId]['overdue']++;
             } else {
                 $indivMap[$uId]['active']++;
-                if ($due && $due < $curDate) {
-                    $indivMap[$uId]['overdue']++;
-                }
             }
         }
 
         $topIndividuals = [];
         foreach ($indivMap as $ind) {
             $ind['completion_pct'] = $ind['total'] > 0 ? round(($ind['completed'] / $ind['total']) * 100) : 0;
-            $ind['on_time_pct'] = $ind['completed'] > 0 ? round(($ind['on_time'] / $ind['completed']) * 100) : 100;
+            $ind['on_time_pct'] = $ind['completed'] > 0 ? round(($ind['on_time'] / $ind['completed']) * 100) : 0;
             $ind['score'] = round(($ind['completion_pct'] * 0.7) + ($ind['on_time_pct'] * 0.3));
             $topIndividuals[] = $ind;
         }
         usort($topIndividuals, function($a, $b) {
-            return $b['score'] <=> $a['score'];
+            if ($b['score'] !== $a['score']) {
+                return $b['score'] <=> $a['score'];
+            }
+            return $b['completed'] <=> $a['completed'];
         });
 
         // 7. Dynamic Management Insights
@@ -2676,43 +2771,82 @@ class TaskV2Controller extends Controller
             } else {
                 $insights[] = "Excellent progress! Zero overdue tasks currently logged across all operational units.";
             }
-            if (!empty($deptList[0])) {
-                $insights[] = "Top performing department is <strong>" . htmlspecialchars($deptList[0]['name']) . "</strong> with {$deptList[0]['completed']} completed tasks ({$deptList[0]['completion_pct']}%).";
+
+            // Pick top performing real department (with completed tasks > 0, or highest total tasks)
+            $topDept = null;
+            foreach ($deptList as $candDept) {
+                if ((int)$candDept['id'] > 0 && $candDept['total'] > 0) {
+                    if ($topDept === null || $candDept['score'] > $topDept['score'] || ($candDept['score'] === $topDept['score'] && $candDept['completed'] > $topDept['completed'])) {
+                        $topDept = $candDept;
+                    }
+                }
             }
-            if (!empty($hodList[0])) {
+            if ($topDept !== null) {
+                $insights[] = "Top performing department is <strong>" . htmlspecialchars($topDept['name']) . "</strong> with {$topDept['completed']} completed tasks ({$topDept['completion_pct']}%).";
+            }
+
+            if (!empty($hodList[0]) && $hodList[0]['leadership_score'] > 0) {
                 $insights[] = "Highest Leadership Score achieved by <strong>" . htmlspecialchars($hodList[0]['full_name']) . "</strong> ({$hodList[0]['leadership_score']}/100).";
             }
         } else {
             $insights[] = "No tasks found for the selected period. Adjust period filter to view quarterly or annual reports.";
         }
 
+        // 8. Fetch usersList and realEstateProjectsList for My Work Create Task Drawer
+        $usersList = [];
+        $resUsers = $this->db->query("
+            SELECT
+                u.id, 
+                u.full_name,
+                COALESCE(e.employee_id, u.employee_id) AS employee_code,
+                des.name AS designation
+            FROM users AS u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations des ON COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0)) = des.id
+            WHERE (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+            ORDER BY u.full_name ASC
+        ");
+        if ($resUsers) {
+            $usersList = $resUsers->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $realEstateProjectsList = [];
+        $resProj = $this->db->query("SELECT id, name FROM projects ORDER BY name ASC");
+        if ($resProj) {
+            $realEstateProjectsList = $resProj->fetch_all(MYSQLI_ASSOC);
+        }
+
         // Render the executive view
         $this->view("tasks/management-task-overview-v2", [
-            "current_route"       => "management-task-overview-v2",
-            "page_title"          => "Management Overview",
-            "period"              => $period,
-            "deptFilter"          => $deptFilter,
-            "hodFilter"           => $hodFilter,
-            "empFilter"           => $empFilter,
-            "typeFilter"          => $typeFilter,
-            "tab"                 => $tab,
-            "departments"         => $departments,
-            "hods"                => $hods,
-            "employees"           => $employees,
-            "kpi"                 => [
-                "total_tasks"     => $totalOrgTasks,
-                "completed"       => $totalCompleted,
-                "completion_rate" => $completionRate,
-                "active"          => $totalActive,
-                "overdue"         => $totalOverdue,
-                "overdue_rate"    => $overdueRate,
-                "on_time_rate"    => $onTimeRate,
-                "hod_assigned"    => $totalHodAssigned
+            "current_route"          => "management-task-overview-v2",
+            "page_title"             => "Management Overview",
+            "userId"                 => $userId,
+            "usersList"              => $usersList,
+            "realEstateProjectsList" => $realEstateProjectsList,
+            "period"                 => $period,
+            "deptFilter"             => $deptFilter,
+            "hodFilter"              => $hodFilter,
+            "empFilter"              => $empFilter,
+            "typeFilter"             => $typeFilter,
+            "tab"                    => $tab,
+            "departments"            => $departments,
+            "hods"                   => $hods,
+            "employees"              => $employees,
+            "kpi"                    => [
+                "total_tasks"        => $totalOrgTasks,
+                "completed"          => $totalCompleted,
+                "completion_rate"    => $completionRate,
+                "active"             => $totalActive,
+                "overdue"            => $totalOverdue,
+                "overdue_rate"       => $overdueRate,
+                "on_time_rate"       => $onTimeRate,
+                "hod_assigned"       => $totalHodAssigned
             ],
-            "deptList"            => $deptList,
-            "hodList"             => $hodList,
-            "topIndividuals"      => $topIndividuals,
-            "insights"            => $insights
+            "deptList"               => $deptList,
+            "hodList"                => $hodList,
+            "topIndividuals"         => $topIndividuals,
+            "insights"               => $insights
         ]);
     }
 }
