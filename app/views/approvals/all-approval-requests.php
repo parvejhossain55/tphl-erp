@@ -787,7 +787,7 @@
                                         $targetUrl = $base_url . '/ced-dashboard';
                                     }
                                 } elseif ($sourceTable === 'project_incentive_claims') {
-                                    $targetUrl = $base_url . '/incentive-management';
+                                    $targetUrl = $base_url . '/incentive-management?claim_id=' . (int)$req['source_id'];
                                 } elseif ($sourceTable === 'vendor_payment_requests') {
                                     $targetUrl = $base_url . '/con-vendor-payment-show/' . $req['source_id'];
                                 } elseif ($sourceTable === 'contractor_bill_requests') {
@@ -1015,7 +1015,7 @@
                                         } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests') {
                                             $displayReqCode = 'PAY-' . (int)$req['source_id'];
                                         } elseif ($sourceTable === 'project_incentive_claims') {
-                                            $displayReqCode = 'INC-' . (int)$req['source_id'];
+                                            $displayReqCode = 'INC-' . date('Y', strtotime($req['requested_at'] ?? 'now')) . '-' . str_pad((int)$req['source_id'], 3, '0', STR_PAD_LEFT);
                                         } elseif ($sourceTable === 'advance_salaries') {
                                             $displayReqCode = 'ADV-' . (int)$req['source_id'];
                                         } elseif ($sourceTable === 'lead_bookings') {

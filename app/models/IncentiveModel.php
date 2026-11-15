@@ -591,7 +591,7 @@ class IncentiveModel extends Model
                     c.sales_head_status AS claim_sh_status,
                     c.accounts_head_status AS claim_ah_status,
                     c.mgmt_status AS claim_mgmt_status,
-                    COALESCE(ar.op_head_at, ar.approved_at, c.approved_at) AS mgmt_approved_at,
+                    COALESCE(c.mgmt_at, ar.approved_at, c.approved_at) AS mgmt_approved_at,
                     COALESCE(u_mgmt.full_name, 'Management') AS mgmt_approver_name,
                     e_mgmt.employee_id AS mgmt_approver_code,
                     COALESCE(r_mgmt.name, 'Management') AS mgmt_approver_role,
@@ -627,9 +627,9 @@ class IncentiveModel extends Model
                 LEFT JOIN flats f ON c.flat_id = f.id
                 LEFT JOIN lead_bookings lb ON c.booking_id = lb.id
                 LEFT JOIN approval_requests ar ON ar.source_table = 'project_incentive_claims' AND ar.source_id = c.id
-                LEFT JOIN users u_sh ON COALESCE(ar.sales_head_by, c.sales_head_by) = u_sh.id
+                LEFT JOIN users u_sh ON COALESCE(ar.sales_head_by, ar.op_head_by, c.sales_head_by) = u_sh.id
                 LEFT JOIN employees e_sh ON u_sh.id = e_sh.user_id
-                LEFT JOIN users u_mgmt ON COALESCE(ar.op_head_by, ar.approved_by, c.approved_by) = u_mgmt.id
+                LEFT JOIN users u_mgmt ON COALESCE(c.mgmt_by, ar.approved_by, c.approved_by) = u_mgmt.id
                 LEFT JOIN employees e_mgmt ON u_mgmt.id = e_mgmt.user_id
                 LEFT JOIN roles r_mgmt ON u_mgmt.role_id = r_mgmt.id
                 LEFT JOIN users u_ah ON ar.accounts_head_by = u_ah.id
@@ -663,13 +663,15 @@ class IncentiveModel extends Model
                 $bVerifStatus = $row['booking_verification_status'] ?? null;
                 $rVerifStatus = $row['reg_verification_status'] ?? null;
 
-                $mgmtApprovedAt = !empty($row['mgmt_approved_at']) ? $row['mgmt_approved_at'] : null;
+                $isMgmtDone = (($row['claim_mgmt_status'] ?? '') === 'approved' || ($row['mgmt_status'] ?? '') === 'approved' || in_array($row['claim_status'] ?? '', ['approved', 'paid', 'partially_paid']));
+                $mgmtApprovedAt = ($isMgmtDone && !empty($row['mgmt_approved_at'])) ? $row['mgmt_approved_at'] : null;
                 $mgmtApproverName = $mgmtApprovedAt ? ($row['mgmt_approver_name'] ?? 'Management') : null;
                 $mgmtApproverCode = $mgmtApprovedAt ? ($row['mgmt_approver_code'] ?? null) : null;
                 $mgmtApproverRole = $mgmtApprovedAt ? ($row['mgmt_approver_role'] ?? null) : null;
 
-                $ahApprovedAt = !empty($row['accounts_head_at']) ? $row['accounts_head_at'] : null;
-                $ahApproverName = $ahApprovedAt ? ($row['ah_approver_name'] ?? null) : null;
+                $isAhDone = (($row['claim_ah_status'] ?? '') === 'approved' || ($row['accounts_head_status'] ?? '') === 'approved');
+                $ahApprovedAt = ($isAhDone && !empty($row['accounts_head_at'])) ? $row['accounts_head_at'] : null;
+                $ahApproverName = $ahApprovedAt ? ($row['ah_approver_name'] ?? 'Accounts Head') : null;
                 $ahApproverCode = $ahApprovedAt ? ($row['ah_approver_code'] ?? null) : null;
 
                 $queue[] = [

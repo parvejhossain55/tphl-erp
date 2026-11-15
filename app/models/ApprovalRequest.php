@@ -704,7 +704,7 @@ class ApprovalRequest extends Model
             WHERE id = ?
         ");
         if (!$stmt) return false;
-        $stmt->bind_param('isissssi', $userId, $note, $userId, $note, $nextRole, $nextAh, $id);
+        $stmt->bind_param('isisssi', $userId, $note, $userId, $note, $nextRole, $nextAh, $id);
         $res = $stmt->execute();
         $stmt->close();
 
@@ -757,7 +757,7 @@ class ApprovalRequest extends Model
             WHERE id = ?
         ");
         if (!$stmt) return false;
-        $stmt->bind_param('isissssi', $userId, $note, $userId, $note, $note, $note, $id);
+        $stmt->bind_param('isisssi', $userId, $note, $userId, $note, $note, $note, $id);
         $res = $stmt->execute();
         $stmt->close();
 
