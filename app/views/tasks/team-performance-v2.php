@@ -1191,7 +1191,24 @@
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
+                    <option value="custom">Custom Dates</option>
                 </select>
+                <div id="customRecurringDatesWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Custom Schedule <span class="req">*</span></span>
+                        <button type="button" id="btnClearCustomDates" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
+                    </div>
+                    <div class="mw-form-row" style="gap:12px;">
+                        <div class="mw-form-col">
+                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">Start Date</label>
+                            <input type="date" name="recurrence_custom_start" id="customRecurringStartInput" class="mw-form-input">
+                        </div>
+                        <div class="mw-form-col">
+                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">End Date</label>
+                            <input type="date" name="recurrence_end_date" id="customRecurringEndInput" class="mw-form-input">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Expected output (textarea) -->
@@ -1888,6 +1905,9 @@ function resetAssignDrawerForm() {
     if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
     const selRec = document.getElementById('taskRecurrenceType');
     if (selRec) selRec.required = false;
+    if (typeof window.setCustomRecurringDates === 'function') {
+        window.setCustomRecurringDates([]);
+    }
 
     document.querySelectorAll('.mw-multi').forEach(b => {
         const s = b.querySelector('.mw-multi-search');
@@ -1943,14 +1963,49 @@ document.addEventListener('DOMContentLoaded', function() {
     if (taskReviewerSelect) taskReviewerSelect.addEventListener('change', updateNoticeBox);
     updateNoticeBox();
 
-    // Recurring toggle
+    // Recurring toggle + Custom Schedule Start/End Date
     const chkIsRecurring = document.getElementById('chkIsRecurring');
     const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
+    const selRecType = document.getElementById('taskRecurrenceType');
+    const customDatesWrap = document.getElementById('customRecurringDatesWrap');
+    const customStartInput = document.getElementById('customRecurringStartInput');
+    const customEndInput = document.getElementById('customRecurringEndInput');
+    const btnClearCustomDates = document.getElementById('btnClearCustomDates');
+
+    window.setCustomRecurringDates = function (datesArr) {
+        const firstDate = (Array.isArray(datesArr) && datesArr.length > 0) ? String(datesArr[0]).trim() : '';
+        if (customStartInput) customStartInput.value = firstDate;
+        if (!firstDate && customEndInput) customEndInput.value = '';
+        if (customDatesWrap) {
+            customDatesWrap.style.display = (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') ? 'block' : 'none';
+        }
+        if (customStartInput) {
+            customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
+        }
+    };
+
+    if (btnClearCustomDates) {
+        btnClearCustomDates.addEventListener('click', () => {
+            if (customStartInput) customStartInput.value = '';
+            if (customEndInput) customEndInput.value = '';
+        });
+    }
+
+    if (selRecType) {
+        selRecType.addEventListener('change', () => {
+            const isCust = (selRecType.value === 'custom');
+            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
+            if (customStartInput) customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && isCust);
+        });
+    }
+
     if (chkIsRecurring && rowRecurrenceEnd) {
         chkIsRecurring.addEventListener('change', () => {
             rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
-            const selRec = document.getElementById('taskRecurrenceType');
-            if (selRec) selRec.required = chkIsRecurring.checked;
+            if (selRecType) selRecType.required = chkIsRecurring.checked;
+            const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
+            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
+            if (customStartInput) customStartInput.required = isCust;
         });
     }
 

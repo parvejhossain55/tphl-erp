@@ -33,7 +33,7 @@ class MyWorkController extends Controller
         $baseUrl = $GLOBALS['base_url'] ?? '';
 
         // Active Scope Tab
-        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following', 'reviewer', 'realestate_project', 'self_initiated', 'recurring'];
+        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following', 'reviewer', 'realestate_project', 'self_initiated', 'recurring', 'previous_task_sheet'];
         $tab = $_GET['tab'] ?? 'all';
         if (!in_array($tab, $validTabs, true)) {
             $tab = 'all';
@@ -56,6 +56,20 @@ class MyWorkController extends Controller
         $statusFilter = trim($_GET['status'] ?? '');
         $metricFilter = trim($_GET['metric'] ?? ''); // overdue, due_today, next7, review
         $viewAll = !empty($_GET['view_all']) && $_GET['view_all'] === '1';
+
+        $parseValidDate = static function (string $val): string {
+            $val = trim($val);
+            if ($val === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
+                return '';
+            }
+            $dt = \DateTime::createFromFormat('Y-m-d', $val);
+            return ($dt && $dt->format('Y-m-d') === $val) ? $val : '';
+        };
+        $periodFrom = $parseValidDate((string) ($_GET['period_from'] ?? ''));
+        $periodTo   = $parseValidDate((string) ($_GET['period_to'] ?? ''));
+        if ($periodFrom !== '' && $periodTo !== '' && $periodFrom > $periodTo) {
+            [$periodFrom, $periodTo] = [$periodTo, $periodFrom];
+        }
 
         // When a metric card is clicked, it dictates the status filter (reset dropdown conflict)
         if (!empty($metricFilter)) {
@@ -143,6 +157,24 @@ class MyWorkController extends Controller
             }
             $stmtTabCounts->close();
         }
+        $prevSheetEmpIds = $this->getEmployeeIdsForTaskSheet($userId);
+        $prevSheetModel = class_exists('EmployeeTask') ? new EmployeeTask($this->db) : null;
+        $prevSheetAllRows = ($prevSheetModel && !empty($prevSheetEmpIds))
+            ? $prevSheetModel->getTasksByEmployee($prevSheetEmpIds, ['year' => 'all', 'month' => 'all'])
+            : [];
+        $tabCounts['previous_task_sheet'] = count($prevSheetAllRows);
+
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+        if ($tab === 'previous_task_sheet' && $isAjax) {
+            header('Content-Type: application/json');
+            $sheetData = $this->buildPreviousTaskSheetPayload($prevSheetModel, $prevSheetEmpIds, $_GET);
+            echo json_encode(array_merge([
+                'status'     => 'success',
+                'mode'       => 'previous_task_sheet',
+                'tab_counts' => $tabCounts,
+            ], $sheetData));
+            exit;
+        }
 
         // Metric cards: counted inside the active tab's scope
         $metricCond = [
@@ -174,6 +206,11 @@ class MyWorkController extends Controller
         $totals = $stmtTotals->get_result()->fetch_assoc();
         $openTasksCount = (int) ($totals['open_count'] ?? 0);
         $completedTasksCount = (int) ($totals['completed_count'] ?? 0);
+
+        // Default status tab: My Actionable (open) if any pending tasks exist, else auto-switch to Completed
+        if ($statusFilter === '' && $metricFilter === '') {
+            $statusFilter = ($openTasksCount > 0 || $completedTasksCount === 0) ? 'open' : 'completed';
+        }
 
         // Count tasks reviewed and completed where the current user is a reviewer
         $stmtMyReviewed = $this->db->prepare("
@@ -265,7 +302,7 @@ class MyWorkController extends Controller
         }
 
         // Status filter (only applied if not overridden by a metric card)
-        if ($statusFilter !== '') {
+        if ($statusFilter !== '' && $statusFilter !== 'all') {
             if ($statusFilter === 'open') {
                 $where[] = "t.status != 'completed'";
             } elseif ($statusFilter === 'overdue') {
@@ -275,6 +312,22 @@ class MyWorkController extends Controller
                 $params[] = $statusFilter;
                 $types .= "s";
             }
+        }
+
+        // Period (created_at date range) filter
+        if ($periodFrom !== '' && $periodTo !== '') {
+            $where[] = "t.created_at IS NOT NULL AND DATE(t.created_at) BETWEEN ? AND ?";
+            $params[] = $periodFrom;
+            $params[] = $periodTo;
+            $types .= "ss";
+        } elseif ($periodFrom !== '') {
+            $where[] = "t.created_at IS NOT NULL AND DATE(t.created_at) >= ?";
+            $params[] = $periodFrom;
+            $types .= "s";
+        } elseif ($periodTo !== '') {
+            $where[] = "t.created_at IS NOT NULL AND DATE(t.created_at) <= ?";
+            $params[] = $periodTo;
+            $types .= "s";
         }
 
         $whereSql = implode(" AND ", $where);
@@ -424,6 +477,8 @@ class MyWorkController extends Controller
                 $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
             } elseif ($statusFilter === 'open') {
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
+            } elseif ($statusFilter === 'completed') {
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $completedTasksCount . ' completed tasks · Sorted by deadline';
             } else {
                 $totalInTab = $openTasksCount + $completedTasksCount;
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
@@ -432,6 +487,7 @@ class MyWorkController extends Controller
             $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
             echo json_encode([
                 'status' => 'success',
+                'active_status' => $statusFilter,
                 'all_stats' => $allStats,
                 'tab_counts' => $tabCounts,
                 'counts' => [
@@ -489,6 +545,10 @@ class MyWorkController extends Controller
             $realEstateProjectsList = $resProj->fetch_all(MYSQLI_ASSOC);
         }
 
+        $previousTaskSheetData = ($tab === 'previous_task_sheet')
+            ? $this->buildPreviousTaskSheetPayload($prevSheetModel, $prevSheetEmpIds, $_GET)
+            : null;
+
         // Full Page View
         $this->view("my-work/index", [
             "current_route"          => "my-work-dashboard",
@@ -500,6 +560,9 @@ class MyWorkController extends Controller
             "priorityFilter"         => $priorityFilter,
             "statusFilter"           => $statusFilter,
             "metricFilter"           => $metricFilter,
+            "periodFrom"             => $periodFrom,
+            "periodTo"               => $periodTo,
+            "previousTaskSheetData"  => $previousTaskSheetData,
             "overdueCount"           => $overdueCount,
             "allStats"               => $allStats,
             "tabCounts"              => $tabCounts,
@@ -517,6 +580,150 @@ class MyWorkController extends Controller
             "departmentsList"        => $departmentsList,
             "realEstateProjectsList" => $realEstateProjectsList
         ]);
+    }
+
+    /**
+     * Resolve all matching employee IDs (db id & employee_id code) for the logged-in user.
+     */
+    private function getEmployeeIdsForTaskSheet(int $userId): array
+    {
+        $empDbId = !empty($_SESSION['user']['employee_db_id']) ? (int) $_SESSION['user']['employee_db_id'] : 0;
+        $empCode = !empty($_SESSION['user']['employee_id']) ? (string) $_SESSION['user']['employee_id'] : '';
+        $ids = [];
+
+        $stmt = $this->db->prepare("
+            SELECT id, employee_id
+            FROM employees
+            WHERE user_id = ?
+               OR (id > 0 AND id = ?)
+               OR (employee_id != '' AND (employee_id = ? OR employee_id = ?))
+            ORDER BY (user_id = ?) DESC, (id = ?) DESC
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param("iisssi", $userId, $empDbId, $empCode, $empDbId, $userId, $empDbId);
+            $stmt->execute();
+            $emp = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($emp) {
+                $ids[] = (int) $emp['id'];
+                if (!empty($emp['employee_id'])) {
+                    $ids[] = $emp['employee_id'];
+                }
+            }
+        }
+        if ($empDbId > 0) $ids[] = $empDbId;
+        if ($empCode !== '') $ids[] = $empCode;
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Build read-only Previous Task Sheet payload reusing EmployeeTask model.
+     */
+    private function buildPreviousTaskSheetPayload($taskModel, array $employeeIds, array $query): array
+    {
+        $year      = isset($query['ts_year']) ? trim((string) $query['ts_year']) : '';
+        $month     = isset($query['ts_month']) ? trim((string) $query['ts_month']) : '';
+        $dateFrom  = isset($query['ts_date_from']) ? trim((string) $query['ts_date_from']) : '';
+        $dateTo    = isset($query['ts_date_to']) ? trim((string) $query['ts_date_to']) : '';
+        $all       = !empty($query['ts_all']) && ($query['ts_all'] === '1' || $query['ts_all'] === 'true');
+
+        // Default to All Time for historical view when no filter is explicitly chosen
+        if (!$all && $year === '' && $month === '' && $dateFrom === '' && $dateTo === '') {
+            $all = true;
+        }
+
+        $filterParams = ['year' => 'all', 'month' => 'all', 'date_from' => '', 'date_to' => ''];
+        $exportParams = [];
+        $periodLabel  = 'All Time';
+
+        if ($all) {
+            $exportParams['all'] = 1;
+        } elseif ($dateFrom !== '' || $dateTo !== '') {
+            $filterParams['date_from'] = $dateFrom;
+            $filterParams['date_to']   = $dateTo;
+            if ($dateFrom !== '') $exportParams['date_from'] = $dateFrom;
+            if ($dateTo !== '')   $exportParams['date_to']   = $dateTo;
+            $fromLbl = $dateFrom ? date('d M Y', strtotime($dateFrom)) : 'Start';
+            $toLbl   = $dateTo ? date('d M Y', strtotime($dateTo)) : 'Present';
+            $periodLabel = "{$fromLbl} to {$toLbl}";
+        } else {
+            $y = ($year !== '' && $year !== 'all') ? $year : 'all';
+            $m = ($month !== '' && $month !== 'all') ? $month : 'all';
+            $filterParams['year']  = $y;
+            $filterParams['month'] = $m;
+            $exportParams['year']  = $y;
+            $exportParams['month'] = $m;
+            if ($m === 'all') $exportParams['all_months'] = 1;
+
+            if ($y === 'all' && $m === 'all') {
+                $periodLabel = 'All Time';
+            } elseif ($y !== 'all' && $m === 'all') {
+                $periodLabel = "Year {$y} (All Months)";
+            } elseif ($y === 'all' && $m !== 'all') {
+                $periodLabel = 'All Years — ' . date('F', mktime(0, 0, 0, (int) $m, 10));
+            } else {
+                $periodLabel = date('F', mktime(0, 0, 0, (int) $m, 10)) . " {$y}";
+            }
+        }
+
+        $rows = ($taskModel && !empty($employeeIds))
+            ? $taskModel->getTasksByEmployee($employeeIds, $filterParams)
+            : [];
+
+        $totalCount = count($rows);
+        $doneCount = 0;
+        $pendingCount = 0;
+        $totalHours = 0.0;
+
+        ob_start();
+        if (empty($rows)) {
+            echo '<tr><td colspan="6"><div class="mw-empty-state"><i class="fa-regular fa-clipboard d-block"></i><div>No previous task sheet records found for ' . htmlspecialchars($periodLabel) . '.</div></div></td></tr>';
+        } else {
+            foreach ($rows as $i => $t) {
+                $rawStatus = strtolower(str_replace(' ', '_', trim((string) ($t['status'] ?? ''))));
+                if ($rawStatus === 'done' || $rawStatus === 'completed') {
+                    $doneCount++;
+                } else {
+                    $pendingCount++;
+                }
+                $hours = (float) ($t['hours_spent'] ?? 0);
+                $totalHours += $hours;
+
+                $badgeClass = match ($rawStatus) {
+                    'done', 'completed' => 'bg-success-subtle text-success',
+                    'in_progress', 'in progress' => 'bg-info-subtle text-info',
+                    default => 'bg-warning-subtle text-warning-emphasis',
+                };
+                $dateStr = !empty($t['work_date']) ? date('d M Y', strtotime($t['work_date'])) : '—';
+                $desc    = htmlspecialchars((string) ($t['task_description'] ?? ''));
+                $remarks = htmlspecialchars((string) ($t['remarks'] ?? '—'));
+                $statusLabel = htmlspecialchars(ucwords(str_replace('_', ' ', (string) ($t['status'] ?? 'Pending'))));
+
+                echo '<tr>';
+                echo '<td class="text-muted" style="width:48px;">' . ($i + 1) . '</td>';
+                echo '<td style="white-space:nowrap; font-weight:600; color:#142D26;">' . $dateStr . '</td>';
+                echo '<td>' . nl2br($desc) . '</td>';
+                echo '<td style="white-space:nowrap; font-weight:600;">' . number_format($hours, 2) . 'h</td>';
+                echo '<td><span class="badge rounded-pill ' . $badgeClass . '">' . $statusLabel . '</span></td>';
+                echo '<td class="text-muted">' . ($remarks !== '' ? $remarks : '—') . '</td>';
+                echo '</tr>';
+            }
+        }
+        $rowsHtml = ob_get_clean();
+
+        return [
+            'period_label' => $periodLabel,
+            'export_query' => http_build_query($exportParams),
+            'summary'      => [
+                'total'       => $totalCount,
+                'done'        => $doneCount,
+                'pending'     => $pendingCount,
+                'total_hours' => number_format($totalHours, 2),
+            ],
+            'rows_html'    => $rowsHtml,
+        ];
     }
 
     /**
@@ -925,20 +1132,7 @@ class MyWorkController extends Controller
 
         $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
         $assignedById = $userId;
-        $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly'], true) ? $_POST['recurrence_type'] : null;
-        $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
-        if ($isRecurring && $recurrenceType === null) {
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => 'Please select a repeat type for the recurring task.']);
-                exit;
-            }
-            if (function_exists('setError')) setError("Please select a repeat type for the recurring task.");
-            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
-            exit;
-        }
-        if (!$isRecurring) { $recurrenceType = null; }
-        $recurrenceEnd = ($isRecurring && !empty($_POST['recurrence_end_date'])) ? $_POST['recurrence_end_date'] : null;
+        [$isRecurring, $recurrenceType, $recurrenceEnd, $recurrenceCustomDatesJson] = $this->parseRecurrencePayload($isAjax);
 
         $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
         $toIdList = fn($v) => array_values(array_unique(array_filter(array_map('intval', (array)$v))));
@@ -987,12 +1181,12 @@ class MyWorkController extends Controller
                 description, checklist_data, start_date, deadline, priority,
                 status, progress, employee_accept, mentioned_user_ids,
                 cc_user_ids, attachment_image, project_id,
-                is_recurring, recurrence_type, recurrence_end_date, collaborator_user_ids, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                is_recurring, recurrence_type, recurrence_end_date, recurrence_custom_dates, collaborator_user_ids, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         $stmt->bind_param(
-            "ssiiissssssssiisss",
+            "ssiiissssssssiissss",
             $title,
             $expectedOutput,
             $ownerId,
@@ -1010,6 +1204,7 @@ class MyWorkController extends Controller
             $isRecurring,
             $recurrenceType,
             $recurrenceEnd,
+            $recurrenceCustomDatesJson,
             $collaboratorJson
         );
 
@@ -1271,13 +1466,13 @@ class MyWorkController extends Controller
         // Team members for @mention autocomplete - all valid users
         $teammates = [];
         $resTeam = $this->db->query("
-            SELECT u.id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo, des.name AS designation
+            SELECT u.id, MAX(u.full_name) AS full_name, MAX(u.photo) AS user_photo, MAX(e.photo) AS emp_photo, MAX(des.name) AS designation
             FROM users u
             LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
             LEFT JOIN designations des ON (u.designation_id = des.id OR e.designation_id = des.id)
             WHERE u.full_name IS NOT NULL AND TRIM(u.full_name) != ''
             GROUP BY u.id
-            ORDER BY u.full_name ASC
+            ORDER BY full_name ASC
         ");
         while ($resTeam && ($tm = $resTeam->fetch_assoc())) {
             $tmPhoto = null;
@@ -1398,6 +1593,10 @@ class MyWorkController extends Controller
         $deadlineDate = !empty($t['deadline']) ? date('Y-m-d', strtotime($t['deadline'])) : '';
         $startDate = !empty($t['start_date']) ? date('Y-m-d', strtotime($t['start_date'])) : '';
         $recurrenceEnd = !empty($t['recurrence_end_date']) ? date('Y-m-d', strtotime($t['recurrence_end_date'])) : '';
+        $customDatesDecoded = !empty($t['recurrence_custom_dates']) ? json_decode((string)$t['recurrence_custom_dates'], true) : [];
+        if (!is_array($customDatesDecoded)) {
+            $customDatesDecoded = [];
+        }
 
         echo json_encode([
             'status' => 'success',
@@ -1411,6 +1610,7 @@ class MyWorkController extends Controller
                 'is_recurring' => (int)($t['is_recurring'] ?? 0),
                 'recurrence_type' => $t['recurrence_type'] ?? '',
                 'recurrence_end_date' => $recurrenceEnd,
+                'recurrence_custom_dates' => array_values($customDatesDecoded),
                 'expected_output' => $t['expected_output'] ?? '',
                 'descriptions' => $descItems,
                 'reviewer_id' => !empty($reviewerIds[0]) ? (int)$reviewerIds[0] : null,
@@ -1497,20 +1697,7 @@ class MyWorkController extends Controller
         $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
 
         $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly'], true) ? $_POST['recurrence_type'] : null;
-        $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
-        if ($isRecurring && $recurrenceType === null) {
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode(['status' => 'error', 'message' => 'Please select a repeat type for the recurring task.']);
-                exit;
-            }
-            if (function_exists('setError')) setError("Please select a repeat type for the recurring task.");
-            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
-            exit;
-        }
-        if (!$isRecurring) { $recurrenceType = null; }
-        $recurrenceEnd = ($isRecurring && !empty($_POST['recurrence_end_date'])) ? $_POST['recurrence_end_date'] : null;
+        [$isRecurring, $recurrenceType, $recurrenceEnd, $recurrenceCustomDatesJson] = $this->parseRecurrencePayload($isAjax);
 
         $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
         $toIdList = fn($v) => array_values(array_unique(array_filter(array_map('intval', (array)$v))));
@@ -1581,13 +1768,14 @@ class MyWorkController extends Controller
                 is_recurring = ?,
                 recurrence_type = ?,
                 recurrence_end_date = ?,
+                recurrence_custom_dates = ?,
                 collaborator_user_ids = ?,
                 updated_at = NOW()
             WHERE id = ?
         ");
 
         $stmt->bind_param(
-            "ssissssssssiisssi",
+            "ssissssssssiissssi",
             $title,
             $expectedOutput,
             $assignedToId,
@@ -1603,6 +1791,7 @@ class MyWorkController extends Controller
             $isRecurring,
             $recurrenceType,
             $recurrenceEnd,
+            $recurrenceCustomDatesJson,
             $collaboratorJson,
             $id
         );
@@ -1804,6 +1993,7 @@ class MyWorkController extends Controller
             $taskModel = new Task($this->db);
             if ($taskModel->updateProgress($id, 100, $task['remarks'] ?? null)) {
                 $this->logTaskActivity($id, $userId, 'system', "Marked task as completed.");
+                $this->spawnNextRecurringTask($task, $userId);
 
                 // Notify task creator if creator is different
                 $creatorId = (int)$task['assigned_by'];
@@ -1969,6 +2159,7 @@ class MyWorkController extends Controller
             $remarks = !empty($task['remarks']) ? $task['remarks'] : 'Approved by reviewer.';
             if ($taskModel->updateProgress($id, 100, $remarks)) {
                 $this->logTaskActivity($id, $userId, 'system', "Approved task as completed (Done).");
+                $this->spawnNextRecurringTask($task, $userId);
                 echo json_encode([
                     'status' => 'success',
                     'message' => 'Task reviewed and approved as completed.',
@@ -2626,5 +2817,168 @@ class MyWorkController extends Controller
         $res = $stmt->execute();
         $stmt->close();
         return $res;
+    }
+
+    /**
+     * Parse and validate recurring task fields from POST payload.
+     */
+    private function parseRecurrencePayload(bool $isAjax): array
+    {
+        $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
+        $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly', 'custom'], true)
+            ? $_POST['recurrence_type']
+            : null;
+
+        $abort = function (string $msg) use ($isAjax) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => $msg]);
+                exit;
+            }
+            if (function_exists('setError')) setError($msg);
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        };
+
+        if ($isRecurring && $recurrenceType === null) {
+            $abort("Please select a repeat type for the recurring task.");
+        }
+
+        if (!$isRecurring) {
+            return [0, null, null, null];
+        }
+
+        $recurrenceEnd = !empty($_POST['recurrence_end_date']) ? $_POST['recurrence_end_date'] : null;
+        $customDatesJson = null;
+
+        if ($recurrenceType === 'custom') {
+            $customStart = trim((string)($_POST['recurrence_custom_start'] ?? ''));
+            if ($customStart !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $customStart)) {
+                if ($recurrenceEnd !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $recurrenceEnd) && $recurrenceEnd < $customStart) {
+                    $abort("End date cannot be earlier than start date.");
+                }
+                $customDatesJson = json_encode([$customStart]);
+            } else {
+                $rawDates = (array)($_POST['recurrence_custom_dates'] ?? []);
+                $validDates = [];
+                foreach ($rawDates as $d) {
+                    $d = trim((string)$d);
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+                        $validDates[] = $d;
+                    }
+                }
+                $validDates = array_values(array_unique($validDates));
+                sort($validDates);
+                if (empty($validDates)) {
+                    $abort("Please select a start date for the custom recurring schedule.");
+                }
+                $customDatesJson = json_encode($validDates);
+            }
+        }
+
+        return [1, $recurrenceType, $recurrenceEnd, $customDatesJson];
+    }
+
+    /**
+     * Spawn the next recurring occurrence when a recurring task is completed.
+     */
+    private function spawnNextRecurringTask(array $task, int $actorUserId): ?int
+    {
+        if (empty($task['is_recurring']) || empty($task['recurrence_type'])) {
+            return null;
+        }
+
+        $type = (string)$task['recurrence_type'];
+        $baseDate = !empty($task['deadline']) ? date('Y-m-d', strtotime($task['deadline'])) : date('Y-m-d');
+        $nextDate = null;
+
+        if ($type === 'custom') {
+            $dates = !empty($task['recurrence_custom_dates']) ? json_decode((string)$task['recurrence_custom_dates'], true) : [];
+            if (is_array($dates) && count($dates) > 1) {
+                sort($dates);
+                foreach ($dates as $d) {
+                    if (is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d > $baseDate) {
+                        $nextDate = $d;
+                        break;
+                    }
+                }
+            } else {
+                $startDate = (!empty($dates[0]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dates[0])) ? $dates[0] : $baseDate;
+                $nextDate = ($baseDate < $startDate) ? $startDate : date('Y-m-d', strtotime($baseDate . ' +1 day'));
+            }
+        } elseif ($type === 'daily') {
+            $nextDate = date('Y-m-d', strtotime($baseDate . ' +1 day'));
+        } elseif ($type === 'weekly') {
+            $nextDate = date('Y-m-d', strtotime($baseDate . ' +1 week'));
+        } elseif ($type === 'monthly') {
+            $nextDate = date('Y-m-d', strtotime($baseDate . ' +1 month'));
+        }
+
+        if ($nextDate === null) {
+            return null;
+        }
+
+        if (!empty($task['recurrence_end_date'])) {
+            $endDate = date('Y-m-d', strtotime($task['recurrence_end_date']));
+            if ($nextDate > $endDate) {
+                return null;
+            }
+        }
+
+        // Reset checklist completion flags for the next occurrence
+        $checklistData = $task['checklist_data'] ?? null;
+        if (!empty($checklistData)) {
+            $decodedCl = json_decode((string)$checklistData, true);
+            if (is_array($decodedCl)) {
+                foreach ($decodedCl as &$item) {
+                    $item['completed'] = false;
+                }
+                unset($item);
+                $checklistData = json_encode($decodedCl, JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        $nextDeadline = $nextDate . ' 00:00:00';
+        $stmt = $this->db->prepare("
+            INSERT INTO tasks (
+                title, expected_output, user_id, assigned_by, todo_project_id,
+                description, checklist_data, start_date, deadline, priority,
+                status, progress, employee_accept, mentioned_user_ids,
+                cc_user_ids, attachment_image, project_id,
+                is_recurring, recurrence_type, recurrence_end_date, recurrence_custom_dates, collaborator_user_ids, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, 1, ?, ?, ?, ?, NOW())
+        ");
+        if (!$stmt) {
+            return null;
+        }
+
+        $stmt->bind_param(
+            "ssiiisssssssissss",
+            $task['title'],
+            $task['expected_output'],
+            $task['user_id'],
+            $task['assigned_by'],
+            $task['todo_project_id'],
+            $task['description'],
+            $checklistData,
+            $nextDeadline,
+            $task['priority'],
+            $task['mentioned_user_ids'],
+            $task['cc_user_ids'],
+            $task['attachment_image'],
+            $task['project_id'],
+            $task['recurrence_type'],
+            $task['recurrence_end_date'],
+            $task['recurrence_custom_dates'],
+            $task['collaborator_user_ids']
+        );
+
+        $newId = null;
+        if ($stmt->execute()) {
+            $newId = (int)$stmt->insert_id;
+            $this->logTaskActivity($newId, $actorUserId, 'system', "Auto-generated next recurring occurrence from T-{$task['id']}.");
+        }
+        $stmt->close();
+        return $newId;
     }
 }

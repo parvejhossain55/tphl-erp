@@ -455,6 +455,27 @@ $todayDateFormatted = date('j F');
     display: inline-block;
 }
 
+.mw-header-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mw-header-tab:hover {
+    background: #F4FAF7;
+}
+
+.mw-header-tab.active {
+    background: #F4FAF7;
+    border-color: #C3E6CD;
+}
+
 .mw-tasks-completed-text {
     font-weight: 400;
     font-size: 12px;
@@ -611,6 +632,85 @@ $todayDateFormatted = date('j F');
     height: 1px;
     background-color: #E2EAE5;
     margin: 6px 0;
+}
+
+.mw-period-menu {
+    min-width: 260px;
+    padding: 12px 14px;
+    right: 0;
+    left: auto;
+}
+
+.mw-period-field {
+    margin-bottom: 10px;
+}
+
+.mw-period-field label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #65776F;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+}
+
+.mw-period-field input[type="date"] {
+    width: 100%;
+    height: 32px;
+    padding: 4px 8px;
+    font-size: 12.5px;
+    color: #142D26;
+    background: #F5F7F6;
+    border: 1px solid #E2EAE5;
+    border-radius: 6px;
+    outline: none;
+}
+
+.mw-period-field input[type="date"]:focus {
+    border-color: #087F5B;
+    background: #FFFFFF;
+}
+
+.mw-period-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #E2EAE5;
+}
+
+.mw-period-btn-clear {
+    background: #F5F7F6;
+    color: #5C6B66;
+    border: 1px solid #E2EAE5;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mw-period-btn-clear:hover {
+    background: #EAEFED;
+    color: #142D26;
+}
+
+.mw-period-btn-apply {
+    background: #087F5B;
+    color: #FFFFFF;
+    border: 1px solid #087F5B;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mw-period-btn-apply:hover {
+    background: #066649;
 }
 
 .mw-dots-icon {
@@ -1412,11 +1512,13 @@ $todayDateFormatted = date('j F');
            data-tab="self_initiated" href="javascript:void(0);">Self-Initiated Task <?= $renderTabBadge('self_initiated') ?></a>
         <a class="mw-tab-item <?= $tab === 'recurring' ? 'active' : '' ?>" 
            data-tab="recurring" href="javascript:void(0);">Recurring Task <?= $renderTabBadge('recurring') ?></a>
+        <a class="mw-tab-item <?= $tab === 'previous_task_sheet' ? 'active' : '' ?>" 
+           data-tab="previous_task_sheet" href="javascript:void(0);">Previous Task Sheet <?= $renderTabBadge('previous_task_sheet') ?></a>
     </div>
 
     <!-- Summary cards (all tabs, scoped to the active tab) -->
     <?php $as = $allStats ?? []; ?>
-    <div class="mw-stats-row mw-stats-all" id="mwStatsAll">
+    <div class="mw-stats-row mw-stats-all" id="mwStatsAll" style="<?= $tab === 'previous_task_sheet' ? 'display:none;' : '' ?>">
         <div class="mw-stat-card <?= $metricFilter === 'all_total' ? 'active-metric' : '' ?>" data-metric="all_total"><span class="mw-stat-label">TOTAL TASKS</span><span class="mw-stat-count" id="allTotal"><?= (int)($as['total'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_in_progress' ? 'active-metric' : '' ?>" data-metric="all_in_progress"><span class="mw-stat-label">IN PROGRESS</span><span class="mw-stat-count next7" id="allInProgress"><?= (int)($as['in_progress'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_completed' ? 'active-metric' : '' ?>" data-metric="all_completed"><span class="mw-stat-label">COMPLETED</span><span class="mw-stat-count review" id="allCompleted"><?= (int)($as['completed'] ?? 0) ?></span></div>
@@ -1427,29 +1529,85 @@ $todayDateFormatted = date('j F');
 
 
 
+    <!-- Previous Task Sheet (Read-only History View) -->
+    <?php $pts = $previousTaskSheetData ?? null; ?>
+    <div id="mwPreviousTaskSheetSection" style="<?= $tab === 'previous_task_sheet' ? '' : 'display:none;' ?>">
+        <div class="mw-stats-row mw-stats-all" style="margin-bottom: 16px;">
+            <div class="mw-stat-card"><span class="mw-stat-label">TOTAL RECORDS</span><span class="mw-stat-count" id="tsStatTotal"><?= (int) ($pts['summary']['total'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">DONE</span><span class="mw-stat-count review" id="tsStatDone"><?= (int) ($pts['summary']['done'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">PENDING</span><span class="mw-stat-count today" id="tsStatPending"><?= (int) ($pts['summary']['pending'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">TOTAL HOURS</span><span class="mw-stat-count next7" id="tsStatHours"><?= htmlspecialchars((string) ($pts['summary']['total_hours'] ?? '0.00')) ?>h</span></div>
+        </div>
+
+        <div class="mw-card">
+            <div class="mw-tasks-header" style="flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 class="mw-tasks-title" style="margin: 0;">Previous Task Sheet <span class="text-muted fw-normal" style="font-size: 12.5px;" id="tsPeriodLabel">— <?= htmlspecialchars((string) ($pts['period_label'] ?? 'All Time')) ?></span></h3>
+                    <div class="text-muted" style="font-size: 11.5px; margin-top: 2px;">Read-only historical records from Employee Task Sheet</div>
+                </div>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <select id="tsYear" class="form-select form-select-sm" style="width: 105px;">
+                        <option value="all">All Years</option>
+                        <?php for ($y = (int) date('Y'); $y >= 2022; $y--): ?>
+                            <option value="<?= $y ?>"><?= $y ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <select id="tsMonth" class="form-select form-select-sm" style="width: 125px;">
+                        <option value="all">All Months</option>
+                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <option value="<?= sprintf('%02d', $m) ?>"><?= date('F', mktime(0, 0, 0, $m, 1)) ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <input type="date" id="tsDateFrom" class="form-control form-control-sm" style="width: 135px;" title="From Date">
+                    <input type="date" id="tsDateTo" class="form-control form-control-sm" style="width: 135px;" title="To Date">
+                    <button type="button" class="mw-pill-btn active" id="btnTsApply">Filter</button>
+                    <button type="button" class="mw-pill-btn" id="btnTsAll">All Time</button>
+                    <a href="<?= $base_url ?>/task-sheets-export?<?= htmlspecialchars((string) ($pts['export_query'] ?? 'all=1')) ?>" id="btnTsExport" class="mw-pill-btn" style="text-decoration:none;">
+                        <i class="fa-solid fa-file-excel text-success"></i> Export Excel
+                    </a>
+                </div>
+            </div>
+
+            <div class="mw-table-wrap">
+                <table class="mw-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 120px;">DATE</th>
+                            <th style="min-width: 280px;">TASK DESCRIPTION</th>
+                            <th style="width: 90px;">HOURS</th>
+                            <th style="width: 110px;">STATUS</th>
+                            <th style="min-width: 180px;">REMARKS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mwPrevSheetTbody">
+                        <?= $pts['rows_html'] ?? '' ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Grid Layout -->
-    <div class="mw-grid-layout">
+    <div class="mw-grid-layout" id="mwMainGrid" style="<?= $tab === 'previous_task_sheet' ? 'display:none;' : '' ?>">
         <!-- Left: Task Worklist -->
         <div class="mw-card">
             <!-- Header -->
             <div class="mw-tasks-header">
-                <div class="mw-tasks-title-group" style="display:flex; align-items:center; gap:16px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
+                <div class="mw-tasks-title-group" style="display:flex; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <button type="button" class="mw-header-tab <?= $statusFilter === 'open' ? 'active' : '' ?>" id="tabMyActionable" data-header-status="open">
                         <h3 class="mw-tasks-title">My Actionable</h3>
                         <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
-                    </div>
-                    <div id="wrapUpdatedBy" style="display:<?= $tab === 'reviewer' ? 'flex' : 'none' ?>; align-items:center; gap:16px;">
-                        <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <h3 class="mw-tasks-title" style="color:#2D453E;">Updated By</h3>
-                            <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
-                                <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
-                            </span>
-                        </div>
-                    </div>
+                    </button>
+                    <button type="button" class="mw-header-tab <?= $statusFilter === 'completed' ? 'active' : '' ?>" id="tabMyCompleted" data-header-status="completed">
+                        <h3 class="mw-tasks-title" style="color:#2D453E;">Completed</h3>
+                        <span class="mw-badge-open" id="badgeCompletedCount" style="background:#EDF2FF; color:#364FC7; font-weight:700;">
+                            <?= $completedTasksCount ?> completed
+                        </span>
+                    </button>
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
-                    <?= $completedTasksCount ?> completed
+                    <?= $openTasksCount + $completedTasksCount ?> total
                 </div>
             </div>
 
@@ -1494,7 +1652,7 @@ $todayDateFormatted = date('j F');
                         <div class="mw-popup-divider"></div>
 
                         <div class="mw-popup-header">STATUS</div>
-                        <a class="mw-popup-item" href="javascript:void(0);" data-status="">All Statuses</a>
+                        <a class="mw-popup-item" href="javascript:void(0);" data-status="all">All Statuses</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="open">Open only</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="pending">To do</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="in_progress">In progress</a>
@@ -1502,14 +1660,34 @@ $todayDateFormatted = date('j F');
                     </div>
                 </div>
 
-                <!-- List view Pill Button (Static view indicator, no action) -->
-                <span class="mw-pill-btn" style="cursor: default;" title="List view">
+                <!-- List view Pill Button (Hidden) -->
+                <span class="mw-pill-btn d-none" style="display: none !important; cursor: default;" title="List view">
                     <i class="fa-solid fa-bars-staggered"></i>
                     <span>List view</span>
                 </span>
 
-                <!-- Dots icon -->
-                <span class="mw-dots-icon" title="More options">···</span>
+                <!-- Period Pill Button (Date Range Filter) -->
+                <div class="position-relative d-inline-block">
+                    <button type="button" class="mw-pill-btn<?= (!empty($periodFrom) || !empty($periodTo)) ? ' active' : '' ?>" id="btnPeriod" title="Filter by created date range">
+                        <i class="fa-regular fa-calendar-days"></i>
+                        <span id="periodBtnText">Period</span>
+                    </button>
+                    <div class="mw-popup-menu mw-period-menu" id="menuPeriod">
+                        <div class="mw-popup-header" style="padding: 0 0 8px 0;">CREATED DATE RANGE</div>
+                        <div class="mw-period-field">
+                            <label for="periodFromInput">From Date</label>
+                            <input type="date" id="periodFromInput" value="<?= htmlspecialchars((string) ($periodFrom ?? '')) ?>">
+                        </div>
+                        <div class="mw-period-field" style="margin-bottom: 0;">
+                            <label for="periodToInput">To Date</label>
+                            <input type="date" id="periodToInput" value="<?= htmlspecialchars((string) ($periodTo ?? '')) ?>">
+                        </div>
+                        <div class="mw-period-actions">
+                            <button type="button" class="mw-period-btn-clear" id="btnClearPeriod">Clear</button>
+                            <button type="button" class="mw-period-btn-apply" id="btnApplyPeriod">Apply</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Table -->
@@ -1891,7 +2069,24 @@ $todayDateFormatted = date('j F');
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
+                    <option value="custom">Custom Dates</option>
                 </select>
+                <div id="customRecurringDatesWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Custom Schedule <span class="req">*</span></span>
+                        <button type="button" id="btnClearCustomDates" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
+                    </div>
+                    <div class="mw-form-row" style="gap:12px;">
+                        <div class="mw-form-col">
+                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">Start Date</label>
+                            <input type="date" name="recurrence_custom_start" id="customRecurringStartInput" class="mw-form-input">
+                        </div>
+                        <div class="mw-form-col">
+                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">End Date</label>
+                            <input type="date" name="recurrence_end_date" id="customRecurringEndInput" class="mw-form-input">
+                        </div>
+                    </div>
+                </div>
             </div>
 
 
@@ -2071,14 +2266,24 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentMetric = '<?= $metricFilter ?>';
     let currentPriority = '<?= $priorityFilter ?>';
     let currentStatus = '<?= $statusFilter ?>';
+    let currentPeriodFrom = '<?= htmlspecialchars((string) ($periodFrom ?? ''), ENT_QUOTES) ?>';
+    let currentPeriodTo = '<?= htmlspecialchars((string) ($periodTo ?? ''), ENT_QUOTES) ?>';
     let currentViewAll = false;
     let searchTimer = null;
 
     const tbody = document.getElementById('mwTasksTbody');
     const footerInfo = document.getElementById('mwFooterInfo');
     const badgeOpen = document.getElementById('badgeOpenCount');
-    const badgeReviewed = document.getElementById('badgeReviewedCount');
+    const badgeCompleted = document.getElementById('badgeCompletedCount');
     const textCompleted = document.getElementById('textCompletedCount');
+
+    function syncHeaderStatusTabs(activeStatus) {
+        const stVal = typeof activeStatus !== 'undefined' ? activeStatus : currentStatus;
+        document.querySelectorAll('.mw-header-tab[data-header-status]').forEach(btn => {
+            const st = btn.getAttribute('data-header-status');
+            btn.classList.toggle('active', !currentMetric && st === stVal);
+        });
+    }
     const statOverdue = document.getElementById('statOverdue');
     const statDueToday = document.getElementById('statDueToday');
     const statNext7 = document.getElementById('statNext7');
@@ -2098,6 +2303,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentMetric) params.set('metric', currentMetric);
         if (currentPriority) params.set('priority', currentPriority);
         if (currentStatus) params.set('status', currentStatus);
+        if (currentPeriodFrom) params.set('period_from', currentPeriodFrom);
+        if (currentPeriodTo) params.set('period_to', currentPeriodTo);
         if (currentViewAll) params.set('view_all', '1');
         if (searchInput && searchInput.value.trim() !== '') {
             params.set('search', searchInput.value.trim());
@@ -2148,20 +2355,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
-                    if (badgeReviewed && typeof data.counts.my_reviewed !== 'undefined') {
-                        badgeReviewed.innerText = `${data.counts.my_reviewed} completed`;
-                    }
-                    if (textCompleted) textCompleted.innerText = `${data.counts.completed} completed`;
+                    if (badgeCompleted) badgeCompleted.innerText = `${data.counts.completed} completed`;
+                    if (textCompleted) textCompleted.innerText = `${(data.counts.open || 0) + (data.counts.completed || 0)} total`;
                     if (statOverdue) statOverdue.innerText = data.counts.overdue;
                     if (statDueToday) statDueToday.innerText = data.counts.due_today;
                     if (statNext7) statNext7.innerText = data.counts.next7;
                     if (statReview) statReview.innerText = data.counts.waiting_review;
                 }
 
-                const wrapUpdatedBy = document.getElementById('wrapUpdatedBy');
-                if (wrapUpdatedBy) {
-                    wrapUpdatedBy.style.display = (currentTab === 'reviewer') ? 'flex' : 'none';
+                if (typeof data.active_status !== 'undefined' && !currentMetric && currentStatus === '') {
+                    currentStatus = data.active_status;
                 }
+                syncHeaderStatusTabs(data.active_status);
 
                 // Update Browser URL state silently without page reload
                 params.delete('ajax');
@@ -2176,6 +2381,87 @@ document.addEventListener('DOMContentLoaded', function () {
             tbody.style.opacity = '1';
         });
     }
+
+    const prevSheetSection = document.getElementById('mwPreviousTaskSheetSection');
+    const mwStatsAllEl = document.getElementById('mwStatsAll');
+    const mwMainGridEl = document.getElementById('mwMainGrid');
+    const prevSheetTbody = document.getElementById('mwPrevSheetTbody');
+
+    function togglePreviousTaskSheetMode(isPrev) {
+        if (prevSheetSection) prevSheetSection.style.display = isPrev ? '' : 'none';
+        if (mwStatsAllEl) mwStatsAllEl.style.display = isPrev ? 'none' : '';
+        if (mwMainGridEl) mwMainGridEl.style.display = isPrev ? 'none' : '';
+    }
+
+    function fetchPreviousTaskSheet(forceAll = false) {
+        if (!prevSheetTbody) return;
+        prevSheetTbody.style.opacity = '0.4';
+
+        const tsYearEl = document.getElementById('tsYear');
+        const tsMonthEl = document.getElementById('tsMonth');
+        const tsFromEl = document.getElementById('tsDateFrom');
+        const tsToEl = document.getElementById('tsDateTo');
+
+        const params = new URLSearchParams();
+        params.set('ajax', '1');
+        params.set('tab', 'previous_task_sheet');
+
+        if (forceAll) {
+            if (tsYearEl) tsYearEl.value = 'all';
+            if (tsMonthEl) tsMonthEl.value = 'all';
+            if (tsFromEl) tsFromEl.value = '';
+            if (tsToEl) tsToEl.value = '';
+            params.set('ts_all', '1');
+        } else {
+            const df = tsFromEl ? tsFromEl.value.trim() : '';
+            const dt = tsToEl ? tsToEl.value.trim() : '';
+            const yr = tsYearEl ? tsYearEl.value : 'all';
+            const mo = tsMonthEl ? tsMonthEl.value : 'all';
+            if (df || dt) {
+                if (df) params.set('ts_date_from', df);
+                if (dt) params.set('ts_date_to', dt);
+            } else if (yr === 'all' && mo === 'all') {
+                params.set('ts_all', '1');
+            } else {
+                params.set('ts_year', yr);
+                params.set('ts_month', mo);
+            }
+        }
+
+        fetch(window.location.pathname + '?' + params.toString(), {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                prevSheetTbody.innerHTML = data.rows_html || '';
+                const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+                if (data.summary) {
+                    setTxt('tsStatTotal', data.summary.total ?? 0);
+                    setTxt('tsStatDone', data.summary.done ?? 0);
+                    setTxt('tsStatPending', data.summary.pending ?? 0);
+                    setTxt('tsStatHours', (data.summary.total_hours ?? '0.00') + 'h');
+                }
+                setTxt('tsPeriodLabel', '— ' + (data.period_label || 'All Time'));
+                const exportBtn = document.getElementById('btnTsExport');
+                if (exportBtn && typeof data.export_query !== 'undefined') {
+                    exportBtn.href = `${baseUrl}/task-sheets-export?${data.export_query}`;
+                }
+                params.delete('ajax');
+                window.history.pushState(null, '', `${baseUrl}/my-work-dashboard?${params.toString()}`);
+            }
+        })
+        .catch(err => console.error('Previous task sheet fetch error:', err))
+        .finally(() => {
+            prevSheetTbody.style.opacity = '1';
+        });
+    }
+
+    const btnTsApply = document.getElementById('btnTsApply');
+    const btnTsAll = document.getElementById('btnTsAll');
+    if (btnTsApply) btnTsApply.addEventListener('click', () => fetchPreviousTaskSheet(false));
+    if (btnTsAll) btnTsAll.addEventListener('click', () => fetchPreviousTaskSheet(true));
 
     // 1. Tab Click Event (Assigned to me, Assigned by me, Following)
     document.querySelectorAll('.mw-tab-item').forEach(tabEl => {
@@ -2197,6 +2483,30 @@ document.addEventListener('DOMContentLoaded', function () {
             const filterBtnText = document.getElementById('filterBtnText');
             if (filterBtnText) filterBtnText.innerText = 'Filters';
             document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
+
+            if (tabName === 'previous_task_sheet') {
+                togglePreviousTaskSheetMode(true);
+                fetchPreviousTaskSheet(false);
+            } else {
+                togglePreviousTaskSheetMode(false);
+                fetchWorkspaceData();
+            }
+        });
+    });
+
+    // 1b. Header Status Tabs (My Actionable / Completed)
+    document.querySelectorAll('.mw-header-tab[data-header-status]').forEach(tabBtn => {
+        tabBtn.addEventListener('click', function () {
+            const targetStatus = this.getAttribute('data-header-status');
+            if (currentStatus === targetStatus && currentMetric === '') return;
+
+            currentStatus = targetStatus;
+            currentMetric = '';
+            document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
+            const btnDueDateEl = document.getElementById('btnDueDate');
+            if (btnDueDateEl) btnDueDateEl.classList.remove('active');
+
+            syncHeaderStatusTabs(targetStatus);
             fetchWorkspaceData();
         });
     });
@@ -2244,11 +2554,46 @@ document.addEventListener('DOMContentLoaded', function () {
     const menuDueDate = document.getElementById('menuDueDate');
     const btnFilters = document.getElementById('btnFilters');
     const menuFilters = document.getElementById('menuFilters');
+    const btnPeriod = document.getElementById('btnPeriod');
+    const menuPeriod = document.getElementById('menuPeriod');
+    const periodBtnText = document.getElementById('periodBtnText');
+    const periodFromInput = document.getElementById('periodFromInput');
+    const periodToInput = document.getElementById('periodToInput');
+    const btnApplyPeriod = document.getElementById('btnApplyPeriod');
+    const btnClearPeriod = document.getElementById('btnClearPeriod');
+
+    function formatShortDate(iso) {
+        if (!iso) return '';
+        const parts = iso.split('-');
+        if (parts.length !== 3) return iso;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const m = parseInt(parts[1], 10) - 1;
+        return parts[2] + ' ' + (months[m] || parts[1]);
+    }
+
+    function updatePeriodButtonUi() {
+        if (!btnPeriod || !periodBtnText) return;
+        if (currentPeriodFrom && currentPeriodTo) {
+            btnPeriod.classList.add('active');
+            periodBtnText.textContent = formatShortDate(currentPeriodFrom) + ' - ' + formatShortDate(currentPeriodTo);
+        } else if (currentPeriodFrom) {
+            btnPeriod.classList.add('active');
+            periodBtnText.textContent = 'From ' + formatShortDate(currentPeriodFrom);
+        } else if (currentPeriodTo) {
+            btnPeriod.classList.add('active');
+            periodBtnText.textContent = 'Until ' + formatShortDate(currentPeriodTo);
+        } else {
+            btnPeriod.classList.remove('active');
+            periodBtnText.textContent = 'Period';
+        }
+    }
+    updatePeriodButtonUi();
 
     if (btnDueDate && menuDueDate) {
         btnDueDate.addEventListener('click', function (e) {
             e.stopPropagation();
             if (menuFilters) menuFilters.classList.remove('show');
+            if (menuPeriod) menuPeriod.classList.remove('show');
             menuDueDate.classList.toggle('show');
         });
     }
@@ -2257,7 +2602,50 @@ document.addEventListener('DOMContentLoaded', function () {
         btnFilters.addEventListener('click', function (e) {
             e.stopPropagation();
             if (menuDueDate) menuDueDate.classList.remove('show');
+            if (menuPeriod) menuPeriod.classList.remove('show');
             menuFilters.classList.toggle('show');
+        });
+    }
+
+    if (btnPeriod && menuPeriod) {
+        btnPeriod.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (menuDueDate) menuDueDate.classList.remove('show');
+            if (menuFilters) menuFilters.classList.remove('show');
+            menuPeriod.classList.toggle('show');
+        });
+
+        menuPeriod.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+    }
+
+    if (btnApplyPeriod) {
+        btnApplyPeriod.addEventListener('click', function () {
+            let fromVal = periodFromInput ? periodFromInput.value.trim() : '';
+            let toVal = periodToInput ? periodToInput.value.trim() : '';
+            if (fromVal && toVal && fromVal > toVal) {
+                [fromVal, toVal] = [toVal, fromVal];
+                if (periodFromInput) periodFromInput.value = fromVal;
+                if (periodToInput) periodToInput.value = toVal;
+            }
+            currentPeriodFrom = fromVal;
+            currentPeriodTo = toVal;
+            updatePeriodButtonUi();
+            if (menuPeriod) menuPeriod.classList.remove('show');
+            fetchWorkspaceData();
+        });
+    }
+
+    if (btnClearPeriod) {
+        btnClearPeriod.addEventListener('click', function () {
+            currentPeriodFrom = '';
+            currentPeriodTo = '';
+            if (periodFromInput) periodFromInput.value = '';
+            if (periodToInput) periodToInput.value = '';
+            updatePeriodButtonUi();
+            if (menuPeriod) menuPeriod.classList.remove('show');
+            fetchWorkspaceData();
         });
     }
 
@@ -2265,6 +2653,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('click', function () {
         if (menuDueDate) menuDueDate.classList.remove('show');
         if (menuFilters) menuFilters.classList.remove('show');
+        if (menuPeriod) menuPeriod.classList.remove('show');
     });
 
     // Due Date Popup Items
@@ -2456,6 +2845,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
         const selRec = document.getElementById('taskRecurrenceType');
         if (selRec) selRec.required = false;
+        if (typeof window.setCustomRecurringDates === 'function') {
+            window.setCustomRecurringDates([]);
+        }
         document.querySelectorAll('.mw-multi').forEach(b => {
             const s = b.querySelector('.mw-multi-search');
             if (s) s.value = '';
@@ -2535,6 +2927,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         selRec.value = t.recurrence_type || '';
                         selRec.required = chkRec.checked;
                     }
+                    if (typeof window.setCustomRecurringDates === 'function') {
+                        window.setCustomRecurringDates(Array.isArray(t.recurrence_custom_dates) ? t.recurrence_custom_dates : []);
+                    }
+                    const endEl = document.getElementById('customRecurringEndInput');
+                    if (endEl) endEl.value = t.recurrence_end_date || '';
                 }
 
                 // Expected output field
@@ -3432,12 +3829,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                mentionPopup.innerHTML = matched.map(u => {
+                mentionPopup.innerHTML = matched.map((u, idx) => {
                     const avatar = u.photo
                         ? `<img src="${tdEsc(u.photo)}" class="mw-mention-avatar" alt="${tdEsc(u.name)}">`
                         : `<span class="mw-mention-avatar">${tdEsc(tdInitials(u.name))}</span>`;
                     return `
-                        <div class="mw-mention-item" data-uid="${u.id}" data-name="${tdEsc(u.name)}">
+                        <div class="mw-mention-item${idx === 0 ? ' selected' : ''}" data-uid="${u.id}" data-name="${tdEsc(u.name)}">
                             ${avatar}
                             <span class="mw-mention-name">${tdEsc(u.name)}</span>
                             <span class="mw-mention-role">${tdEsc(u.designation)}</span>
@@ -3477,7 +3874,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
                         mentionStartIndex = lastAt;
                         const query = textBeforeCursor.slice(lastAt + 1);
-                        if (!/\s/.test(query)) {
+                        if (query.length <= 40) {
                             renderMentionList(query);
                             return;
                         }
@@ -3555,12 +3952,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (input) {
                 input.addEventListener('keydown', e => {
+                    const isPopupOpen = mentionPopup && mentionPopup.classList.contains('show');
+                    if (isPopupOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                        const items = Array.from(mentionPopup.querySelectorAll('.mw-mention-item'));
+                        if (items.length > 0) {
+                            e.preventDefault();
+                            let curIdx = items.findIndex(el => el.classList.contains('selected'));
+                            if (curIdx >= 0) items[curIdx].classList.remove('selected');
+                            curIdx = e.key === 'ArrowDown'
+                                ? (curIdx + 1) % items.length
+                                : (curIdx <= 0 ? items.length - 1 : curIdx - 1);
+                            items[curIdx].classList.add('selected');
+                            items[curIdx].scrollIntoView({ block: 'nearest' });
+                            return;
+                        }
+                    }
                     if (e.key === 'Enter') {
-                        if (mentionPopup && mentionPopup.classList.contains('show')) {
-                            const firstItem = mentionPopup.querySelector('.mw-mention-item');
-                            if (firstItem) {
+                        if (isPopupOpen) {
+                            const activeItem = mentionPopup.querySelector('.mw-mention-item.selected') || mentionPopup.querySelector('.mw-mention-item');
+                            if (activeItem) {
                                 e.preventDefault();
-                                firstItem.click();
+                                activeItem.click();
                                 return;
                             }
                         }
@@ -4061,14 +4473,49 @@ document.addEventListener('DOMContentLoaded', function () {
     if (taskReviewerSelect) taskReviewerSelect.addEventListener('change', updateNoticeBox);
     updateNoticeBox();
 
-    // Show Repeat options only when "Is Recurring" is ticked
+    // Show Repeat options only when "Is Recurring" is ticked + Custom Schedule Start/End Date
     const chkIsRecurring = document.getElementById('chkIsRecurring');
     const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
+    const selRecType = document.getElementById('taskRecurrenceType');
+    const customDatesWrap = document.getElementById('customRecurringDatesWrap');
+    const customStartInput = document.getElementById('customRecurringStartInput');
+    const customEndInput = document.getElementById('customRecurringEndInput');
+    const btnClearCustomDates = document.getElementById('btnClearCustomDates');
+
+    window.setCustomRecurringDates = function (datesArr) {
+        const firstDate = (Array.isArray(datesArr) && datesArr.length > 0) ? String(datesArr[0]).trim() : '';
+        if (customStartInput) customStartInput.value = firstDate;
+        if (!firstDate && customEndInput) customEndInput.value = '';
+        if (customDatesWrap) {
+            customDatesWrap.style.display = (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') ? 'block' : 'none';
+        }
+        if (customStartInput) {
+            customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
+        }
+    };
+
+    if (btnClearCustomDates) {
+        btnClearCustomDates.addEventListener('click', () => {
+            if (customStartInput) customStartInput.value = '';
+            if (customEndInput) customEndInput.value = '';
+        });
+    }
+
+    if (selRecType) {
+        selRecType.addEventListener('change', () => {
+            const isCust = (selRecType.value === 'custom');
+            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
+            if (customStartInput) customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && isCust);
+        });
+    }
+
     if (chkIsRecurring && rowRecurrenceEnd) {
         chkIsRecurring.addEventListener('change', () => {
             rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
-            const selRec = document.getElementById('taskRecurrenceType');
-            if (selRec) selRec.required = chkIsRecurring.checked;
+            if (selRecType) selRecType.required = chkIsRecurring.checked;
+            const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
+            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
+            if (customStartInput) customStartInput.required = isCust;
         });
     }
 
