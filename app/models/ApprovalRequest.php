@@ -2394,7 +2394,8 @@ class ApprovalRequest extends Model
         // Sales Team Head check (Primary Role 9 OR Secondary Role 9 OR role name contains 'sales team head')
         $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId], true) 
             || strpos($roleName, 'sales team head') !== false 
-            || strpos($roleName, 'sales head') !== false;
+            || strpos($roleName, 'sales head') !== false
+            || strpos($roleName, 'head of sales') !== false;
 
         $salesHeadCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
                           AND LOWER({$prefix}approve_role) = 'sales_head' 
@@ -2841,7 +2842,8 @@ class ApprovalRequest extends Model
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
         $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId], true) 
             || strpos($sessionRoleName, 'sales team head') !== false 
-            || strpos($sessionRoleName, 'sales head') !== false;
+            || strpos($sessionRoleName, 'sales head') !== false
+            || strpos($sessionRoleName, 'head of sales') !== false;
         $isAccountsHead = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
         $isAccounts = ($userRoleId === 6) || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHead);
         $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
@@ -4545,7 +4547,8 @@ class ApprovalRequest extends Model
         // Sales Team Head: Role 9 (Primary or Secondary)
         $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId], true) 
             || strpos($sessionRoleName, 'sales team head') !== false 
-            || strpos($sessionRoleName, 'sales head') !== false;
+            || strpos($sessionRoleName, 'sales head') !== false
+            || strpos($sessionRoleName, 'head of sales') !== false;
 
         // Accounts Head: Role 30 | Accounts: Role 6
         $isAccountsHead = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;

@@ -150,7 +150,33 @@ class TrackerCalculationService
             }
         }
         
-        // 1. Management, Directors, Super Admins, System Admins, HR, Accounts, Purchase, etc.
+        // 1. Check Sales Manager (multi-team via sales_manager_teams) BEFORE global admin
+        //    so a Sales Manager whose role_id happens to be in any list is still scoped to assigned teams.
+        $isSalesMgr = (function_exists('isSalesManager') && isSalesManager()) || $roleName === 'sales manager';
+        if ($isSalesMgr) {
+            $managedIds = function_exists('getManagedTeamIds')
+                ? getManagedTeamIds($this->db, (int)($user['id'] ?? 0))
+                : [];
+            if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedIds, true)) {
+                return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
+            }
+            return ['type' => 'TEAMS', 'team_ids' => $managedIds];
+        }
+
+        // 1b. Sales Team Leader (Role 5) is ALWAYS scoped strictly to their own team
+        if ($roleId === 5 || str_contains($roleName, 'team leader')) {
+            return ['type' => 'TEAM', 'team_id' => (int)($teamId ?? 0)];
+        }
+
+        // 1c. Sales Executive (Role 8) is scoped to their own team or self (never global admin)
+        if ($roleId === 8) {
+            if (!empty($teamId)) {
+                return ['type' => 'TEAM', 'team_id' => (int)$teamId];
+            }
+            return ['type' => 'SELF', 'user_id' => (int)($user['id'] ?? 0)];
+        }
+
+        // 2. Management, Directors, Super Admins, System Admins, HR, Accounts, Purchase, etc.
         // Also: Any non-sales employee (department_id != 1) who has permission to view the report
         // should view the full Company-Wide report rather than restricting to a non-existent personal sales record.
         $isGlobalAdmin = (
@@ -164,18 +190,17 @@ class TrackerCalculationService
             || ($empDeptId !== null && $empDeptId !== 1)
         );
 
-        // 2. Sales Head & Sales Manager
-        // Must ALWAYS oversee all sales teams and all members across the company by default,
-        // even if they have a team_id assigned in employees or users table.
-        $isSalesManagerOrHead = (
-            in_array($roleId, [5, 9]) 
+        // 3. Head of Sales (Role 9) oversees all sales teams across the company.
+        // Sales Team Leader (Role 5) is restricted to their own team (handled in step 4).
+        $isSalesHead = (
+            $roleId === 9
             || str_contains($roleName, 'sales team head') 
+            || str_contains($roleName, 'head of sales')
             || str_contains($roleName, 'sales head')
             || (str_contains($roleName, 'head') && str_contains($roleName, 'sales'))
-            || str_contains($roleName, 'manager')
         );
 
-        if ($isGlobalAdmin || $isSalesManagerOrHead) {
+        if ($isGlobalAdmin || $isSalesHead) {
             if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
                 return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
             }
@@ -214,6 +239,9 @@ class TrackerCalculationService
         $empCondition = "e.department_id = 1 AND LOWER(e.employee_status) = 'active'";
         if ($scope['type'] === 'TEAM') {
             $empCondition .= " AND COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) = " . (int)$scope['team_id'];
+        } elseif ($scope['type'] === 'TEAMS') {
+            $tIds = !empty($scope['team_ids']) ? implode(',', array_map('intval', $scope['team_ids'])) : '0';
+            $empCondition .= " AND COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) IN ($tIds)";
         } elseif ($scope['type'] === 'SELF') {
             $empCondition .= " AND e.user_id = " . (int)$scope['user_id'];
         }
@@ -1090,6 +1118,9 @@ class TrackerCalculationService
         $empCondition = "e.department_id = 1 AND LOWER(e.employee_status) = 'active'";
         if ($scope['type'] === 'TEAM') {
             $empCondition .= " AND COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) = " . (int)$scope['team_id'];
+        } elseif ($scope['type'] === 'TEAMS') {
+            $tIds = !empty($scope['team_ids']) ? implode(',', array_map('intval', $scope['team_ids'])) : '0';
+            $empCondition .= " AND COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) IN ($tIds)";
         } elseif ($scope['type'] === 'SELF') {
             $empCondition .= " AND e.user_id = " . (int)$scope['user_id'];
         }

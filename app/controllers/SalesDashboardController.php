@@ -54,12 +54,41 @@ class SalesDashboardController extends Controller
             $trendMode = 'cycle';
         }
 
-        // Access scoping
-        // Admin, Super Admin, Sales Team Head, Management, Chief Officer, SEAL CEO can filter any team
-        if (in_array($roleId, [1, 3, 9, 32, 33, 34, 35], true)) {
+        // Access scoping & dropdown filtering
+        // Head of Sales (9) & Management (1, 3, 20, 32, 33, 34, 35, 38) -> all teams, projects, executives
+        // Sales Manager -> only their assigned teams, those teams' executives & assigned projects
+        // Sales Team Leader (5) / Team Leader -> locked to own team, own team's executives & assigned projects
+        $rawTeamsList = $this->performanceService->getTeams();
+        $rawProjectsList = $this->performanceService->getProjects();
+        $rawSalesUsers = $this->performanceService->getSalesUsers();
+        [$teamsList, $projectsList, $salesUsers, $scope] = filterSalesDropdowns($this->db, $rawTeamsList, $rawProjectsList, $rawSalesUsers);
+
+        $managedTeamIds = $scope['team_ids'] ?? [];
+        if ($scope['is_global']) {
             $effectiveTeamId = $filterTeamId;
+        } elseif ($scope['is_manager']) {
+            if ($filterTeamId && in_array($filterTeamId, $managedTeamIds, true)) {
+                $effectiveTeamId = $filterTeamId;
+            } else {
+                $effectiveTeamId = null; // Will be scoped to $managedTeamIds below
+            }
         } else {
-            $effectiveTeamId = $sessionTeamId ?: $filterTeamId;
+            $effectiveTeamId = !empty($managedTeamIds) ? (int) $managedTeamIds[0] : $sessionTeamId;
+        }
+
+        if (!$scope['is_global']) {
+            if ($filterProjectId) {
+                $allowedPids = array_map(fn($p) => (int) ($p['id'] ?? 0), $projectsList);
+                if (!in_array($filterProjectId, $allowedPids, true)) {
+                    $filterProjectId = null;
+                }
+            }
+            if ($filterExecutiveId) {
+                $allowedUids = array_map(fn($u) => (int) ($u['id'] ?? 0), $salesUsers);
+                if (!in_array($filterExecutiveId, $allowedUids, true)) {
+                    $filterExecutiveId = null;
+                }
+            }
         }
 
         // Quick Preset: Last cycle
@@ -106,7 +135,14 @@ class SalesDashboardController extends Controller
         $overall = $serviceData['overall'];
 
         // Scope SQL conditions for secondary queries
-        $teamB = $effectiveTeamId ? " AND COALESCE(lb.team_id, l.team_id) = {$effectiveTeamId}" : "";
+        if ($effectiveTeamId) {
+            $teamB = " AND COALESCE(lb.team_id, l.team_id) = {$effectiveTeamId}";
+        } elseif ($scope['is_manager']) {
+            $inTeams = !empty($managedTeamIds) ? implode(',', array_map('intval', $managedTeamIds)) : '-1';
+            $teamB = " AND COALESCE(lb.team_id, l.team_id) IN ({$inTeams})";
+        } else {
+            $teamB = "";
+        }
         $projB = $filterProjectId ? " AND lb.project_id = {$filterProjectId}" : "";
         $execB = $filterExecutiveId ? " AND (lb.sales_by_id = {$filterExecutiveId} OR (COALESCE(lb.sales_by_id, 0) = 0 AND l.assigned_id = {$filterExecutiveId}))" : "";
         $refundExclude = " AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
@@ -925,11 +961,8 @@ class SalesDashboardController extends Controller
             $drilldown['collections'][] = $cp;
         }
 
-        // Dropdowns data
+        // Dropdowns data (already scoped by filterSalesDropdowns above)
         $cycleOptions = $this->performanceService->cycleOptions(12);
-        $teamsList = $this->performanceService->getTeams();
-        $projectsList = $this->performanceService->getProjects();
-        $salesUsers = $this->performanceService->getSalesUsers();
 
         // Pass everything to view
         $this->view("sales-developments/sales-dashboard", [

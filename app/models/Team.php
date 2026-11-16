@@ -61,10 +61,166 @@ class Team extends Model
             $t['leader'] = $leader;
             $t['leader_id'] = $leader ? (int)$leader['id'] : 0;
             $t['leader_name'] = $leader ? $leader['full_name'] : null;
+            $t['manager_user_id'] = 0;
+            $t['manager_name'] = null;
+            $t['manager_assigned_at'] = null;
         }
         unset($t);
 
+        // Attach active Sales Manager per team (if pivot table exists)
+        if ($this->hasSalesManagerTeamsTable()) {
+            $mSql = "SELECT smt.team_id, smt.manager_user_id, smt.assigned_at, u.full_name AS manager_name
+                     FROM sales_manager_teams smt
+                     INNER JOIN users u ON u.id = smt.manager_user_id
+                     WHERE smt.is_active = 1
+                     ORDER BY smt.id DESC";
+            $mRes = $this->db->query($mSql);
+            if ($mRes) {
+                $managersByTeam = [];
+                while ($mRow = $mRes->fetch_assoc()) {
+                    $tid = (int)$mRow['team_id'];
+                    if (!isset($managersByTeam[$tid])) {
+                        $managersByTeam[$tid] = $mRow;
+                    }
+                }
+                foreach ($teams as &$t) {
+                    $tid = (int)$t['id'];
+                    if (isset($managersByTeam[$tid])) {
+                        $t['manager_user_id'] = (int)$managersByTeam[$tid]['manager_user_id'];
+                        $t['manager_name'] = $managersByTeam[$tid]['manager_name'];
+                        $t['manager_assigned_at'] = $managersByTeam[$tid]['assigned_at'];
+                    }
+                }
+                unset($t);
+            }
+        }
+
         return $teams;
+    }
+
+    /**
+     * Check if sales_manager_teams pivot table exists (safe for pre-migration live code).
+     */
+    public function hasSalesManagerTeamsTable(): bool
+    {
+        static $exists = null;
+        if ($exists === null) {
+            $res = @$this->db->query("SHOW TABLES LIKE 'sales_manager_teams'");
+            $exists = ($res && $res->num_rows > 0);
+        }
+        return $exists;
+    }
+
+    /**
+     * Fetch active users who hold the new Sales Manager role.
+     */
+    public function getSalesManagers(): array
+    {
+        $sql = "SELECT u.id, u.full_name, u.phone, e.employee_id AS employee_code
+                FROM users u
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                LEFT JOIN roles r ON r.id = u.role_id
+                LEFT JOIN roles sr ON sr.id = u.secondary_role_id
+                WHERE (
+                    (LOWER(TRIM(r.name)) = 'sales manager' AND r.id != 5)
+                    OR
+                    (LOWER(TRIM(sr.name)) = 'sales manager' AND sr.id != 5)
+                )
+                  AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                ORDER BY u.full_name ASC";
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Assign or change the Sales Manager for a team while preserving full history.
+     */
+    public function syncTeamManager(int $teamId, int $managerUserId, ?int $assignedBy = null, ?string $note = null): bool
+    {
+        if ($teamId <= 0 || !$this->hasSalesManagerTeamsTable()) {
+            return false;
+        }
+
+        // Check current active manager
+        $currentManagerId = 0;
+        $chk = $this->db->prepare("SELECT manager_user_id FROM sales_manager_teams WHERE team_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1");
+        if ($chk) {
+            $chk->bind_param("i", $teamId);
+            $chk->execute();
+            $row = $chk->get_result()->fetch_assoc();
+            $currentManagerId = (int)($row['manager_user_id'] ?? 0);
+            $chk->close();
+        }
+
+        if ($currentManagerId === $managerUserId) {
+            return true; // No change
+        }
+
+        $this->db->begin_transaction();
+        try {
+            // Deactivate previous active assignment(s) for this team
+            $deact = $this->db->prepare(
+                "UPDATE sales_manager_teams
+                 SET is_active = 0, unassigned_by = ?, unassigned_at = NOW()
+                 WHERE team_id = ? AND is_active = 1"
+            );
+            if ($deact) {
+                $deact->bind_param("ii", $assignedBy, $teamId);
+                $deact->execute();
+                $deact->close();
+            }
+
+            // Insert new active assignment if a manager was selected
+            if ($managerUserId > 0) {
+                $ins = $this->db->prepare(
+                    "INSERT INTO sales_manager_teams (manager_user_id, team_id, is_active, assigned_by, assigned_at, note)
+                     VALUES (?, ?, 1, ?, NOW(), ?)"
+                );
+                if ($ins) {
+                    $ins->bind_param("iiis", $managerUserId, $teamId, $assignedBy, $note);
+                    $ins->execute();
+                    $ins->close();
+                }
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            return false;
+        }
+    }
+
+    /**
+     * Fetch full Sales Manager assignment history for a team.
+     */
+    public function getTeamManagerHistory(int $teamId): array
+    {
+        if ($teamId <= 0 || !$this->hasSalesManagerTeamsTable()) {
+            return [];
+        }
+
+        $sql = "SELECT smt.id, smt.manager_user_id, smt.team_id, smt.is_active,
+                       smt.assigned_at, smt.unassigned_at, smt.note,
+                       u_mgr.full_name AS manager_name,
+                       u_by.full_name AS assigned_by_name,
+                       u_un.full_name AS unassigned_by_name
+                FROM sales_manager_teams smt
+                LEFT JOIN users u_mgr ON u_mgr.id = smt.manager_user_id
+                LEFT JOIN users u_by ON u_by.id = smt.assigned_by
+                LEFT JOIN users u_un ON u_un.id = smt.unassigned_by
+                WHERE smt.team_id = ?
+                ORDER BY smt.is_active DESC, smt.assigned_at DESC, smt.id DESC";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param("i", $teamId);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $res;
     }
 
     /**

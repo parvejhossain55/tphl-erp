@@ -455,6 +455,95 @@ class Lead extends Model
         ];
     }
 
+    /**
+     * Append team-based SQL filter supporting either a single team_id or an array of team_ids.
+     */
+    private function appendLeadTeamFilter(string &$sql, array &$params, string &$types, $teamId, bool $forBookingsQuery = false): void
+    {
+        if (empty($teamId)) {
+            return;
+        }
+
+        $teamIds = is_array($teamId)
+            ? array_values(array_filter(array_map('intval', $teamId), fn($id) => $id !== 0))
+            : [(int)$teamId];
+
+        if (empty($teamIds)) {
+            $sql .= " AND 1 = 0";
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
+        $tTypes = str_repeat('i', count($teamIds));
+        $loggedInRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isGlobalViewer = in_array($loggedInRole, [1, 3, 9, 32, 33, 34, 35], true);
+        $loggedInUserId = (int)($_SESSION['user']['id'] ?? 0);
+
+        if ($forBookingsQuery) {
+            if (!$isGlobalViewer) {
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ($placeholders)) OR l.assigned_id = ?))
+                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id IN ($placeholders))
+                    OR lb.sales_by_id = ?
+                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ($placeholders))
+                )";
+                foreach ($teamIds as $tid) { $params[] = $tid; }
+                $params[] = $loggedInUserId;
+                foreach ($teamIds as $tid) { $params[] = $tid; }
+                $params[] = $loggedInUserId;
+                foreach ($teamIds as $tid) { $params[] = $tid; }
+                $types .= $tTypes . 'i' . $tTypes . 'i' . $tTypes;
+            } else {
+                $sql .= " AND (
+                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ($placeholders)))
+                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id IN ($placeholders))
+                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ($placeholders))
+                )";
+                foreach ($teamIds as $tid) { $params[] = $tid; }
+                foreach ($teamIds as $tid) { $params[] = $tid; }
+                foreach ($teamIds as $tid) { $params[] = $tid; }
+                $types .= $tTypes . $tTypes . $tTypes;
+            }
+            return;
+        }
+
+        if (!$isGlobalViewer) {
+            $sql .= " AND (
+                (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ($placeholders)) OR l.assigned_id = ?))
+                OR
+                (l.team_id IN ($placeholders))
+                OR EXISTS (
+                    SELECT 1 FROM lead_bookings lb_tm 
+                    WHERE lb_tm.lead_id = l.id 
+                      AND (lb_tm.sales_by_id = ? OR lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id IN ($placeholders))) 
+                      AND lb_tm.deleted_at IS NULL
+                )
+            )";
+            foreach ($teamIds as $tid) { $params[] = $tid; }
+            $params[] = $loggedInUserId;
+            foreach ($teamIds as $tid) { $params[] = $tid; }
+            $params[] = $loggedInUserId;
+            foreach ($teamIds as $tid) { $params[] = $tid; }
+            $types .= $tTypes . 'i' . $tTypes . 'i' . $tTypes;
+        } else {
+            $sql .= " AND (
+                (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ($placeholders)))
+                OR
+                (l.team_id IN ($placeholders))
+                OR EXISTS (
+                    SELECT 1 FROM lead_bookings lb_tm 
+                    WHERE lb_tm.lead_id = l.id 
+                      AND lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id IN ($placeholders)) 
+                      AND lb_tm.deleted_at IS NULL
+                )
+            )";
+            foreach ($teamIds as $tid) { $params[] = $tid; }
+            foreach ($teamIds as $tid) { $params[] = $tid; }
+            foreach ($teamIds as $tid) { $params[] = $tid; }
+            $types .= $tTypes . $tTypes . $tTypes;
+        }
+    }
+
     public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $date_type = 'created_at')
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
@@ -484,44 +573,7 @@ class Lead extends Model
         }
 
         // TEAM BASED FILTER
-        if (!empty($teamId)) {
-            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
-                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (
-                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
-                    OR
-                    (l.team_id = ?)
-                    OR EXISTS (
-                        SELECT 1 FROM lead_bookings lb_tm 
-                        WHERE lb_tm.lead_id = l.id 
-                          AND (lb_tm.sales_by_id = ? OR lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?)) 
-                          AND lb_tm.deleted_at IS NULL
-                    )
-                )";
-                $params[] = $teamId;
-                $params[] = $loggedInUserId;
-                $params[] = $teamId;
-                $params[] = $loggedInUserId;
-                $params[] = $teamId;
-                $types .= "iiiii";
-            } else {
-                $sql .= " AND (
-                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
-                    OR
-                    (l.team_id = ?)
-                    OR EXISTS (
-                        SELECT 1 FROM lead_bookings lb_tm 
-                        WHERE lb_tm.lead_id = l.id 
-                          AND lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?) 
-                          AND lb_tm.deleted_at IS NULL
-                    )
-                )";
-                $params[] = $teamId;
-                $params[] = $teamId;
-                $params[] = $teamId;
-                $types .= "iii";
-            }
-        }
+        $this->appendLeadTeamFilter($sql, $params, $types, $teamId, false);
 
         // Determine if we should apply created_at date filter
         $applyCreatedDateFilter = true;
@@ -972,34 +1024,7 @@ class Lead extends Model
         $types  = "";
 
         // Team filter: check assigned executive's team, or closing sales executive's team, or unassigned lead's team
-        if (!empty($teamId)) {
-            $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
-            if (!in_array((int)$loggedInRole, [1, 3, 9, 32, 33, 34, 35])) {
-                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (
-                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
-                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
-                    OR lb.sales_by_id = ?
-                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)
-                )";
-                $params[] = $teamId;
-                $params[] = $loggedInUserId;
-                $params[] = $teamId;
-                $params[] = $loggedInUserId;
-                $params[] = $teamId;
-                $types .= "iiiii";
-            } else {
-                $sql .= " AND (
-                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
-                    OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = ?)
-                    OR lb.sales_by_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?)
-                )";
-                $params[] = $teamId;
-                $params[] = $teamId;
-                $params[] = $teamId;
-                $types .= "iii";
-            }
-        }
+        $this->appendLeadTeamFilter($sql, $params, $types, $teamId, true);
 
         // Assigned user filter
         if (!empty($assigned_user)) {
@@ -1192,44 +1217,7 @@ class Lead extends Model
         }
 
         // TEAM BASED FILTER
-        if (!empty($teamId)) {
-            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
-                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (
-                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?) OR l.assigned_id = ?))
-                    OR
-                    (l.team_id = ?)
-                    OR EXISTS (
-                        SELECT 1 FROM lead_bookings lb_tm 
-                        WHERE lb_tm.lead_id = l.id 
-                          AND (lb_tm.sales_by_id = ? OR lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?)) 
-                          AND lb_tm.deleted_at IS NULL
-                    )
-                )";
-                $params[] = $teamId;
-                $params[] = $loggedInUserId;
-                $params[] = $teamId;
-                $params[] = $loggedInUserId;
-                $params[] = $teamId;
-                $types .= "iiiii";
-            } else {
-                $sql .= " AND (
-                    (l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = ?))
-                    OR
-                    (l.team_id = ?)
-                    OR EXISTS (
-                        SELECT 1 FROM lead_bookings lb_tm 
-                        WHERE lb_tm.lead_id = l.id 
-                          AND lb_tm.sales_by_id IN (SELECT u_tm2.id FROM users u_tm2 WHERE u_tm2.team_id = ?) 
-                          AND lb_tm.deleted_at IS NULL
-                    )
-                )";
-                $params[] = $teamId;
-                $params[] = $teamId;
-                $params[] = $teamId;
-                $types .= "iii";
-            }
-        }
+        $this->appendLeadTeamFilter($sql, $params, $types, $teamId, false);
 
         // Determine if we should apply created_at date filter
         $applyCreatedDateFilter = true;
@@ -3286,12 +3274,15 @@ class Lead extends Model
      * @param int $teamId
      * @return array
      */
-    public function getTeamMemberUsers(int $teamId): array
+    public function getTeamMemberUsers(int|array $teamId): array
     {
-        $teamId = (int)$teamId;
-        if ($teamId <= 0) {
+        $teamIds = is_array($teamId)
+            ? array_values(array_unique(array_filter(array_map('intval', $teamId), fn($id) => $id > 0)))
+            : ((int)$teamId > 0 ? [(int)$teamId] : []);
+        if (empty($teamIds)) {
             return [];
         }
+        $teamIdsList = implode(',', $teamIds);
 
         $sql = "
             SELECT DISTINCT 
@@ -3308,20 +3299,12 @@ class Lead extends Model
             LEFT JOIN users u ON (u.id = e.user_id OR (e.user_id IS NULL AND u.employee_id = e.id))
             LEFT JOIN roles r ON r.id = u.role_id
             LEFT JOIN designations d ON d.id = e.designation_id
-            WHERE (e.team_id = ? OR u.team_id = ?)
+            WHERE (e.team_id IN ({$teamIdsList}) OR u.team_id IN ({$teamIdsList}))
               AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'terminated', 'inactive'))
             ORDER BY is_team_leader DESC, is_sales_co_leader DESC, full_name ASC
         ";
-        $stmt = $this->db->prepare($sql);
-        if (!$stmt) {
-            return [];
-        }
-        $stmt->bind_param("ii", $teamId, $teamId);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        $members = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
-        $stmt->close();
-        return $members;
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     /**
@@ -3340,7 +3323,7 @@ class Lead extends Model
      * @return array
      */
     public function getTeamDashboardMetrics(
-        int $teamId, 
+        int|array $teamId, 
         ?int $selectedUserId = null,
         ?int $year = null, 
         ?int $startMonth = null, 
@@ -3399,7 +3382,12 @@ class Lead extends Model
         $bkEnd   = $hasFilter ? $endDate : $cycleBkEnd;
 
         // Fetch team members user IDs
-        $members = $this->getTeamMemberUsers($teamId);
+        $teamIds = is_array($teamId)
+            ? array_values(array_unique(array_filter(array_map('intval', $teamId), fn($id) => $id > 0)))
+            : ((int)$teamId > 0 ? [(int)$teamId] : []);
+        $teamIdsList = !empty($teamIds) ? implode(',', $teamIds) : '0';
+
+        $members = $this->getTeamMemberUsers($teamIds);
         $memberIds = [];
         foreach ($members as $m) {
             if (!empty($m['user_id'])) {
@@ -3409,7 +3397,7 @@ class Lead extends Model
         $memberIdsList = !empty($memberIds) ? implode(',', $memberIds) : '0';
 
         // Team Lead Scope condition (consistent with Lead::countAllWithFilter)
-        $leadScope = "((l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN ({$memberIdsList}) OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = {$teamId}))) OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = {$teamId}))";
+        $leadScope = "((l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN ({$memberIdsList}) OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ({$teamIdsList})))) OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id IN ({$teamIdsList})))";
 
         // Hide undistributed automated leads from sales users until approved (distribute = 1)
         $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
@@ -3850,7 +3838,7 @@ class Lead extends Model
      * Deducts refunded bookings (crr status IN ('pending', 'approved', 'refunded') or lb.booking_status IN ('refunded', 'cancelled')).
      * Calculates Land Share Value and Payments collected.
      */
-    public function getTeamMemberSalesPerformance(int $teamId, ?string $startDate = null, ?string $endDate = null, bool $hasFilter = false): array
+    public function getTeamMemberSalesPerformance(int|array $teamId, ?string $startDate = null, ?string $endDate = null, bool $hasFilter = false): array
     {
         $members = $this->getTeamMemberUsers($teamId);
         $loggedInRole = $_SESSION['user']['role_id'] ?? 0;

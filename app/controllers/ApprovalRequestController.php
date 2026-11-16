@@ -281,7 +281,8 @@ class ApprovalRequestController extends Controller
         }
         $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId, $userPriRoleId], true) 
             || strpos($sessionRoleName, 'sales team head') !== false 
-            || strpos($sessionRoleName, 'sales head') !== false;
+            || strpos($sessionRoleName, 'sales head') !== false
+            || strpos($sessionRoleName, 'head of sales') !== false;
         $isAccountsHead = in_array(30, [$userRoleId, $userSecRoleId, $userPriRoleId], true) || strpos($sessionRoleName, 'accounts head') !== false;
 
         foreach ($requestIds as $id) {
@@ -409,7 +410,8 @@ class ApprovalRequestController extends Controller
 
         $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId, $userPriRoleId], true) 
             || strpos($sessionRoleName, 'sales team head') !== false 
-            || strpos($sessionRoleName, 'sales head') !== false;
+            || strpos($sessionRoleName, 'sales head') !== false
+            || strpos($sessionRoleName, 'head of sales') !== false;
 
         $isAuthorized = $isSalesHead 
             || in_array($userRoleId, [1, 3, 20, 32, 38], true) 
@@ -501,7 +503,8 @@ class ApprovalRequestController extends Controller
 
         $isSalesHead = in_array(9, [$userRoleId, $userSecRoleId, $userPriRoleId], true) 
             || strpos($sessionRoleName, 'sales team head') !== false 
-            || strpos($sessionRoleName, 'sales head') !== false;
+            || strpos($sessionRoleName, 'sales head') !== false
+            || strpos($sessionRoleName, 'head of sales') !== false;
 
         $isAuthorized = $isSalesHead 
             || in_array($userRoleId, [1, 3, 20, 32, 38], true) 
