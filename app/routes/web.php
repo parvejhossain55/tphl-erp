@@ -138,6 +138,7 @@ return [
     'update-team' => ['controller' => 'TeamController', 'method' => 'update'],
     'delete-team' => ['controller' => 'TeamController', 'method' => 'delete'],
     'team-manager-history' => ['controller' => 'TeamController', 'method' => 'managerHistory'],
+    'assign-manager-teams' => ['controller' => 'TeamController', 'method' => 'assignManagerTeams'],
 
     // =========================================================================
     // Controller: ProjectProgressController

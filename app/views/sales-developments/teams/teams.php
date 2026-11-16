@@ -222,7 +222,12 @@ $show_breadcrumb = true;
             <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="right: 14px; top: 12px;"></i>
         </div>
     </div>
-    <div class="col-md-6 col-lg-8 text-md-end">
+    <div class="col-md-6 col-lg-8 text-md-end d-flex justify-content-md-end gap-2 flex-wrap">
+        <?php if (!empty($canAssignSalesManager)): ?>
+            <button type="button" class="btn btn-outline-success fw-semibold" data-bs-toggle="modal" data-bs-target="#assignManagerModal">
+                <i class="fa-solid fa-user-tie me-1"></i> Assign Manager
+            </button>
+        <?php endif; ?>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewTeam">
             <i class="fa-solid fa-plus me-1"></i> Add Team
         </button>
@@ -721,7 +726,7 @@ $show_breadcrumb = true;
                     <?php if (!empty($canAssignSalesManager)): ?>
                     <div class="row g-3 mb-4">
                         <div class="col-md-7">
-                            <label class="form-label fw-semibold text-dark">Assigned Sales Manager <small class="text-muted fw-normal">(Head of Sales only)</small></label>
+                            <label class="form-label fw-semibold text-dark">Assigned Sales Manager</label>
                             <select class="form-select" name="manager_user_id" id="edit_manager_user_id">
                                 <option value="0">-- Unassigned --</option>
                                 <?php foreach (($salesManagers ?? []) as $sm): ?>
@@ -1218,6 +1223,97 @@ $show_breadcrumb = true;
                     $tbody.html('<tr><td colspan="5" class="text-center text-danger py-3">Failed to load history.</td></tr>');
                 });
         });
+
+        // Bulk Assign Sales Manager Modal logic
+        function refreshAssignManagerUI() {
+            var selectedManagerId = String($('#bulk_manager_user_id').val() || '');
+            var $chips = $('#bulkCurrentAssignedChips');
+            var $section = $('#bulkTeamsSection');
+            var $submitBtn = $('#bulkAssignSubmitBtn');
+
+            if (!selectedManagerId) {
+                $section.hide();
+                $submitBtn.prop('disabled', true);
+                return;
+            }
+
+            $section.show();
+            $submitBtn.prop('disabled', false);
+
+            $chips.empty();
+            var assignedCount = 0;
+            $('.bulk-team-checkbox').each(function() {
+                var $cb = $(this);
+                var $item = $cb.closest('.bulk-team-item');
+                if ($cb.is(':checked')) {
+                    assignedCount++;
+                    $item.addClass('is-checked');
+                    var tid = $cb.val();
+                    var tname = $cb.data('team-name');
+                    $chips.append(
+                        '<span class="am-chip">' +
+                            '<span>' + $('<div>').text(tname).html() + '</span>' +
+                            '<button type="button" class="am-chip-remove remove-assigned-chip" data-team-id="' + tid + '" aria-label="Remove" title="Remove team">' +
+                                '<i class="fa-solid fa-xmark"></i>' +
+                            '</button>' +
+                        '</span>'
+                    );
+                } else {
+                    $item.removeClass('is-checked');
+                }
+            });
+
+            if (assignedCount === 0) {
+                $chips.html('<span class="text-muted small py-1">No teams currently assigned to this manager.</span>');
+            }
+            $('#bulkSelectedCount').text(assignedCount + ' Selected');
+        }
+
+        $('#bulk_manager_user_id').on('change', function() {
+            var mgrId = String($(this).val() || '');
+            $('.bulk-team-checkbox').each(function() {
+                var currentMgr = String($(this).data('current-manager-id') || '');
+                $(this).prop('checked', mgrId !== '' && currentMgr === mgrId);
+            });
+            refreshAssignManagerUI();
+        });
+
+        $(document).on('change', '.bulk-team-checkbox', function() {
+            refreshAssignManagerUI();
+        });
+
+        $(document).on('click', '.remove-assigned-chip', function() {
+            var tid = $(this).data('team-id');
+            $('.bulk-team-checkbox[value="' + tid + '"]').prop('checked', false);
+            refreshAssignManagerUI();
+        });
+
+        $('#bulkTeamSearch').on('input', function() {
+            var q = $(this).val().toLowerCase().trim();
+            $('.bulk-team-item').each(function() {
+                var name = String($(this).data('team-search') || '');
+                $(this).toggle(q === '' || name.indexOf(q) !== -1);
+            });
+        });
+
+        $('#bulkSelectAllBtn').on('click', function() {
+            $('.bulk-team-item:visible .bulk-team-checkbox').prop('checked', true);
+            refreshAssignManagerUI();
+        });
+
+        $('#bulkClearAllBtn').on('click', function() {
+            $('.bulk-team-checkbox').prop('checked', false);
+            refreshAssignManagerUI();
+        });
+
+        $('#assignManagerModal').on('show.bs.modal', function() {
+            $('#bulk_manager_user_id').val('');
+            $('#bulkTeamSearch').val('');
+            $('#bulk_manager_note').val('');
+            $('.bulk-team-item').show();
+            $('.bulk-team-checkbox').prop('checked', false);
+            refreshAssignManagerUI();
+        });
     });
 })(jQuery);
 <?php $page_script = ob_get_clean(); ?>
@@ -1254,3 +1350,199 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+
+<?php if (!empty($canAssignSalesManager)): ?>
+<style>
+    #assignManagerModal .modal-dialog {
+        max-width: min(780px, 95vw);
+        margin: 1rem auto;
+    }
+    #assignManagerModal .modal-content {
+        border-radius: 14px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    #assignManagerModal form {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+    #assignManagerModal .modal-body {
+        overflow-y: auto;
+        flex: 1 1 auto;
+    }
+    #assignManagerModal .am-chips-box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        min-height: 44px;
+    }
+    #assignManagerModal .am-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 10px 5px 12px;
+        border-radius: 999px;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #065f46;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+    #assignManagerModal .am-chip-remove {
+        border: none;
+        background: rgba(6, 95, 70, 0.12);
+        color: #065f46;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        padding: 0;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    #assignManagerModal .am-chip-remove:hover {
+        background: #dc2626;
+        color: #ffffff;
+    }
+    #assignManagerModal .am-teams-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 8px;
+        padding: 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #ffffff;
+        max-height: clamp(200px, 34vh, 320px);
+        overflow-y: auto;
+    }
+    #assignManagerModal .bulk-team-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        cursor: pointer;
+        margin: 0;
+        transition: all 0.15s ease;
+    }
+    #assignManagerModal .bulk-team-item:hover {
+        border-color: #86efac;
+        background: #f8fafc;
+    }
+    #assignManagerModal .bulk-team-item.is-checked {
+        border-color: #22c55e;
+        background: #f0fdf4;
+    }
+    #assignManagerModal .bulk-team-item .form-check-input:checked {
+        background-color: #16a34a;
+        border-color: #16a34a;
+    }
+</style>
+
+<!-- Minimal & Clean Bulk Assign Sales Manager Modal -->
+<div id="assignManagerModal" class="modal custom-modal fade" role="dialog" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom px-4 py-3 bg-white">
+                <h5 class="modal-title fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: #ecfdf5; color: #16a34a;">
+                        <i class="fa-solid fa-user-tie" style="font-size: 14px;"></i>
+                    </span>
+                    <span>Assign Sales Manager</span>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/assign-manager-teams" method="POST">
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-7">
+                            <label for="bulk_manager_user_id" class="form-label fw-semibold text-secondary small text-uppercase mb-1">Select Sales Manager</label>
+                            <select class="form-select" name="manager_user_id" id="bulk_manager_user_id" required style="border-radius: 8px; border-color: #cbd5e1;">
+                                <option value="">-- Select Sales Manager --</option>
+                                <?php foreach (($salesManagers ?? []) as $sm): ?>
+                                    <option value="<?= (int)$sm['id'] ?>">
+                                        <?= htmlspecialchars($sm['full_name']) ?><?= !empty($sm['employee_code']) ? ' (' . htmlspecialchars($sm['employee_code']) . ')' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label for="bulk_manager_note" class="form-label fw-semibold text-secondary small text-uppercase mb-1">Note (Optional)</label>
+                            <input type="text" class="form-control" name="note" id="bulk_manager_note" placeholder="Reason for change" style="border-radius: 8px; border-color: #cbd5e1;">
+                        </div>
+                    </div>
+
+                    <div id="bulkTeamsSection" style="display: none;">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="form-label fw-semibold text-secondary small text-uppercase mb-0">Assigned Teams</span>
+                                <span class="badge rounded-pill px-2.5 py-1" id="bulkSelectedCount" style="background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-size: 11.5px;">0 Selected</span>
+                            </div>
+                            <div id="bulkCurrentAssignedChips" class="am-chips-box"></div>
+                        </div>
+
+                        <div class="mb-0">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                <span class="form-label fw-semibold text-secondary small text-uppercase mb-0">Select Teams</span>
+                                <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end" style="max-width: 380px;">
+                                    <div class="position-relative flex-grow-1">
+                                        <input type="text" id="bulkTeamSearch" class="form-control form-control-sm" placeholder="Search teams..." style="border-radius: 8px; padding-right: 28px;">
+                                        <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="right: 10px; top: 8px; font-size: 11px;"></i>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-success" id="bulkSelectAllBtn" style="border-radius: 8px;">All</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkClearAllBtn" style="border-radius: 8px;">Clear</button>
+                                </div>
+                            </div>
+                            <div class="am-teams-grid">
+                                <?php foreach ($teams as $t): ?>
+                                    <?php
+                                        $tid = (int)($t['id'] ?? 0);
+                                        $tname = (string)($t['name'] ?? '');
+                                        $curMgrId = (int)($t['manager_user_id'] ?? 0);
+                                        $curMgrName = (string)($t['manager_name'] ?? '');
+                                    ?>
+                                    <label class="bulk-team-item" data-team-search="<?= htmlspecialchars(strtolower($tname)) ?>">
+                                        <span class="d-flex align-items-center gap-2 text-truncate">
+                                            <input type="checkbox" class="form-check-input mt-0 flex-shrink-0 bulk-team-checkbox" name="team_ids[]" value="<?= $tid ?>" data-team-name="<?= htmlspecialchars($tname) ?>" data-current-manager-id="<?= $curMgrId ?>">
+                                            <span class="fw-semibold text-dark text-truncate" style="font-size: 13px;"><?= htmlspecialchars($tname) ?></span>
+                                        </span>
+                                        <?php if ($curMgrId > 0 && $curMgrName !== ''): ?>
+                                            <span class="badge bg-light text-secondary border flex-shrink-0" style="font-size: 10.5px; font-weight: 500;">
+                                                <?= htmlspecialchars($curMgrName) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top px-4 py-3 bg-light">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4 fw-semibold" id="bulkAssignSubmitBtn" disabled style="border-radius: 8px;">
+                        <i class="fa-solid fa-check me-1"></i> Assign
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>

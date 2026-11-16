@@ -160,4 +160,36 @@ class TeamController extends Controller
         echo json_encode(['success' => true, 'history' => $history]);
         exit;
     }
+
+    public function assignManagerTeams()
+    {
+        if (!$this->canAssignSalesManager()) {
+            setError("You do not have permission to assign Sales Managers.");
+            header("Location: {$GLOBALS['base_url']}/teams");
+            exit;
+        }
+
+        $managerUserId = (int)($_POST['manager_user_id'] ?? 0);
+        $teamIds = $_POST['team_ids'] ?? [];
+        if (!is_array($teamIds)) {
+            $teamIds = [];
+        }
+        $note = trim((string)($_POST['note'] ?? ''));
+        $assignedBy = (int)($_SESSION['user']['id'] ?? 0) ?: null;
+
+        if ($managerUserId <= 0) {
+            setError("Please select a Sales Manager.");
+            header("Location: {$GLOBALS['base_url']}/teams");
+            exit;
+        }
+
+        if ($this->teamModel->syncManagerTeams($managerUserId, $teamIds, $assignedBy, $note !== '' ? $note : null)) {
+            setSuccess("Sales Manager team assignments updated successfully.");
+        } else {
+            setError("Failed to update Sales Manager team assignments.");
+        }
+
+        header("Location: {$GLOBALS['base_url']}/teams");
+        exit;
+    }
 }

@@ -193,6 +193,83 @@ class Team extends Model
     }
 
     /**
+     * Sync all teams assigned to a single Sales Manager in one batch while preserving full history.
+     */
+    public function syncManagerTeams(int $managerUserId, array $selectedTeamIds, ?int $assignedBy = null, ?string $note = null): bool
+    {
+        if ($managerUserId <= 0 || !$this->hasSalesManagerTeamsTable()) {
+            return false;
+        }
+
+        $targetIds = array_values(array_unique(array_filter(array_map('intval', $selectedTeamIds), fn($id) => $id > 0)));
+
+        $currentIds = [];
+        $chk = $this->db->prepare("SELECT team_id FROM sales_manager_teams WHERE manager_user_id = ? AND is_active = 1");
+        if ($chk) {
+            $chk->bind_param("i", $managerUserId);
+            $chk->execute();
+            $res = $chk->get_result();
+            while ($row = $res->fetch_assoc()) {
+                $currentIds[] = (int)$row['team_id'];
+            }
+            $chk->close();
+        }
+
+        $toRemove = array_values(array_diff($currentIds, $targetIds));
+        $toAdd    = array_values(array_diff($targetIds, $currentIds));
+
+        if (empty($toRemove) && empty($toAdd)) {
+            return true;
+        }
+
+        $this->db->begin_transaction();
+        try {
+            if (!empty($toRemove)) {
+                $inList = implode(',', $toRemove);
+                $deact = $this->db->prepare(
+                    "UPDATE sales_manager_teams
+                     SET is_active = 0, unassigned_by = ?, unassigned_at = NOW()
+                     WHERE manager_user_id = ? AND is_active = 1 AND team_id IN ({$inList})"
+                );
+                if ($deact) {
+                    $deact->bind_param("ii", $assignedBy, $managerUserId);
+                    $deact->execute();
+                    $deact->close();
+                }
+            }
+
+            foreach ($toAdd as $tid) {
+                $deactOld = $this->db->prepare(
+                    "UPDATE sales_manager_teams
+                     SET is_active = 0, unassigned_by = ?, unassigned_at = NOW()
+                     WHERE team_id = ? AND is_active = 1"
+                );
+                if ($deactOld) {
+                    $deactOld->bind_param("ii", $assignedBy, $tid);
+                    $deactOld->execute();
+                    $deactOld->close();
+                }
+
+                $ins = $this->db->prepare(
+                    "INSERT INTO sales_manager_teams (manager_user_id, team_id, is_active, assigned_by, assigned_at, note)
+                     VALUES (?, ?, 1, ?, NOW(), ?)"
+                );
+                if ($ins) {
+                    $ins->bind_param("iiis", $managerUserId, $tid, $assignedBy, $note);
+                    $ins->execute();
+                    $ins->close();
+                }
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            return false;
+        }
+    }
+
+    /**
      * Fetch full Sales Manager assignment history for a team.
      */
     public function getTeamManagerHistory(int $teamId): array
