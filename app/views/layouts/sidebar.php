@@ -281,6 +281,20 @@
             || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 2, 3], true)
             || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 2, 3], true);
 
+        $canViewMgmtOverviewV2 = !empty($isManagement)
+            || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
+            || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
+            || in_array((int)($_SESSION['user']['primary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
+            || ((int)($_SESSION['user']['id'] ?? 0) === 94);
+
+        $isHodOrTeamLeaderV2 = !empty($isDeptHead)
+            || !empty($hasReportees)
+            || !empty($_SESSION['user']['is_team_leader'])
+            || !empty($_SESSION['user']['is_sales_co_leader'])
+            || in_array((int)($_SESSION['user']['role_id'] ?? 0), [5, 9, 17, 20, 22, 24, 30, 32, 39], true);
+
+        $canViewTeamPerfV2 = $canViewMgmtOverviewV2 || $isHodOrTeamLeaderV2;
+
         // Calculate pending Fund Requisition action counts — role-specific
         $pendingFundReqTotalCount = 0;
         $pendingFundReqDeptCount = 0;
@@ -636,7 +650,9 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($isManagement || $isSbHeadOfSales || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20, 24, 25, 13, 17])): ?>
+                <?php
+                $inTopMgmtBlock = ($isManagement || $isSbHeadOfSales || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20, 24, 25, 13, 17]));
+                if ($inTopMgmtBlock): ?>
                     <!-- All Approval Requests for Management, Accounts, Sales Head & Audit/Purchase Heads -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests"
@@ -655,6 +671,46 @@
                             <span class="sidebar__menu-label">My Approval History</span>
                         </a>
                     </li>
+                    <?php if (!empty($canViewTeamPerfV2) || !empty($canViewMgmtOverviewV2)): ?>
+                    <!-- Task Manage Module (Management & HODs) -->
+                    <li
+                        class="slide has-sub <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets', 'team-performance-v2', 'management-task-overview-v2'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets', 'team-performance-v2', 'management-task-overview-v2'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">Task Manage</span>
+                            <?php if (($myWorkPendingCount ?? 0) > 0): ?>
+                                <span class="badge bg-danger ms-auto me-4 rounded-pill"
+                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
+                            <?php endif; ?>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <?php if ($canViewMgmtOverviewV2): ?>
+                            <li class="slide <?= isActive('management-task-overview-v2', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('management-task-overview-v2', $current_route) ?>"
+                                    href="<?= $base_url ?>/management-task-overview-v2">Management Overview</a>
+                            </li>
+                            <?php endif; ?>
+                            <?php if ($canViewTeamPerfV2): ?>
+                            <li class="slide <?= isActive('team-performance-v2', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('team-performance-v2', $current_route) ?>"
+                                    href="<?= $base_url ?>/team-performance-v2">Team Performance</a>
+                            </li>
+                            <?php endif; ?>
+                            <li class="slide <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/my-work-dashboard"
+                                    class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ?>">
+                                    <span class="sidebar__menu-label">My Work</span>
+                                    <?php if (($myWorkPendingCount ?? 0) > 0): ?>
+                                        <span class="badge bg-danger ms-auto me-2 rounded-pill"
+                                            style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <?php endif; ?>
                     <?php if (!$sbIsPureSalesLeadership): ?>
                     <li class="slide <?= isActive('vendor-enrollment-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/vendor-enrollment-requests"
@@ -2180,11 +2236,25 @@
                             <?php endif; ?>
                         </ul>
                     </li>
-                <?php elseif ($hasMealAccess): ?>
-                    <!-- Dedicated menu for enrolled employee -->
+                <?php elseif ($hasMealAccess || (empty($canViewTeamPerfV2) && empty($canViewMgmtOverviewV2))): ?>
+                    <!-- Dedicated menu for employee -->
                     <li class="sidebar__menu-category ">
-                        <span class="category-name">Meal Service</span>
+                        <span class="category-name">My Workspace</span>
                     </li>
+                    <?php if (empty($canViewTeamPerfV2) && empty($canViewMgmtOverviewV2)): ?>
+                    <li class="slide <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
+                        <a href="<?= $base_url ?>/my-work-dashboard"
+                            class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">My Work</span>
+                            <?php if (($myWorkPendingCount ?? 0) > 0): ?>
+                                <span class="badge bg-danger ms-auto me-2 rounded-pill"
+                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    <?php if ($hasMealAccess): ?>
                     <li class="slide <?= isActive('my-meal-tracker', $current_route) ? 'active' : '' ?>">
                         <a href="<?= $base_url ?>/my-meal-tracker"
                             class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">
@@ -2192,6 +2262,7 @@
                             <span class="sidebar__menu-label">My Meal Tracker</span>
                         </a>
                     </li>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <?php if (hasPermission("User Manage") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
@@ -4403,36 +4474,8 @@
                         </ul>
                     </li>
 
-                    <?php
-                    $canViewMgmtOverviewV2 = !empty($isManagement)
-                        || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
-                        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
-                        || in_array((int)($_SESSION['user']['primary_role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true)
-                        || ((int)($_SESSION['user']['id'] ?? 0) === 94);
-
-                    $isHodOrTeamLeaderV2 = !empty($isDeptHead)
-                        || !empty($hasReportees)
-                        || !empty($_SESSION['user']['is_team_leader'])
-                        || !empty($_SESSION['user']['is_sales_co_leader'])
-                        || in_array((int)($_SESSION['user']['role_id'] ?? 0), [5, 9, 17, 20, 22, 24, 30, 32, 39], true);
-
-                    $canViewTeamPerfV2 = $canViewMgmtOverviewV2 || $isHodOrTeamLeaderV2;
-                    ?>
-                    <?php if (!$canViewTeamPerfV2 && !$canViewMgmtOverviewV2): ?>
-                    <!-- Normal Employee: Direct My Work link (no dropdown) -->
-                    <li class="slide <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
-                        <a href="<?= $base_url ?>/my-work-dashboard"
-                            class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
-                            <span class="sidebar__menu-label">My Work</span>
-                            <?php if (($myWorkPendingCount ?? 0) > 0): ?>
-                                <span class="badge bg-danger ms-auto me-2 rounded-pill"
-                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $myWorkPendingCount ?></span>
-                            <?php endif; ?>
-                        </a>
-                    </li>
-                    <?php else: ?>
-                    <!-- Task Manage Module (HODs & Management) -->
+                    <?php if (empty($inTopMgmtBlock) && (!empty($canViewTeamPerfV2) || !empty($canViewMgmtOverviewV2))): ?>
+                    <!-- Task Manage Module (HODs outside top management block) -->
                     <li
                         class="slide has-sub <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets', 'team-performance-v2', 'management-task-overview-v2'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
