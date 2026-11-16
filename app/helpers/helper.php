@@ -115,6 +115,16 @@ function checkLogin()
         || strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false
     );
 
+    $saveRedirectTarget = function () {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+            return;
+        }
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        if ($uri !== '' && $uri[0] === '/' && strpos($uri, '//') !== 0 && strpos($uri, "\r") === false && strpos($uri, "\n") === false) {
+            $_SESSION['redirect_after_login'] = $uri;
+        }
+    };
+
     $maxLifetime = 60 * 60 * 24; // 1 day
 
     if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY']) > $maxLifetime) {
@@ -126,6 +136,8 @@ function checkLogin()
             echo json_encode(['success' => false, 'error' => 'session_expired', 'message' => 'Session expired. Please login again.']);
             exit;
         }
+        session_start();
+        $saveRedirectTarget();
         header("Location: " . $GLOBALS['base_url'] . "/admin-login");
         exit;
     }
@@ -139,6 +151,7 @@ function checkLogin()
             echo json_encode(['success' => false, 'error' => 'unauthenticated', 'message' => 'Please login to continue.']);
             exit;
         }
+        $saveRedirectTarget();
         header("Location: " . $GLOBALS['base_url'] . "/admin-login");
         exit;
     }

@@ -1322,7 +1322,7 @@ $todayDateFormatted = date('j F');
 
 .mw-drawer-footer-actions {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 12px;
 }
@@ -4214,6 +4214,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         });
+    }
+
+    const initialTaskId = parseInt(new URLSearchParams(window.location.search).get('task_id'), 10);
+    if (initialTaskId > 0 && typeof window.openTaskDetail === 'function') {
+        window.openTaskDetail(initialTaskId);
     }
 });
 </script>

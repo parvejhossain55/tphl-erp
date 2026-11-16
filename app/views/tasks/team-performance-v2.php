@@ -278,7 +278,8 @@
     flex-shrink: 0;
 }
 .workload-name {
-    width: 80px;
+    width: 150px;
+    flex-shrink: 0;
     font-size: 12.5px;
     font-weight: 600;
     color: #334155;
@@ -592,7 +593,7 @@
 .mw-callout-title { font-weight: 600; font-size: 12.5px; line-height: 16px; color: #087F5B; margin-bottom: 2px; }
 .mw-callout-sub { font-weight: 400; font-size: 11.5px; line-height: 15px; color: #4A6B5D; }
 .mw-drawer-footer { padding: 16px 28px 18px; border-top: 1px solid #E2EAE5; background: #FFFFFF; flex-shrink: 0; }
-.mw-drawer-footer-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mw-drawer-footer-actions { display: flex; justify-content: flex-start; align-items: center; gap: 12px; }
 .mw-drawer-btn { padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; line-height: 16px; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; }
 .mw-drawer-btn.secondary { background: #FFFFFF; border: 1px solid #D1DDD6; color: #142D26; }
 .mw-drawer-btn.secondary:hover { background: #F5F7F6; border-color: #B5C6BC; }
@@ -818,10 +819,10 @@
             </div>
 
             <!-- Legend -->
-            <div class="d-flex align-items-center gap-3 mb-2 small text-muted">
-                <span><span class="d-inline-block rounded-circle me-1" style="width: 8px; height: 8px; background-color: #16a34a;"></span> Completed</span>
-                <span><span class="d-inline-block rounded-circle me-1" style="width: 8px; height: 8px; background-color: #3b82f6;"></span> Assigned</span>
-                <span><span class="d-inline-block rounded-circle me-1" style="width: 8px; height: 8px; background-color: #ef4444;"></span> Overdue</span>
+            <div class="d-flex align-items-center flex-wrap mb-2 small text-muted" style="gap: 16px;">
+                <span class="d-inline-flex align-items-center"><span class="d-inline-block rounded-circle" style="width: 8px; height: 8px; background-color: #16a34a; margin-right: 6px;"></span>Completed</span>
+                <span class="d-inline-flex align-items-center"><span class="d-inline-block rounded-circle" style="width: 8px; height: 8px; background-color: #3b82f6; margin-right: 6px;"></span>Assigned</span>
+                <span class="d-inline-flex align-items-center"><span class="d-inline-block rounded-circle" style="width: 8px; height: 8px; background-color: #ef4444; margin-right: 6px;"></span>Overdue</span>
             </div>
 
             <!-- ApexChart -->
@@ -852,7 +853,7 @@
                                  onclick="openWorkloadBreakdown(<?= htmlspecialchars(json_encode($wb), ENT_QUOTES, 'UTF-8') ?>)" 
                                  title="Click to view workload calculation & open tasks for <?= htmlspecialchars($wb['full_name'] ?? $wb['name']) ?>">
                                 <div class="workload-avatar"><?= $wb['initials'] ?></div>
-                                <div class="workload-name" title="<?= htmlspecialchars($wb['full_name'] ?? $wb['name']) ?>"><?= htmlspecialchars($wb['name']) ?></div>
+                                <div class="workload-name" title="<?= htmlspecialchars($wb['full_name'] ?? $wb['name']) ?>"><?= htmlspecialchars($wb['full_name'] ?? $wb['name']) ?></div>
                                 <div class="workload-bar-wrap">
                                     <div class="workload-bar-fill" style="width: <?= $wb['bar_pct'] ?>%;"></div>
                                 </div>
