@@ -2002,7 +2002,7 @@ $todayDateFormatted = date('j F');
             <?php }; ?>
             <!-- Row 1: Owner & Due Date -->
             <div class="mw-form-row mw-form-group">
-                <div class="mw-form-col">
+                <div class="mw-form-col" id="colTaskOwner">
                     <label class="mw-form-label">Owner</label>
                     <?php
                     $ownerName = $_SESSION['user']['full_name'] ?? ($_SESSION['user']['name'] ?? '');
@@ -2021,16 +2021,8 @@ $todayDateFormatted = date('j F');
                     ?>
                     <div id="taskOwnerSelect">
                         <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerDisplay) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
-                                            </div>
+                    </div>
                 </div>
-                <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
-                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" required>
-                </div>
-            </div>
-
-            <!-- Row 2: Priority -->
-            <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Priority</label>
                     <select name="priority" class="mw-form-select">
@@ -2039,6 +2031,18 @@ $todayDateFormatted = date('j F');
                         <option value="high">High</option>
                         <option value="urgent">Urgent</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Row 2: Start Date & Deadline -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Start Date</label>
+                    <input type="date" name="start_date" class="mw-form-input">
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" required>
                 </div>
             </div>
 
@@ -2069,22 +2073,27 @@ $todayDateFormatted = date('j F');
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
-                    <option value="custom">Custom Dates</option>
+                    <option value="custom">Custom</option>
                 </select>
                 <div id="customRecurringDatesWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
+                    <style>
+                        .mw-day-pill input:checked + span {
+                            background: #087F5B !important;
+                            border-color: #087F5B !important;
+                            color: #FFFFFF !important;
+                        }
+                    </style>
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="mw-form-label mb-0" style="color:#142D26;">Custom Schedule <span class="req">*</span></span>
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Days <span class="req">*</span></span>
                         <button type="button" id="btnClearCustomDates" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
                     </div>
-                    <div class="mw-form-row" style="gap:12px;">
-                        <div class="mw-form-col">
-                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">Start Date</label>
-                            <input type="date" name="recurrence_custom_start" id="customRecurringStartInput" class="mw-form-input">
-                        </div>
-                        <div class="mw-form-col">
-                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">End Date</label>
-                            <input type="date" name="recurrence_end_date" id="customRecurringEndInput" class="mw-form-input">
-                        </div>
+                    <div id="customRecurringDaysGroup" style="display:flex; flex-wrap:wrap; gap:8px;">
+                        <?php foreach (['sun' => 'Sun', 'mon' => 'Mon', 'tue' => 'Tue', 'wed' => 'Wed', 'thu' => 'Thu', 'fri' => 'Fri', 'sat' => 'Sat'] as $dayKey => $dayLabel): ?>
+                            <label class="mw-day-pill" style="margin:0; cursor:pointer;">
+                                <input type="checkbox" name="recurrence_custom_dates[]" value="<?= $dayKey ?>" class="mw-custom-day-chk" style="display:none;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center; min-width:44px; padding:6px 10px; border-radius:6px; border:1px solid #D1DDD6; background:#FFFFFF; color:#142D26; font-size:12.5px; font-weight:600; transition:all .15s ease; user-select:none;"><?= $dayLabel ?></span>
+                            </label>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
@@ -2112,7 +2121,7 @@ $todayDateFormatted = date('j F');
             </div>
 
             <!-- Assigned to & CC -->
-            <div class="mw-form-row mw-form-group">
+            <div class="mw-form-row mw-form-group" id="rowAssignedToCc">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Assigned to</label>
                     <?php $mwMulti('assigned_to_id', 'Select Assigned to...', true, (int)$userId, 'taskAssignedToSelect'); ?>
@@ -2141,12 +2150,6 @@ $todayDateFormatted = date('j F');
                 <input type="file" name="attachment" id="drawerAttachment" class="mw-form-input">
             </div>
 
-            <!-- Start Date -->
-            <div class="mw-form-group">
-                    <label class="mw-form-label">Start Date</label>
-                    <input type="date" name="start_date" class="mw-form-input">
-                </div>
-
             <!-- Callout Notice Box -->
             <div class="mw-callout-box" id="mwTaskNoticeBox">
                 <div class="mw-callout-icon">
@@ -2171,6 +2174,50 @@ $todayDateFormatted = date('j F');
             </div>
         </div>
     </form>
+</div>
+
+<!-- Task Type Selection Modal (Self vs Others) -->
+<div class="modal fade" id="mwTaskTypeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm" style="max-width: 440px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <div class="modal-header border-bottom-0 pb-1 pt-4 px-4">
+                <div>
+                    <h5 class="modal-title fw-bold mb-1" style="color:#142D26; font-size:18px;">Create Task</h5>
+                    <p class="mb-0 text-muted" style="font-size:12.5px;">Choose who this task is for</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 pb-4 pt-3">
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <button type="button" id="btnChooseSelfTask" class="btn text-start p-3 d-flex align-items-center"
+                            style="gap:14px; border:1px solid #D1DDD6; border-radius:10px; background:#FAFCFA; transition:all 0.15s ease;">
+                        <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                             style="width:42px; height:42px; background:#E9F5EF; color:#087F5B; font-size:17px;">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold" style="color:#142D26; font-size:14px;">Self</div>
+                            <div class="text-muted" style="font-size:12px;">Create a personal task for yourself</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-muted" style="font-size:12px;"></i>
+                    </button>
+
+                    <button type="button" id="btnChooseOthersTask" class="btn text-start p-3 d-flex align-items-center"
+                            style="gap:14px; border:1px solid #D1DDD6; border-radius:10px; background:#FFFFFF; transition:all 0.15s ease;">
+                        <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                             style="width:42px; height:42px; background:#EBF2FE; color:#1864AB; font-size:17px;">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold" style="color:#142D26; font-size:14px;">Others</div>
+                            <div class="text-muted" style="font-size:12px;">Assign a task to a team member</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-muted" style="font-size:12px;"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Task detail drawer (UI preview; filled via AJAX on row click) -->
@@ -2820,10 +2867,25 @@ document.addEventListener('DOMContentLoaded', function () {
             const drawerTitle = document.getElementById('mwDrawerTitle');
             const drawerSubtitle = document.getElementById('mwDrawerSubtitle');
             const editIdInput = document.getElementById('drawerEditTaskId');
-            if (drawerTitle) drawerTitle.innerText = isEdit ? 'Edit task' : 'Create task';
-            if (drawerSubtitle) drawerSubtitle.innerText = isEdit ? 'Update details, owner and deadline.' : 'Define the output, owner and deadline.';
+            const isSelf = !isEdit && (arguments[1] === 'self');
+
+            const colTaskOwner = document.getElementById('colTaskOwner');
+            const rowAssignedToCc = document.getElementById('rowAssignedToCc');
+            if (colTaskOwner) colTaskOwner.style.display = isSelf ? 'none' : '';
+            if (rowAssignedToCc) rowAssignedToCc.style.display = isSelf ? 'none' : '';
+
+            if (drawerTitle) {
+                drawerTitle.innerText = isEdit ? 'Edit task' : (isSelf ? 'Create Self Task' : 'Create task');
+            }
+            if (drawerSubtitle) {
+                drawerSubtitle.innerText = isEdit
+                    ? 'Update details, owner and deadline.'
+                    : (isSelf ? 'Define the output and deadline for your task.' : 'Define the output, owner and deadline.');
+            }
             if (btnSubmitDrawer) {
-                btnSubmitDrawer.innerHTML = isEdit ? '<i class="fa-solid fa-check me-1"></i> Update task' : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
+                btnSubmitDrawer.innerHTML = isEdit
+                    ? '<i class="fa-solid fa-check me-1"></i> Update task'
+                    : (isSelf ? '<i class="fa-solid fa-plus me-1"></i> Create task' : '<i class="fa-solid fa-plus me-1"></i> Create & assign');
             }
 
             drawer.classList.add('show');
@@ -2869,10 +2931,52 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    const taskTypeModalEl = document.getElementById('mwTaskTypeModal');
+    const btnChooseSelfTask = document.getElementById('btnChooseSelfTask');
+    const btnChooseOthersTask = document.getElementById('btnChooseOthersTask');
+
     if (btnOpenCreateTask) {
         btnOpenCreateTask.addEventListener('click', function() {
+            if (taskTypeModalEl && typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(taskTypeModalEl).show();
+            } else {
+                resetDrawerForm();
+                openDrawer('create', 'others');
+            }
+        });
+    }
+
+    if (btnChooseSelfTask) {
+        btnChooseSelfTask.addEventListener('click', function() {
+            if (taskTypeModalEl && typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(taskTypeModalEl).hide();
+            }
             resetDrawerForm();
-            openDrawer('create');
+            const curUid = '<?= (int)$userId ?>';
+            const boxAssignedTo = document.getElementById('taskAssignedToSelect');
+            if (boxAssignedTo) {
+                boxAssignedTo.querySelectorAll('input[type=radio]').forEach(r => {
+                    r.checked = (String(r.value) === curUid);
+                });
+                if (boxAssignedTo._refresh) boxAssignedTo._refresh();
+            }
+            const boxCc = document.querySelector('.mw-multi[data-placeholder="Select CC..."]');
+            if (boxCc) {
+                boxCc.querySelectorAll('input[type=checkbox]').forEach(c => { c.checked = false; });
+                if (boxCc._refresh) boxCc._refresh();
+            }
+            updateNoticeBox();
+            openDrawer('create', 'self');
+        });
+    }
+
+    if (btnChooseOthersTask) {
+        btnChooseOthersTask.addEventListener('click', function() {
+            if (taskTypeModalEl && typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(taskTypeModalEl).hide();
+            }
+            resetDrawerForm();
+            openDrawer('create', 'others');
         });
     }
     if (btnCloseCreateTask) btnCloseCreateTask.addEventListener('click', closeDrawer);
@@ -4473,31 +4577,28 @@ document.addEventListener('DOMContentLoaded', function () {
     if (taskReviewerSelect) taskReviewerSelect.addEventListener('change', updateNoticeBox);
     updateNoticeBox();
 
-    // Show Repeat options only when "Is Recurring" is ticked + Custom Schedule Start/End Date
+    // Show Repeat options only when "Is Recurring" is ticked + Custom 7-day selector
     const chkIsRecurring = document.getElementById('chkIsRecurring');
     const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
     const selRecType = document.getElementById('taskRecurrenceType');
     const customDatesWrap = document.getElementById('customRecurringDatesWrap');
-    const customStartInput = document.getElementById('customRecurringStartInput');
-    const customEndInput = document.getElementById('customRecurringEndInput');
     const btnClearCustomDates = document.getElementById('btnClearCustomDates');
 
     window.setCustomRecurringDates = function (datesArr) {
-        const firstDate = (Array.isArray(datesArr) && datesArr.length > 0) ? String(datesArr[0]).trim() : '';
-        if (customStartInput) customStartInput.value = firstDate;
-        if (!firstDate && customEndInput) customEndInput.value = '';
+        const picked = new Set(Array.isArray(datesArr) ? datesArr.map(d => String(d).trim().toLowerCase()) : []);
+        document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
+            chk.checked = picked.has(chk.value);
+        });
         if (customDatesWrap) {
             customDatesWrap.style.display = (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') ? 'block' : 'none';
-        }
-        if (customStartInput) {
-            customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
         }
     };
 
     if (btnClearCustomDates) {
         btnClearCustomDates.addEventListener('click', () => {
-            if (customStartInput) customStartInput.value = '';
-            if (customEndInput) customEndInput.value = '';
+            document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
+                chk.checked = false;
+            });
         });
     }
 
@@ -4505,7 +4606,6 @@ document.addEventListener('DOMContentLoaded', function () {
         selRecType.addEventListener('change', () => {
             const isCust = (selRecType.value === 'custom');
             if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
-            if (customStartInput) customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && isCust);
         });
     }
 
@@ -4515,7 +4615,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (selRecType) selRecType.required = chkIsRecurring.checked;
             const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
             if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
-            if (customStartInput) customStartInput.required = isCust;
         });
     }
 
@@ -4605,6 +4704,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (formCreateTask) {
         formCreateTask.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') {
+                const pickedDays = document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk:checked').length;
+                if (pickedDays === 0) {
+                    showMwToast('Please select at least one day for the custom recurring schedule.', 'error');
+                    return;
+                }
+            }
             const ownerVal = mwPicked('taskAssignedToSelect').value || '<?= (int)$userId ?>';
             const reviewerVal = mwPicked('taskReviewerSelect').value;
             if (reviewerVal && ownerVal && reviewerVal === ownerVal &&

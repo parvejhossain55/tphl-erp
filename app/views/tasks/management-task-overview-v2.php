@@ -748,7 +748,7 @@ $monthNames = [
                 </div>
             <?php }; ?>
 
-            <!-- Row 1: Owner & Due Date -->
+            <!-- Row 1: Owner & Priority -->
             <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Owner</label>
@@ -772,14 +772,6 @@ $monthNames = [
                     </div>
                 </div>
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
-                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" required>
-                </div>
-            </div>
-
-            <!-- Row 2: Priority -->
-            <div class="mw-form-row mw-form-group">
-                <div class="mw-form-col">
                     <label class="mw-form-label">Priority</label>
                     <select name="priority" class="mw-form-select">
                         <option value="low">Low</option>
@@ -787,6 +779,18 @@ $monthNames = [
                         <option value="high">High</option>
                         <option value="urgent">Urgent</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Row 2: Start Date & Deadline -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Start Date</label>
+                    <input type="date" name="start_date" class="mw-form-input">
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" required>
                 </div>
             </div>
 
@@ -817,22 +821,27 @@ $monthNames = [
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
-                    <option value="custom">Custom Dates</option>
+                    <option value="custom">Custom</option>
                 </select>
                 <div id="customRecurringDatesWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
+                    <style>
+                        .mw-day-pill input:checked + span {
+                            background: #087F5B !important;
+                            border-color: #087F5B !important;
+                            color: #FFFFFF !important;
+                        }
+                    </style>
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="mw-form-label mb-0" style="color:#142D26;">Custom Schedule <span class="req">*</span></span>
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Days <span class="req">*</span></span>
                         <button type="button" id="btnClearCustomDates" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
                     </div>
-                    <div class="mw-form-row" style="gap:12px;">
-                        <div class="mw-form-col">
-                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">Start Date</label>
-                            <input type="date" name="recurrence_custom_start" id="customRecurringStartInput" class="mw-form-input">
-                        </div>
-                        <div class="mw-form-col">
-                            <label class="mw-form-label" style="font-size:11.5px; color:#65776F;">End Date</label>
-                            <input type="date" name="recurrence_end_date" id="customRecurringEndInput" class="mw-form-input">
-                        </div>
+                    <div id="customRecurringDaysGroup" style="display:flex; flex-wrap:wrap; gap:8px;">
+                        <?php foreach (['sun' => 'Sun', 'mon' => 'Mon', 'tue' => 'Tue', 'wed' => 'Wed', 'thu' => 'Thu', 'fri' => 'Fri', 'sat' => 'Sat'] as $dayKey => $dayLabel): ?>
+                            <label class="mw-day-pill" style="margin:0; cursor:pointer;">
+                                <input type="checkbox" name="recurrence_custom_dates[]" value="<?= $dayKey ?>" class="mw-custom-day-chk" style="display:none;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center; min-width:44px; padding:6px 10px; border-radius:6px; border:1px solid #D1DDD6; background:#FFFFFF; color:#142D26; font-size:12.5px; font-weight:600; transition:all .15s ease; user-select:none;"><?= $dayLabel ?></span>
+                            </label>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
@@ -886,12 +895,6 @@ $monthNames = [
             <div class="mw-form-group">
                 <label class="mw-form-label">Attachment</label>
                 <input type="file" name="attachment" id="drawerAttachment" class="mw-form-input">
-            </div>
-
-            <!-- Start Date -->
-            <div class="mw-form-group">
-                <label class="mw-form-label">Start Date</label>
-                <input type="date" name="start_date" class="mw-form-input">
             </div>
 
             <!-- Callout Notice Box -->
@@ -1054,26 +1057,23 @@ $monthNames = [
         const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
         const selRecType = document.getElementById('taskRecurrenceType');
         const customDatesWrap = document.getElementById('customRecurringDatesWrap');
-        const customStartInput = document.getElementById('customRecurringStartInput');
-        const customEndInput = document.getElementById('customRecurringEndInput');
         const btnClearCustomDates = document.getElementById('btnClearCustomDates');
 
         window.setCustomRecurringDates = function (datesArr) {
-            const firstDate = (Array.isArray(datesArr) && datesArr.length > 0) ? String(datesArr[0]).trim() : '';
-            if (customStartInput) customStartInput.value = firstDate;
-            if (!firstDate && customEndInput) customEndInput.value = '';
+            const picked = new Set(Array.isArray(datesArr) ? datesArr.map(d => String(d).trim().toLowerCase()) : []);
+            document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
+                chk.checked = picked.has(chk.value);
+            });
             if (customDatesWrap) {
                 customDatesWrap.style.display = (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') ? 'block' : 'none';
-            }
-            if (customStartInput) {
-                customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
             }
         };
 
         if (btnClearCustomDates) {
             btnClearCustomDates.addEventListener('click', () => {
-                if (customStartInput) customStartInput.value = '';
-                if (customEndInput) customEndInput.value = '';
+                document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
+                    chk.checked = false;
+                });
             });
         }
 
@@ -1081,7 +1081,6 @@ $monthNames = [
             selRecType.addEventListener('change', () => {
                 const isCust = (selRecType.value === 'custom');
                 if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
-                if (customStartInput) customStartInput.required = !!(chkIsRecurring && chkIsRecurring.checked && isCust);
             });
         }
 
@@ -1091,7 +1090,6 @@ $monthNames = [
                 if (selRecType) selRecType.required = chkIsRecurring.checked;
                 const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
                 if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
-                if (customStartInput) customStartInput.required = isCust;
             });
         }
 
@@ -1159,6 +1157,13 @@ $monthNames = [
         if (formCreateTask) {
             formCreateTask.addEventListener('submit', function(e) {
                 e.preventDefault();
+                if (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') {
+                    const pickedDays = document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk:checked').length;
+                    if (pickedDays === 0) {
+                        showMwToast('Please select at least one day for the custom recurring schedule.', 'error');
+                        return;
+                    }
+                }
                 const ownerVal = mwPicked('taskAssignedToSelect').value || mwCurrentUserId;
                 const reviewerVal = mwPicked('taskReviewerSelect').value;
                 if (reviewerVal && ownerVal && String(reviewerVal) === String(ownerVal) &&

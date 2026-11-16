@@ -2852,27 +2852,29 @@ class MyWorkController extends Controller
         $customDatesJson = null;
 
         if ($recurrenceType === 'custom') {
-            $customStart = trim((string)($_POST['recurrence_custom_start'] ?? ''));
-            if ($customStart !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $customStart)) {
-                if ($recurrenceEnd !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $recurrenceEnd) && $recurrenceEnd < $customStart) {
-                    $abort("End date cannot be earlier than start date.");
+            $weekdayOrder = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+            $rawItems = (array)($_POST['recurrence_custom_dates'] ?? []);
+            $selectedDays = [];
+            $validDates = [];
+
+            foreach ($rawItems as $item) {
+                $val = strtolower(trim((string)$item));
+                if (in_array($val, $weekdayOrder, true)) {
+                    $selectedDays[] = $val;
+                } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
+                    $validDates[] = $val;
                 }
-                $customDatesJson = json_encode([$customStart]);
-            } else {
-                $rawDates = (array)($_POST['recurrence_custom_dates'] ?? []);
-                $validDates = [];
-                foreach ($rawDates as $d) {
-                    $d = trim((string)$d);
-                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
-                        $validDates[] = $d;
-                    }
-                }
+            }
+
+            if (!empty($selectedDays)) {
+                $selectedDays = array_values(array_intersect($weekdayOrder, array_unique($selectedDays)));
+                $customDatesJson = json_encode($selectedDays);
+            } elseif (!empty($validDates)) {
                 $validDates = array_values(array_unique($validDates));
                 sort($validDates);
-                if (empty($validDates)) {
-                    $abort("Please select a start date for the custom recurring schedule.");
-                }
                 $customDatesJson = json_encode($validDates);
+            } else {
+                $abort("Please select at least one day for the custom recurring schedule.");
             }
         }
 
@@ -2894,7 +2896,26 @@ class MyWorkController extends Controller
 
         if ($type === 'custom') {
             $dates = !empty($task['recurrence_custom_dates']) ? json_decode((string)$task['recurrence_custom_dates'], true) : [];
-            if (is_array($dates) && count($dates) > 1) {
+            $weekdayMap = ['sun' => 0, 'mon' => 1, 'tue' => 2, 'wed' => 3, 'thu' => 4, 'fri' => 5, 'sat' => 6];
+            $targetWeekdays = [];
+            if (is_array($dates)) {
+                foreach ($dates as $item) {
+                    $k = strtolower(trim((string)$item));
+                    if (isset($weekdayMap[$k])) {
+                        $targetWeekdays[$weekdayMap[$k]] = true;
+                    }
+                }
+            }
+
+            if (!empty($targetWeekdays)) {
+                for ($i = 1; $i <= 7; $i++) {
+                    $ts = strtotime($baseDate . " +{$i} days");
+                    if (isset($targetWeekdays[(int)date('w', $ts)])) {
+                        $nextDate = date('Y-m-d', $ts);
+                        break;
+                    }
+                }
+            } elseif (is_array($dates) && count($dates) > 1) {
                 sort($dates);
                 foreach ($dates as $d) {
                     if (is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d > $baseDate) {
