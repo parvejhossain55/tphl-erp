@@ -455,6 +455,27 @@ $todayDateFormatted = date('j F');
     display: inline-block;
 }
 
+.mw-header-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mw-header-tab:hover {
+    background: #F4FAF7;
+}
+
+.mw-header-tab.active {
+    background: #F4FAF7;
+    border-color: #C3E6CD;
+}
+
 .mw-tasks-completed-text {
     font-weight: 400;
     font-size: 12px;
@@ -1433,23 +1454,20 @@ $todayDateFormatted = date('j F');
         <div class="mw-card">
             <!-- Header -->
             <div class="mw-tasks-header">
-                <div class="mw-tasks-title-group" style="display:flex; align-items:center; gap:16px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
+                <div class="mw-tasks-title-group" style="display:flex; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <button type="button" class="mw-header-tab <?= $statusFilter === 'open' ? 'active' : '' ?>" id="tabMyActionable" data-header-status="open">
                         <h3 class="mw-tasks-title">My Actionable</h3>
                         <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
-                    </div>
-                    <div id="wrapUpdatedBy" style="display:<?= $tab === 'reviewer' ? 'flex' : 'none' ?>; align-items:center; gap:16px;">
-                        <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <h3 class="mw-tasks-title" style="color:#2D453E;">Updated By</h3>
-                            <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
-                                <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
-                            </span>
-                        </div>
-                    </div>
+                    </button>
+                    <button type="button" class="mw-header-tab <?= $statusFilter === 'completed' ? 'active' : '' ?>" id="tabMyCompleted" data-header-status="completed">
+                        <h3 class="mw-tasks-title" style="color:#2D453E;">Completed</h3>
+                        <span class="mw-badge-open" id="badgeCompletedCount" style="background:#EDF2FF; color:#364FC7; font-weight:700;">
+                            <?= $completedTasksCount ?> completed
+                        </span>
+                    </button>
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
-                    <?= $completedTasksCount ?> completed
+                    <?= $openTasksCount + $completedTasksCount ?> total
                 </div>
             </div>
 
@@ -1494,7 +1512,7 @@ $todayDateFormatted = date('j F');
                         <div class="mw-popup-divider"></div>
 
                         <div class="mw-popup-header">STATUS</div>
-                        <a class="mw-popup-item" href="javascript:void(0);" data-status="">All Statuses</a>
+                        <a class="mw-popup-item" href="javascript:void(0);" data-status="all">All Statuses</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="open">Open only</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="pending">To do</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="in_progress">In progress</a>
@@ -2077,8 +2095,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const tbody = document.getElementById('mwTasksTbody');
     const footerInfo = document.getElementById('mwFooterInfo');
     const badgeOpen = document.getElementById('badgeOpenCount');
-    const badgeReviewed = document.getElementById('badgeReviewedCount');
+    const badgeCompleted = document.getElementById('badgeCompletedCount');
     const textCompleted = document.getElementById('textCompletedCount');
+
+    function syncHeaderStatusTabs(activeStatus) {
+        const stVal = typeof activeStatus !== 'undefined' ? activeStatus : currentStatus;
+        document.querySelectorAll('.mw-header-tab[data-header-status]').forEach(btn => {
+            const st = btn.getAttribute('data-header-status');
+            btn.classList.toggle('active', !currentMetric && st === stVal);
+        });
+    }
     const statOverdue = document.getElementById('statOverdue');
     const statDueToday = document.getElementById('statDueToday');
     const statNext7 = document.getElementById('statNext7');
@@ -2148,20 +2174,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
-                    if (badgeReviewed && typeof data.counts.my_reviewed !== 'undefined') {
-                        badgeReviewed.innerText = `${data.counts.my_reviewed} completed`;
-                    }
-                    if (textCompleted) textCompleted.innerText = `${data.counts.completed} completed`;
+                    if (badgeCompleted) badgeCompleted.innerText = `${data.counts.completed} completed`;
+                    if (textCompleted) textCompleted.innerText = `${(data.counts.open || 0) + (data.counts.completed || 0)} total`;
                     if (statOverdue) statOverdue.innerText = data.counts.overdue;
                     if (statDueToday) statDueToday.innerText = data.counts.due_today;
                     if (statNext7) statNext7.innerText = data.counts.next7;
                     if (statReview) statReview.innerText = data.counts.waiting_review;
                 }
 
-                const wrapUpdatedBy = document.getElementById('wrapUpdatedBy');
-                if (wrapUpdatedBy) {
-                    wrapUpdatedBy.style.display = (currentTab === 'reviewer') ? 'flex' : 'none';
+                if (typeof data.active_status !== 'undefined' && !currentMetric && currentStatus === '') {
+                    currentStatus = data.active_status;
                 }
+                syncHeaderStatusTabs(data.active_status);
 
                 // Update Browser URL state silently without page reload
                 params.delete('ajax');
@@ -2197,6 +2221,23 @@ document.addEventListener('DOMContentLoaded', function () {
             const filterBtnText = document.getElementById('filterBtnText');
             if (filterBtnText) filterBtnText.innerText = 'Filters';
             document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
+            fetchWorkspaceData();
+        });
+    });
+
+    // 1b. Header Status Tabs (My Actionable / Completed)
+    document.querySelectorAll('.mw-header-tab[data-header-status]').forEach(tabBtn => {
+        tabBtn.addEventListener('click', function () {
+            const targetStatus = this.getAttribute('data-header-status');
+            if (currentStatus === targetStatus && currentMetric === '') return;
+
+            currentStatus = targetStatus;
+            currentMetric = '';
+            document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
+            const btnDueDateEl = document.getElementById('btnDueDate');
+            if (btnDueDateEl) btnDueDateEl.classList.remove('active');
+
+            syncHeaderStatusTabs(targetStatus);
             fetchWorkspaceData();
         });
     });
@@ -3432,12 +3473,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                mentionPopup.innerHTML = matched.map(u => {
+                mentionPopup.innerHTML = matched.map((u, idx) => {
                     const avatar = u.photo
                         ? `<img src="${tdEsc(u.photo)}" class="mw-mention-avatar" alt="${tdEsc(u.name)}">`
                         : `<span class="mw-mention-avatar">${tdEsc(tdInitials(u.name))}</span>`;
                     return `
-                        <div class="mw-mention-item" data-uid="${u.id}" data-name="${tdEsc(u.name)}">
+                        <div class="mw-mention-item${idx === 0 ? ' selected' : ''}" data-uid="${u.id}" data-name="${tdEsc(u.name)}">
                             ${avatar}
                             <span class="mw-mention-name">${tdEsc(u.name)}</span>
                             <span class="mw-mention-role">${tdEsc(u.designation)}</span>
@@ -3477,7 +3518,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
                         mentionStartIndex = lastAt;
                         const query = textBeforeCursor.slice(lastAt + 1);
-                        if (!/\s/.test(query)) {
+                        if (query.length <= 40) {
                             renderMentionList(query);
                             return;
                         }
@@ -3555,12 +3596,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (input) {
                 input.addEventListener('keydown', e => {
+                    const isPopupOpen = mentionPopup && mentionPopup.classList.contains('show');
+                    if (isPopupOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                        const items = Array.from(mentionPopup.querySelectorAll('.mw-mention-item'));
+                        if (items.length > 0) {
+                            e.preventDefault();
+                            let curIdx = items.findIndex(el => el.classList.contains('selected'));
+                            if (curIdx >= 0) items[curIdx].classList.remove('selected');
+                            curIdx = e.key === 'ArrowDown'
+                                ? (curIdx + 1) % items.length
+                                : (curIdx <= 0 ? items.length - 1 : curIdx - 1);
+                            items[curIdx].classList.add('selected');
+                            items[curIdx].scrollIntoView({ block: 'nearest' });
+                            return;
+                        }
+                    }
                     if (e.key === 'Enter') {
-                        if (mentionPopup && mentionPopup.classList.contains('show')) {
-                            const firstItem = mentionPopup.querySelector('.mw-mention-item');
-                            if (firstItem) {
+                        if (isPopupOpen) {
+                            const activeItem = mentionPopup.querySelector('.mw-mention-item.selected') || mentionPopup.querySelector('.mw-mention-item');
+                            if (activeItem) {
                                 e.preventDefault();
-                                firstItem.click();
+                                activeItem.click();
                                 return;
                             }
                         }

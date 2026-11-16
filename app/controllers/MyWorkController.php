@@ -175,6 +175,11 @@ class MyWorkController extends Controller
         $openTasksCount = (int) ($totals['open_count'] ?? 0);
         $completedTasksCount = (int) ($totals['completed_count'] ?? 0);
 
+        // Default status tab: My Actionable (open) if any pending tasks exist, else auto-switch to Completed
+        if ($statusFilter === '' && $metricFilter === '') {
+            $statusFilter = ($openTasksCount > 0 || $completedTasksCount === 0) ? 'open' : 'completed';
+        }
+
         // Count tasks reviewed and completed where the current user is a reviewer
         $stmtMyReviewed = $this->db->prepare("
             SELECT COUNT(DISTINCT t.id)
@@ -265,7 +270,7 @@ class MyWorkController extends Controller
         }
 
         // Status filter (only applied if not overridden by a metric card)
-        if ($statusFilter !== '') {
+        if ($statusFilter !== '' && $statusFilter !== 'all') {
             if ($statusFilter === 'open') {
                 $where[] = "t.status != 'completed'";
             } elseif ($statusFilter === 'overdue') {
@@ -424,6 +429,8 @@ class MyWorkController extends Controller
                 $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
             } elseif ($statusFilter === 'open') {
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
+            } elseif ($statusFilter === 'completed') {
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $completedTasksCount . ' completed tasks · Sorted by deadline';
             } else {
                 $totalInTab = $openTasksCount + $completedTasksCount;
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
@@ -432,6 +439,7 @@ class MyWorkController extends Controller
             $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
             echo json_encode([
                 'status' => 'success',
+                'active_status' => $statusFilter,
                 'all_stats' => $allStats,
                 'tab_counts' => $tabCounts,
                 'counts' => [
@@ -1271,13 +1279,13 @@ class MyWorkController extends Controller
         // Team members for @mention autocomplete - all valid users
         $teammates = [];
         $resTeam = $this->db->query("
-            SELECT u.id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo, des.name AS designation
+            SELECT u.id, MAX(u.full_name) AS full_name, MAX(u.photo) AS user_photo, MAX(e.photo) AS emp_photo, MAX(des.name) AS designation
             FROM users u
             LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
             LEFT JOIN designations des ON (u.designation_id = des.id OR e.designation_id = des.id)
             WHERE u.full_name IS NOT NULL AND TRIM(u.full_name) != ''
             GROUP BY u.id
-            ORDER BY u.full_name ASC
+            ORDER BY full_name ASC
         ");
         while ($resTeam && ($tm = $resTeam->fetch_assoc())) {
             $tmPhoto = null;
