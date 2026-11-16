@@ -33,7 +33,7 @@ class MyWorkController extends Controller
         $baseUrl = $GLOBALS['base_url'] ?? '';
 
         // Active Scope Tab
-        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following', 'reviewer', 'realestate_project', 'self_initiated', 'recurring'];
+        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following', 'reviewer', 'realestate_project', 'self_initiated', 'recurring', 'previous_task_sheet'];
         $tab = $_GET['tab'] ?? 'all';
         if (!in_array($tab, $validTabs, true)) {
             $tab = 'all';
@@ -156,6 +156,24 @@ class MyWorkController extends Controller
                 ];
             }
             $stmtTabCounts->close();
+        }
+        $prevSheetEmpIds = $this->getEmployeeIdsForTaskSheet($userId);
+        $prevSheetModel = class_exists('EmployeeTask') ? new EmployeeTask($this->db) : null;
+        $prevSheetAllRows = ($prevSheetModel && !empty($prevSheetEmpIds))
+            ? $prevSheetModel->getTasksByEmployee($prevSheetEmpIds, ['year' => 'all', 'month' => 'all'])
+            : [];
+        $tabCounts['previous_task_sheet'] = count($prevSheetAllRows);
+
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+        if ($tab === 'previous_task_sheet' && $isAjax) {
+            header('Content-Type: application/json');
+            $sheetData = $this->buildPreviousTaskSheetPayload($prevSheetModel, $prevSheetEmpIds, $_GET);
+            echo json_encode(array_merge([
+                'status'     => 'success',
+                'mode'       => 'previous_task_sheet',
+                'tab_counts' => $tabCounts,
+            ], $sheetData));
+            exit;
         }
 
         // Metric cards: counted inside the active tab's scope
@@ -527,6 +545,10 @@ class MyWorkController extends Controller
             $realEstateProjectsList = $resProj->fetch_all(MYSQLI_ASSOC);
         }
 
+        $previousTaskSheetData = ($tab === 'previous_task_sheet')
+            ? $this->buildPreviousTaskSheetPayload($prevSheetModel, $prevSheetEmpIds, $_GET)
+            : null;
+
         // Full Page View
         $this->view("my-work/index", [
             "current_route"          => "my-work-dashboard",
@@ -540,6 +562,7 @@ class MyWorkController extends Controller
             "metricFilter"           => $metricFilter,
             "periodFrom"             => $periodFrom,
             "periodTo"               => $periodTo,
+            "previousTaskSheetData"  => $previousTaskSheetData,
             "overdueCount"           => $overdueCount,
             "allStats"               => $allStats,
             "tabCounts"              => $tabCounts,
@@ -557,6 +580,150 @@ class MyWorkController extends Controller
             "departmentsList"        => $departmentsList,
             "realEstateProjectsList" => $realEstateProjectsList
         ]);
+    }
+
+    /**
+     * Resolve all matching employee IDs (db id & employee_id code) for the logged-in user.
+     */
+    private function getEmployeeIdsForTaskSheet(int $userId): array
+    {
+        $empDbId = !empty($_SESSION['user']['employee_db_id']) ? (int) $_SESSION['user']['employee_db_id'] : 0;
+        $empCode = !empty($_SESSION['user']['employee_id']) ? (string) $_SESSION['user']['employee_id'] : '';
+        $ids = [];
+
+        $stmt = $this->db->prepare("
+            SELECT id, employee_id
+            FROM employees
+            WHERE user_id = ?
+               OR (id > 0 AND id = ?)
+               OR (employee_id != '' AND (employee_id = ? OR employee_id = ?))
+            ORDER BY (user_id = ?) DESC, (id = ?) DESC
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param("iisssi", $userId, $empDbId, $empCode, $empDbId, $userId, $empDbId);
+            $stmt->execute();
+            $emp = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($emp) {
+                $ids[] = (int) $emp['id'];
+                if (!empty($emp['employee_id'])) {
+                    $ids[] = $emp['employee_id'];
+                }
+            }
+        }
+        if ($empDbId > 0) $ids[] = $empDbId;
+        if ($empCode !== '') $ids[] = $empCode;
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Build read-only Previous Task Sheet payload reusing EmployeeTask model.
+     */
+    private function buildPreviousTaskSheetPayload($taskModel, array $employeeIds, array $query): array
+    {
+        $year      = isset($query['ts_year']) ? trim((string) $query['ts_year']) : '';
+        $month     = isset($query['ts_month']) ? trim((string) $query['ts_month']) : '';
+        $dateFrom  = isset($query['ts_date_from']) ? trim((string) $query['ts_date_from']) : '';
+        $dateTo    = isset($query['ts_date_to']) ? trim((string) $query['ts_date_to']) : '';
+        $all       = !empty($query['ts_all']) && ($query['ts_all'] === '1' || $query['ts_all'] === 'true');
+
+        // Default to All Time for historical view when no filter is explicitly chosen
+        if (!$all && $year === '' && $month === '' && $dateFrom === '' && $dateTo === '') {
+            $all = true;
+        }
+
+        $filterParams = ['year' => 'all', 'month' => 'all', 'date_from' => '', 'date_to' => ''];
+        $exportParams = [];
+        $periodLabel  = 'All Time';
+
+        if ($all) {
+            $exportParams['all'] = 1;
+        } elseif ($dateFrom !== '' || $dateTo !== '') {
+            $filterParams['date_from'] = $dateFrom;
+            $filterParams['date_to']   = $dateTo;
+            if ($dateFrom !== '') $exportParams['date_from'] = $dateFrom;
+            if ($dateTo !== '')   $exportParams['date_to']   = $dateTo;
+            $fromLbl = $dateFrom ? date('d M Y', strtotime($dateFrom)) : 'Start';
+            $toLbl   = $dateTo ? date('d M Y', strtotime($dateTo)) : 'Present';
+            $periodLabel = "{$fromLbl} to {$toLbl}";
+        } else {
+            $y = ($year !== '' && $year !== 'all') ? $year : 'all';
+            $m = ($month !== '' && $month !== 'all') ? $month : 'all';
+            $filterParams['year']  = $y;
+            $filterParams['month'] = $m;
+            $exportParams['year']  = $y;
+            $exportParams['month'] = $m;
+            if ($m === 'all') $exportParams['all_months'] = 1;
+
+            if ($y === 'all' && $m === 'all') {
+                $periodLabel = 'All Time';
+            } elseif ($y !== 'all' && $m === 'all') {
+                $periodLabel = "Year {$y} (All Months)";
+            } elseif ($y === 'all' && $m !== 'all') {
+                $periodLabel = 'All Years — ' . date('F', mktime(0, 0, 0, (int) $m, 10));
+            } else {
+                $periodLabel = date('F', mktime(0, 0, 0, (int) $m, 10)) . " {$y}";
+            }
+        }
+
+        $rows = ($taskModel && !empty($employeeIds))
+            ? $taskModel->getTasksByEmployee($employeeIds, $filterParams)
+            : [];
+
+        $totalCount = count($rows);
+        $doneCount = 0;
+        $pendingCount = 0;
+        $totalHours = 0.0;
+
+        ob_start();
+        if (empty($rows)) {
+            echo '<tr><td colspan="6"><div class="mw-empty-state"><i class="fa-regular fa-clipboard d-block"></i><div>No previous task sheet records found for ' . htmlspecialchars($periodLabel) . '.</div></div></td></tr>';
+        } else {
+            foreach ($rows as $i => $t) {
+                $rawStatus = strtolower(str_replace(' ', '_', trim((string) ($t['status'] ?? ''))));
+                if ($rawStatus === 'done' || $rawStatus === 'completed') {
+                    $doneCount++;
+                } else {
+                    $pendingCount++;
+                }
+                $hours = (float) ($t['hours_spent'] ?? 0);
+                $totalHours += $hours;
+
+                $badgeClass = match ($rawStatus) {
+                    'done', 'completed' => 'bg-success-subtle text-success',
+                    'in_progress', 'in progress' => 'bg-info-subtle text-info',
+                    default => 'bg-warning-subtle text-warning-emphasis',
+                };
+                $dateStr = !empty($t['work_date']) ? date('d M Y', strtotime($t['work_date'])) : '—';
+                $desc    = htmlspecialchars((string) ($t['task_description'] ?? ''));
+                $remarks = htmlspecialchars((string) ($t['remarks'] ?? '—'));
+                $statusLabel = htmlspecialchars(ucwords(str_replace('_', ' ', (string) ($t['status'] ?? 'Pending'))));
+
+                echo '<tr>';
+                echo '<td class="text-muted" style="width:48px;">' . ($i + 1) . '</td>';
+                echo '<td style="white-space:nowrap; font-weight:600; color:#142D26;">' . $dateStr . '</td>';
+                echo '<td>' . nl2br($desc) . '</td>';
+                echo '<td style="white-space:nowrap; font-weight:600;">' . number_format($hours, 2) . 'h</td>';
+                echo '<td><span class="badge rounded-pill ' . $badgeClass . '">' . $statusLabel . '</span></td>';
+                echo '<td class="text-muted">' . ($remarks !== '' ? $remarks : '—') . '</td>';
+                echo '</tr>';
+            }
+        }
+        $rowsHtml = ob_get_clean();
+
+        return [
+            'period_label' => $periodLabel,
+            'export_query' => http_build_query($exportParams),
+            'summary'      => [
+                'total'       => $totalCount,
+                'done'        => $doneCount,
+                'pending'     => $pendingCount,
+                'total_hours' => number_format($totalHours, 2),
+            ],
+            'rows_html'    => $rowsHtml,
+        ];
     }
 
     /**

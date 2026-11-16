@@ -1512,11 +1512,13 @@ $todayDateFormatted = date('j F');
            data-tab="self_initiated" href="javascript:void(0);">Self-Initiated Task <?= $renderTabBadge('self_initiated') ?></a>
         <a class="mw-tab-item <?= $tab === 'recurring' ? 'active' : '' ?>" 
            data-tab="recurring" href="javascript:void(0);">Recurring Task <?= $renderTabBadge('recurring') ?></a>
+        <a class="mw-tab-item <?= $tab === 'previous_task_sheet' ? 'active' : '' ?>" 
+           data-tab="previous_task_sheet" href="javascript:void(0);">Previous Task Sheet <?= $renderTabBadge('previous_task_sheet') ?></a>
     </div>
 
     <!-- Summary cards (all tabs, scoped to the active tab) -->
     <?php $as = $allStats ?? []; ?>
-    <div class="mw-stats-row mw-stats-all" id="mwStatsAll">
+    <div class="mw-stats-row mw-stats-all" id="mwStatsAll" style="<?= $tab === 'previous_task_sheet' ? 'display:none;' : '' ?>">
         <div class="mw-stat-card <?= $metricFilter === 'all_total' ? 'active-metric' : '' ?>" data-metric="all_total"><span class="mw-stat-label">TOTAL TASKS</span><span class="mw-stat-count" id="allTotal"><?= (int)($as['total'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_in_progress' ? 'active-metric' : '' ?>" data-metric="all_in_progress"><span class="mw-stat-label">IN PROGRESS</span><span class="mw-stat-count next7" id="allInProgress"><?= (int)($as['in_progress'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_completed' ? 'active-metric' : '' ?>" data-metric="all_completed"><span class="mw-stat-label">COMPLETED</span><span class="mw-stat-count review" id="allCompleted"><?= (int)($as['completed'] ?? 0) ?></span></div>
@@ -1527,8 +1529,67 @@ $todayDateFormatted = date('j F');
 
 
 
+    <!-- Previous Task Sheet (Read-only History View) -->
+    <?php $pts = $previousTaskSheetData ?? null; ?>
+    <div id="mwPreviousTaskSheetSection" style="<?= $tab === 'previous_task_sheet' ? '' : 'display:none;' ?>">
+        <div class="mw-stats-row mw-stats-all" style="margin-bottom: 16px;">
+            <div class="mw-stat-card"><span class="mw-stat-label">TOTAL RECORDS</span><span class="mw-stat-count" id="tsStatTotal"><?= (int) ($pts['summary']['total'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">DONE</span><span class="mw-stat-count review" id="tsStatDone"><?= (int) ($pts['summary']['done'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">PENDING</span><span class="mw-stat-count today" id="tsStatPending"><?= (int) ($pts['summary']['pending'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">TOTAL HOURS</span><span class="mw-stat-count next7" id="tsStatHours"><?= htmlspecialchars((string) ($pts['summary']['total_hours'] ?? '0.00')) ?>h</span></div>
+        </div>
+
+        <div class="mw-card">
+            <div class="mw-tasks-header" style="flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 class="mw-tasks-title" style="margin: 0;">Previous Task Sheet <span class="text-muted fw-normal" style="font-size: 12.5px;" id="tsPeriodLabel">— <?= htmlspecialchars((string) ($pts['period_label'] ?? 'All Time')) ?></span></h3>
+                    <div class="text-muted" style="font-size: 11.5px; margin-top: 2px;">Read-only historical records from Employee Task Sheet</div>
+                </div>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <select id="tsYear" class="form-select form-select-sm" style="width: 105px;">
+                        <option value="all">All Years</option>
+                        <?php for ($y = (int) date('Y'); $y >= 2022; $y--): ?>
+                            <option value="<?= $y ?>"><?= $y ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <select id="tsMonth" class="form-select form-select-sm" style="width: 125px;">
+                        <option value="all">All Months</option>
+                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <option value="<?= sprintf('%02d', $m) ?>"><?= date('F', mktime(0, 0, 0, $m, 1)) ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <input type="date" id="tsDateFrom" class="form-control form-control-sm" style="width: 135px;" title="From Date">
+                    <input type="date" id="tsDateTo" class="form-control form-control-sm" style="width: 135px;" title="To Date">
+                    <button type="button" class="mw-pill-btn active" id="btnTsApply">Filter</button>
+                    <button type="button" class="mw-pill-btn" id="btnTsAll">All Time</button>
+                    <a href="<?= $base_url ?>/task-sheets-export?<?= htmlspecialchars((string) ($pts['export_query'] ?? 'all=1')) ?>" id="btnTsExport" class="mw-pill-btn" style="text-decoration:none;">
+                        <i class="fa-solid fa-file-excel text-success"></i> Export Excel
+                    </a>
+                </div>
+            </div>
+
+            <div class="mw-table-wrap">
+                <table class="mw-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 120px;">DATE</th>
+                            <th style="min-width: 280px;">TASK DESCRIPTION</th>
+                            <th style="width: 90px;">HOURS</th>
+                            <th style="width: 110px;">STATUS</th>
+                            <th style="min-width: 180px;">REMARKS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mwPrevSheetTbody">
+                        <?= $pts['rows_html'] ?? '' ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Grid Layout -->
-    <div class="mw-grid-layout">
+    <div class="mw-grid-layout" id="mwMainGrid" style="<?= $tab === 'previous_task_sheet' ? 'display:none;' : '' ?>">
         <!-- Left: Task Worklist -->
         <div class="mw-card">
             <!-- Header -->
@@ -2321,6 +2382,87 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const prevSheetSection = document.getElementById('mwPreviousTaskSheetSection');
+    const mwStatsAllEl = document.getElementById('mwStatsAll');
+    const mwMainGridEl = document.getElementById('mwMainGrid');
+    const prevSheetTbody = document.getElementById('mwPrevSheetTbody');
+
+    function togglePreviousTaskSheetMode(isPrev) {
+        if (prevSheetSection) prevSheetSection.style.display = isPrev ? '' : 'none';
+        if (mwStatsAllEl) mwStatsAllEl.style.display = isPrev ? 'none' : '';
+        if (mwMainGridEl) mwMainGridEl.style.display = isPrev ? 'none' : '';
+    }
+
+    function fetchPreviousTaskSheet(forceAll = false) {
+        if (!prevSheetTbody) return;
+        prevSheetTbody.style.opacity = '0.4';
+
+        const tsYearEl = document.getElementById('tsYear');
+        const tsMonthEl = document.getElementById('tsMonth');
+        const tsFromEl = document.getElementById('tsDateFrom');
+        const tsToEl = document.getElementById('tsDateTo');
+
+        const params = new URLSearchParams();
+        params.set('ajax', '1');
+        params.set('tab', 'previous_task_sheet');
+
+        if (forceAll) {
+            if (tsYearEl) tsYearEl.value = 'all';
+            if (tsMonthEl) tsMonthEl.value = 'all';
+            if (tsFromEl) tsFromEl.value = '';
+            if (tsToEl) tsToEl.value = '';
+            params.set('ts_all', '1');
+        } else {
+            const df = tsFromEl ? tsFromEl.value.trim() : '';
+            const dt = tsToEl ? tsToEl.value.trim() : '';
+            const yr = tsYearEl ? tsYearEl.value : 'all';
+            const mo = tsMonthEl ? tsMonthEl.value : 'all';
+            if (df || dt) {
+                if (df) params.set('ts_date_from', df);
+                if (dt) params.set('ts_date_to', dt);
+            } else if (yr === 'all' && mo === 'all') {
+                params.set('ts_all', '1');
+            } else {
+                params.set('ts_year', yr);
+                params.set('ts_month', mo);
+            }
+        }
+
+        fetch(window.location.pathname + '?' + params.toString(), {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                prevSheetTbody.innerHTML = data.rows_html || '';
+                const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+                if (data.summary) {
+                    setTxt('tsStatTotal', data.summary.total ?? 0);
+                    setTxt('tsStatDone', data.summary.done ?? 0);
+                    setTxt('tsStatPending', data.summary.pending ?? 0);
+                    setTxt('tsStatHours', (data.summary.total_hours ?? '0.00') + 'h');
+                }
+                setTxt('tsPeriodLabel', '— ' + (data.period_label || 'All Time'));
+                const exportBtn = document.getElementById('btnTsExport');
+                if (exportBtn && typeof data.export_query !== 'undefined') {
+                    exportBtn.href = `${baseUrl}/task-sheets-export?${data.export_query}`;
+                }
+                params.delete('ajax');
+                window.history.pushState(null, '', `${baseUrl}/my-work-dashboard?${params.toString()}`);
+            }
+        })
+        .catch(err => console.error('Previous task sheet fetch error:', err))
+        .finally(() => {
+            prevSheetTbody.style.opacity = '1';
+        });
+    }
+
+    const btnTsApply = document.getElementById('btnTsApply');
+    const btnTsAll = document.getElementById('btnTsAll');
+    if (btnTsApply) btnTsApply.addEventListener('click', () => fetchPreviousTaskSheet(false));
+    if (btnTsAll) btnTsAll.addEventListener('click', () => fetchPreviousTaskSheet(true));
+
     // 1. Tab Click Event (Assigned to me, Assigned by me, Following)
     document.querySelectorAll('.mw-tab-item').forEach(tabEl => {
         tabEl.addEventListener('click', function (e) {
@@ -2341,7 +2483,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const filterBtnText = document.getElementById('filterBtnText');
             if (filterBtnText) filterBtnText.innerText = 'Filters';
             document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
-            fetchWorkspaceData();
+
+            if (tabName === 'previous_task_sheet') {
+                togglePreviousTaskSheetMode(true);
+                fetchPreviousTaskSheet(false);
+            } else {
+                togglePreviousTaskSheetMode(false);
+                fetchWorkspaceData();
+            }
         });
     });
 
