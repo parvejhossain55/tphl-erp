@@ -2522,7 +2522,7 @@ class MyWorkController extends Controller
 
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 0) == 443) ? "https://" : "http://";
         $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
-        $dashboardUrl = $protocol . $host . ($GLOBALS['base_url'] ?? '') . '/my-work-dashboard';
+        $dashboardUrl = $protocol . $host . ($GLOBALS['base_url'] ?? '') . '/my-work-dashboard?task_id=' . $id;
 
         $emailSubject = "Reminder: [{$taskCode}] {$taskTitle}";
         $sentEmailsCount = 0;
