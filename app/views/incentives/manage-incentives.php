@@ -596,7 +596,7 @@ $canApproveAh = $isAccountsHead || ($userRole === 1);
                                                     $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
                                                     $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
                                                     $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-                                                    $isSalesHeadUser = in_array(9, [$userRoleId, $userSecRoleId], true) || str_contains($userRoleName, 'sales head') || str_contains($userRoleName, 'sales team head');
+                                                    $isSalesHeadUser = in_array(9, [$userRoleId, $userSecRoleId], true) || str_contains($userRoleName, 'sales head') || str_contains($userRoleName, 'sales team head') || str_contains($userRoleName, 'head of sales');
                                                     $isOpHeadUserClaim = (in_array($userRoleId, [20, 32], true) || str_contains($userRoleName, 'operation head') || str_contains($userRoleName, 'admin & operation'));
                                                     $isMgmtUserClaim = in_array($userRoleId, [1, 3], true);
                                                     $isStage1ClaimDone = (($claim['sales_head_status'] ?? '') === 'approved' || ($claim['claim_sh_status'] ?? '') === 'approved' || !empty($ahInfoClaim['is_op_head_approved']) || ($ahInfoClaim['op_head_status'] ?? '') === 'approved');

@@ -64,15 +64,21 @@
             $_SESSION['user']['secondary_role_id'] = $sbUserSecRoleId;
         }
     }
-    $isManagement = in_array($sbUserRoleId, [1, 3, 33, 34, 35, 38], true) 
-        || in_array($sbUserSecRoleId, [1, 3, 33, 34, 35, 38], true) 
-        || in_array($sbUserPriRoleId, [1, 3, 33, 34, 35, 38], true) 
-        || $sbUserId === 94;
+    $isSbSalesManager = function_exists('isSalesManager') && isSalesManager();
+    $isSbHeadOfSales = ($sbUserRoleId === 9 || $sbUserSecRoleId === 9) && !$isSbSalesManager;
+    $sbIsPureSalesLeadership = ($isSbSalesManager || $isSbHeadOfSales) && !in_array($sbUserRoleId, [1, 3, 20, 32, 33, 34, 35], true);
+    $mgmtRoleIds = $isSbSalesManager ? [1, 3, 33, 34, 35] : [1, 3, 33, 34, 35, 38];
+    $isManagement = !$sbIsPureSalesLeadership && (
+        in_array($sbUserRoleId, $mgmtRoleIds, true) 
+        || in_array($sbUserSecRoleId, $mgmtRoleIds, true) 
+        || in_array($sbUserPriRoleId, $mgmtRoleIds, true) 
+        || $sbUserId === 94
+    );
 
     // Calculate pending verifications
     $pendingVerificationsCount = 0;
     global $db;
-    if (isset($db)) {
+    if (isset($db) && !$sbIsPureSalesLeadership) {
         $res = $db->query("
             SELECT COUNT(DISTINCT l.id) AS total 
             FROM lead_payments lp 
@@ -87,7 +93,7 @@
 
     // Calculate unpaid refund requests count for badge
     $unpaidRefundsCount = 0;
-    if (isset($db)) {
+    if (isset($db) && !$sbIsPureSalesLeadership) {
         $rfRes = $db->query("SELECT COUNT(*) as cnt FROM client_refund_requests WHERE status IN ('pending', 'approved')");
         if ($rfRes && $rfRow = $rfRes->fetch_assoc()) {
             $unpaidRefundsCount = (int) ($rfRow['cnt'] ?? 0);
@@ -96,7 +102,7 @@
 
     // Calculate pending system approval requests count for Management & Accounts badge
     $pendingApprovalCount = 0;
-    if (isset($db)) {
+    if (isset($db) && !$sbIsPureSalesLeadership) {
         if (!class_exists('ApprovalRequest')) {
             require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
         }
@@ -115,7 +121,7 @@
     // Calculate pending vendor & contractor enrollment requests count for current user
     $pendingVendorEnrollmentCount = 0;
     $pendingContractorEnrollmentCount = 0;
-    if (isset($db)) {
+    if (isset($db) && !$sbIsPureSalesLeadership) {
         if (!class_exists('EnrollmentApproval')) {
             require_once dirname(dirname(__DIR__)) . '/models/EnrollmentApproval.php';
         }
@@ -132,7 +138,7 @@
     // Calculate pending labor requisitions count for current user's approval role ("jar jar kache tar approval count")
     $pendingLaborReqCount = 0;
     $pendingLaborAccountsCount = 0;
-    if (isset($db)) {
+    if (isset($db) && !$sbIsPureSalesLeadership) {
         $lrRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         if ($lrRoleId === 1) {
             // Super Admin sees all stages awaiting approval
@@ -166,7 +172,7 @@
 
     // Calculate pending / incomplete sales incentive claims count for Accounts badge
     $pendingIncentiveClaimsCount = 0;
-    if (isset($db)) {
+    if (isset($db) && !$sbIsPureSalesLeadership) {
         $resInc = $db->query("SELECT COUNT(*) AS total FROM project_incentive_claims WHERE claim_status IN ('claimed', 'approved')");
         if ($resInc) {
             $pendingIncentiveClaimsCount = (int) ($resInc->fetch_assoc()['total'] ?? 0);
@@ -175,7 +181,7 @@
 
     // Calculate pending contractor bills for the current user's role
     $conPendingBillsCount = 0;
-    if (isset($db)) {
+    if (isset($db) && !$sbIsPureSalesLeadership) {
         $ur = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
         $qcRoles = [1, 24, 25];
@@ -542,7 +548,7 @@
             $sbRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
             $sbIsChiefOfficer = (in_array($sidebarRoleId, [33, 34, 35], true) || strpos($sbRoleName, 'chief officer') !== false || strpos($sbRoleName, 'management viewer') !== false || strpos($sbRoleName, 'seal ceo') !== false);
             $isQcRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [24, 25]) || strpos($sbRoleName, 'qc') !== false);
-            $isMgmtRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [1, 3, 20, 32, 38]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false);
+            $isMgmtRole = !$sbIsChiefOfficer && !$sbIsPureSalesLeadership && (in_array($sidebarRoleId, [1, 3, 20, 32, 38]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false);
             $isAccExecutiveRole = ($sidebarRoleId === 36 || strpos($sbRoleName, 'executive') !== false || (function_exists('isAccountsExecutive') && isAccountsExecutive()));
             $isAccountsRole = !$sbIsChiefOfficer && !$isAccExecutiveRole && (in_array($sidebarRoleId, [6, 30]) || strpos($sbRoleName, 'accounts') !== false);
 
@@ -620,7 +626,7 @@
         <nav class="main-menu-container nav nav-pills flex-column sub-open">
             <div class="sidebar-left" id="sidebar-left"></div>
             <ul class="main-menu">
-                <?php if (hasPermission("role & permission") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php if (hasPermission("role & permission") && ($_SESSION['user']['role_id'] ?? 0) != 9 && !$isSbSalesManager): ?>
                     <!-- Home -->
                     <li class="slide <?= isActive('home', $current_route) ?>">
                         <a href="<?= $base_url ?>/home" class="sidebar__menu-item <?= isActive('home', $current_route) ?>">
@@ -630,8 +636,8 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20, 24, 25, 13, 17])): ?>
-                    <!-- All Approval Requests for Management, Accounts & Audit/Purchase Heads -->
+                <?php if ($isManagement || $isSbHeadOfSales || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20, 24, 25, 13, 17])): ?>
+                    <!-- All Approval Requests for Management, Accounts, Sales Head & Audit/Purchase Heads -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests"
                             class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
@@ -649,6 +655,7 @@
                             <span class="sidebar__menu-label">My Approval History</span>
                         </a>
                     </li>
+                    <?php if (!$sbIsPureSalesLeadership): ?>
                     <li class="slide <?= isActive('vendor-enrollment-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/vendor-enrollment-requests"
                             class="sidebar__menu-item <?= isActive('vendor-enrollment-requests', $current_route) ?>">
@@ -669,8 +676,10 @@
                             <?php endif; ?>
                         </a>
                     </li>
+                    <?php endif; ?>
                     <?php 
-                    $canViewOfficeTxns = !empty($isManagement) 
+                    $canViewOfficeTxns = !$sbIsPureSalesLeadership && (
+                        !empty($isManagement) 
                         || in_array((int)($sbUserRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35, 38])
                         || in_array((int)($sbUserSecRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35, 38])
                         || in_array((int)($sbUserPriRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35, 38])
@@ -678,7 +687,8 @@
                         || stripos($sbRoleName ?? '', 'audit') !== false
                         || stripos($sbRoleName ?? '', 'operation') !== false
                         || stripos($sbRoleName ?? '', 'management') !== false
-                        || stripos($sbRoleName ?? '', 'admin') !== false;
+                        || stripos($sbRoleName ?? '', 'admin') !== false
+                    );
                     if ($canViewOfficeTxns): 
                     ?>
                         <li class="slide <?= isActive('branch-disbursements', $current_route) ?>">
@@ -691,13 +701,15 @@
                         </li>
                     <?php endif; ?>
                     <?php
-                    $canViewTopPayrollDisburse = !empty($isManagement)
+                    $canViewTopPayrollDisburse = !$sbIsPureSalesLeadership && (
+                        !empty($isManagement)
                         || in_array((int)($sbUserRoleId ?? 0), [1, 3, 6, 30, 33, 34, 35, 36, 38])
                         || in_array((int)($sbUserSecRoleId ?? 0), [1, 3, 6, 30, 33, 34, 35, 36, 38])
                         || in_array((int)($sbUserPriRoleId ?? 0), [1, 3, 6, 30, 33, 34, 35, 36, 38])
                         || stripos($sbRoleName ?? '', 'account') !== false
                         || stripos($sbRoleName ?? '', 'management') !== false
-                        || stripos($sbRoleName ?? '', 'admin') !== false;
+                        || stripos($sbRoleName ?? '', 'admin') !== false
+                    );
                     if ($canViewTopPayrollDisburse):
                     ?>
                         <li class="slide <?= isActive('payslip-lists', $current_route) ?>">
@@ -715,7 +727,7 @@
                 $sidebarUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
                 // Allowed roles: Admin (1), Super Admin (3), Accounts (6), Accounts Head (30), Role 20, Role 32, Purchase Head (17)
                 // Excludes Chief Officer (Role 33)
-                $canViewExpenseAnalytics = in_array($sidebarUserRoleId, [1, 3, 6, 30, 20, 32, 17, 38], true);
+                $canViewExpenseAnalytics = !$sbIsPureSalesLeadership && in_array($sidebarUserRoleId, [1, 3, 6, 30, 20, 32, 17, 38], true);
                 if ($canViewExpenseAnalytics): 
                 ?>
                     <!-- Expense Analytics Dashboard -->
@@ -742,7 +754,7 @@
                     || stripos($sbRoleName ?? '', 'audit') !== false
                     || stripos($sbRoleName ?? '', 'account') !== false
                     || hasPermission('accounts manage');
-                $canViewExpenseAdjustments = $canViewExpenseAdjustments && !in_array($sidebarUserRoleId, [34, 35, 36], true) && !(function_exists('isAccountsExecutive') && isAccountsExecutive());
+                $canViewExpenseAdjustments = $canViewExpenseAdjustments && !$sbIsPureSalesLeadership && !in_array($sidebarUserRoleId, [34, 35, 36], true) && !(function_exists('isAccountsExecutive') && isAccountsExecutive());
                 if ($canViewExpenseAdjustments): 
                 ?>
                     <!-- Expense Adjustments Menu -->
@@ -762,9 +774,9 @@
                 // Check if user has ERP Tracker access
                 $sidebar_user_id = $_SESSION['user']['id'] ?? 0;
                 $sidebar_role_id = $_SESSION['user']['role_id'] ?? 0;
-                $hasErpAccess = in_array($sidebar_role_id, [1, 3, 33, 34, 35, 38]);
+                $hasErpAccess = !$sbIsPureSalesLeadership && in_array($sidebar_role_id, [1, 3, 33, 34, 35, 38]);
 
-                if (!$hasErpAccess) {
+                if (!$hasErpAccess && !$sbIsPureSalesLeadership) {
                     global $db;
                     $champ_check = $db->query("SELECT id FROM erp_tracker_champions WHERE user_id = $sidebar_user_id LIMIT 1");
                     if ($champ_check && $champ_check->num_rows > 0) {
@@ -785,35 +797,24 @@
                 $todayAssignedCount = getTodayAssignedCount($userId);
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
+                $isSbSalesManager = function_exists('isSalesManager') && isSalesManager();
                 ?>
-                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 9, 15, 20, 22, 30, 32, 33, 34, 35, 38, 39]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 6, 7, 9, 15, 20, 22, 30, 32, 33, 34, 35, 38, 39])): ?>
+                <?php if (hasPermission("sales & business") || $isSbSalesManager || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 9, 15, 20, 22, 30, 32, 33, 34, 35, 38, 39]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 6, 7, 9, 15, 20, 22, 30, 32, 33, 34, 35, 38, 39])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Sales & Business</span>
                     </li>
 
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 20, 32, 33, 34, 35, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 9, 20, 32, 33, 34, 35, 38])): ?>
-                        <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
-                            <!-- sales Dashboard -->
-                            <li class="slide ">
-                                <a href="<?= $base_url ?>/sales-dashboard"
-                                    class="sidebar__menu-item <?= isActive('sales-dashboard', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
-                                    <span class="sidebar__menu-label">Sales Dashboard</span>
-                                </a>
-                            </li>
-                        <?php endif; ?>
-                        <?php if (($_SESSION['user']['role_id'] ?? 0) == 9): ?>
-                            <!-- sales Team Head Dashboard -->
-                            <li class="slide ">
-                                <a href="<?= $base_url ?>/sales-team-head-dashboard"
-                                    class="sidebar__menu-item <?= isActive('sales-team-head-dashboard', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
-                                    <span class="sidebar__menu-label">Overall Sales Dashboard</span>
-                                </a>
-                            </li>
-                        <?php endif; ?>
+                    <?php if (hasPermission("sales & business") || $isSbSalesManager || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 20, 32, 33, 34, 35, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 3, 9, 20, 32, 33, 34, 35, 38])): ?>
+                        <!-- sales Dashboard -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/sales-dashboard"
+                                class="sidebar__menu-item <?= isActive('sales-dashboard', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                                <span class="sidebar__menu-label">Sales Dashboard</span>
+                            </a>
+                        </li>
 
                         <!-- Team Overview Dashboard (Management, Sales Heads, SEAL CEO, Chief Officers) -->
                         <li class="slide ">
@@ -875,36 +876,6 @@
                                     <span class="sidebar__menu-label">Sales Teams Performance</span>
                                 </a>
                             </li>
-                        <?php endif; ?>
-
-                        <?php if (!$isManagement && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
-                            <!-- Location -->
-                            <li class="slide ">
-                                <a href="<?= $base_url ?>/location-lists"
-                                    class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-location-dot"></i></div>
-                                    <span class="sidebar__menu-label">Location Manage</span>
-                                </a>
-                            </li>
-
-                            <!-- Amenities -->
-                            <li class="slide ">
-                                <a href="<?= $base_url ?>/amenities"
-                                    class="sidebar__menu-item <?= isActive(['amenities', 'create-amenity', 'edit-amenity'], $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-spa"></i></div>
-                                    <span class="sidebar__menu-label">Amenities Manage</span>
-                                </a>
-                            </li>
-
-                            <!-- Community -->
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/community-lists"
-                                    class="sidebar__menu-item  <?= isActive('community-lists', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-people-group"></i></div>
-                                    <span class="sidebar__menu-label">Community Lists</span>
-                                </a>
-                            </li>
-
                         <?php endif; ?>
                         <!-- Lead & Booking -->
                         <li
@@ -1016,96 +987,7 @@
                         </li>
                     <?php endif; ?>
 
-                    <!-- Project Manage -->
-                    <li
-                        class="slide has-sub <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'project-progress-lists', 'create-project-progress', 'edit-project-progress', 'camera-lists', 'create-camera', 'edit-camera'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'project-progress-lists', 'create-project-progress', 'edit-project-progress', 'camera-lists', 'create-camera', 'edit-camera'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-building"></i></div>
-                            <span class="sidebar__menu-label">Project Manage</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <?php if (!$isManagement): ?>
-                                <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
-                                    <li class="slide">
-                                        <a href="<?= $base_url ?>/project-category-lists"
-                                            class="sidebar__menu-item <?= isActive(['project-category-lists', 'create-project-category'], $current_route) ?>">
-                                            Project Categories
-                                        </a>
-                                    </li>
-                                <?php endif; ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/create-project"
-                                        class="sidebar__menu-item <?= isActive('create-project', $current_route) ?>">Add
-                                        Project</a>
-                                </li>
-                            <?php endif; ?>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/project-lists"
-                                    class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">Project
-                                    List</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/project-progress-lists"
-                                    class="sidebar__menu-item <?= isActive(['project-progress-lists', 'create-project-progress', 'edit-project-progress'], $current_route) ?>">Project
-                                    Progress</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/camera-lists"
-                                    class="sidebar__menu-item <?= isActive(['camera-lists', 'create-camera', 'edit-camera'], $current_route) ?>">Project
-                                    Cameras</a>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 7, 9, 15, 30, 33, 34, 35, 36, 39])): ?>
-                        <!-- Flats Manage -->
-                        <li class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
-                            <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
-                                <span class="sidebar__menu-label">Flats Manage</span>
-                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            </a>
-                            <ul class="sidebar-menu child2" style="display:block;">
-                                <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [6, 7, 30, 36, 39])): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/create-flat"
-                                            class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
-                                    </li>
-                                <?php endif; ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/flat-lists"
-                                        class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
-                                </li>
-                            </ul>
-                        </li>
-                    <?php endif; ?>
-
                     <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 8, 9, 15, 20, 30, 32, 33, 34, 35, 36, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 2, 3, 5, 6, 8, 9, 15, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement)): ?>
-
-
-                        <!-- Teams Manage for Sales -->
-                        <?php if (hasPermission("Sales Team") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 38])): ?>
-                            <li class="slide ">
-                                <a href="<?= $base_url ?>/teams"
-                                    class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
-                                    <span class="sidebar__menu-label">Sales Teams Add</span>
-                                </a>
-                            </li>
-                        <?php endif; ?>
-                        <!-- Inventroy -->
-                        <li class="slide ">
-                            <a href="<?= $base_url ?>/inventory-lists"
-                                class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
-                                <span class="sidebar__menu-label">Project Wise Flat Stock</span>
-                            </a>
-                        </li>
-
-
                         <!-- Sales Incentives: Single Clean Menu Links based on Role -->
                         <?php if (!$isManagement && (in_array($_SESSION['user']['role_id'] ?? 0, [5, 8, 15]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [5, 8, 15]) || (!empty($_SESSION['user']['is_team_leader']) && $_SESSION['user']['is_team_leader'] == 1))): ?>
                             <!-- My Incentive for Sales Executive, Manager, Team Leader -->
@@ -1122,7 +1004,7 @@
                                 <a href="<?= $base_url ?>/my-team-incentives"
                                     class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-users text-info"></i></div>
-                                    <span class="sidebar__menu-label">My Team Target</span>
+                                    <span class="sidebar__menu-label">Team Target</span>
                                 </a>
                             </li>
                             <?php endif; ?>
@@ -1134,7 +1016,7 @@
                                 <a href="<?= $base_url ?>/my-team-incentives"
                                     class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-users text-info"></i></div>
-                                    <span class="sidebar__menu-label">My Team Target</span>
+                                    <span class="sidebar__menu-label">Team Target</span>
                                 </a>
                             </li>
                         <?php endif; ?>
@@ -1172,8 +1054,112 @@
                                 </a>
                             </li>
                         <?php endif; ?>
+                    <?php endif; ?>
 
-                        <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 9, 20, 30, 32, 33, 34, 35, 38])): ?>
+                    <!-- Project Manage -->
+                    <li
+                        class="slide has-sub <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'project-progress-lists', 'create-project-progress', 'edit-project-progress', 'camera-lists', 'create-camera', 'edit-camera', 'location-lists', 'amenities', 'create-amenity', 'edit-amenity', 'community-lists'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'project-progress-lists', 'create-project-progress', 'edit-project-progress', 'camera-lists', 'create-camera', 'edit-camera', 'location-lists', 'amenities', 'create-amenity', 'edit-amenity', 'community-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-building"></i></div>
+                            <span class="sidebar__menu-label">Project Manage</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <?php if (!$isManagement): ?>
+                                <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/project-category-lists"
+                                            class="sidebar__menu-item <?= isActive(['project-category-lists', 'create-project-category'], $current_route) ?>">
+                                            Project Categories
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/create-project"
+                                        class="sidebar__menu-item <?= isActive('create-project', $current_route) ?>">Add
+                                        Project</a>
+                                </li>
+                            <?php endif; ?>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/project-lists"
+                                    class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">Project
+                                    List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/project-progress-lists"
+                                    class="sidebar__menu-item <?= isActive(['project-progress-lists', 'create-project-progress', 'edit-project-progress'], $current_route) ?>">Project
+                                    Progress</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/camera-lists"
+                                    class="sidebar__menu-item <?= isActive(['camera-lists', 'create-camera', 'edit-camera'], $current_route) ?>">Project
+                                    Cameras</a>
+                            </li>
+                            <?php if (!$isManagement && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/location-lists"
+                                        class="sidebar__menu-item <?= isActive('location-lists', $current_route) ?>">Location Manage</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/amenities"
+                                        class="sidebar__menu-item <?= isActive(['amenities', 'create-amenity', 'edit-amenity'], $current_route) ?>">Amenities Manage</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/community-lists"
+                                        class="sidebar__menu-item <?= isActive('community-lists', $current_route) ?>">Community Lists</a>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+
+                    <?php if (!$sbIsPureSalesLeadership && (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 7, 9, 15, 30, 33, 34, 35, 36, 39]))): ?>
+                        <!-- Flats Manage -->
+                        <li class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
+                                <span class="sidebar__menu-label">Flats Manage</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <?php if (!$isManagement && !in_array($_SESSION['user']['role_id'] ?? 0, [6, 7, 30, 36, 39])): ?>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/create-flat"
+                                            class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
+                                    </li>
+                                <?php endif; ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/flat-lists"
+                                        class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
+                                </li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 8, 9, 15, 20, 30, 32, 33, 34, 35, 36, 38]) || in_array($_SESSION['user']['secondary_role_id'] ?? 0, [1, 2, 3, 5, 6, 8, 9, 15, 20, 30, 32, 33, 34, 35, 36, 38]) || $isManagement)): ?>
+
+
+                        <!-- Teams Manage for Sales -->
+                        <?php if (!$isSbSalesManager && (hasPermission("Sales Team") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 38]) || (int)($_SESSION['user']['secondary_role_id'] ?? 0) === 9)): ?>
+                            <li class="slide ">
+                                <a href="<?= $base_url ?>/teams"
+                                    class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
+                                    <span class="sidebar__menu-label">Sales Teams Add</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <!-- Inventroy -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/inventory-lists"
+                                class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
+                                <span class="sidebar__menu-label">Project Wise Flat Stock</span>
+                            </a>
+                        </li>
+
+                        <?php if (false): // Contact Lists hidden for all roles ?>
 
                             <li class="slide ">
                                 <a href="<?= $base_url ?>/contact-lists"
@@ -1286,14 +1272,14 @@
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
                 <!-- for sales executive  -->
-                <?php if ((hasPermission("add Lead") || in_array($_SESSION['user']['role_id'] ?? 0, [5, 8])) && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php if ((hasPermission("add Lead") || (int)($_SESSION['user']['role_id'] ?? 0) === 8) && !in_array((int)($_SESSION['user']['role_id'] ?? 0), [5, 9], true) && empty($isSbSalesManager)): ?>
                     <ul class="sidebar-menu child2" style="display:block;">
                         <?php if (!$isManagement): ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/my-dashboard"
                                 class="sidebar__menu-item <?= isActive('my-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
-                        <?php if (!empty($_SESSION['user']['is_team_leader']) || !empty($_SESSION['user']['is_sales_co_leader']) || in_array($_SESSION['user']['role_id'] ?? 0, [5, 8]) || !empty($_SESSION['user']['team_id'])): ?>
+                        <?php if (!empty($_SESSION['user']['is_team_leader']) || !empty($_SESSION['user']['is_sales_co_leader'])): ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/team-dashboard"
                                 class="sidebar__menu-item <?= isActive('team-dashboard', $current_route) ?>">
@@ -1381,7 +1367,7 @@
                         <li class="slide <?= isActive('my-team-incentives', $current_route) ?>">
                             <a href="<?= $base_url ?>/my-team-incentives"
                                 class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">
-                                <i class="fa-solid fa-users text-info me-2"></i>My Team Target
+                                <i class="fa-solid fa-users text-info me-2"></i>Team Target
                             </a>
                         </li>
                         <?php endif; ?>
@@ -1390,7 +1376,7 @@
                 <!-- for sales executive  -->
 
                 <?php 
-                $isMgmtUserForDM = !empty($isManagement) || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true);
+                $isMgmtUserForDM = !$sbIsPureSalesLeadership && (!empty($isManagement) || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35, 38], true));
                 if ($isMgmtUserForDM && !hasPermission("Digital Marketing Panel") && ($_SESSION['user']['role_id'] ?? 0) != 10 && ($_SESSION['user']['secondary_role_id'] ?? 0) != 10): 
                 ?>
                     <li class="slide ">
@@ -1430,6 +1416,7 @@
                     </li>
                 <?php endif; ?>
 
+                <?php if (!$sbIsPureSalesLeadership): ?>
                 <!--Start Marketing Head Dashboard  -->
                 <?php if (hasPermission("Digital Marketing Panel") || (isset($_SESSION['user']) && (($_SESSION['user']['role_id'] ?? 0) == 10 || ($_SESSION['user']['secondary_role_id'] ?? 0) == 10))): ?>
                     <!--CED CATEGORY -->
@@ -2235,6 +2222,7 @@
                 <?php endif; ?>
 
                 <!--End HRM CATEGORY -->
+                <?php endif; ?>
 
 
 
@@ -2346,6 +2334,7 @@
                 <?php endif; ?>
 
 
+                <?php if (!$sbIsPureSalesLeadership): ?>
                 <?php if (hasPermission("Employee Dashboard") && ($_SESSION['user']['role_id'] ?? 0) != 9 && !$isManagement): ?>
                     <!-- Employee Dashboard -->
                     <li class="slide <?= isActive(['employee-dashboard', 'my-attendance', 'my-leaves'], $current_route) ?>">
@@ -4515,6 +4504,7 @@
                     <?php endif; ?>
 
                 <!-- ==================== END PHASE 2 ==================== -->
+                <?php endif; ?>
 
                 <!-- Project Other Costs -->
                 <li class="slide <?= isActive('project-other-costs', $current_route) ?>">

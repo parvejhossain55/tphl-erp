@@ -100,7 +100,7 @@
                                     }
                                     $userSecondaryRoleId = $secondaryRoleCache[$uid];
                                 }
-                                $isSalesHeadUser = ($userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($sessionRoleName, 'sales head') !== false || strpos($sessionRoleName, 'sales team head') !== false || $isManagementUser || $isSiteOperator || in_array($userRoleId, [20, 32], true));
+                                $isSalesHeadUser = ($userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($sessionRoleName, 'sales head') !== false || strpos($sessionRoleName, 'sales team head') !== false || strpos($sessionRoleName, 'head of sales') !== false || $isManagementUser || $isSiteOperator || in_array($userRoleId, [20, 32], true));
 
                                 $statusLower = strtolower($req['status'] ?? '');
                                 $isPendingStatus = in_array($statusLower, ['pending', 'partially_approved', '']);

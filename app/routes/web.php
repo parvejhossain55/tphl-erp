@@ -137,6 +137,7 @@ return [
     'store-team' => ['controller' => 'TeamController', 'method' => 'store'],
     'update-team' => ['controller' => 'TeamController', 'method' => 'update'],
     'delete-team' => ['controller' => 'TeamController', 'method' => 'delete'],
+    'team-manager-history' => ['controller' => 'TeamController', 'method' => 'managerHistory'],
 
     // =========================================================================
     // Controller: ProjectProgressController

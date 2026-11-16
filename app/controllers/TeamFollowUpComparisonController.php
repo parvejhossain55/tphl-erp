@@ -29,11 +29,14 @@ class TeamFollowUpComparisonController extends Controller
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         return in_array($roleId, self::ALLOWED_ROLE_IDS, true)
+            || (function_exists('isSalesManager') && isSalesManager())
             || str_contains($roleName, 'chief')
             || str_contains($roleName, 'ceo')
             || str_contains($roleName, 'management')
             || str_contains($roleName, 'sales manager')
+            || str_contains($roleName, 'sales team leader')
             || str_contains($roleName, 'sales head')
+            || str_contains($roleName, 'head of sales')
             || str_contains($roleName, 'admin');
     }
 
@@ -115,6 +118,14 @@ class TeamFollowUpComparisonController extends Controller
 
         $comparisonData = $this->service->build($period, $filters);
 
+        // Scope dropdowns for Sales Team Leader (5) & Sales Manager
+        [$scopedTeams, $scopedProjects, $scopedUsers, $scope] = filterSalesDropdowns(
+            $this->db,
+            $this->service->getTeams(),
+            $this->service->getProjects(),
+            $this->service->getSalesUsers()
+        );
+
         // CSV export
         if (($_GET['export'] ?? '') === 'csv') {
             $this->exportCsv($period, $filters, $comparisonData);
@@ -129,9 +140,9 @@ class TeamFollowUpComparisonController extends Controller
             'filters' => $filters,
             'data' => $comparisonData,
             'cycleOptions' => $this->service->cycleOptions(6),
-            'teams' => $this->service->getTeams(),
-            'salesUsers' => $this->service->getSalesUsers(),
-            'projects' => $this->service->getProjects(),
+            'teams' => $scopedTeams,
+            'salesUsers' => $scopedUsers,
+            'projects' => $scopedProjects,
         ]);
     }
 

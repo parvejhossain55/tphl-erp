@@ -6,10 +6,58 @@ class User extends Model
 
     protected $table = "users";
     protected $db;
+    private static $userSchemaChecked = false;
 
     public function __construct($db)
     {
         $this->db = $db;
+        $this->ensureUserSchema();
+    }
+
+    public function ensureUserSchema()
+    {
+        if (self::$userSchemaChecked || !$this->db) {
+            return;
+        }
+        self::$userSchemaChecked = true;
+
+        try {
+            $uCols = [];
+            $colRes = $this->db->query("SHOW COLUMNS FROM `users`");
+            if ($colRes) {
+                while ($r = $colRes->fetch_assoc()) {
+                    $uCols[$r['Field']] = true;
+                }
+            }
+            if (!empty($uCols)) {
+                $requiredUserCols = [
+                    'full_name'         => "VARCHAR(150) NULL DEFAULT NULL",
+                    'employee_id'       => "INT NULL DEFAULT NULL",
+                    'phone'             => "VARCHAR(50) NULL DEFAULT NULL",
+                    'email'             => "VARCHAR(150) NULL DEFAULT NULL",
+                    'designation_id'    => "INT NULL DEFAULT 0",
+                    'address'           => "TEXT NULL DEFAULT NULL",
+                    'nid'               => "VARCHAR(100) NULL DEFAULT NULL",
+                    'role_id'           => "INT NOT NULL DEFAULT 2",
+                    'secondary_role_id' => "INT NULL DEFAULT NULL",
+                    'primary_role_id'   => "INT NULL DEFAULT NULL",
+                    'user_name'         => "VARCHAR(150) NULL DEFAULT NULL",
+                    'password'          => "VARCHAR(255) NULL DEFAULT NULL",
+                    'photo'             => "VARCHAR(255) NULL DEFAULT NULL",
+                    'media_link1'       => "VARCHAR(255) NULL DEFAULT NULL",
+                    'media_link2'       => "VARCHAR(255) NULL DEFAULT NULL",
+                    'created_by'        => "INT NULL DEFAULT 0",
+                    'team_id'           => "INT NULL DEFAULT 0",
+                ];
+                foreach ($requiredUserCols as $cName => $cDef) {
+                    if (!isset($uCols[$cName])) {
+                        $this->db->query("ALTER TABLE `users` ADD COLUMN `{$cName}` {$cDef}");
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("User::ensureUserSchema error: " . $e->getMessage());
+        }
     }
     private function baseUserQuery()
     {

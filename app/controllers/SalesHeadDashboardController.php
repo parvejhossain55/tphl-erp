@@ -40,8 +40,17 @@ class SalesHeadDashboardController extends Controller
         
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
 
+        $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
+        $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
+
         if (in_array((int)$roleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamId = $filterTeamId;
+        } elseif ($isSalesManagerUser) {
+            if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedTeamIds, true)) {
+                $teamId = (int)$filterTeamId;
+            } else {
+                $teamId = !empty($managedTeamIds) ? (int)$managedTeamIds[0] : -1;
+            }
         } else {
             $teamId = !empty($sessionTeamId) ? (int)$sessionTeamId : $filterTeamId;
         }
@@ -355,6 +364,11 @@ class SalesHeadDashboardController extends Controller
         // Teams for filter dropdown
         $teamsResult = $this->db->query("SELECT * FROM teams ORDER BY name ASC");
         $teams = $teamsResult ? $teamsResult->fetch_all(MYSQLI_ASSOC) : [];
+        if ($isSalesManagerUser && !in_array((int)$roleId, [1, 3, 9, 32, 33, 34, 35])) {
+            $teams = array_values(array_filter($teams, function ($t) use ($managedTeamIds) {
+                return in_array((int)($t['id'] ?? 0), $managedTeamIds, true);
+            }));
+        }
         $this->view('sales-developments/salesTeamHead/sales-team-views', [
             "current_route" => "sales-team-view",
             "page_title" => "Sales Team",
