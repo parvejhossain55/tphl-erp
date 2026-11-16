@@ -424,36 +424,37 @@ class ApiController extends Controller
                     }
 
                     $isEmiDiscount = (!empty($p['is_emi_discount']) && (int)$p['is_emi_discount'] === 1);
+                    $payStatus = strtolower($p['payment_status'] ?? '');
 
-                    if ($vStatus !== 'rejected') {
-                        if ($isEmiDiscount) {
-                            $bulkEmiDiscount += $amt;
-                        } else {
-                            // Verified payments contribute to confirmed totalPaid
-                            if ($vStatus === 'verified') {
-                                $totalPaid += $amt;
+                    // Skip rejected, cancelled, failed, refunded, or trashed payments
+                    if ($vStatus === 'rejected' || in_array($payStatus, ['cancelled', 'failed', 'refunded'], true) || !empty($p['is_trashed'])) {
+                        continue;
+                    }
 
-                                if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
-                                else if ($ptype === 'registration') $registrationPaid += $amt;
-                                else if ($ptype === 'mutation_cost') $mutationCostPaid += $amt;
-                                else if ($ptype === 'development_charge') $devChargePaid += $amt;
-                                else if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
-                                    $emiPaid += $amt;
-                                    $totalServiceFee += (float)$p['service_fee'];
-                                }
-                                else if ($ptype === 'land_share') $additionalLandSharePaid += $amt;
-                            } else {
-                                // Pending/unverified payments tracked separately
-                                if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
-                                    $unverifiedEmiPaid += $amt;
-                                }
+                    if ($isEmiDiscount) {
+                        $bulkEmiDiscount += $amt;
+                    } else {
+                        // Verified and unverified (pending) payments both contribute to totalPaid
+                        $totalPaid += $amt;
+
+                        if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
+                        else if ($ptype === 'registration') $registrationPaid += $amt;
+                        else if ($ptype === 'mutation_cost') $mutationCostPaid += $amt;
+                        else if ($ptype === 'development_charge') $devChargePaid += $amt;
+                        else if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
+                            $emiPaid += $amt;
+                            $totalServiceFee += (float)$p['service_fee'];
+
+                            if ($vStatus !== 'verified') {
+                                $unverifiedEmiPaid += $amt;
                             }
                         }
-
-                        $totalDueEmi += (float)$p['due_emi_amount'];
-                        $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
-                        $penaltyCharged += (float)$p['penalty_amount'];
+                        else if ($ptype === 'land_share') $additionalLandSharePaid += $amt;
                     }
+
+                    $totalDueEmi += (float)$p['due_emi_amount'];
+                    $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
+                    $penaltyCharged += (float)$p['penalty_amount'];
                     $penaltyPaid += (float)$p['penalty_paid'];
                     $penaltyWaived += (float)$p['penalty_waived'];
                 }
@@ -645,11 +646,11 @@ class ApiController extends Controller
                         "number_of_emis_paid" => ($completedEmiCount + $unverifiedEmiCount),
                         "per_emi_amount" => $perEmiAmount,
                         "current_running_emi_number" => ($completedEmiCount + $unverifiedEmiCount) + 1,
-                        "total_emi_amount_paid" => ($emiPaid + $unverifiedEmiPaid),
+                        "total_emi_amount_paid" => $emiPaid,
 
                         "total_verified_emi_count" => $completedEmiCount,
                         "total_unverified_emi_count" => $unverifiedEmiCount,
-                        "verified_emi_amount_paid" => $emiPaid,
+                        "verified_emi_amount_paid" => ($emiPaid - $unverifiedEmiPaid),
                         "unverified_emi_amount_paid" => $unverifiedEmiPaid,
                         "due_emi_amount" => $totalDueEmi,
                         "approved_emi_discount" => $bulkEmiDiscount,
@@ -921,9 +922,15 @@ class ApiController extends Controller
                     $isDiscount = (!empty($p['is_emi_discount']) && (int)$p['is_emi_discount'] === 1);
                     $vStatus = $p['verification_status'] ?? 'pending';
 
+                    $payStatus = strtolower($p['payment_status'] ?? '');
+                    if ($vStatus === 'rejected' || in_array($payStatus, ['cancelled', 'failed', 'refunded'], true) || !empty($p['is_trashed'])) {
+                        continue;
+                    }
+
                     if ($isDiscount) {
                         $bulkEmiDiscount += $amt;
-                    } else if ($vStatus === 'verified') {
+                    } else {
+                        // Both verified and unverified (pending) payments contribute to totalPaid
                         $totalPaid += $amt;
                         if ($p['payment_type'] === 'booking_money') $bookingMoneyPaid += $amt;
                         if (in_array($p['payment_type'], ['booking_money', 'registration', 'mutation_cost', 'land_share'])) {

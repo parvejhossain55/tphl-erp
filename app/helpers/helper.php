@@ -166,6 +166,10 @@ function getRoleDashboardRoute(): string
         return 'ced-dashboard';
     }
 
+    if (isSalesManager()) {
+        return 'sales-dashboard';
+    }
+
     switch ($role) {
         case 1: // Super Admin
         case 3: // Admin
@@ -199,7 +203,7 @@ function getRoleDashboardRoute(): string
             return 'my-dashboard';
 
         case 9: // sales team header
-            return 'sales-team-head-dashboard';
+            return 'sales-dashboard';
 
         case 10: // sales / digital marketing
             return 'digital-marketing-dashboard';
@@ -329,11 +333,14 @@ function checkDashboardAccess(string $route): void
     $secRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
     $roleName  = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-    $mgmtRoles = [1, 3, 33, 34, 35, 38];
-    $isManagement = in_array($roleId, $mgmtRoles, true)
+    $isSalesMgr = function_exists('isSalesManager') && isSalesManager();
+    $mgmtRoles = $isSalesMgr ? [1, 3, 33, 34, 35] : [1, 3, 33, 34, 35, 38];
+    $isManagement = !$isSalesMgr && (
+        in_array($roleId, $mgmtRoles, true)
         || in_array($priRoleId, $mgmtRoles, true)
         || in_array($secRoleId, $mgmtRoles, true)
-        || $userId === 94;
+        || $userId === 94
+    );
 
     $hasActiveRole = function (array $allowedRoles) use ($roleId): bool {
         return in_array($roleId, $allowedRoles, true);
@@ -354,12 +361,16 @@ function checkDashboardAccess(string $route): void
             break;
 
         case 'sales-dashboard':
-            $allowed = $roleId !== 9
-                && ($isManagement || $hasActiveRole([5, 32]) || hasPermission('sales & business'));
+            $allowed = $isManagement
+                || $isSalesMgr
+                || $hasActiveRole([5, 9, 32])
+                || $secRoleId === 9
+                || hasPermission('sales & business');
             break;
 
         case 'sales-team-head-dashboard':
             $allowed = $isManagement
+                || $isSalesMgr
                 || $hasActiveRole([9, 32])
                 || $secRoleId === 9
                 || (hasPermission('sales & business') && $roleId === 9);
@@ -368,6 +379,7 @@ function checkDashboardAccess(string $route): void
         case 'team-dashboard':
         case 'team-overview-dashboard':
             $allowed = $isManagement
+                || $isSalesMgr
                 || $hasActiveRole([5, 8, 9, 32])
                 || $secRoleId === 9
                 || hasPermission('sales & business')
@@ -707,6 +719,264 @@ function isTeamLeader(): bool
         session_start();
     }
     return (int) ($_SESSION['user']['is_team_leader'] ?? 0) === 1;
+}
+
+/**
+ * Resolve the new Sales Manager role ID dynamically from the roles table.
+ * Excludes legacy Role ID 5 (which was renamed to Sales Team Leader).
+ */
+function getSalesManagerRoleId($db = null): int
+{
+    static $cachedId = null;
+    if ($cachedId !== null) {
+        return $cachedId;
+    }
+
+    $conn = $db ?? ($GLOBALS['db'] ?? ($GLOBALS['conn'] ?? null));
+    if (!$conn instanceof mysqli) {
+        return 0;
+    }
+
+    $res = @$conn->query("SELECT id FROM roles WHERE LOWER(TRIM(name)) = 'sales manager' AND id != 5 LIMIT 1");
+    if ($res && ($row = $res->fetch_assoc())) {
+        $cachedId = (int) $row['id'];
+        return $cachedId;
+    }
+
+    $cachedId = 0;
+    return 0;
+}
+
+/**
+ * Check if the currently logged-in user holds the new Sales Manager role
+ * (multi-team manager between Sales Team Leader and Head of Sales).
+ */
+function isSalesManager(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (empty($_SESSION['user'])) {
+        return false;
+    }
+
+    $roleId    = (int) ($_SESSION['user']['role_id'] ?? 0);
+    $secRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+    $priRoleId = (int) ($_SESSION['user']['primary_role_id'] ?? 0);
+
+    $smRoleId = getSalesManagerRoleId();
+    if ($smRoleId > 0 && in_array($smRoleId, [$roleId, $secRoleId, $priRoleId], true)) {
+        return true;
+    }
+
+    $roleName    = strtolower(trim((string) ($_SESSION['user']['role_name'] ?? '')));
+    $secRoleName = strtolower(trim((string) ($_SESSION['user']['secondary_role_name'] ?? '')));
+
+    if ($roleId !== 5 && $roleName === 'sales manager') {
+        return true;
+    }
+    if ($secRoleId !== 5 && $secRoleName === 'sales manager') {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Return active team IDs assigned to a Sales Manager via sales_manager_teams.
+ * Safe if the table does not exist yet (returns []).
+ */
+function getManagedTeamIds($db = null, ?int $userId = null): array
+{
+    static $tableExists = null;
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $targetUserId = $userId ?? (int) ($_SESSION['user']['id'] ?? 0);
+    if ($targetUserId <= 0) {
+        return [];
+    }
+
+    $conn = $db ?? ($GLOBALS['db'] ?? ($GLOBALS['conn'] ?? null));
+    if (!$conn instanceof mysqli) {
+        return [];
+    }
+
+    if ($tableExists === null) {
+        $chk = @$conn->query("SHOW TABLES LIKE 'sales_manager_teams'");
+        $tableExists = ($chk && $chk->num_rows > 0);
+    }
+    if (!$tableExists) {
+        return [];
+    }
+
+    $stmt = $conn->prepare("SELECT team_id FROM sales_manager_teams WHERE manager_user_id = ? AND is_active = 1");
+    if (!$stmt) {
+        return [];
+    }
+    $stmt->bind_param("i", $targetUserId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $ids = [];
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $tid = (int) ($row['team_id'] ?? 0);
+            if ($tid > 0) {
+                $ids[] = $tid;
+            }
+        }
+    }
+    $stmt->close();
+
+    return array_values(array_unique($ids));
+}
+
+/**
+ * Determine the current user's Sales portal filter scope:
+ * - is_global: Head of Sales (9) & Management (1, 3, 20, 32, 33, 34, 35, 38) -> all teams, executives, projects
+ * - is_manager: New Sales Manager -> only their assigned teams (sales_manager_teams)
+ * - is_leader: Sales Team Leader (5) / isTeamLeader() / isSalesCoLeader() -> only their own team_id
+ */
+function getSalesFilterScope($db = null): array
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $userId    = (int) ($_SESSION['user']['id'] ?? 0);
+    $roleId    = (int) ($_SESSION['user']['role_id'] ?? 0);
+    $secRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+    $teamId    = (int) ($_SESSION['user']['team_id'] ?? 0);
+    $roleName  = strtolower(trim((string) ($_SESSION['user']['role_name'] ?? '')));
+
+    $globalRoles = [1, 3, 9, 20, 32, 33, 34, 35, 38];
+    $isSuperGlobal = in_array($roleId, [1, 3, 9, 20, 32, 33, 34, 35], true)
+        || in_array($secRoleId, [1, 3, 9, 20, 32, 33, 34, 35], true)
+        || str_contains($roleName, 'head of sales')
+        || str_contains($roleName, 'sales team head');
+
+    if (!$isSuperGlobal && isSalesManager()) {
+        $managedTeamIds = getManagedTeamIds($db, $userId);
+        return [
+            'is_global'  => false,
+            'is_manager' => true,
+            'is_leader'  => false,
+            'team_ids'   => $managedTeamIds,
+        ];
+    }
+
+    $isGlobal = $isSuperGlobal
+        || in_array($roleId, $globalRoles, true)
+        || in_array($secRoleId, $globalRoles, true);
+
+    if ($isGlobal) {
+        return [
+            'is_global'  => true,
+            'is_manager' => false,
+            'is_leader'  => false,
+            'team_ids'   => null,
+        ];
+    }
+
+    // Fallback: look up team_id from employees if not in session
+    if ($teamId <= 0 && $userId > 0) {
+        $conn = $db ?? ($GLOBALS['db'] ?? ($GLOBALS['conn'] ?? null));
+        if ($conn instanceof mysqli) {
+            $res = @$conn->query("SELECT team_id FROM employees WHERE user_id = {$userId} AND team_id > 0 LIMIT 1");
+            if ($res && ($row = $res->fetch_assoc())) {
+                $teamId = (int) $row['team_id'];
+            }
+        }
+    }
+
+    $isLeader = ($roleId === 5 || $secRoleId === 5 || isTeamLeader() || isSalesCoLeader());
+
+    return [
+        'is_global'  => false,
+        'is_manager' => false,
+        'is_leader'  => $isLeader,
+        'team_ids'   => $teamId > 0 ? [$teamId] : [],
+    ];
+}
+
+/**
+ * Return project IDs assigned to members of the given team(s) via sales_targets.project_ids.
+ * Returns null if "all" projects are assigned, or int[] of assigned project IDs.
+ */
+function getAssignedProjectIdsForTeams($db, array $teamIds): ?array
+{
+    $teamIds = array_values(array_filter(array_map('intval', $teamIds), fn($id) => $id > 0));
+    if (empty($teamIds)) {
+        return [];
+    }
+    $conn = $db ?? ($GLOBALS['db'] ?? ($GLOBALS['conn'] ?? null));
+    if (!$conn instanceof mysqli) {
+        return [];
+    }
+
+    $inTeams = implode(',', $teamIds);
+    $sql = "SELECT DISTINCT st.project_ids
+            FROM sales_targets st
+            INNER JOIN users u ON u.id = st.sales_user_id
+            WHERE u.team_id IN ({$inTeams})
+              AND st.project_ids IS NOT NULL
+              AND st.project_ids != ''";
+    $res = @$conn->query($sql);
+    if (!$res) {
+        return [];
+    }
+
+    $projectIds = [];
+    while ($row = $res->fetch_assoc()) {
+        $decoded = json_decode((string) $row['project_ids'], true);
+        if (!is_array($decoded)) {
+            continue;
+        }
+        foreach ($decoded as $val) {
+            if (strtolower(trim((string) $val)) === 'all') {
+                return null; // All projects allowed
+            }
+            $pid = (int) $val;
+            if ($pid > 0) {
+                $projectIds[$pid] = $pid;
+            }
+        }
+    }
+
+    return array_values($projectIds);
+}
+
+/**
+ * Filter teams, projects, and sales users dropdown lists according to the current user's Sales scope.
+ * Returns [$filteredTeams, $filteredProjects, $filteredUsers, $scope].
+ */
+function filterSalesDropdowns($db, array $teams, array $projects, array $users): array
+{
+    $scope = getSalesFilterScope($db);
+    if ($scope['is_global']) {
+        return [$teams, $projects, $users, $scope];
+    }
+
+    $allowedTeamIds = $scope['team_ids'] ?? [];
+
+    $filteredTeams = array_values(array_filter($teams, function ($t) use ($allowedTeamIds) {
+        return in_array((int) ($t['id'] ?? 0), $allowedTeamIds, true);
+    }));
+
+    $filteredUsers = array_values(array_filter($users, function ($u) use ($allowedTeamIds) {
+        return in_array((int) ($u['team_id'] ?? 0), $allowedTeamIds, true);
+    }));
+
+    $allowedProjectIds = getAssignedProjectIdsForTeams($db, $allowedTeamIds);
+    if ($allowedProjectIds === null) {
+        $filteredProjects = $projects;
+    } else {
+        $filteredProjects = array_values(array_filter($projects, function ($p) use ($allowedProjectIds) {
+            return in_array((int) ($p['id'] ?? 0), $allowedProjectIds, true);
+        }));
+    }
+
+    return [$filteredTeams, $filteredProjects, $filteredUsers, $scope];
 }
 
 

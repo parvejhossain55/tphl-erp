@@ -202,31 +202,29 @@ defaultOpenMenus.forEach((element) => {
 });
 
 firstLevelItems.forEach((element) => {
-  element.addEventListener("click", () => {
-    const parentMenu = element.closest(".nav.sub-open");
-    if (parentMenu)
-      parentMenu.querySelectorAll(":scope > ul > .slide.has-sub > a").forEach((el) => {
-        if (el.nextElementSibling && (el.nextElementSibling.style.display === "block" || window.getComputedStyle(el.nextElementSibling).display === "block")) {
-          slideUp(el.nextElementSibling);
-        }
-      });
-    if (element.nextElementSibling) {
-      slideToggle(element.nextElementSibling);
+  element.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetUl = element.nextElementSibling;
+    if (targetUl) {
+      slideToggle(targetUl);
+      element.classList.toggle("menu-open");
+      if (element.parentElement) {
+        element.parentElement.classList.toggle("open");
+      }
     }
   });
 });
 
 innerLevelItems.forEach((element) => {
-  element.addEventListener("click", () => {
-    const innerMenu = element.closest(".sidebar-menu");
-    if (innerMenu)
-      innerMenu.querySelectorAll(":scope .slide.has-sub > a").forEach((el) => {
-        if (el.nextElementSibling && el.nextElementSibling?.style.display === "block") {
-          slideUp(el.nextElementSibling);
-        }
-      });
-    if (element.nextElementSibling) {
-      slideToggle(element.nextElementSibling);
+  element.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetUl = element.nextElementSibling;
+    if (targetUl) {
+      slideToggle(targetUl);
+      element.classList.toggle("menu-open");
+      if (element.parentElement) {
+        element.parentElement.classList.toggle("open");
+      }
     }
   });
 });
@@ -269,6 +267,7 @@ setNavActive();
 /* for menu scroll to top active page */
 let customScrollTop = () => {
   const scrollContainer = document.getElementById("sidebar-scroll");
+  if (!scrollContainer) return;
   // Prefer the sub-menu active item (which doesn't have href="javascript:void(0);")
   let activeEle = document.querySelector(".sidebar__menu-item.active:not([href^='javascript:'])");
   if (!activeEle) {
@@ -276,17 +275,18 @@ let customScrollTop = () => {
   }
   if (activeEle) {
     const href = activeEle.getAttribute("href") || "";
-    // If on home/dashboard, always keep the sidebar at the very top (0)
     if (href.endsWith("/home") || href.endsWith("?home") || href === "/" || href === "") {
-      if (scrollContainer) scrollContainer.scrollTop = 0;
+      scrollContainer.scrollTop = 0;
       return;
     }
-    let elemRect = activeEle.getBoundingClientRect();
-    if (elemRect.top > 450 || elemRect.top < 0) {
-      activeEle.scrollIntoView({ behavior: "smooth", block: "center" });
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const elemRect = activeEle.getBoundingClientRect();
+    // Only scroll if the active item is actually outside the visible sidebar viewport
+    if (elemRect.bottom > containerRect.bottom || elemRect.top < containerRect.top) {
+      activeEle.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   } else {
-    if (scrollContainer) scrollContainer.scrollTop = 0;
+    scrollContainer.scrollTop = 0;
   }
 };
 setTimeout(() => {

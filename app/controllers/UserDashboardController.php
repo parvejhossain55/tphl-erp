@@ -764,7 +764,8 @@ class UserDashboardController extends Controller
             ? (int)($_GET['user_id'] ?? $_GET['assigned_user'])
             : $loggedInUserId;
 
-        if (!in_array($loggedInRoleId, [1, 3, 5, 9, 32, 33, 34, 35]) && $targetUserId !== $loggedInUserId) {
+        $isSalesMgrUser = function_exists('isSalesManager') && isSalesManager();
+        if (!in_array($loggedInRoleId, [1, 3, 5, 9, 32, 33, 34, 35]) && !$isSalesMgrUser && $targetUserId !== $loggedInUserId) {
             $targetUserId = $loggedInUserId;
         }
 
@@ -831,9 +832,19 @@ class UserDashboardController extends Controller
         $requestedUserId = isset($_GET['assigned_user']) ? (int)$_GET['assigned_user'] : (isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0);
 
         $userId = $loggedUserId;
+        $isSalesMgrUser = function_exists('isSalesManager') && isSalesManager();
         if ($requestedUserId > 0 && $requestedUserId !== $loggedUserId) {
-            if (in_array($userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+            if (in_array($userRoleId, [1, 3, 9, 32, 33, 34, 35]) && !$isSalesMgrUser) {
                 $userId = $requestedUserId;
+            } elseif ($isSalesMgrUser && function_exists('getManagedTeamIds')) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $loggedUserId);
+                if (!empty($mgrTeamIds)) {
+                    $inList = implode(',', array_map('intval', $mgrTeamIds));
+                    $chk = $this->db->query("SELECT u.id FROM users u LEFT JOIN employees e ON e.user_id = u.id WHERE u.id = {$requestedUserId} AND COALESCE(NULLIF(e.team_id, 0), u.team_id, 0) IN ({$inList}) LIMIT 1");
+                    if ($chk && $chk->num_rows > 0) {
+                        $userId = $requestedUserId;
+                    }
+                }
             } elseif ($userRoleId === 5 && !empty($userTeamId)) {
                 $stmtCheck = $this->db->prepare("SELECT id FROM users WHERE id = ? AND team_id = ?");
                 if ($stmtCheck) {
@@ -1122,8 +1133,11 @@ class UserDashboardController extends Controller
         $teamId = $_SESSION['user']['team_id'] ?? null;
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if ($userRoleId === 9 || in_array($userRoleId, [1, 3, 32, 33])) {
+        if (($userRoleId === 9 || in_array($userRoleId, [1, 3, 32, 33])) && !$isSalesMgrUser) {
             $teamMembers = $userModel->getAllRoleUser();
+        } elseif ($isSalesMgrUser && function_exists('getManagedTeamIds')) {
+            $mgrTeamIds = getManagedTeamIds($this->db, $loggedUserId);
+            $teamMembers = !empty($mgrTeamIds) ? (new Lead($this->db))->getTeamMemberUsers($mgrTeamIds) : [];
         } elseif (!empty($teamId)) {
             $teamMembers = $userModel->getUsersByTeamAndRole($teamId);
             if (empty($teamMembers)) {

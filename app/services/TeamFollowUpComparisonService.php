@@ -212,7 +212,8 @@ class TeamFollowUpComparisonService
         while ($res && $r = $res->fetch_assoc()) {
             $roleId = (int) $r['role_id'];
             $isSales = in_array($roleId, self::SALES_ROLE_IDS, true) 
-                || in_array((int) $r['secondary_role_id'], self::SALES_ROLE_IDS, true);
+                || in_array((int) $r['secondary_role_id'], self::SALES_ROLE_IDS, true)
+                || strtolower(trim((string) ($r['role_name'] ?? ''))) === 'sales manager';
 
             $users[(int) $r['id']] = [
                 'id' => (int) $r['id'],

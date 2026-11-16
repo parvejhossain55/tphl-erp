@@ -521,7 +521,8 @@ class IncentiveController extends Controller
 
         $isSalesHead = in_array(9, [$userRole, $userSecRoleId, $userPriRoleId], true) 
             || strpos($roleName, 'sales team head') !== false 
-            || strpos($roleName, 'sales head') !== false;
+            || strpos($roleName, 'sales head') !== false
+            || strpos($roleName, 'head of sales') !== false;
 
         $isAccountsHead = in_array(30, [$userRole, $userSecRoleId, $userPriRoleId], true) 
             || strpos($roleName, 'accounts head') !== false;
