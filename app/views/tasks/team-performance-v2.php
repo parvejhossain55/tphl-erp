@@ -592,7 +592,7 @@
 .mw-callout-title { font-weight: 600; font-size: 12.5px; line-height: 16px; color: #087F5B; margin-bottom: 2px; }
 .mw-callout-sub { font-weight: 400; font-size: 11.5px; line-height: 15px; color: #4A6B5D; }
 .mw-drawer-footer { padding: 16px 28px 18px; border-top: 1px solid #E2EAE5; background: #FFFFFF; flex-shrink: 0; }
-.mw-drawer-footer-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mw-drawer-footer-actions { display: flex; justify-content: flex-start; align-items: center; gap: 12px; }
 .mw-drawer-btn { padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; line-height: 16px; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center; }
 .mw-drawer-btn.secondary { background: #FFFFFF; border: 1px solid #D1DDD6; color: #142D26; }
 .mw-drawer-btn.secondary:hover { background: #F5F7F6; border-color: #B5C6BC; }
