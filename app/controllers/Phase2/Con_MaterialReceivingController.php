@@ -49,7 +49,7 @@ class Con_MaterialReceivingController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if (in_array($userRole, [20, 24, 25, 32])) {
+        if (in_array($userRole, [13, 20, 24, 25, 32])) {
             setError('Operations and QC roles can only view material receiving status. You do not have permission to create GRN entries.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
             exit;
@@ -71,6 +71,54 @@ class Con_MaterialReceivingController extends Controller
             'po'            => $po,
             'pendingItems'  => $pendingItems,
             'warehouses'    => $warehouses,
+        ]);
+    }
+
+    public function createReplacement($returnId)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (in_array($userRole, [13, 20, 24, 25, 32])) {
+            setError('Operations and QC roles can only view material receiving status. You do not have permission to create MRN entries.');
+            header("Location: {$GLOBALS['base_url']}/con-material-returns");
+            exit;
+        }
+
+        require_once __DIR__ . '/../../models/Con_MaterialReturn.php';
+        $returnModel = new \Con_MaterialReturn($this->db);
+        $return = $returnModel->find((int)$returnId);
+        if (!$return) {
+            setError('Material Return record not found.');
+            header("Location: {$GLOBALS['base_url']}/con-material-returns");
+            exit;
+        }
+
+        if ($return['status'] !== 'sent') {
+            setError('Replacement can only be received after the return is marked as Sent to vendor.');
+            header("Location: {$GLOBALS['base_url']}/con-material-returns");
+            exit;
+        }
+
+        $origReceiving = $this->receivingModel->find((int)$return['receiving_id']);
+        $poId = (int)($origReceiving['purchase_order_id'] ?? 0);
+        $po = $this->poModel->find($poId);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-material-returns");
+            exit;
+        }
+
+        $pendingItems = $returnModel->getReplacementPendingItems((int)$returnId);
+        $warehouses   = $this->warehouseModel->getAll();
+
+        $this->view('phase2/material-receiving/create-receiving', [
+            'current_route'     => 'con-material-receivings',
+            'page_title'        => 'Replacement MRN — RET-' . (int)$returnId . ' (PO-' . $poId . ')',
+            'po'                => $po,
+            'pendingItems'      => $pendingItems,
+            'warehouses'        => $warehouses,
+            'replacementReturn' => $return,
         ]);
     }
 
@@ -105,8 +153,11 @@ class Con_MaterialReceivingController extends Controller
             return null;
         };
 
+        $returnId = !empty($_POST['return_id']) ? (int)$_POST['return_id'] : null;
+
         $data = [
             'purchase_order_id' => (int)($_POST['purchase_order_id'] ?? 0),
+            'return_id'         => $returnId,
             'warehouse_id'      => (int)($_POST['warehouse_id'] ?? 0),
             'received_by'       => $userId,
             'receiving_date'    => $_POST['receiving_date'] ?? date('Y-m-d'),
@@ -141,6 +192,12 @@ class Con_MaterialReceivingController extends Controller
 
         $id = $this->receivingModel->create($data, $items);
         if ($id) {
+            if ($returnId) {
+                require_once __DIR__ . '/../../models/Con_MaterialReturn.php';
+                $returnModel = new \Con_MaterialReturn($this->db);
+                $returnModel->updateStatus($returnId, 'replacement_pending');
+            }
+
             // Trigger email to QC
             require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
             $mailService = new \ProjectWorkflowMailService($this->db);

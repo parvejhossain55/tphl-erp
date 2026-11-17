@@ -61,19 +61,42 @@
                                             </td>
                                             <td>
                                                 <?php if ($r['status'] == 'pending'): ?>
-                                                    <span class="badge bg-warning">Pending</span>
+                                                    <span class="badge bg-warning text-dark">Pending Return</span>
                                                 <?php elseif ($r['status'] == 'sent'): ?>
-                                                    <span class="badge bg-info">Sent</span>
+                                                    <span class="badge bg-info">Sent to Vendor</span>
+                                                <?php elseif ($r['status'] == 'replacement_pending'): ?>
+                                                    <span class="badge bg-primary">Replacement Pending QC</span>
                                                 <?php else: ?>
-                                                    <span class="badge bg-success">Acknowledged</span>
+                                                    <span class="badge bg-success">Replaced &amp; Stocked</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
+                                                <?php
+                                                    $isReceiverActionBlocked = in_array((int)($currentRoleId ?? 0), [13, 20, 24, 25, 32], true);
+                                                ?>
                                                 <?php if ($r['status'] == 'pending'): ?>
-                                                    <form method="POST" action="<?= $base_url ?>/con-material-returns/update/<?= $r['id'] ?>" class="d-inline">
-                                                        <input type="hidden" name="status" value="sent">
-                                                        <button type="submit" class="btn btn-sm btn-info" onclick="return confirm('Mark as Sent back to vendor?')"><i class="bi bi-truck me-1"></i> Mark as Sent</button>
-                                                    </form>
+                                                    <?php if (!$isReceiverActionBlocked): ?>
+                                                        <form method="POST" action="<?= $base_url ?>/con-material-returns/update/<?= $r['id'] ?>" class="d-inline">
+                                                            <input type="hidden" name="status" value="sent">
+                                                            <button type="submit" class="btn btn-sm btn-info" onclick="return confirm('Mark as Sent back to vendor?')"><i class="bi bi-truck me-1"></i> Mark as Sent</button>
+                                                        </form>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-light text-dark border">Awaiting Site Engineer to Send Back</span>
+                                                    <?php endif; ?>
+                                                <?php elseif ($r['status'] == 'sent'): ?>
+                                                    <?php if (!$isReceiverActionBlocked): ?>
+                                                        <a href="<?= $base_url ?>/con-material-receiving-replacement/<?= $r['id'] ?>" class="btn btn-sm btn-success">
+                                                            <i class="bi bi-box-arrow-in-down me-1"></i> Receive Replacement (MRN)
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-light text-dark border">Awaiting Site Engineer Replacement MRN</span>
+                                                    <?php endif; ?>
+                                                <?php elseif ($r['status'] == 'replacement_pending' && !empty($r['replacement_receiving_id'])): ?>
+                                                    <a href="<?= $base_url ?>/con-material-receiving-qc/<?= (int)$r['replacement_receiving_id'] ?>" class="btn btn-sm btn-primary">
+                                                        <i class="bi bi-clipboard-check me-1"></i> Review Replacement QC
+                                                    </a>
+                                                <?php elseif ($r['status'] == 'acknowledged'): ?>
+                                                    <span class="text-success small fw-bold"><i class="bi bi-check-circle me-1"></i>Completed</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
