@@ -3385,9 +3385,21 @@ class ApprovalRequest extends Model
             if ($appRole === 'dept_head') {
                 $pendingStageLabel = 'Pending Dept Head';
                 $pendingForText = 'Department Head / Reporting Boss';
+            } elseif ($appRole === 'sales_manager') {
+                $pendingStageLabel = 'Pending Sales Manager';
+                $pendingForText = 'Related Sales Manager';
+            } elseif ($appRole === 'sales_head') {
+                $pendingStageLabel = 'Pending Sales Head';
+                $pendingForText = 'Head of Sales';
+            } elseif ($appRole === 'op_head') {
+                $pendingStageLabel = 'Pending Operation Head';
+                $pendingForText = 'Admin & Operation Head';
             } elseif ($appRole === 'qc') {
                 $pendingStageLabel = 'Pending QC & Audit';
                 $pendingForText = 'QC & Internal Audit Head';
+            } elseif ($row['source_table'] === 'client_refund_requests' && $appRole === 'management') {
+                $pendingStageLabel = 'Pending Super Admin';
+                $pendingForText = 'Super Admin';
             } elseif ($appRole === 'accounts_head' || ($row['status'] === 'approved' && $rowAhStatus !== 'approved')) {
                 $pendingStageLabel = 'Pending Accounts Head';
                 $pendingForText = 'Accounts Head';
@@ -5742,21 +5754,24 @@ class ApprovalRequest extends Model
                 $title = 'Client Refund — ' . ($row['client_name'] ?? 'Client') . ' | ' . ($row['flat_name'] ?? '') . ' | ' . ($row['project_name'] ?? '');
                 
                 $appRole = 'sales_manager';
+                $ahSt    = 'pending';
                 if ($status === 'approved') {
-                    $appRole = 'accounts_head';
+                    $appRole = 'accounts';
+                    $ahSt    = 'approved';
                 } elseif ($status === 'refunded') {
                     $appRole = 'completed';
+                    $ahSt    = 'approved';
                 } elseif ($status === 'rejected') {
                     $appRole = 'rejected';
                 }
                 
                 $stmt = $this->db->prepare("
                     INSERT INTO approval_requests (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, request_amount, approved_amount, status, op_head_status, accounts_head_status, created_at, updated_at)
-                    VALUES ('accounts', 'client_refund', ?, 'client_refund_requests', ?, 0, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?)
+                    VALUES ('accounts', 'client_refund', ?, 'client_refund_requests', ?, 0, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
                 ");
                 if ($stmt) {
                     $reqBy = (int)$row['requested_by'];
-                    $stmt->bind_param('siisddssss', $title, $rfId, $reqBy, $appRole, $reqAmt, $reqAmt, $status, $row['created_at'], $row['created_at']);
+                    $stmt->bind_param('siisddsssss', $title, $rfId, $reqBy, $appRole, $reqAmt, $reqAmt, $status, $ahSt, $row['created_at'], $row['created_at']);
                     $stmt->execute();
                     $stmt->close();
                 }

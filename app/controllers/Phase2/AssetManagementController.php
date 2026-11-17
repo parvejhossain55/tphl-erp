@@ -753,27 +753,27 @@ class AssetManagementController extends Controller
                 $escSingleNote = $this->db->real_escape_string($note ?: 'Approved by Management');
 
                 if (($req['dept_head_status'] ?? '') === 'pending') {
-                    $this->model->approveExtraPurchase($id, 'dept_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Dept. Head)');
+                    $this->model->approveStep($id, 'dept_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Dept. Head)');
                     setSuccess('Department Head stage approved by Management.');
                     header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                     exit;
                 } elseif (($req['it_head_status'] ?? '') === 'pending') {
-                    $this->model->approveExtraPurchase($id, 'it_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of IT Head)');
+                    $this->model->approveStep($id, 'it_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of IT Head)');
                     setSuccess('IT Head stage approved by Management.');
                     header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                     exit;
                 } elseif (($req['operations_status'] ?? '') === 'pending') {
-                    $this->model->approveExtraPurchase($id, 'operations', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Admin & Ops)');
+                    $this->model->approveStep($id, 'operations', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Admin & Ops)');
                     setSuccess('Admin & Operation stage approved by Management.');
                     header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                     exit;
                 } elseif (($req['purchase_head_status'] ?? '') === 'pending') {
-                    $this->model->approveExtraPurchase($id, 'purchase_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Purchase Head)');
+                    $this->model->approveStep($id, 'purchase_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Purchase Head)');
                     setSuccess('Purchase Head stage approved by Management.');
                     header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                     exit;
                 } elseif (($req['qc_audit_status'] ?? '') === 'pending') {
-                    $this->model->approveExtraPurchase($id, 'qc_audit', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of QC)');
+                    $this->model->approveStep($id, 'qc_audit', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of QC)');
                     setSuccess('QC & Audit stage approved by Management.');
                     header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                     exit;

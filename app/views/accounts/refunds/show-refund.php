@@ -365,6 +365,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         'done'   => $isMgmtDone || (strtolower($arData['sales_head_status'] ?? 'pending') === 'approved'),
                         'by'     => $arData['sales_head_name'] ?? null,
                         'at'     => $arData['sales_head_at'] ?? null,
+                        'note'   => $arData['sales_head_note'] ?? null,
                     ],
                     [
                         'num'    => 2,
@@ -374,6 +375,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         'done'   => $isMgmtDone || (strtolower($arData['qc_status'] ?? 'pending') === 'approved'),
                         'by'     => $arData['qc_name'] ?? null,
                         'at'     => $arData['qc_at'] ?? null,
+                        'note'   => $arData['qc_note'] ?? null,
                     ],
                     [
                         'num'    => 3,
@@ -383,6 +385,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         'done'   => $isMgmtDone || (strtolower($arData['op_head_status'] ?? 'pending') === 'approved'),
                         'by'     => $arData['op_head_name'] ?? null,
                         'at'     => $arData['op_head_at'] ?? null,
+                        'note'   => $arData['op_head_note'] ?? null,
                     ],
                     [
                         'num'    => 4,
@@ -392,6 +395,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         'done'   => $isMgmtDone,
                         'by'     => $arData['mgmt_name'] ?? ($refund['approved_by_name'] ?? null),
                         'at'     => $arData['approved_at'] ?? ($refund['approved_at'] ?? null),
+                        'note'   => $arData['approval_note'] ?? null,
                     ],
                     [
                         'num'    => 5,
@@ -401,6 +405,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         'done'   => $isPaidDone,
                         'by'     => null,
                         'at'     => $refund['refunded_at'] ?? null,
+                        'note'   => null,
                     ],
                 ];
                 $stageTitles = [
@@ -454,6 +459,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <div class="fs-10 text-success mt-0.5">
                                         <?= !empty($step['by']) ? htmlspecialchars($step['by']) : '' ?>
                                         <?= !empty($step['at']) ? ' · ' . date('d M Y, h:i A', strtotime($step['at'])) : '' ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($step['done'] && !empty($step['note']) && strtolower(trim($step['note'])) !== 'approved'): ?>
+                                    <div class="fs-10 text-muted fst-italic mt-0.5">
+                                        <i class="bi bi-chat-left-text me-1"></i><?= htmlspecialchars($step['note']) ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -552,12 +562,17 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="form-label fw-bold small mb-1 text-success">Approved Refund Amount (৳)</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text bg-success text-white fw-bold">৳</span>
                                 <input type="number" step="0.01" name="approved_amount" id="app_approved_amount" class="form-control form-control-sm fw-bold border-success text-success" value="<?= htmlspecialchars($refund['refund_amount']) ?>" min="0" max="<?= htmlspecialchars($refund['total_paid']) ?>" required>
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small mb-1 text-muted">Approval Note / Remarks <span class="fw-normal">(Optional)</span></label>
+                            <textarea name="note" class="form-control form-control-sm" rows="2" placeholder="Add approval remarks or reason for retention adjustment..."></textarea>
                         </div>
                         <?php if ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isOpHeadUserRefund): ?>
                             <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
