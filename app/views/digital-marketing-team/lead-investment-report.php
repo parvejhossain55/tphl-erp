@@ -1,6 +1,6 @@
 <?php
 /**
- * Lead Investment Report (Overview, Daily Spend Entry, Ad Performance, Statements)
+ * Leads Investment Report (Overview, Daily Spend Entry, Ad Performance, Statements)
  * TPHL ERP - Management & Head of Digital Marketing (Role 10)
  */
 $baseUrl = $GLOBALS['base_url'] ?? '/TPHL-ERP';
@@ -451,6 +451,41 @@ $todayLabel = date('d M Y');
         text-decoration: underline;
     }
 
+    /* Compact Single / Custom Range Mode Pills in Spend Form */
+    .lir-mode-toggle {
+        display: inline-flex;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 5px;
+        padding: 1px;
+    }
+    .lir-mode-pill {
+        border: none;
+        background: transparent;
+        color: #475569;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        cursor: pointer;
+        line-height: 1.3;
+        transition: all 0.15s ease;
+    }
+    .lir-mode-pill.active {
+        background: var(--lir-green);
+        color: #ffffff;
+    }
+    .lir-days-badge {
+        background: var(--lir-green-soft);
+        color: var(--lir-green);
+        border: 1px solid var(--lir-green-border);
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+
     /* Print styling for Statement */
     @media print {
         body * {
@@ -481,8 +516,8 @@ $todayLabel = date('d M Y');
     </div>
 
     <!-- Breadcrumb & Dynamic Header -->
-    <div class="lir-breadcrumb">Marketing / Lead Investment Report</div>
-    <h1 class="lir-page-title" id="lirMainHeading">Lead Investment Report</h1>
+    <div class="lir-breadcrumb">Marketing / Leads Investment Report</div>
+    <h1 class="lir-page-title" id="lirMainHeading">Leads Investment Report</h1>
     <p class="lir-page-subtitle" id="lirMainSubheading">
         Spend &rarr; matched paid leads &rarr; automatic CPL &rarr; investment decisions. &bull; Real-time ERP data
     </p>
@@ -660,11 +695,24 @@ $todayLabel = date('d M Y');
             <input type="hidden" id="spendEditId" value="">
             <div class="row g-3">
                 <!-- Row 1 -->
-                <div class="col-lg-3 col-md-6">
-                    <label class="lir-field-label">SPEND DATE *</label>
-                    <input type="date" id="entrySpendDate" class="lir-input" value="<?= htmlspecialchars($todayDate) ?>" onchange="updateSpendMatchPreview()">
+                <div class="col-lg-3 col-md-6" id="entryDateCol">
+                    <div class="d-flex justify-content-between align-items-center" style="margin-bottom: 5px;">
+                        <label class="lir-field-label mb-0" id="entrySpendDateLabel">SPEND DATE *</label>
+                        <div class="d-inline-flex align-items-center gap-1">
+                            <span class="lir-days-badge" id="entryDaysBadge" style="display:none;">1 day</span>
+                            <div class="lir-mode-toggle" role="group" aria-label="Spend date mode">
+                                <button type="button" class="lir-mode-pill active" id="spendModeSingleBtn" onclick="setEntryDateMode('single')">Single</button>
+                                <button type="button" class="lir-mode-pill" id="spendModeRangeBtn" onclick="setEntryDateMode('range')">Custom range</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="date" id="entrySpendDate" class="lir-input" value="<?= htmlspecialchars($todayDate) ?>" onchange="onEntryDateChanged()">
+                        <span class="text-muted fw-bold" id="entryDateRangeDash" style="display:none;">&ndash;</span>
+                        <input type="date" id="entrySpendEndDate" class="lir-input" value="<?= htmlspecialchars($todayDate) ?>" style="display:none;" onchange="onEntryDateChanged()">
+                    </div>
                 </div>
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-3 col-md-6" id="entryPlatformCol">
                     <label class="lir-field-label">PLATFORM *</label>
                     <select id="entryPlatform" class="lir-select" onchange="updateSpendMatchPreview()">
                         <option value="Meta Ads">Meta Ads</option>
@@ -673,16 +721,16 @@ $todayLabel = date('d M Y');
                         <option value="TikTok Ads">TikTok Ads</option>
                     </select>
                 </div>
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-3 col-md-6" id="entryAccountCol">
                     <label class="lir-field-label">AD ACCOUNT *</label>
-                    <input type="text" id="entryAdAccount" class="lir-input" list="datalistAdAccounts" value="TPHL_ATI" placeholder="e.g. TPHL_ATI" oninput="updateSpendMatchPreview()">
+                    <input type="text" id="entryAdAccount" class="lir-input" list="datalistAdAccounts" value="" placeholder="e.g. TPHL_ATI" oninput="updateSpendMatchPreview()">
                     <datalist id="datalistAdAccounts">
                         <?php foreach ($adAccounts as $acc): ?>
                             <option value="<?= htmlspecialchars($acc) ?>"></option>
                         <?php endforeach; ?>
                     </datalist>
                 </div>
-                <div class="col-lg-3 col-md-6">
+                <div class="col-lg-3 col-md-6" id="entryProjectCol">
                     <label class="lir-field-label">PROJECT *</label>
                     <select id="entryProjectId" class="lir-select" onchange="onEntryProjectChanged()">
                         <option value="">-- Select Project --</option>
@@ -727,7 +775,7 @@ $todayLabel = date('d M Y');
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="lir-field-label">ACTUAL SPEND *</label>
-                    <input type="number" step="0.01" min="0" id="entryActualSpend" class="lir-input" value="50.00" oninput="recalcBdtEquivalent()">
+                    <input type="number" step="0.01" min="0" id="entryActualSpend" class="lir-input" value="" placeholder="e.g. 50.00" oninput="recalcBdtEquivalent()">
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="lir-field-label">FX RATE &bull; BDT PER USD</label>
@@ -735,13 +783,13 @@ $todayLabel = date('d M Y');
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <label class="lir-field-label">BDT EQUIVALENT &bull; AUTO</label>
-                    <input type="text" id="entryBdtEquivalent" class="lir-input" value="6,650.00" readonly>
+                    <input type="text" id="entryBdtEquivalent" class="lir-input" value="0.00" readonly>
                 </div>
 
                 <!-- Row 4 -->
                 <div class="col-lg-6 col-md-6">
                     <label class="lir-field-label">SOURCE / REFERENCE</label>
-                    <input type="text" id="entrySourceRef" class="lir-input" value="Meta daily spend report" placeholder="e.g. Meta daily spend report">
+                    <input type="text" id="entrySourceRef" class="lir-input" value="" placeholder="e.g. Meta daily spend report">
                 </div>
                 <div class="col-lg-6 col-md-6">
                     <label class="lir-field-label">NOTES</label>
@@ -1013,6 +1061,7 @@ $todayLabel = date('d M Y');
     const lirBaseUrl = <?= json_encode($baseUrl) ?>;
     let currentLirTab = 'overview';
     let currentLirPeriod = 'daily';
+    let entryDateMode = 'single';
     let lastDashboardData = null;
     let previewDebounceTimer = null;
 
@@ -1040,11 +1089,11 @@ $todayLabel = date('d M Y');
         const h1 = document.getElementById('lirMainHeading');
         const sub = document.getElementById('lirMainSubheading');
         if (tabName === 'overview') {
-            h1.textContent = 'Lead Investment Report';
+            h1.textContent = 'Leads Investment Report';
             sub.innerHTML = 'Spend &rarr; matched paid leads &rarr; automatic CPL &rarr; investment decisions. &bull; Real-time ERP data';
         } else if (tabName === 'spend') {
             h1.textContent = 'Add daily actual spend';
-            sub.textContent = 'End-of-day entry by date, platform, project and ad. Budget is a separate planning amount.';
+            sub.textContent = 'Single-date or custom date-range entry by platform, project and ad. Budget is a separate planning amount.';
             updateSpendMatchPreview();
         } else if (tabName === 'adperf') {
             h1.textContent = 'Ad performance';
@@ -1113,7 +1162,7 @@ $todayLabel = date('d M Y');
             renderAdPerformanceTab(json.data);
             renderStatementsTab(json.data);
         } catch (err) {
-            console.error('Failed to load Lead Investment Report data:', err);
+            console.error('Failed to load Leads Investment Report data:', err);
         }
     }
 
@@ -1233,9 +1282,17 @@ $todayLabel = date('d M Y');
 
     function renderSpendEntriesTable(data) {
         const entries = data.spend_entries || [];
+        const dateInfo = data.date_info || {};
         const tbody = document.getElementById('spendEntriesTbody');
         const badge = document.getElementById('spendEntriesCountBadge');
+        const heading = document.getElementById('spendEntriesTableHeading');
         if (badge) badge.textContent = `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`;
+        if (heading) {
+            const todayIso = <?= json_encode($todayDate) ?>;
+            heading.textContent = (dateInfo.start_date === todayIso && dateInfo.end_date === todayIso)
+                ? "Today's spend entries"
+                : `Spend entries (${dateInfo.label || ''})`;
+        }
 
         if (entries.length === 0) {
             tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No spend entries recorded for the selected date range yet.</td></tr>`;
@@ -1248,13 +1305,16 @@ $todayLabel = date('d M Y');
                 : (e.ad_id || 'Project-only • Unmapped');
             const cplCell = e.cpl_usd !== null ? formatUsd(e.cpl_usd) : '—';
             const platShort = e.platform.replace(' Ads', '');
+            const spendCell = e.is_prorated
+                ? `<div>${formatUsd(e.spend_usd)}</div><div class="text-muted" style="font-size:11px;">of ${formatUsd(e.full_spend_usd)} total</div>`
+                : formatUsd(e.spend_usd);
 
             return `
                 <tr>
                     <td class="text-muted" style="font-size:12px;">${escapeHtml(e.spend_date_label)}</td>
                     <td class="fw-semibold">${escapeHtml(e.project_name)} / ${escapeHtml(platShort)}</td>
                     <td>${escapeHtml(adLabel)}</td>
-                    <td>${formatUsd(e.spend_usd)}</td>
+                    <td>${spendCell}</td>
                     <td>${e.paid_leads}</td>
                     <td>${cplCell}</td>
                     <td>${escapeHtml(e.updated_by_name)}</td>
@@ -1369,8 +1429,73 @@ $todayLabel = date('d M Y');
     }
 
     // =========================================================================
-    // TAB 2: DAILY SPEND ENTRY FORM LOGIC & REAL-TIME PREVIEW
+    // TAB 2: DAILY / CUSTOM-RANGE SPEND ENTRY FORM LOGIC & REAL-TIME PREVIEW
     // =========================================================================
+    function setEntryDateMode(mode) {
+        entryDateMode = (mode === 'range') ? 'range' : 'single';
+        const isRange = (entryDateMode === 'range');
+
+        document.getElementById('spendModeSingleBtn')?.classList.toggle('active', !isRange);
+        document.getElementById('spendModeRangeBtn')?.classList.toggle('active', isRange);
+
+        const labelEl = document.getElementById('entrySpendDateLabel');
+        if (labelEl) labelEl.textContent = isRange ? 'SPEND DATE RANGE *' : 'SPEND DATE *';
+
+        const endInput = document.getElementById('entrySpendEndDate');
+        const dashEl = document.getElementById('entryDateRangeDash');
+        const badgeEl = document.getElementById('entryDaysBadge');
+        if (endInput) endInput.style.display = isRange ? 'block' : 'none';
+        if (dashEl) dashEl.style.display = isRange ? 'inline' : 'none';
+        if (badgeEl) badgeEl.style.display = isRange ? 'inline-block' : 'none';
+
+        // Adjust Bootstrap column widths smoothly so 2 date inputs have generous room in Range mode
+        const dateCol = document.getElementById('entryDateCol');
+        const platCol = document.getElementById('entryPlatformCol');
+        const accCol = document.getElementById('entryAccountCol');
+        if (dateCol && platCol && accCol) {
+            dateCol.className = isRange ? 'col-lg-5 col-md-12' : 'col-lg-3 col-md-6';
+            platCol.className = isRange ? 'col-lg-2 col-md-4' : 'col-lg-3 col-md-6';
+            accCol.className = isRange ? 'col-lg-2 col-md-4' : 'col-lg-3 col-md-6';
+        }
+
+        onEntryDateChanged();
+    }
+
+    function getEffectiveEntryEndDate() {
+        const startVal = document.getElementById('entrySpendDate').value;
+        if (entryDateMode !== 'range') return startVal;
+        const endVal = document.getElementById('entrySpendEndDate').value || startVal;
+        return endVal >= startVal ? endVal : startVal;
+    }
+
+    function onEntryDateChanged() {
+        const startInput = document.getElementById('entrySpendDate');
+        const endInput = document.getElementById('entrySpendEndDate');
+        const badgeEl = document.getElementById('entryDaysBadge');
+
+        if (startInput && endInput) {
+            if (entryDateMode !== 'range') {
+                endInput.value = startInput.value;
+            } else {
+                endInput.min = startInput.value || '';
+                if (!endInput.value || endInput.value < startInput.value) {
+                    endInput.value = startInput.value;
+                }
+            }
+
+            if (badgeEl && startInput.value && endInput.value) {
+                const sMs = Date.parse(startInput.value + 'T00:00:00');
+                const eMs = Date.parse(endInput.value + 'T00:00:00');
+                const days = (!isNaN(sMs) && !isNaN(eMs) && eMs >= sMs)
+                    ? Math.round((eMs - sMs) / 86400000) + 1
+                    : 1;
+                badgeEl.textContent = `${days} ${days === 1 ? 'day' : 'days'}`;
+            }
+        }
+
+        updateSpendMatchPreview();
+    }
+
     function recalcBdtEquivalent() {
         const currency = document.getElementById('entryCurrency').value;
         const spend = parseFloat(document.getElementById('entryActualSpend').value || 0);
@@ -1406,6 +1531,7 @@ $todayLabel = date('d M Y');
 
     async function runSpendMatchPreviewAjax() {
         const spendDate = document.getElementById('entrySpendDate').value;
+        const spendEndDate = getEffectiveEntryEndDate();
         const platform = document.getElementById('entryPlatform').value;
         const adAccount = document.getElementById('entryAdAccount').value;
         const projectId = document.getElementById('entryProjectId').value;
@@ -1422,15 +1548,20 @@ $todayLabel = date('d M Y');
             adId = adInput;
         }
 
+        const defaultDupText = 'Duplicate date/range + account + ad + project entries prompt an update. No double counting with platform or project totals.';
+
         if (!projectId) {
             document.getElementById('previewMatchedLeads').textContent = '0';
             document.getElementById('previewCalculatedCpl').textContent = '—';
             document.getElementById('previewMatchBasis').textContent = 'Select a project to preview matched paid leads';
+            const dupNotice = document.getElementById('duplicateNoticeText');
+            if (dupNotice) dupNotice.textContent = defaultDupText;
             return;
         }
 
         const qs = new URLSearchParams({
             spend_date: spendDate,
+            spend_end_date: spendEndDate,
             platform: platform,
             ad_account: adAccount,
             project_id: projectId,
@@ -1444,19 +1575,31 @@ $todayLabel = date('d M Y');
         try {
             const res = await fetch(`${lirBaseUrl}/lead-investment-report/api/match-preview?${qs.toString()}`);
             const json = await res.json();
+            // Guard against late response arriving after form was cleared
+            if (!document.getElementById('entryProjectId').value) {
+                return;
+            }
             if (json.status === 'success' && json.data) {
                 const d = json.data;
                 document.getElementById('previewMatchedLeads').textContent = Number(d.matched_paid_leads || 0);
                 document.getElementById('previewCalculatedCpl').textContent = d.calculated_cpl_usd !== null
                     ? 'USD ' + Number(d.calculated_cpl_usd).toFixed(2)
                     : '— / No leads';
-                document.getElementById('previewMatchBasis').textContent = d.match_basis || 'Same date + project + platform';
+
+                let basisText = d.match_basis || 'Same date + project + platform';
+                if (Number(d.days_count || 1) > 1 && Number(d.spend_usd || 0) > 0) {
+                    basisText += ` • Avg $${Number(d.daily_avg_usd || 0).toFixed(2)}/day`;
+                }
+                document.getElementById('previewMatchBasis').textContent = basisText;
 
                 const dupNotice = document.getElementById('duplicateNoticeText');
-                if (d.existing_duplicate_id && !document.getElementById('spendEditId').value) {
-                    dupNotice.innerHTML = `<strong class="text-warning-emphasis">Note:</strong> An entry for this Date + Platform + Account + Project + Ad already exists (#${d.existing_duplicate_id}). Saving will update that entry without double counting.`;
+                const hasAdAccount = adAccount.trim() !== '';
+                if (hasAdAccount && d.existing_duplicate_id && !document.getElementById('spendEditId').value) {
+                    dupNotice.innerHTML = `<strong class="text-warning-emphasis">Note:</strong> An entry for this exact Date/Range + Platform + Account + Project + Ad already exists (#${d.existing_duplicate_id}). Saving will update that entry without double counting.`;
+                } else if (hasAdAccount && Number(d.overlapping_count || 0) > 0 && !document.getElementById('spendEditId').value) {
+                    dupNotice.innerHTML = `<strong class="text-warning-emphasis">Heads up:</strong> ${d.overlapping_count} existing spend entry overlaps part of this selected date range for the same project/account/ad. Verify dates to avoid overlapping spend.`;
                 } else {
-                    dupNotice.textContent = 'Duplicate date/account/ad/project entries prompt an update. No double counting with platform or project totals.';
+                    dupNotice.textContent = defaultDupText;
                 }
             }
         } catch (err) {
@@ -1467,6 +1610,7 @@ $todayLabel = date('d M Y');
     async function submitSpendEntry(addAnother = false) {
         const editId = document.getElementById('spendEditId').value;
         const spendDate = document.getElementById('entrySpendDate').value;
+        const spendEndDate = getEffectiveEntryEndDate();
         const platform = document.getElementById('entryPlatform').value;
         const adAccount = document.getElementById('entryAdAccount').value.trim();
         const projectId = document.getElementById('entryProjectId').value;
@@ -1479,6 +1623,18 @@ $todayLabel = date('d M Y');
         const sourceRef = document.getElementById('entrySourceRef').value.trim();
         const notes = document.getElementById('entryNotes').value.trim();
 
+        if (!spendDate) {
+            alert('Please select a Spend Date.');
+            return;
+        }
+        if (spendEndDate < spendDate) {
+            alert('Spend End Date cannot be earlier than Start Date.');
+            return;
+        }
+        if (!adAccount) {
+            alert('Please enter an Ad Account.');
+            return;
+        }
         if (!projectId) {
             alert('Please select a Project.');
             return;
@@ -1504,6 +1660,7 @@ $todayLabel = date('d M Y');
                 body: JSON.stringify({
                     id: editId,
                     spend_date: spendDate,
+                    spend_end_date: spendEndDate,
                     platform: platform,
                     ad_account: adAccount,
                     project_id: projectId,
@@ -1523,16 +1680,41 @@ $todayLabel = date('d M Y');
                 return;
             }
 
-            // Sync filter date to the saved entry's date so the user immediately sees it
-            document.getElementById('filterStartDate').value = spendDate;
+            // Sync shared filter date/range so the saved entry (and its full date range) is immediately visible
+            if (spendEndDate > spendDate) {
+                currentLirPeriod = 'custom';
+                document.querySelectorAll('.lir-period-btn').forEach(b => {
+                    b.classList.toggle('active', b.getAttribute('data-period') === 'custom');
+                });
+                document.getElementById('filterStartDate').value = spendDate;
+                document.getElementById('filterEndDate').value = spendEndDate;
+                document.getElementById('filterEndDate').style.display = 'block';
+                document.getElementById('filterDateDash').style.display = 'inline';
+            } else {
+                document.getElementById('filterStartDate').value = spendDate;
+                if (currentLirPeriod === 'custom' && document.getElementById('filterEndDate').value < spendDate) {
+                    document.getElementById('filterEndDate').value = spendDate;
+                }
+            }
             await loadLirDashboardData();
 
             if (addAnother) {
+                // Keep date/range, platform & account for quick batch entry, but clear project/campaign/ad/spend & duplicate note
+                if (previewDebounceTimer) clearTimeout(previewDebounceTimer);
                 document.getElementById('spendEditId').value = '';
+                document.getElementById('entryProjectId').value = '';
+                document.getElementById('entryCampaignName').value = '';
+                document.getElementById('entryAdSetName').value = '';
                 document.getElementById('entryAdInput').value = '';
+                document.getElementById('entryActualSpend').value = '';
+                document.getElementById('entryBdtEquivalent').value = '0.00';
                 document.getElementById('entryNotes').value = '';
                 btn.textContent = 'Save spend';
-                updateSpendMatchPreview();
+                document.getElementById('previewMatchedLeads').textContent = '0';
+                document.getElementById('previewCalculatedCpl').textContent = '—';
+                document.getElementById('previewMatchBasis').textContent = 'Select a project to preview matched paid leads';
+                document.getElementById('duplicateNoticeText').textContent =
+                    'Duplicate date/range + account + ad + project entries prompt an update. No double counting with platform or project totals.';
             } else {
                 resetSpendForm();
             }
@@ -1547,7 +1729,12 @@ $todayLabel = date('d M Y');
     function populateSpendFormForEdit(entry) {
         switchLirTab('spend');
         document.getElementById('spendEditId').value = entry.id;
-        document.getElementById('entrySpendDate').value = entry.spend_date;
+        const startD = entry.spend_date;
+        const endD = entry.spend_end_date || entry.spend_date;
+        document.getElementById('entrySpendDate').value = startD;
+        document.getElementById('entrySpendEndDate').value = endD;
+        setEntryDateMode(endD > startD ? 'range' : 'single');
+
         document.getElementById('entryPlatform').value = entry.platform;
         document.getElementById('entryAdAccount').value = entry.ad_account;
         document.getElementById('entryProjectId').value = entry.project_id;
@@ -1571,12 +1758,34 @@ $todayLabel = date('d M Y');
     }
 
     function resetSpendForm() {
+        if (previewDebounceTimer) clearTimeout(previewDebounceTimer);
+        const todayIso = <?= json_encode($todayDate) ?>;
+
         document.getElementById('spendEditId').value = '';
+        document.getElementById('entrySpendDate').value = todayIso;
+        document.getElementById('entrySpendEndDate').value = todayIso;
+        document.getElementById('entryPlatform').value = 'Meta Ads';
+        document.getElementById('entryAdAccount').value = '';
+        document.getElementById('entryProjectId').value = '';
+        document.getElementById('entryCampaignName').value = '';
         document.getElementById('entryAdSetName').value = '';
         document.getElementById('entryAdInput').value = '';
+        document.getElementById('entryCurrency').value = 'USD';
+        document.getElementById('entryActualSpend').value = '';
+        document.getElementById('entryFxRate').value = '133.00';
+        document.getElementById('entryBdtEquivalent').value = '0.00';
+        document.getElementById('entrySourceRef').value = '';
         document.getElementById('entryNotes').value = '';
         document.getElementById('btnSaveSpendMain').textContent = 'Save spend';
-        updateSpendMatchPreview();
+
+        setEntryDateMode('single');
+        if (previewDebounceTimer) clearTimeout(previewDebounceTimer);
+
+        document.getElementById('previewMatchedLeads').textContent = '0';
+        document.getElementById('previewCalculatedCpl').textContent = '—';
+        document.getElementById('previewMatchBasis').textContent = 'Select a project to preview matched paid leads';
+        document.getElementById('duplicateNoticeText').textContent =
+            'Duplicate date/range + account + ad + project entries prompt an update. No double counting with platform or project totals.';
     }
 
     async function deleteSpendEntry(id) {

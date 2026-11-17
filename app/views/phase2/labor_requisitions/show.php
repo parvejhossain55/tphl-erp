@@ -15,8 +15,8 @@ $statusBadge = [
     'rejected'             => 'bg-danger',
 ];
 $statusLabel = [
-    'pending'              => 'Pending PM Approval',
-    'pm_approved'          => 'PM Approved',
+    'pending'              => 'Pending Dept. Head Approval',
+    'pm_approved'          => 'Dept. Head Approved',
     'work_completed'       => 'Work Completed',
     'payment_requested'    => 'Payment Requested',
     'qc_approved'          => 'QC Approved',
@@ -1026,6 +1026,7 @@ if ((!empty($isMgmtUserLabor) && in_array($st, ['pending', 'pm_approved', 'work_
 <?php $mgmtDefaultAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']); ?>
 <div class="modal fade" id="mgmtApproveModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered"><form id="laborMgmtApproveForm" action="<?php echo $base; ?>/con-labor-req-mgmt-approve/<?php echo $req['id']; ?>" method="POST">
+        <input type="hidden" name="approve_mode" id="laborApproveModeInput" value="override">
         <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
             <div class="modal-header border-0 pb-0"><h5 class="modal-title text-success fw-bold"><i class="fa-solid fa-building-circle-check me-2"></i>Management / Role 20 Payment Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
@@ -1060,14 +1061,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Pending ' + overrideStage + "'s Approval",
-                        html: 'This labor requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                        html: 'This labor requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Choose whether to approve <strong>only " + overrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.',
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonColor: '#198754',
+                        showDenyButton: true,
+                        confirmButtonColor: '#0d6efd',
+                        denyButtonColor: '#198754',
                         cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, Approve All Stages'
+                        confirmButtonText: 'Approve Only ' + overrideStage,
+                        denyButtonText: 'Approve All & Finalize'
                     }).then(function(result) {
+                        var modeInput = document.getElementById('laborApproveModeInput');
                         if (result.isConfirmed) {
+                            if (modeInput) modeInput.value = 'single';
+                            laborForm.setAttribute('data-confirmed-override', '1');
+                            laborForm.submit();
+                        } else if (result.isDenied) {
+                            if (modeInput) modeInput.value = 'override';
                             laborForm.setAttribute('data-confirmed-override', '1');
                             laborForm.submit();
                         }

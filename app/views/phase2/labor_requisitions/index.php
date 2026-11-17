@@ -23,7 +23,7 @@ $statusBadge = [
 ];
 $statusLabel = [
     'pending'              => '⏳ Pending PM',
-    'pm_approved'          => '✅ PM Approved',
+    'pm_approved'          => '✅ Dept. Head Approved',
     'work_completed'       => '🔨 Work Done',
     'payment_requested'    => '💸 Payment Req.',
     'qc_approved'          => '🔍 QC Approved',

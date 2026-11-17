@@ -439,14 +439,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const projId = document.getElementById("payrollProject").value;
 
-        // Determine boundaries
+        // Determine boundaries (Monthly uses the 26th-of-prev-month to 25th-of-selected-month payroll cycle)
         if (filterType.value === 'monthly') {
-            const m = filterMonthInput.value;
-            const y = filterYearInput.value;
-            const dateStrFrom = `${y}-${String(parseInt(m, 10)).padStart(2, '0')}-01`;
-            const dateStrTo = `${y}-${String(parseInt(m, 10)).padStart(2, '0')}-${String(new Date(y, parseInt(m, 10), 0).getDate()).padStart(2, '0')}`;
-            activeFromDate = dateStrFrom;
-            activeToDate = dateStrTo;
+            const mInt = parseInt(filterMonthInput.value, 10) || 1;
+            const yInt = parseInt(filterYearInput.value, 10) || new Date().getFullYear();
+            const prevYr = mInt === 1 ? (yInt - 1) : yInt;
+            const prevMo = mInt === 1 ? 12 : (mInt - 1);
+            activeFromDate = `${prevYr}-${String(prevMo).padStart(2, '0')}-26`;
+            activeToDate   = `${yInt}-${String(mInt).padStart(2, '0')}-25`;
         } else {
             activeFromDate = fromDateInput.value;
             activeToDate = toDateInput.value;
@@ -732,7 +732,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     let empType = "Regular";
                     let rowEmpId = localMatch.id;
 
-                    let displayJoinDate = localMatch.joining_date || (emp ? emp.dateOfJoin : '-');
+                    let displayJoinDate = (localMatch.joining_date && localMatch.joining_date !== '0000-00-00')
+                        ? localMatch.joining_date
+                        : (emp && emp.dateOfJoin ? emp.dateOfJoin : '-');
+                    let displayResignDate = (localMatch.resign_date && localMatch.resign_date !== '0000-00-00')
+                        ? String(localMatch.resign_date).substring(0, 10)
+                        : '-';
 
                     // Apply DB Overrides for the matched period/project
                     if (rowEmpId && dbOverrides[rowEmpId]) {
@@ -749,8 +754,27 @@ document.addEventListener("DOMContentLoaded", function () {
                         lateUnpaidAbsentDays = override.late_unpaid_absent_days ?? lateUnpaidAbsentDays;
                     }
 
+                    // Compute Service Days (inclusive of joining_date and resign_date) & Actual Effective Days
+                    let effStartStr = activeFromDate;
+                    let effEndStr   = activeToDate;
+                    if (displayJoinDate !== '-' && /^\d{4}-\d{2}-\d{2}/.test(displayJoinDate)) {
+                        const jClean = displayJoinDate.substring(0, 10);
+                        if (jClean > effStartStr) effStartStr = jClean;
+                    }
+                    if (displayResignDate !== '-' && /^\d{4}-\d{2}-\d{2}/.test(displayResignDate)) {
+                        const rClean = displayResignDate.substring(0, 10);
+                        if (rClean < effEndStr) effEndStr = rClean;
+                    }
+                    let serviceDays = 0;
+                    if (effStartStr <= effEndStr) {
+                        const sDt = new Date(effStartStr + 'T00:00:00');
+                        const eDt = new Date(effEndStr + 'T00:00:00');
+                        serviceDays = Math.min(totalPeriodDays, Math.max(0, Math.round((eDt - sDt) / 86400000) + 1));
+                    }
+                    let actualEffectiveDays = Math.max(0, Math.round((serviceDays - parseFloat(lateUnpaidAbsentDays || 0)) * 100) / 100);
+
                     aggregatedRows += `
-                    <tr data-populated="true" class="att-record-row" data-employee-id="${rowEmpId}">
+                    <tr data-populated="true" class="att-record-row" data-employee-id="${rowEmpId}" data-service-days="${serviceDays}">
                         <td>${index++}</td>
                         <td class="fw-bold">${localMatch.full_name || (emp ? emp.employeeName : '-')}</td>
                         <td>${localMatch.employee_id || (emp ? emp.employeeOfficeId : '-')}</td>
@@ -769,8 +793,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduction" value="${deduction}" style="min-width:70px;"></td>
                         <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-lateunpaidabsent" value="${lateUnpaidAbsentDays}" style="min-width:70px;"></td>
                         <td>${displayJoinDate}</td>
-                        <td>-</td>
-                        <td>-</td>
+                        <td>${displayResignDate}</td>
+                        <td class="cell-att-eff-days text-center fw-semibold">${actualEffectiveDays}</td>
                         <td>-</td>
                         <td><span class="badge ${idCheck === 'OK' ? 'bg-success' : 'bg-danger'}">${idCheck}</span></td>
                         <td><span class="badge ${nameCheck === 'OK' ? 'bg-success' : 'bg-danger'}">${nameCheck}</span></td>
@@ -993,6 +1017,14 @@ document.addEventListener("DOMContentLoaded", function () {
             if (lateUnpaidInp) {
                 lateUnpaidInp.value = (absentVal + deductVal).toFixed(2);
             }
+        }
+
+        const effCell = tr.querySelector('.cell-att-eff-days');
+        if (effCell && lateUnpaidInp) {
+            const srvDays = parseFloat(tr.getAttribute('data-service-days')) || 0;
+            const luaDays = Math.max(0, parseFloat(lateUnpaidInp.value) || 0);
+            const effVal  = Math.max(0, Math.round((srvDays - luaDays) * 100) / 100);
+            effCell.textContent = Number.isInteger(effVal) ? String(effVal) : effVal.toFixed(2);
         }
     });
 

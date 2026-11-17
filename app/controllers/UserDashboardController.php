@@ -764,7 +764,8 @@ class UserDashboardController extends Controller
             ? (int)($_GET['user_id'] ?? $_GET['assigned_user'])
             : $loggedInUserId;
 
-        if (!in_array($loggedInRoleId, [1, 3, 5, 9, 32, 33, 34, 35]) && $targetUserId !== $loggedInUserId) {
+        $isSalesMgrUser = function_exists('isSalesManager') && isSalesManager();
+        if (!in_array($loggedInRoleId, [1, 3, 5, 9, 32, 33, 34, 35]) && !$isSalesMgrUser && $targetUserId !== $loggedInUserId) {
             $targetUserId = $loggedInUserId;
         }
 
@@ -774,11 +775,13 @@ class UserDashboardController extends Controller
             $targetUserName = $targetUser['full_name'] ?? null;
         }
 
-        $year  = $_GET['year']  ?? null;
-        $month = $_GET['month'] ?? null;
+        $year     = $_GET['year']      ?? null;
+        $month    = $_GET['month']     ?? null;
+        $fromDate = !empty($_GET['from_date']) ? trim($_GET['from_date']) : null;
+        $toDate   = !empty($_GET['to_date'])   ? trim($_GET['to_date'])   : null;
 
         $myOnboardProjects = $this->bookingModel
-            ->getAllMyOnboardProject($targetUserId, $year, $month);
+            ->getAllMyOnboardProject($targetUserId, $year, $month, $fromDate, $toDate);
 
         // Compute summary metrics for header cards
         $totalUnitsSold = count($myOnboardProjects);
@@ -811,6 +814,8 @@ class UserDashboardController extends Controller
             'targetUserName'    => $targetUserName,
             'selectedYear'      => $year,
             'selectedMonth'     => $month,
+            'from_date'         => $fromDate,
+            'to_date'           => $toDate,
             'current_page'      => 'my-onboarding-projects',
         ]);
     }
@@ -827,9 +832,19 @@ class UserDashboardController extends Controller
         $requestedUserId = isset($_GET['assigned_user']) ? (int)$_GET['assigned_user'] : (isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0);
 
         $userId = $loggedUserId;
+        $isSalesMgrUser = function_exists('isSalesManager') && isSalesManager();
         if ($requestedUserId > 0 && $requestedUserId !== $loggedUserId) {
-            if (in_array($userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+            if (in_array($userRoleId, [1, 3, 9, 32, 33, 34, 35]) && !$isSalesMgrUser) {
                 $userId = $requestedUserId;
+            } elseif ($isSalesMgrUser && function_exists('getManagedTeamIds')) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $loggedUserId);
+                if (!empty($mgrTeamIds)) {
+                    $inList = implode(',', array_map('intval', $mgrTeamIds));
+                    $chk = $this->db->query("SELECT u.id FROM users u LEFT JOIN employees e ON e.user_id = u.id WHERE u.id = {$requestedUserId} AND COALESCE(NULLIF(e.team_id, 0), u.team_id, 0) IN ({$inList}) LIMIT 1");
+                    if ($chk && $chk->num_rows > 0) {
+                        $userId = $requestedUserId;
+                    }
+                }
             } elseif ($userRoleId === 5 && !empty($userTeamId)) {
                 $stmtCheck = $this->db->prepare("SELECT id FROM users WHERE id = ? AND team_id = ?");
                 if ($stmtCheck) {
@@ -914,6 +929,7 @@ class UserDashboardController extends Controller
         // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
         $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
         $bookingCount   = !empty($leadIds) ? $this->bookingModel->getBookingCountByLeadIds($leadIds) : [];
+        $bookingSellers = !empty($leadIds) ? $this->bookingModel->getBookingSellersByLeadIds($leadIds) : [];
         $followUpModel  = new FollowUp($this->db);
         $followUpCounts = !empty($leadIds) ? $followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
 
@@ -941,8 +957,8 @@ class UserDashboardController extends Controller
         $totalLeadsCount        = (int)($summaryCards['total_leads'] ?? 0);
         $contactedLeadsCount    = (int)($summaryCards['contacted_leads'] ?? 0);
         $notContactedLeadsCount = (int)($summaryCards['not_contacted_leads'] ?? 0);
-        $bookedLeadsCount       = (int)($summaryCards['booked_leads'] ?? 0);
         $totalBookingsCount     = $this->leadModel->countBookingsWithFilter($year, $month, null, null, null, $userId, $from_date, $to_date, $filterProjectId, $filterCategoryId, $filterCountry, $date_type);
+        $bookedLeadsCount       = $this->leadModel->countAllWithFilter($year, $month, $lastAction, null, null, null, $userId, null, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $date_type);
         $upcomingFollowUpsCount = (int)($summaryCards['upcoming_follow_ups'] ?? 0);
         $missingFollowUpCount   = (int)($summaryCards['missing_follow_ups'] ?? 0);
         $irrelevantLeadsCount   = (int)($summaryCards['irrelevant_leads'] ?? 0);
@@ -1117,8 +1133,11 @@ class UserDashboardController extends Controller
         $teamId = $_SESSION['user']['team_id'] ?? null;
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if ($userRoleId === 9 || in_array($userRoleId, [1, 3, 32, 33])) {
+        if (($userRoleId === 9 || in_array($userRoleId, [1, 3, 32, 33])) && !$isSalesMgrUser) {
             $teamMembers = $userModel->getAllRoleUser();
+        } elseif ($isSalesMgrUser && function_exists('getManagedTeamIds')) {
+            $mgrTeamIds = getManagedTeamIds($this->db, $loggedUserId);
+            $teamMembers = !empty($mgrTeamIds) ? (new Lead($this->db))->getTeamMemberUsers($mgrTeamIds) : [];
         } elseif (!empty($teamId)) {
             $teamMembers = $userModel->getUsersByTeamAndRole($teamId);
             if (empty($teamMembers)) {
@@ -1135,6 +1154,7 @@ class UserDashboardController extends Controller
             'myAllleads'          => $myAssignedClients,
             'current_page'        => 'my-all-assigned-leads',
             'bookingCount'        => $bookingCount,
+            'bookingSellers'      => $bookingSellers,
             'followUpCounts'      => $followUpCounts,
             'followUpHistories'   => $followUpHistories,
             'selectedAction'      => $lastAction,

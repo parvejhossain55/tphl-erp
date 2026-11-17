@@ -33,38 +33,121 @@ class ClientRefundController extends Controller
         }
     }
 
-    /** Roles 1 (Admin), 3 (Super Admin), 9 (Sales Team Head), 20 (Admin & Operation head), 33 (Chief Officer) can approve */
-    private function canApprove()
+    private function getAllUserRoles()
     {
-        $userRoleId = (int)($this->userRole ?? 0);
+        $userRoleId    = (int)($this->userRole ?? 0);
         $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
         $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
-        $allUserRoles = array_filter([$userRoleId, $userSecRoleId, $userPriRoleId]);
-        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        return array_values(array_unique(array_filter([$userRoleId, $userSecRoleId, $userPriRoleId])));
+    }
 
-        if (count(array_intersect($allUserRoles, [1, 3, 9, 20, 32, 33])) > 0) {
+    /** Explicitly block SEAL CEO (35) and Chief Officer / DCEO (33) from approving refunds */
+    private function isBlockedCeoOrDceo()
+    {
+        $roles = $this->getAllUserRoles();
+        if (in_array(3, $roles, true)) {
+            return false; // Super Admin is never blocked
+        }
+        if (count(array_intersect($roles, [33, 35])) > 0) {
             return true;
         }
-        if (strpos($sessionRoleName, 'admin') !== false || strpos($sessionRoleName, 'management') !== false || strpos($sessionRoleName, 'operation head') !== false) {
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        return (strpos($roleName, 'ceo') !== false || strpos($roleName, 'dceo') !== false);
+    }
+
+    /** Determine current pending approval stage from approval_requests row */
+    private function getCurrentRefundStage($arRow)
+    {
+        $salesSt = strtolower($arRow['sales_head_status'] ?? 'pending');
+        $qcSt    = strtolower($arRow['qc_status'] ?? 'pending');
+        $opSt    = strtolower($arRow['op_head_status'] ?? 'pending');
+
+        if ($salesSt !== 'approved') return 'sales_manager';
+        if ($qcSt !== 'approved')    return 'qc';
+        if ($opSt !== 'approved')    return 'op_head';
+        return 'management';
+    }
+
+    /** Check if current user can approve a specific stage of a refund */
+    private function canApproveStage($stage, $refund)
+    {
+        if ($this->isBlockedCeoOrDceo()) {
+            return false;
+        }
+        $roles    = $this->getAllUserRoles();
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isSuperAdmin = in_array(3, $roles, true);
+
+        if ($stage === 'management') {
+            // Strictly Super Admin (Role 3) only — never CEO/DCEO
+            return $isSuperAdmin;
+        }
+        if ($isSuperAdmin) {
+            return true;
+        }
+        if ($stage === 'sales_manager') {
+            if (in_array(9, $roles, true)) return true; // Head of Sales backup
+            if (in_array(38, $roles, true)) {
+                return $this->model->isRelatedSalesManager($this->userId, 38, (int)$refund['booking_id']);
+            }
+            return false;
+        }
+        if ($stage === 'qc') {
+            return count(array_intersect($roles, [13, 24, 25])) > 0 || strpos($roleName, 'qc') !== false;
+        }
+        if ($stage === 'op_head') {
+            return count(array_intersect($roles, [20, 32])) > 0 || strpos($roleName, 'operation head') !== false;
+        }
+        return false;
+    }
+
+    /** Roles participating in the 4-stage refund approval pipeline */
+    private function canApprove()
+    {
+        if ($this->isBlockedCeoOrDceo()) {
+            return false;
+        }
+        $allUserRoles    = $this->getAllUserRoles();
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        if (count(array_intersect($allUserRoles, [3, 9, 13, 20, 24, 25, 32, 38])) > 0) {
+            return true;
+        }
+        if (strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'qc') !== false) {
             return true;
         }
         return false;
     }
 
-    /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6, 7 (Clients Experiment), 10, 30 (Accounts), 37 (Credit Recovery), 39 (Head of CED) can create refund requests */
-    private function canCreateRefund()
+    /** Only Related Team Leader (5), Head of Sales (9), Accounts (6,10,30,36), CED (7,37,39), Admin/SuperAdmin (1,3) can create — never Sales Executive (8) */
+    private function canCreateRefund($bookingId = null)
     {
-        return in_array($this->userRole, [1, 3, 4, 5, 6, 7, 10, 30, 37, 39]);
+        if ((int)$this->userRole === 8) {
+            return false;
+        }
+        if ((int)$this->userRole === 5) {
+            if ($bookingId) {
+                return $this->model->isRelatedTeamLeader($this->userId, 5, (int)$bookingId);
+            }
+            return true;
+        }
+        return in_array($this->userRole, [1, 3, 6, 7, 9, 10, 30, 36, 37, 39]);
     }
 
     // =========================================================================
-    // LIST
+    // LIST (Accounts, Management & Head-level only)
     // =========================================================================
 
     public function index()
     {
+        // Hide /client-refunds from Sales Executive (8) & Team Leader (5) — send to /team-refunds
+        if (in_array((int)$this->userRole, [5, 8], true)) {
+            header("Location: {$GLOBALS['base_url']}/team-refunds");
+            exit;
+        }
+
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 6, 7, 30, 37, 39])) {
+        if (!in_array($this->userRole, [1, 3, 6, 7, 9, 10, 13, 20, 24, 25, 30, 32, 33, 35, 36, 37, 38, 39])) {
             $filterUserId = $this->userId;
         }
 
@@ -133,14 +216,56 @@ class ClientRefundController extends Controller
     }
 
     // =========================================================================
+    // TEAM REFUNDS PORTAL (For Team Leaders & Sales Executives)
+    // =========================================================================
+
+    public function teamRefunds()
+    {
+        if ((int)$this->userRole === 38) {
+            $teamScope = $this->model->getManagerTeamIds($this->userId);
+        } else {
+            $singleTeam = $this->model->getUserTeamId($this->userId);
+            $teamScope  = $singleTeam ? [$singleTeam] : [];
+        }
+
+        $filters = [
+            'search'     => trim($_GET['search'] ?? ''),
+            'project_id' => trim($_GET['project_id'] ?? 'all'),
+            'status'     => trim($_GET['status'] ?? 'all'),
+        ];
+
+        $teamRefunds  = !empty($teamScope) ? $this->model->getTeamRefunds($teamScope, $filters) : [];
+        $teamBookings = !empty($teamScope) ? $this->model->getTeamOnboardedBookings($teamScope, $filters) : [];
+        $projects     = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+
+        $this->view('sales-developments/refunds/team-refunds', [
+            'current_route' => 'team-refunds',
+            'page_title'    => 'Team Refunds & Onboarded Projects',
+            'teamRefunds'   => $teamRefunds,
+            'teamBookings'  => $teamBookings,
+            'projects'      => $projects,
+            'filters'       => $filters,
+            'teamId'        => $teamScope[0] ?? null,
+            'userRole'      => $this->userRole,
+            'isTeamLeader'  => ((int)$this->userRole === 5),
+            'isSalesExec'   => ((int)$this->userRole === 8),
+        ]);
+    }
+
+    // =========================================================================
     // CREATE — show form pre-filled with booking data
     // =========================================================================
 
     public function create($bookingId)
     {
-        if (!$this->canCreateRefund()) {
-            setError('You are not authorized to create refund requests.');
-            header("Location: {$GLOBALS['base_url']}/client-refunds");
+        if ((int)$this->userRole === 8) {
+            setError('Only your sales leaders can create refund request.');
+            header("Location: {$GLOBALS['base_url']}/team-refunds");
+            exit;
+        }
+        if (!$this->canCreateRefund($bookingId)) {
+            setError('Only your sales leaders can create refund request.');
+            header("Location: {$GLOBALS['base_url']}/team-refunds");
             exit;
         }
 
@@ -195,9 +320,10 @@ class ClientRefundController extends Controller
 
     public function store()
     {
-        if (!$this->canCreateRefund()) {
-            setError('You are not authorized.');
-            header("Location: {$GLOBALS['base_url']}/client-refunds");
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        if ((int)$this->userRole === 8 || !$this->canCreateRefund($bookingId)) {
+            setError('Only your sales leaders can create refund request.');
+            header("Location: {$GLOBALS['base_url']}/team-refunds");
             exit;
         }
 
@@ -206,7 +332,6 @@ class ClientRefundController extends Controller
             exit;
         }
 
-        $bookingId       = (int)($_POST['booking_id'] ?? 0);
         $refundAmount    = (float)($_POST['refund_amount'] ?? 0);
         $reason          = trim($_POST['reason'] ?? '');
         $paymentMethod   = trim($_POST['payment_method'] ?? 'cash');
@@ -330,7 +455,7 @@ class ClientRefundController extends Controller
             $existingAr = $arCheck->get_result()->fetch_assoc();
 
             if ($existingAr) {
-                $arUpdate = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, status = 'pending', approved_by = NULL, approved_at = NULL WHERE id = ?");
+                $arUpdate = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, status = 'pending', approve_role = 'sales_manager', sales_head_status = 'pending', sales_head_by = NULL, sales_head_at = NULL, qc_status = 'pending', qc_by = NULL, qc_at = NULL, op_head_status = 'pending', op_head_by = NULL, op_head_at = NULL, approved_by = NULL, approved_at = NULL WHERE id = ?");
                 $arUpdate->bind_param("di", $refundAmount, $existingAr['id']);
                 $arUpdate->execute();
             } else {
@@ -342,7 +467,7 @@ class ClientRefundController extends Controller
                     'source_id'      => $refundId,
                     'requested_days' => 0,
                     'requested_by'   => $this->userId,
-                    'approve_role'   => ($retentionAmount > 0) ? 'management' : 'accounts_retention',
+                    'approve_role'   => 'sales_manager',
                     'meta_data'      => null,
                     'request_amount' => $refundAmount,
                 ]);
@@ -350,8 +475,9 @@ class ClientRefundController extends Controller
 
             $this->db->commit();
 
-            setSuccess('Refund payment request of ৳' . number_format($refundAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . ') submitted. Awaiting approval from Management and Role 20.');
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$refundId}");
+            setSuccess('Refund request of ৳' . number_format($refundAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . ') submitted. Forwarded to Related Sales Manager for primary approval.');
+            $redirectBack = in_array((int)$this->userRole, [5], true) ? "{$GLOBALS['base_url']}/team-refunds" : "{$GLOBALS['base_url']}/client-refund/{$refundId}";
+            header("Location: {$redirectBack}");
         } catch (\Exception $e) {
             $this->db->rollback();
             error_log("Refund store failed: " . $e->getMessage());
@@ -409,12 +535,21 @@ class ClientRefundController extends Controller
             }
         }
 
-        // Get approval_request
+        // Get approval_request with stage approver names
         $approvalReq = null;
         $arStmt = $this->db->prepare(
-            "SELECT * FROM approval_requests
-             WHERE source_table = 'client_refund_requests' AND source_id = ?
-             ORDER BY id DESC LIMIT 1"
+            "SELECT ar.*,
+                    u_sh.full_name AS sales_head_name,
+                    u_qc.full_name AS qc_name,
+                    u_oh.full_name AS op_head_name,
+                    u_mg.full_name AS mgmt_name
+             FROM approval_requests ar
+             LEFT JOIN users u_sh ON u_sh.id = ar.sales_head_by
+             LEFT JOIN users u_qc ON u_qc.id = ar.qc_by
+             LEFT JOIN users u_oh ON u_oh.id = ar.op_head_by
+             LEFT JOIN users u_mg ON u_mg.id = ar.approved_by
+             WHERE ar.source_table = 'client_refund_requests' AND ar.source_id = ?
+             ORDER BY ar.id DESC LIMIT 1"
         );
         $arStmt->bind_param('i', $id);
         $arStmt->execute();
@@ -423,47 +558,63 @@ class ClientRefundController extends Controller
         // Get company banks and Bangladesh banks for disbursement
         $companyBanks = $this->db->query("SELECT id, bank_name, account_name, account_number FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
         $allBangladeshBanks = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
+        $currentStage = $this->getCurrentRefundStage($approvalReq ?? []);
+        $canApproveCurrentStage = ($refund['status'] === 'pending') && $this->canApproveStage($currentStage, $refund);
 
         $this->view('accounts/refunds/show-refund', [
-            'current_route'       => 'client-refunds',
-            'page_title'          => 'Refund Request Details',
-            'refund'              => $refund,
-            'payments'            => $payments,
-            'cashout_request'     => $cashoutRequest,
-            'cashout_payments'    => $cashoutPayments ?? [],
-            'approval_request'    => $approvalReq,
-            'companyBanks'        => $companyBanks,
-            'allBangladeshBanks'  => $allBangladeshBanks,
-            'canApprove'          => $this->canApprove(),
-            'userRole'            => $this->userRole,
+            'current_route'          => 'client-refunds',
+            'page_title'             => 'Refund Request Details',
+            'refund'                 => $refund,
+            'payments'               => $payments,
+            'cashout_request'        => $cashoutRequest,
+            'cashout_payments'       => $cashoutPayments ?? [],
+            'approval_request'       => $approvalReq,
+            'companyBanks'           => $companyBanks,
+            'allBangladeshBanks'     => $allBangladeshBanks,
+            'canApprove'             => $canApproveCurrentStage,
+            'currentStage'           => $currentStage,
+            'isBlockedCeoDceo'       => $this->isBlockedCeoOrDceo(),
+            'userRole'               => $this->userRole,
         ]);
     }
 
     // =========================================================================
-    // APPROVE — creates cashout_request automatically
+    // APPROVE — 4-Stage Sequential Pipeline:
+    //   1. Related Sales Manager (38 / 9)
+    //   2. QC (13 / 24 / 25)
+    //   3. Operation Head (20 / 32)
+    //   4. Management — Super Admin ONLY (3) -> creates cashout_request
     // =========================================================================
 
     public function approve($id)
     {
-        if (!$this->canApprove()) {
-            setError('You are not authorized to approve refund requests.');
-            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['ajax']) || isset($_GET['ajax']);
+        $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        $redirectUrl = "{$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}";
+
+        $respond = function ($ok, $msg) use ($isAjax, $redirectUrl) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => $ok, 'message' => $msg]);
+                exit;
+            }
+            if ($ok) setSuccess($msg); else setError($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        };
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$redirectUrl}");
             exit;
         }
 
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-            exit;
+        if ($this->isBlockedCeoOrDceo()) {
+            $respond(false, 'SEAL CEO and DCEO are not permitted to approve client refund requests.');
         }
 
         $refund = $this->model->find($id);
         if (!$refund || $refund['status'] !== 'pending') {
-            setError('Refund request is not in pending status.');
-            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-            exit;
+            $respond(false, 'Refund request is not in pending status.');
         }
 
         $totalPaid = (float)($refund['total_paid'] ?? 0);
@@ -479,44 +630,58 @@ class ClientRefundController extends Controller
             $retentionAmount = max(0, $totalPaid - $approvedAmount);
         }
 
-        $isOver1Lac = ($approvedAmount > 100000);
-        $userRole = (int)($this->userRole ?? 0);
-        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
-        $isMgmtUser = in_array($userRole, [1, 3, 38], true);
-
-        // Fetch approval request record
-        $arCheck = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
-        $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
-        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
-        $ahStatus = strtolower($arRow['accounts_head_status'] ?? 'pending');
-
-        if ($isOver1Lac) {
-            if ($isOpHeadUser && !$isMgmtUser) {
-                $arId = (int)($arRow['id'] ?? 0);
-                $escNote = $this->db->real_escape_string('Verified and approved by Admin & Operation Head');
-                if (!class_exists('ApprovalRequest')) {
-                    require_once __DIR__ . '/../models/ApprovalRequest.php';
-                }
-                $approvalModel = new \ApprovalRequest($this->db);
-                if ($arId > 0) {
-                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
-                } else {
-                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
-                }
-                setSuccess("Refund request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for final sign-off.");
-                $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-                header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-                exit;
-            }
+        // Update retention / refund amount if adjusted during this approval step
+        if (abs($approvedAmount - (float)$refund['refund_amount']) > 0.01) {
+            $uAmt = $this->db->prepare("UPDATE client_refund_requests SET refund_amount = ?, retention_amount = ? WHERE id = ?");
+            $uAmt->bind_param('ddi', $approvedAmount, $retentionAmount, $id);
+            $uAmt->execute();
+            $this->db->query("UPDATE approval_requests SET request_amount = {$approvedAmount} WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
         }
 
+        // Fetch approval_requests record
+        $arCheck = $this->db->query("SELECT * FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
+        $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+        $stage = $this->getCurrentRefundStage($arRow ?? []);
+
+        if (!$this->canApproveStage($stage, $refund)) {
+            $stageNames = [
+                'sales_manager' => 'Related Sales Manager',
+                'qc'            => 'QC Team',
+                'op_head'       => 'Operation Head',
+                'management'    => 'Super Admin',
+            ];
+            $respond(false, 'You are not authorized for the current stage (' . ($stageNames[$stage] ?? $stage) . ').');
+        }
+
+        $noteEsc = $this->db->real_escape_string(trim($_POST['note'] ?? 'Approved'));
+        $arId    = (int)($arRow['id'] ?? 0);
+
+        // Stage 1: Related Sales Manager -> forwards to QC
+        if ($stage === 'sales_manager') {
+            $this->db->query("UPDATE approval_requests SET sales_head_status = 'approved', sales_head_by = {$this->userId}, sales_head_at = NOW(), sales_head_note = '{$noteEsc}', approve_role = 'qc' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+            $respond(true, 'Primary approval completed by Sales Manager. Forwarded to QC for verification.');
+        }
+
+        // Stage 2: QC -> forwards to Operation Head
+        if ($stage === 'qc') {
+            $this->db->query("UPDATE approval_requests SET qc_status = 'approved', qc_by = {$this->userId}, qc_at = NOW(), qc_note = '{$noteEsc}', approve_role = 'op_head' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+            $respond(true, 'QC approval completed. Forwarded to Operation Head.');
+        }
+
+        // Stage 3: Operation Head -> forwards to Management (Super Admin)
+        if ($stage === 'op_head') {
+            if ($arId > 0 && method_exists($this->approvalModel, 'approveOperationHead')) {
+                $this->approvalModel->approveOperationHead($arId, $this->userId, $noteEsc);
+            } else {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$noteEsc}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+            }
+            $respond(true, 'Operation Head approval completed. Forwarded to Super Admin for final management approval.');
+        }
+
+        // Stage 4: Management Final Approval (Strictly Super Admin — Role 3)
         // Step 1: Approve refund (cancels booking, releases flat, cancels EMIs)
         if (!$this->model->approve($id, $this->userId, $approvedAmount)) {
-            setError('Failed to approve refund request.');
-            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-            exit;
+            $respond(false, 'Failed to approve refund request.');
         }
 
         // Step 2: Auto-create a cashout_request for the refund amount
@@ -582,9 +747,14 @@ class ClientRefundController extends Controller
             error_log("Refund email (approval) failed: " . $e->getMessage());
         }
 
-        setSuccess('Refund approved! Cashout request created for ৳' . number_format($approvedAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . '). Booking cancelled, flat released.');
-        $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
+        $finalMsg = 'Refund approved by Super Admin! Cashout request created for ৳' . number_format($approvedAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . '). Ready for Accounts disbursement.';
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => true, 'message' => $finalMsg]);
+            exit;
+        }
+        setSuccess($finalMsg);
+        header("Location: {$redirectUrl}");
         exit;
     }
 
@@ -809,37 +979,37 @@ class ClientRefundController extends Controller
 
     public function reject($id)
     {
-        if (!$this->canApprove()) {
-            setError('You are not authorized to reject refund requests.');
-            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['ajax']) || isset($_GET['ajax']);
+        $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
+        $redirectUrl = "{$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}";
+
+        $respond = function ($ok, $msg) use ($isAjax, $redirectUrl) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => $ok, 'message' => $msg]);
+                exit;
+            }
+            if ($ok) setSuccess($msg); else setError($msg);
+            header("Location: {$redirectUrl}");
             exit;
+        };
+
+        if (!$this->canApprove()) {
+            $respond(false, 'You are not authorized to reject refund requests.');
         }
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
+            header("Location: {$redirectUrl}");
             exit;
         }
 
         if ($this->model->reject($id, $this->userId)) {
-            // Sync approval_requests
-            $arStmt = $this->db->prepare(
-                "UPDATE approval_requests
-                 SET status = 'rejected', approved_by = ?, approved_at = NOW()
-                 WHERE source_table = 'client_refund_requests' AND source_id = ? AND status = 'pending'"
-            );
-            $arStmt->bind_param('ii', $this->userId, $id);
-            $arStmt->execute();
-
-            setSuccess('Refund request rejected.');
+            $reasonEsc = $this->db->real_escape_string(trim($_POST['note'] ?? $_POST['reason'] ?? 'Rejected'));
+            $this->db->query("UPDATE approval_requests SET status = 'rejected', approved_by = {$this->userId}, approved_at = NOW(), rejection_reason = '{$reasonEsc}' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id . " AND status = 'pending'");
+            $respond(true, 'Refund request rejected.');
         } else {
-            setError('Failed to reject refund request.');
+            $respond(false, 'Failed to reject refund request.');
         }
-
-        $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
-        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");
-        exit;
     }
 
     // =========================================================================
@@ -848,9 +1018,9 @@ class ClientRefundController extends Controller
 
     public function disbursePayment($id)
     {
-        // Authorized: Accounts (6, 10, 30) or Admin/Management (1, 3, 38)
+        // Authorized: Any Accounts role (6, 10, 30, 36) or Admin/SuperAdmin (1, 3)
         $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        if (!in_array((int)$this->userRole, [1, 3, 6, 10, 30, 38], true) && strpos($roleName, 'account') === false) {
+        if (!in_array((int)$this->userRole, [1, 3, 6, 10, 30, 36], true) && strpos($roleName, 'account') === false) {
             setError('You are not authorized to disburse refund payments.');
             $refQuery = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '';
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}{$refQuery}");

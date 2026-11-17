@@ -46,20 +46,20 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getAllBooking($year = null, $month = null, $project_id = null)
+    public function getAllBooking($year = null, $month = null, $project_id = null, $teamId = null, $from_date = null, $to_date = null, $sales_by_id = null)
     {
-        return $this->getAllOnboardClientBooking($year, $month, $project_id);
+        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId, $from_date, $to_date, $sales_by_id);
     }
 
-    public function getAllBookings($year = null, $month = null, $project_id = null)
+    public function getAllBookings($year = null, $month = null, $project_id = null, $teamId = null, $from_date = null, $to_date = null, $sales_by_id = null)
     {
-        return $this->getAllOnboardClientBooking($year, $month, $project_id);
+        return $this->getAllOnboardClientBooking($year, $month, $project_id, $teamId, $from_date, $to_date, $sales_by_id);
     }
 
 
 
 
-    public function getAllOnboardClientBooking($year = null, $month = null, $project_id = null)
+    public function getAllOnboardClientBooking($year = null, $month = null, $project_id = null, $teamId = null, $from_date = null, $to_date = null, $sales_by_id = null)
     {
         $sql = "SELECT 
                 lb.*, 
@@ -77,14 +77,23 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 IFNULL(lp_sum.booking_money, 0) AS booking_money,
                 IFNULL(lp_sum.registration_money, 0) AS registration_money,
                 IFNULL(lp_sum.amount, 0) AS amount,
-                COALESCE(u_sales.full_name, lb.sales_agent_old) AS sales_agent_display
+                COALESCE(u_sales.full_name, lb.sales_agent_old) AS sales_agent_display,
+                COALESCE(lb.team_id, l.team_id) AS sale_team_id,
+                t_sale.name AS sale_team_name,
+                t_sale.name AS team_name,
+                COALESCE(NULLIF(e_sales.team_id, 0), NULLIF(u_sales.team_id, 0)) AS current_team_id,
+                t_curr.name AS current_team_name,
+                e_sales.employee_status AS sales_employee_status
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN projects p ON f.project_id = p.id
             LEFT JOIN users u1 ON lb.created_by = u1.id
             LEFT JOIN users u_sales ON lb.sales_by_id = u_sales.id
-            INNER JOIN (
+            LEFT JOIN employees e_sales ON (e_sales.user_id = u_sales.id OR (u_sales.employee_id IS NOT NULL AND e_sales.id = u_sales.employee_id))
+            LEFT JOIN teams t_sale ON t_sale.id = COALESCE(lb.team_id, l.team_id)
+            LEFT JOIN teams t_curr ON t_curr.id = COALESCE(NULLIF(e_sales.team_id, 0), NULLIF(u_sales.team_id, 0))
+            LEFT JOIN (
                 SELECT 
                     booking_id,
                     MAX(payment_method) AS payment_method,
@@ -97,22 +106,47 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 GROUP BY booking_id
             ) AS lp_sum ON lp_sum.booking_id = lb.id
             WHERE lb.deleted_at IS NULL
-             AND lb.booking_status IN ('booked', 'completed')
+              AND l.deleted_at IS NULL
+              AND lb.booking_status IN ('booked', 'completed')
+              AND lb.id NOT IN (
+                  SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+              )
              ";
 
         $params = [];
         $types  = "";
 
-        if (!empty($year)) {
-            $sql .= " AND YEAR(lb.booking_date) = ?";
-            $params[] = (int)$year;
-            $types   .= "i";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND MONTH(lb.booking_date) = ?";
-            $params[] = (int)$month;
-            $types   .= "i";
+        // Custom date range takes priority over year/month
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types   .= "ssss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND (DATE(lb.booking_date) >= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) >= ?))";
+            $params[] = $from_date;
+            $params[] = $from_date;
+            $types   .= "ss";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) <= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) <= ?))";
+            $params[] = $to_date;
+            $params[] = $to_date;
+            $types   .= "ss";
+        } elseif (!empty($year) || !empty($month)) {
+            if (!empty($year)) {
+                $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
+                $params[] = (int)$year;
+                $params[] = (int)$year;
+                $types   .= "ii";
+            }
+            if (!empty($month)) {
+                $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
+                $params[] = (int)$month;
+                $params[] = (int)$month;
+                $types   .= "ii";
+            }
         }
 
         if (!empty($project_id)) {
@@ -121,10 +155,34 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $types   .= "i";
         }
 
+        // Team filter (strictly scopes to the given team or array of teams)
+        if (is_array($teamId)) {
+            $cleanIds = array_values(array_filter(array_map('intval', $teamId), fn($v) => $v > 0));
+            if (empty($cleanIds)) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) IN (" . implode(',', $cleanIds) . ")";
+            }
+        } elseif (!empty($teamId)) {
+            $teamIdInt = (int)$teamId;
+            if ($teamIdInt < 0) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) = {$teamIdInt}";
+            }
+        }
+
+        // Salesperson filter
+        if (!empty($sales_by_id)) {
+            $sql .= " AND (lb.sales_by_id = ? OR (lb.sales_by_id IS NULL AND l.assigned_id = ?))";
+            $params[] = (int)$sales_by_id;
+            $params[] = (int)$sales_by_id;
+            $types   .= "ii";
+        }
+
         $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
 
         $stmt = $this->db->prepare($sql);
-
         if (!$stmt) {
             return [];
         }
@@ -139,6 +197,106 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get unique salespersons and their active onboarding client counts
+     * Used for the Sales Executive filter dropdown and pill counts
+     */
+    public function getOnboardSalespersonCounts($teamId = null, $year = null, $month = null, $project_id = null, $from_date = null, $to_date = null)
+    {
+        $sql = "SELECT 
+                    COALESCE(u.id, u_assigned.id, 0) AS user_id,
+                    COALESCE(u.full_name, u_assigned.full_name, lb.sales_agent_old, 'Unknown Sales Person') AS sales_name,
+                    COUNT(DISTINCT lb.id) AS client_count
+                FROM lead_bookings lb
+                JOIN leads l ON l.id = lb.lead_id
+                LEFT JOIN users u ON u.id = lb.sales_by_id
+                LEFT JOIN users u_assigned ON u_assigned.id = l.assigned_id
+                WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
+                  AND lb.booking_status IN ('booked', 'completed')
+                  AND lb.booking_status NOT IN ('cancelled', 'refunded')
+                  AND lb.id NOT IN (
+                      SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+                  )";
+
+        $params = [];
+        $types  = "";
+
+        if (is_array($teamId)) {
+            $cleanIds = array_values(array_filter(array_map('intval', $teamId), fn($v) => $v > 0));
+            if (empty($cleanIds)) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) IN (" . implode(',', $cleanIds) . ")";
+            }
+        } elseif (!empty($teamId)) {
+            $teamIdInt = (int)$teamId;
+            if ($teamIdInt < 0) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) = ?";
+                $params[] = $teamIdInt;
+                $types   .= "i";
+            }
+        }
+
+        if (!empty($project_id)) {
+            $sql .= " AND lb.project_id = ?";
+            $params[] = (int)$project_id;
+            $types   .= "i";
+        }
+
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types   .= "ssss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND (DATE(lb.booking_date) >= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) >= ?))";
+            $params[] = $from_date;
+            $params[] = $from_date;
+            $types   .= "ss";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) <= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) <= ?))";
+            $params[] = $to_date;
+            $params[] = $to_date;
+            $types   .= "ss";
+        } elseif (!empty($year) || !empty($month)) {
+            if (!empty($year)) {
+                $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
+                $params[] = (int)$year;
+                $params[] = (int)$year;
+                $types   .= "ii";
+            }
+            if (!empty($month)) {
+                $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
+                $params[] = (int)$month;
+                $params[] = (int)$month;
+                $types   .= "ii";
+            }
+        }
+
+        $sql .= " GROUP BY user_id, sales_name ORDER BY client_count DESC, sales_name ASC";
+
+        if (!empty($params)) {
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param($types, ...$params);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+                $stmt->close();
+                return $rows;
+            }
+        } else {
+            $res = $this->db->query($sql);
+            return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        return [];
     }
 
     public function getAllOnboardClient($year = null, $month = null)
@@ -187,7 +345,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
 
 
-    public function getAllMyOnboardProject($userId, $year = null, $month = null)
+    public function getAllMyOnboardProject($userId, $year = null, $month = null, $from_date = null, $to_date = null)
     {
         $sql = "SELECT 
             lb.*, 
@@ -219,28 +377,52 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 SUM(CASE WHEN payment_type = 'registration' THEN IFNULL(amount, 0) ELSE 0 END) AS registration_money,
                 SUM(IFNULL(amount, 0)) AS amount
             FROM lead_payments
+            WHERE payment_status = 'paid'
             GROUP BY booking_id
         ) AS lp_sum ON lp_sum.booking_id = lb.id
         WHERE lb.deleted_at IS NULL
-          AND lb.booking_status IN ('booked', 'completed')
           AND (l.deleted_at IS NULL OR l.id IS NULL)
-          AND (lb.sales_by_id = ? OR l.assigned_id = ?)";
+          AND lb.booking_status IN ('booked', 'completed')
+          AND lb.booking_status NOT IN ('cancelled', 'refunded')
+          AND lb.id NOT IN (
+              SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded')
+          )
+          AND (lb.sales_by_id = ? OR (lb.sales_by_id IS NULL AND l.assigned_id = ?))";
 
         $params = [(int)$userId, (int)$userId];
         $types  = "ii";
 
-        if (!empty($year)) {
-            $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
-            $params[] = (int)$year;
-            $params[] = (int)$year;
-            $types   .= "ii";
-        }
-
-        if (!empty($month)) {
-            $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
-            $params[] = (int)$month;
-            $params[] = (int)$month;
-            $types   .= "ii";
+        // Custom date range takes priority over year/month
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) BETWEEN ? AND ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) BETWEEN ? AND ?))";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types   .= "ssss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND (DATE(lb.booking_date) >= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) >= ?))";
+            $params[] = $from_date;
+            $params[] = $from_date;
+            $types   .= "ss";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND (DATE(lb.booking_date) <= ? OR (lb.booking_date IS NULL AND DATE(lb.created_at) <= ?))";
+            $params[] = $to_date;
+            $params[] = $to_date;
+            $types   .= "ss";
+        } elseif (!empty($year) || !empty($month)) {
+            if (!empty($year)) {
+                $sql .= " AND (YEAR(lb.booking_date) = ? OR (lb.booking_date IS NULL AND YEAR(lb.created_at) = ?))";
+                $params[] = (int)$year;
+                $params[] = (int)$year;
+                $types   .= "ii";
+            }
+            if (!empty($month)) {
+                $sql .= " AND (MONTH(lb.booking_date) = ? OR (lb.booking_date IS NULL AND MONTH(lb.created_at) = ?))";
+                $params[] = (int)$month;
+                $params[] = (int)$month;
+                $types   .= "ii";
+            }
         }
 
         $sql .= " ORDER BY lb.booking_date DESC, lb.id DESC";
@@ -369,12 +551,12 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     {
         $sql = "INSERT INTO lead_bookings (
             lead_id, project_id, flat_id, agreement_value, discount_amount, 
-            booking_date, booking_status, created_by, sales_by_id, sales_agent_old, 
+            booking_date, booking_status, created_by, sales_by_id, team_id, sales_agent_old, 
             approval_status, approved_amount, service_fee_balance, landshare_status, 
             payment_status, attachment_image, uploaded_from
         ) VALUES (
             ?, ?, ?, ?, ?, 
-            ?, ?, ?, ?, ?, 
+            ?, ?, ?, ?, ?, ?, 
             ?, ?, ?, ?, 
             ?, ?, ?
         )";
@@ -387,16 +569,16 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         };
 
         $v_lead_id = $v('lead_id'); $v_project_id = $v('project_id'); $v_flat_id = $v('flat_id'); $v_agreement_value = $v('agreement_value'); $v_discount_amount = $v('discount_amount');
-        $v_booking_date = $v('booking_date'); $v_booking_status = $v('booking_status'); $v_created_by = $v('created_by'); $v_sales_by_id = $v('sales_by_id'); $v_sales_agent_old = $v('sales_agent_old');
+        $v_booking_date = $v('booking_date'); $v_booking_status = $v('booking_status'); $v_created_by = $v('created_by'); $v_sales_by_id = $v('sales_by_id'); $v_team_id = $v('team_id'); $v_sales_agent_old = $v('sales_agent_old');
         $v_approval_status = $v('approval_status'); $v_approved_amount = $v('approved_amount'); $v_service_fee_balance = $v('service_fee_balance'); $v_landshare_status = $v('landshare_status');
         $v_payment_status = $v('payment_status'); $v_attachment_image = $v('attachment_image');
         $v_uploaded_from = $data['uploaded_from'] ?? 'From Company csv';
 
-        $bindStr = str_repeat('s', 17);
+        $bindStr = str_repeat('s', 18);
         $stmt->bind_param(
             $bindStr,
             $v_lead_id, $v_project_id, $v_flat_id, $v_agreement_value, $v_discount_amount,
-            $v_booking_date, $v_booking_status, $v_created_by, $v_sales_by_id, $v_sales_agent_old,
+            $v_booking_date, $v_booking_status, $v_created_by, $v_sales_by_id, $v_team_id, $v_sales_agent_old,
             $v_approval_status, $v_approved_amount, $v_service_fee_balance, $v_landshare_status,
             $v_payment_status, $v_attachment_image, $v_uploaded_from
         );
@@ -437,6 +619,28 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $pastApprovalAttachment = $data['past_approval_attachment'] ?? null;
         $approvedAmount = isset($data['approved_amount']) && $data['approved_amount'] !== '' ? (float)$data['approved_amount'] : null;
 
+        // Resolve team_id for this booking if not explicitly provided
+        $bookingTeamId = !empty($data['team_id']) ? (int)$data['team_id'] : null;
+        if (empty($bookingTeamId) && !empty($data['sales_by_id'])) {
+            $sId = (int)$data['sales_by_id'];
+            $tStmt = $this->db->query("
+                SELECT COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) AS resolved_tid
+                FROM users u
+                LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
+                WHERE u.id = {$sId} LIMIT 1
+            ");
+            if ($tStmt && $tRow = $tStmt->fetch_assoc()) {
+                $bookingTeamId = !empty($tRow['resolved_tid']) ? (int)$tRow['resolved_tid'] : null;
+            }
+        }
+        if (empty($bookingTeamId) && !empty($data['lead_id'])) {
+            $lId = (int)$data['lead_id'];
+            $lStmt = $this->db->query("SELECT team_id FROM leads WHERE id = {$lId} LIMIT 1");
+            if ($lStmt && $lRow = $lStmt->fetch_assoc()) {
+                $bookingTeamId = !empty($lRow['team_id']) ? (int)$lRow['team_id'] : null;
+            }
+        }
+
         $sql = "
         INSERT INTO lead_bookings
         (
@@ -452,9 +656,10 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             approved_amount,
             past_approval_attachment,
             sales_by_id,
+            team_id,
             sales_agent_old
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
 
         $stmt = $this->db->prepare($sql);
@@ -464,7 +669,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         // 4 Bind params
         $stmt->bind_param(
-            "iiiidssdsdsis",
+            "iiiidssdsdsiis",
             $data['lead_id'],         // 1: i
             $data['project_id'],      // 2: i
             $data['flat_id'],         // 3: i
@@ -477,7 +682,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $approvedAmount,          // 10: d
             $pastApprovalAttachment,  // 11: s
             $data['sales_by_id'],     // 12: i
-            $salesAgentOld            // 13: s
+            $bookingTeamId,           // 13: i
+            $salesAgentOld            // 14: s
         );
 
         // 5 Execute
@@ -687,6 +893,35 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             }
         }
         
+        return $data;
+    }
+
+    public function getBookingSellersByLeadIds(array $leadIds): array
+    {
+        if (empty($leadIds)) return [];
+
+        $ids = implode(',', array_map('intval', $leadIds));
+        
+        $sql = "SELECT 
+                    lb.lead_id, 
+                    lb.sales_by_id, 
+                    COALESCE(u.full_name, 'No User') AS seller_name, 
+                    COUNT(lb.id) AS booking_count
+                FROM lead_bookings lb
+                LEFT JOIN users u ON lb.sales_by_id = u.id
+                WHERE lb.deleted_at IS NULL 
+                  AND lb.booking_status IN ('completed', 'booked')
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                  AND lb.lead_id IN ($ids)
+                GROUP BY lb.lead_id, lb.sales_by_id, u.full_name";
+                
+        $result = $this->db->query($sql);
+        $data = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $data[$row['lead_id']][] = $row;
+            }
+        }
         return $data;
     }
 

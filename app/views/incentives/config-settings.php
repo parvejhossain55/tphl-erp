@@ -48,7 +48,7 @@ $show_breadcrumb = true;
                 <div class="col-md-6 col-lg-3">
                     <div class="p-2 rounded bg-white shadow-2xs border">
                         <strong class="d-block text-secondary extra-small text-uppercase">4. Speed Bonus</strong>
-                        <span><strong>+0.20%</strong> if completed within 2 months deadline</span>
+                        <span><strong>+<?= number_format((float)($settings['speed_bonus_rate'] ?? 0.20), 2) ?>%</strong> if completed within <?= (int)($settings['speed_bonus_months'] ?? 2) ?> months deadline</span>
                     </div>
                 </div>
             </div>
@@ -96,8 +96,8 @@ $show_breadcrumb = true;
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold small text-dark">
-                                2nd Floor & Below Top Floor Rate (%)
-                                <i class="fa-solid fa-circle-question text-muted ms-1" title="Special incentive rate for 2nd floor and below top floor sales."></i>
+                                1st Floor & Top / Below-Top Floor Rate (%)
+                                <i class="fa-solid fa-circle-question text-muted ms-1" title="Special incentive rate for 1st floor and top/below top floor sales."></i>
                             </label>
                             <div class="input-group">
                                 <input type="number" step="0.01" name="settings[floor_special_rate]" class="form-control fw-bold" 

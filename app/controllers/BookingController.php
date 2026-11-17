@@ -268,9 +268,9 @@ class BookingController extends Controller
                 $now = date('Y-m-d H:i:s');
                 $teamId = $matchedUser['team_id'] ?? null;
                 if (!empty($teamId)) {
-                    $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, team_id = COALESCE(?, team_id), assigned_at = COALESCE(assigned_at, ?), last_lead_action = 'booked' WHERE id = ?");
+                    $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, team_id = COALESCE(?, team_id), initial_team_id = COALESCE(initial_team_id, ?), assigned_at = COALESCE(assigned_at, ?), last_lead_action = 'booked' WHERE id = ?");
                     if ($stmtLead) {
-                        $stmtLead->bind_param("iisi", $salesById, $teamId, $now, $leadId);
+                        $stmtLead->bind_param("iiisi", $salesById, $teamId, $teamId, $now, $leadId);
                         $stmtLead->execute();
                         $stmtLead->close();
                     }
@@ -300,6 +300,29 @@ class BookingController extends Controller
             $approvedAmount = $discount;
         }
 
+        // Snapshot salesperson's current team at the time of booking
+        $bookingTeamId = null;
+        if (!empty($salesById)) {
+            $teamQ = $this->db->prepare("
+                SELECT COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) AS t_id
+                FROM users u
+                LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
+                WHERE u.id = ? LIMIT 1
+            ");
+            if ($teamQ) {
+                $teamQ->bind_param("i", $salesById);
+                $teamQ->execute();
+                $tRes = $teamQ->get_result()->fetch_assoc();
+                $teamQ->close();
+                if ($tRes && !empty($tRes['t_id'])) {
+                    $bookingTeamId = (int)$tRes['t_id'];
+                }
+            }
+        }
+        if (empty($bookingTeamId) && !empty($lead['team_id'])) {
+            $bookingTeamId = (int)$lead['team_id'];
+        }
+
         $data = [
             'lead_id' => $_POST['lead_id'],
             'project_id' => $_POST['project_id'],
@@ -313,6 +336,7 @@ class BookingController extends Controller
             'approved_amount' => $approvedAmount,
             'past_approval_attachment' => $approvalAttachmentPath,
             'sales_by_id' => $salesById, //  auto set
+            'team_id' => $bookingTeamId, // snapshots team at booking time
         ];
 
         $bookingId = $this->bookingModel->create($data);
@@ -509,12 +533,15 @@ class BookingController extends Controller
 
         $leadId = (int)$booking['lead_id'];
 
-        // Authorization check: Salesperson who made the sale (sales_by_id) OR roles [1, 3, 9, 20, 33]
-        $isSalesperson = (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === (int)$userId);
-        $hasBackupRole = in_array($userRole, [1, 3, 9, 20, 33]);
+        // Authorization check: Related Team Leader (Role 5 in same team) OR roles [1, 3, 9, 20]
+        // Sales Executives (Role 8) cannot create refund requests directly
+        require_once __DIR__ . '/../models/ClientRefund.php';
+        $crModel = new ClientRefund($this->db);
+        $isRelatedLeader = $crModel->isRelatedTeamLeader($userId, $userRole, $bookingId);
+        $hasBackupRole   = in_array($userRole, [1, 3, 9, 20], true);
 
-        if (!$isSalesperson && !$hasBackupRole) {
-            setError("You are not authorized to initiate refund for this booking. Only the assigned salesperson or authorized management can initiate.");
+        if ((int)$userRole === 8 || (!$isRelatedLeader && !$hasBackupRole)) {
+            setError("Only your sales leaders can create refund request.");
             header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
             exit;
         }
@@ -681,7 +708,7 @@ class BookingController extends Controller
                     'source_id'      => $refundId,
                     'requested_days' => 0,
                     'requested_by'   => $userId,
-                    'approve_role'   => 'accounts_retention',
+                    'approve_role'   => 'sales_manager',
                     'meta_data'      => null,
                     'request_amount' => $refundAmount,
                 ]);

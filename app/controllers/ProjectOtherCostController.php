@@ -403,6 +403,49 @@ class ProjectOtherCostController extends Controller
                 exit();
             }
 
+            // Management Single-Stage Approval (approve ONLY current pending stage)
+            $approveMode = $_POST['approve_mode'] ?? 'override';
+            if ($isMgmtUser && $approveMode === 'single') {
+                $mgmtUid = (int)$_SESSION['user']['id'];
+                $escSingleNote = $this->db->real_escape_string($note ?: 'Approved by Management');
+                if (($req['dept_head_status'] ?? '') === 'pending') {
+                    $this->otherCostModel->update($id, [
+                        'dept_head_status'        => 'approved',
+                        'dept_head_approved_by'   => $mgmtUid,
+                        'dept_head_approved_at'   => date('Y-m-d H:i:s'),
+                        'dept_head_approval_note' => ($note ?: 'Approved') . ' (On behalf of Dept. Head)'
+                    ]);
+                    $this->db->query("UPDATE approval_requests SET approve_role = 'qc', status = 'pending' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    setSuccess('Department Head stage approved by Management. Forwarded to QC & Internal Audit.');
+                    header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                    exit();
+                } elseif (empty($req['qc_audit_approved_id'])) {
+                    $this->otherCostModel->update($id, [
+                        'qc_audit_approved_id' => $mgmtUid,
+                        'qc_audit_approved_at' => date('Y-m-d H:i:s'),
+                        'qc_audit_note'        => ($note ?: 'Approved') . ' (On behalf of QC)',
+                        'status'               => 'qc_approved',
+                        'approved_amount'      => $approvedAmount
+                    ]);
+                    $this->db->query("UPDATE approval_requests SET approve_role = 'operations', status = 'pending' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    setSuccess('QC & Audit stage approved by Management. Forwarded to Operation Head.');
+                    header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                    exit();
+                } elseif ($opHeadStatus !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$mgmtUid}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)', approve_role = 'accounts_head' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    $this->db->query("UPDATE project_other_costs SET op_head_status = 'approved', op_head_by = {$mgmtUid}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)' WHERE id = {$id}");
+                    setSuccess('Operation Head stage approved by Management. Forwarded to Accounts Head.');
+                    header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                    exit();
+                } elseif ($ahStatus !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$mgmtUid}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)', approve_role = 'management' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    $this->db->query("UPDATE project_other_costs SET accounts_head_status = 'approved', accounts_head_by = {$mgmtUid}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)' WHERE id = {$id}");
+                    setSuccess('Accounts Head stage approved by Management. Ready for Final Management Approval.');
+                    header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                    exit();
+                }
+            }
+
             if ($isMgmtUser) {
                 $mgmtUid = (int)$_SESSION['user']['id'];
                 $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');

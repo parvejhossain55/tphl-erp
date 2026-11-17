@@ -225,7 +225,7 @@ class SalesPerformanceService
         }
 
         // 2. All Time / Lifetime
-        if ($cycle === 'all' || $cycle === 'lifetime') {
+        if ($cycle === 'all' || $cycle === 'all_time' || $cycle === 'lifetime' || $preset === 'all_time') {
             return [
                 'type' => 'all',
                 'is_all_time' => true,
@@ -428,6 +428,7 @@ class SalesPerformanceService
             $roleId = (int) $r['role_id'];
             $isSales = in_array($roleId, self::SALES_ROLE_IDS, true) 
                 || in_array((int) $r['secondary_role_id'], self::SALES_ROLE_IDS, true)
+                || strtolower(trim((string) ($r['role_name'] ?? ''))) === 'sales manager'
                 || (int) ($r['department_id'] ?? 0) === 1;
 
             $hasEmp = !empty($r['has_emp_record']);
@@ -484,8 +485,11 @@ class SalesPerformanceService
      * Bucket key for a given owner (user id) – used to group everything.
      * Returns [teamKey, execKey].
      */
-    protected function bucket(?int $userId): array
+    protected function bucket(?int $userId, ?int $explicitTeamId = null): array
     {
+        if ($explicitTeamId && isset($this->teams[$explicitTeamId])) {
+            return ['t' . $explicitTeamId, $userId];
+        }
         if (!$userId) {
             return ['unassigned', null];
         }
@@ -542,11 +546,14 @@ class SalesPerformanceService
         $today = date('Y-m-d');
 
         // Bucket filter: does this owner pass team/executive filters?
-        $passes = function (?int $uid) use ($teamFilter, $execFilter): bool {
+        $passes = function (?int $uid, ?int $bTeamId = null) use ($teamFilter, $execFilter): bool {
             if ($execFilter) {
                 return $uid === $execFilter;
             }
             if ($teamFilter) {
+                if ($bTeamId !== null && $bTeamId > 0) {
+                    return $bTeamId === $teamFilter;
+                }
                 return $uid && isset($this->users[$uid]) && $this->users[$uid]['team_id'] === $teamFilter && $this->users[$uid]['is_sales'];
             }
             return true;
@@ -565,8 +572,8 @@ class SalesPerformanceService
             }
         };
 
-        $add = function (?int $uid, string $field, $value = 1) use (&$execs, &$teamsAgg, &$overall, $touch) {
-            [$teamKey, $execKey] = $this->bucket($uid);
+        $add = function (?int $uid, string $field, $value = 1, ?int $explicitTeamId = null) use (&$execs, &$teamsAgg, &$overall, $touch) {
+            [$teamKey, $execKey] = $this->bucket($uid, $explicitTeamId);
             $touch($teamKey, $execKey);
             $overall[$field] += $value;
             $teamsAgg[$teamKey][$field] += $value;
@@ -593,7 +600,9 @@ class SalesPerformanceService
 
         $leadsDeleted    = isset($lCols['deleted_at']) ? "l.deleted_at IS NULL" : "1=1";
         $fuDeleted       = isset($fuCols['deleted_at']) ? "WHERE deleted_at IS NULL" : "";
-        $bkDeleted       = isset($bkCols['deleted_at']) ? "WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')" : "WHERE b.booking_status IN ('booked','completed')";
+        $bkDeleted       = isset($bkCols['deleted_at']) 
+            ? "WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed') AND b.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))" 
+            : "WHERE b.booking_status IN ('booked','completed') AND b.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
         $payTrashed      = isset($payCols['is_trashed']) ? "AND COALESCE(p.is_trashed, 0) = 0" : "";
         $payVerified     = isset($payCols['verification_status']) ? "AND p.verification_status = 'verified'" : "";
 
@@ -785,6 +794,7 @@ class SalesPerformanceService
         $dateSqlB = $isAllTime ? "" : " AND b.booking_date BETWEEN '$startD' AND '$endD'";
         $sql = "
             SELECT b.id, b.lead_id, b.project_id, b.flat_id, b.agreement_value, b.booking_date, b.uploaded_from,
+                   COALESCE(b.team_id, l.team_id) AS b_team_id,
                    f.price_value, f.land_share_value, f.booking_money, f.registration_money,
                    COALESCE(
                        NULLIF(f.land_share_value, 0),
@@ -805,13 +815,15 @@ class SalesPerformanceService
             LEFT JOIN flats f ON f.id = b.flat_id
             LEFT JOIN projects p ON p.id = b.project_id
             WHERE b.deleted_at IS NULL AND b.booking_status IN ('booked','completed')
+              AND b.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
               $dateSqlB $projB
         ";
         $projectsAgg = [];
         $res = $this->db->query($sql);
         while ($res && $r = $res->fetch_assoc()) {
             $uid = $r['uid'] ? (int) $r['uid'] : null;
-            if (!$passes($uid)) {
+            $bTeamId = $r['b_team_id'] ? (int) $r['b_team_id'] : null;
+            if (!$passes($uid, $bTeamId)) {
                 continue;
             }
             $landVal = (float) $r['calc_land_share'];
@@ -821,18 +833,18 @@ class SalesPerformanceService
             $verAmt = (float) $r['b_verified_amt'];
             $verCnt = (int) $r['b_verified_cnt'];
 
-            $add($uid, 'bookings');
-            $add($uid, 'booking_value', $landVal);
-            $add($uid, 'land_share_value', $landVal);
-            $add($uid, 'flat_value', $flatVal);
-            $add($uid, 'booking_cashin_total', $cashinAmt);
-            $add($uid, 'booking_cashin_count', $cashinCnt);
-            $add($uid, 'booking_cashin_verified', $verAmt);
-            $add($uid, 'booking_verified_trx_count', $verCnt);
+            $add($uid, 'bookings', 1, $bTeamId);
+            $add($uid, 'booking_value', $landVal, $bTeamId);
+            $add($uid, 'land_share_value', $landVal, $bTeamId);
+            $add($uid, 'flat_value', $flatVal, $bTeamId);
+            $add($uid, 'booking_cashin_total', $cashinAmt, $bTeamId);
+            $add($uid, 'booking_cashin_count', $cashinCnt, $bTeamId);
+            $add($uid, 'booking_cashin_verified', $verAmt, $bTeamId);
+            $add($uid, 'booking_verified_trx_count', $verCnt, $bTeamId);
 
             if ((int) $r['confirmed'] === 1) {
-                $add($uid, 'confirmed_sales');
-                $add($uid, 'confirmed_value', $landVal);
+                $add($uid, 'confirmed_sales', 1, $bTeamId);
+                $add($uid, 'confirmed_value', $landVal, $bTeamId);
             }
             $pid = (int) $r['project_id'];
             if (!isset($projectsAgg[$pid])) {
@@ -872,6 +884,7 @@ class SalesPerformanceService
         $newBookingCond = $isAllTime ? "1=1" : "b.booking_date BETWEEN '$startD' AND '$endD'";
         $sql = "
             SELECT COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) AS uid, 
+                   COALESCE(b.team_id, l.team_id) AS b_team_id,
                    SUM(CASE WHEN p.verification_status = 'verified' AND p.payment_status IN ('paid','partially_paid') THEN p.amount ELSE 0 END) AS amt,
                    SUM(p.amount) AS amt_gross,
                    SUM(CASE WHEN $newBookingCond AND p.verification_status = 'verified' AND p.payment_status IN ('paid','partially_paid') THEN p.amount ELSE 0 END) AS amt_new,
@@ -882,18 +895,19 @@ class SalesPerformanceService
             WHERE COALESCE(p.is_trashed, 0) = 0
               AND COALESCE(p.is_emi_discount, 0) = 0
               $dateSqlP $projB
-            GROUP BY uid
+            GROUP BY uid, b_team_id
         ";
         $res = $this->db->query($sql);
         while ($res && $r = $res->fetch_assoc()) {
             $uid = $r['uid'] ? (int) $r['uid'] : null;
-            if (!$passes($uid)) {
+            $bTeamId = $r['b_team_id'] ? (int) $r['b_team_id'] : null;
+            if (!$passes($uid, $bTeamId)) {
                 continue;
             }
-            $add($uid, 'collection', (float) $r['amt']);
-            $add($uid, 'collection_gross', (float) ($r['amt_gross'] ?? 0));
-            $add($uid, 'collection_new', (float) ($r['amt_new'] ?? 0));
-            $add($uid, 'collection_prev', (float) ($r['amt_prev'] ?? 0));
+            $add($uid, 'collection', (float) $r['amt'], $bTeamId);
+            $add($uid, 'collection_gross', (float) ($r['amt_gross'] ?? 0), $bTeamId);
+            $add($uid, 'collection_new', (float) ($r['amt_new'] ?? 0), $bTeamId);
+            $add($uid, 'collection_prev', (float) ($r['amt_prev'] ?? 0), $bTeamId);
         }
 
         // -----------------------------------------------------------------

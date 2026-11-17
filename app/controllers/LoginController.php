@@ -146,6 +146,24 @@ class LoginController extends Controller
                             $_SESSION['user']['permissions'] =
                                 $this->userModel->getPermissionsByRole($user['role_id']);
 
+                            // Flag to trigger background pending Tipsoi reminders check upon landing on portal
+                            $_SESSION['tipsoi_check_reminders_on_load'] = true;
+
+                            $redirectTarget = $_SESSION['redirect_after_login'] ?? '';
+                            unset($_SESSION['redirect_after_login']);
+                            if (
+                                is_string($redirectTarget)
+                                && $redirectTarget !== ''
+                                && $redirectTarget[0] === '/'
+                                && strpos($redirectTarget, '//') !== 0
+                                && strpos($redirectTarget, "\r") === false
+                                && strpos($redirectTarget, "\n") === false
+                                && !preg_match('#/(admin-login|login|logout|update-activity)(\?|$)#i', $redirectTarget)
+                            ) {
+                                header("Location: " . $redirectTarget);
+                                exit;
+                            }
+
                             redirectByRole();
                         }
                     } else {

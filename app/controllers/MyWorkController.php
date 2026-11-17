@@ -1,0 +1,3005 @@
+<?php
+
+class MyWorkController extends Controller
+{
+    private $db;
+
+    public function __construct()
+    {
+        $this->db = $GLOBALS['db'] ?? null;
+    }
+
+    /**
+     * Single-Page Workspace: handles both initial page load and seamless AJAX updates
+     */
+    public function index()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            if (!empty($_GET['ajax'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+                exit;
+            }
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/login");
+            exit;
+        }
+
+        $userId = (int) $_SESSION['user']['id'];
+        $user = $_SESSION['user'] ?? [];
+        $baseUrl = $GLOBALS['base_url'] ?? '';
+
+        // Active Scope Tab
+        $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following', 'reviewer', 'realestate_project', 'self_initiated', 'recurring', 'previous_task_sheet'];
+        $tab = $_GET['tab'] ?? 'all';
+        if (!in_array($tab, $validTabs, true)) {
+            $tab = 'all';
+        }
+
+        // Subquery condition: Task has been officially submitted for review by the assignee
+        $submittedForReviewSql = "EXISTS (
+            SELECT 1 FROM task_activities a_sub 
+            WHERE a_sub.task_id = t.id 
+              AND a_sub.activity LIKE '%submitted for review%'
+              AND a_sub.id > COALESCE(
+                  (SELECT MAX(a_req.id) FROM task_activities a_req WHERE a_req.task_id = t.id AND (a_req.activity LIKE 'Requested changes%' OR a_req.activity LIKE 'Unchecked acceptance%')),
+                  0
+              )
+        )";
+
+        // Search & Filters
+        $search = trim($_GET['search'] ?? '');
+        $priorityFilter = trim($_GET['priority'] ?? '');
+        $statusFilter = trim($_GET['status'] ?? '');
+        $metricFilter = trim($_GET['metric'] ?? ''); // overdue, due_today, next7, review
+        $viewAll = !empty($_GET['view_all']) && $_GET['view_all'] === '1';
+
+        $parseValidDate = static function (string $val): string {
+            $val = trim($val);
+            if ($val === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
+                return '';
+            }
+            $dt = \DateTime::createFromFormat('Y-m-d', $val);
+            return ($dt && $dt->format('Y-m-d') === $val) ? $val : '';
+        };
+        $periodFrom = $parseValidDate((string) ($_GET['period_from'] ?? ''));
+        $periodTo   = $parseValidDate((string) ($_GET['period_to'] ?? ''));
+        if ($periodFrom !== '' && $periodTo !== '' && $periodFrom > $periodTo) {
+            [$periodFrom, $periodTo] = [$periodTo, $periodFrom];
+        }
+
+        // When a metric card is clicked, it dictates the status filter (reset dropdown conflict)
+        if (!empty($metricFilter)) {
+            $statusFilter = '';
+        }
+
+        // Scope per tab. mentioned_user_ids (reviewer) / cc_user_ids are stored as JSON ("[12,15]"); strip brackets so FIND_IN_SET works (also for legacy CSV).
+        $mentionSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))";
+        $ccSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))";
+        $collabSql = "FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))";
+        // "Assigned to me" = I am the owner or a collaborator
+        $assignedToMeSql = "(t.user_id = ? OR {$collabSql})";
+        $allScopeSql = "(t.user_id = ? OR t.assigned_by = ? OR {$collabSql} OR {$mentionSql} OR {$ccSql})";
+        $allScopeParams = array_fill(0, 5, $userId);
+        if ($tab === 'all') {
+            $scopeSql = $allScopeSql;
+            $scopeParams = $allScopeParams;
+        } elseif ($tab === 'assigned_to_me') {
+            $scopeSql = $assignedToMeSql;
+            $scopeParams = [$userId, $userId];
+        } elseif ($tab === 'assigned_by_me') {
+            $scopeSql = "t.assigned_by = ?";
+            $scopeParams = [$userId];
+        } elseif ($tab === 'following') {
+            $scopeSql = $ccSql;
+            $scopeParams = [$userId];
+        } elseif ($tab === 'reviewer') {
+            $scopeSql = $mentionSql;
+            $scopeParams = [$userId];
+        } elseif ($tab === 'realestate_project') {
+            $scopeSql = "((t.project_id IS NOT NULL AND t.project_id > 0) OR (t.todo_project_id IS NOT NULL AND t.todo_project_id > 0)) AND {$allScopeSql}";
+            $scopeParams = $allScopeParams;
+        } elseif ($tab === 'self_initiated') {
+            $scopeSql = "(t.user_id = ? AND t.assigned_by = ?)";
+            $scopeParams = [$userId, $userId];
+        } elseif ($tab === 'recurring') {
+            $scopeSql = "(t.is_recurring = 1 AND (t.user_id = ? OR t.assigned_by = ?))";
+            $scopeParams = [$userId, $userId];
+        } else {
+            $scopeSql = $assignedToMeSql;
+            $scopeParams = [$userId, $userId];
+        }
+        $scopeTypes = str_repeat('i', count($scopeParams));
+
+        // Tab badge counts (independent query so existing scope/filter logic remains untouched)
+        $tabCounts = [
+            'all'                => 0,
+            'assigned_to_me'     => 0,
+            'assigned_by_me'     => 0,
+            'following'          => 0,
+            'reviewer'           => 0,
+            'realestate_project' => 0,
+            'self_initiated'     => 0,
+            'recurring'          => 0,
+        ];
+        $stmtTabCounts = $this->db->prepare("
+            SELECT
+                COUNT(*) AS cnt_all,
+                COALESCE(SUM(CASE WHEN {$assignedToMeSql} THEN 1 ELSE 0 END), 0) AS cnt_assigned_to_me,
+                COALESCE(SUM(CASE WHEN t.assigned_by = ? THEN 1 ELSE 0 END), 0) AS cnt_assigned_by_me,
+                COALESCE(SUM(CASE WHEN {$ccSql} THEN 1 ELSE 0 END), 0) AS cnt_following,
+                COALESCE(SUM(CASE WHEN {$mentionSql} THEN 1 ELSE 0 END), 0) AS cnt_reviewer,
+                COALESCE(SUM(CASE WHEN ((t.project_id IS NOT NULL AND t.project_id > 0) OR (t.todo_project_id IS NOT NULL AND t.todo_project_id > 0)) THEN 1 ELSE 0 END), 0) AS cnt_realestate_project,
+                COALESCE(SUM(CASE WHEN (t.user_id = ? AND t.assigned_by = ?) THEN 1 ELSE 0 END), 0) AS cnt_self_initiated,
+                COALESCE(SUM(CASE WHEN (t.is_recurring = 1 AND (t.user_id = ? OR t.assigned_by = ?)) THEN 1 ELSE 0 END), 0) AS cnt_recurring
+            FROM tasks t
+            WHERE {$allScopeSql}
+        ");
+        if ($stmtTabCounts) {
+            $tabCountParams = array_fill(0, 14, $userId);
+            $stmtTabCounts->bind_param(str_repeat('i', 14), ...$tabCountParams);
+            $stmtTabCounts->execute();
+            $tcRow = $stmtTabCounts->get_result()->fetch_assoc();
+            if ($tcRow) {
+                $tabCounts = [
+                    'all'                => (int) ($tcRow['cnt_all'] ?? 0),
+                    'assigned_to_me'     => (int) ($tcRow['cnt_assigned_to_me'] ?? 0),
+                    'assigned_by_me'     => (int) ($tcRow['cnt_assigned_by_me'] ?? 0),
+                    'following'          => (int) ($tcRow['cnt_following'] ?? 0),
+                    'reviewer'           => (int) ($tcRow['cnt_reviewer'] ?? 0),
+                    'realestate_project' => (int) ($tcRow['cnt_realestate_project'] ?? 0),
+                    'self_initiated'     => (int) ($tcRow['cnt_self_initiated'] ?? 0),
+                    'recurring'          => (int) ($tcRow['cnt_recurring'] ?? 0),
+                ];
+            }
+            $stmtTabCounts->close();
+        }
+        $prevSheetEmpIds = $this->getEmployeeIdsForTaskSheet($userId);
+        $prevSheetModel = class_exists('EmployeeTask') ? new EmployeeTask($this->db) : null;
+        $prevSheetAllRows = ($prevSheetModel && !empty($prevSheetEmpIds))
+            ? $prevSheetModel->getTasksByEmployee($prevSheetEmpIds, ['year' => 'all', 'month' => 'all'])
+            : [];
+        $tabCounts['previous_task_sheet'] = count($prevSheetAllRows);
+
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+        if ($tab === 'previous_task_sheet' && $isAjax) {
+            header('Content-Type: application/json');
+            $sheetData = $this->buildPreviousTaskSheetPayload($prevSheetModel, $prevSheetEmpIds, $_GET);
+            echo json_encode(array_merge([
+                'status'     => 'success',
+                'mode'       => 'previous_task_sheet',
+                'tab_counts' => $tabCounts,
+            ], $sheetData));
+            exit;
+        }
+
+        // Metric cards: counted inside the active tab's scope
+        $metricCond = [
+            'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+            'due_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
+            'next7'     => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
+            'review'    => "t.status != 'completed' AND t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND t.mentioned_user_ids != '[]' AND {$submittedForReviewSql}",
+        ];
+        $countMetric = function (string $cond) use ($scopeSql, $scopeParams, $scopeTypes): int {
+            $st = $this->db->prepare("SELECT COUNT(*) FROM tasks t WHERE {$scopeSql} AND {$cond}");
+            $st->bind_param($scopeTypes, ...$scopeParams);
+            $st->execute();
+            return (int) $st->get_result()->fetch_row()[0];
+        };
+        $overdueCount = $countMetric($metricCond['overdue']);
+        $dueTodayCount = $countMetric($metricCond['due_today']);
+        $next7DaysCount = $countMetric($metricCond['next7']);
+        $waitingReviewCount = $countMetric($metricCond['review']);
+
+        $stmtTotals = $this->db->prepare("
+            SELECT 
+                SUM(CASE WHEN t.status != 'completed' THEN 1 ELSE 0 END) AS open_count,
+                SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_count
+            FROM tasks t
+            WHERE {$scopeSql}
+        ");
+        $stmtTotals->bind_param($scopeTypes, ...$scopeParams);
+        $stmtTotals->execute();
+        $totals = $stmtTotals->get_result()->fetch_assoc();
+        $openTasksCount = (int) ($totals['open_count'] ?? 0);
+        $completedTasksCount = (int) ($totals['completed_count'] ?? 0);
+
+        // Default status tab: My Actionable (open) if any pending tasks exist, else auto-switch to Completed
+        if ($statusFilter === '' && $metricFilter === '') {
+            $statusFilter = ($openTasksCount > 0 || $completedTasksCount === 0) ? 'open' : 'completed';
+        }
+
+        // Count tasks reviewed and completed where the current user is a reviewer
+        $stmtMyReviewed = $this->db->prepare("
+            SELECT COUNT(DISTINCT t.id)
+            FROM tasks t
+            WHERE t.status = 'completed'
+              AND FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
+        ");
+        $stmtMyReviewed->bind_param("i", $userId);
+        $stmtMyReviewed->execute();
+        $myReviewedCompletedCount = (int) ($stmtMyReviewed->get_result()->fetch_row()[0] ?? 0);
+
+        // 5b. Summary cards (scope = active tab)
+        $stmtAll = $this->db->prepare("
+            SELECT 
+                COUNT(*) AS total,
+                COALESCE(SUM(t.status = 'in_progress'), 0) AS in_progress,
+                COALESCE(SUM(t.status = 'completed'), 0) AS completed,
+                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()), 0) AS deadline_today,
+                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()), 0) AS deadline_missed
+            FROM tasks t
+            WHERE {$scopeSql}
+        ");
+        $stmtAll->bind_param($scopeTypes, ...$scopeParams);
+        $stmtAll->execute();
+        $allStats = array_map('intval', $stmtAll->get_result()->fetch_assoc());
+        $allStats['completion_rate'] = $allStats['total'] > 0 ? (int) round($allStats['completed'] * 100 / $allStats['total']) : 0;
+
+        // 6. Build Query for Tasks List
+        $where = [];
+        $params = [];
+        $types = "";
+
+        if (isset($metricCond[$metricFilter])) {
+            // Card filter: matches exactly what was counted (same tab scope)
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
+            $where[] = $metricCond[$metricFilter];
+        } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
+            // Review submissions filter: tasks with reviewer feedback / changes requested
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
+            $where[] = "t.status != 'completed' AND (
+                t.id IN (SELECT task_id FROM task_activities WHERE activity LIKE 'Requested changes%')
+                OR t.remarks LIKE '%Reviewer Note%'
+            )";
+        } elseif (in_array($metricFilter, ['all_total', 'all_in_progress', 'all_completed', 'all_deadline_today', 'all_deadline_missed'], true)) {
+            // Summary cards: same scope as the card counts
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
+            $metricSql = [
+                'all_in_progress'    => "t.status = 'in_progress'",
+                'all_completed'      => "t.status = 'completed'",
+                'all_deadline_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
+                'all_deadline_missed' => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+            ];
+            if (isset($metricSql[$metricFilter])) {
+                $where[] = $metricSql[$metricFilter];
+            }
+        } else {
+            // Standard Tab Scope
+            $where[] = $scopeSql;
+            $params = array_merge($params, $scopeParams);
+            $types .= $scopeTypes;
+        }
+
+        // Search
+        if ($search !== '') {
+            if (is_numeric($search)) {
+                $where[] = "(t.id = ? OR t.title LIKE ?)";
+                $params[] = (int) $search;
+                $params[] = '%' . $search . '%';
+                $types .= "is";
+            } else {
+                $where[] = "t.title LIKE ?";
+                $params[] = '%' . $search . '%';
+                $types .= "s";
+            }
+        }
+
+        // Priority filter
+        if ($priorityFilter !== '' && in_array($priorityFilter, ['low', 'medium', 'high', 'urgent'], true)) {
+            $where[] = "t.priority = ?";
+            $params[] = $priorityFilter;
+            $types .= "s";
+        }
+
+        // Status filter (only applied if not overridden by a metric card)
+        if ($statusFilter !== '' && $statusFilter !== 'all') {
+            if ($statusFilter === 'open') {
+                $where[] = "t.status != 'completed'";
+            } elseif ($statusFilter === 'overdue') {
+                $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()";
+            } elseif (in_array($statusFilter, ['pending', 'in_progress', 'completed', 'expired'], true)) {
+                $where[] = "t.status = ?";
+                $params[] = $statusFilter;
+                $types .= "s";
+            }
+        }
+
+        // Period (created_at date range) filter
+        if ($periodFrom !== '' && $periodTo !== '') {
+            $where[] = "t.created_at IS NOT NULL AND DATE(t.created_at) BETWEEN ? AND ?";
+            $params[] = $periodFrom;
+            $params[] = $periodTo;
+            $types .= "ss";
+        } elseif ($periodFrom !== '') {
+            $where[] = "t.created_at IS NOT NULL AND DATE(t.created_at) >= ?";
+            $params[] = $periodFrom;
+            $types .= "s";
+        } elseif ($periodTo !== '') {
+            $where[] = "t.created_at IS NOT NULL AND DATE(t.created_at) <= ?";
+            $params[] = $periodTo;
+            $types .= "s";
+        }
+
+        $whereSql = implode(" AND ", $where);
+
+        $sql = "
+            SELECT 
+                t.*,
+                COALESCE(rp.name, tp.name, 'General') AS project_name,
+                tp.color_code AS project_color,
+                u_assigned.full_name AS assignee_name,
+                u_assigned.photo AS assignee_photo,
+                des_assigned.name AS assignee_designation,
+                u_by.full_name AS assigned_by_name,
+                u_by.photo AS assigned_by_photo,
+                des_by.name AS assigned_by_designation,
+                ({$submittedForReviewSql}) AS is_submitted_for_review
+            FROM tasks t
+            LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
+            LEFT JOIN users u_assigned ON t.user_id = u_assigned.id
+            LEFT JOIN designations des_assigned ON u_assigned.designation_id = des_assigned.id
+            LEFT JOIN users u_by ON t.assigned_by = u_by.id
+            LEFT JOIN designations des_by ON u_by.designation_id = des_by.id
+            WHERE {$whereSql}
+            ORDER BY 
+                CASE 
+                    WHEN t.status = 'completed' THEN 99
+                    WHEN t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW() THEN 1
+                    WHEN t.status != 'completed' AND DATE(t.deadline) = CURDATE() THEN 2
+                    WHEN t.status != 'completed' THEN 3
+                    ELSE 4
+                END,
+                CASE WHEN t.status = 'completed' THEN COALESCE(t.updated_at, t.created_at) END DESC,
+                t.deadline ASC,
+                t.id DESC
+            " . ($viewAll ? "LIMIT 1000" : "LIMIT 50") . "
+        ";
+
+        $stmtTasks = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmtTasks->bind_param($types, ...$params);
+        }
+        $stmtTasks->execute();
+        $tasks = $stmtTasks->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 7. Focus Panel: Needs Review (Tasks where the logged-in user is a Reviewer and task is completed, latest completed first)
+        $stmtReviewList = $this->db->prepare("
+            SELECT 
+                t.*,
+                u.full_name AS employee_name,
+                u.photo AS employee_photo,
+                des.name AS employee_designation
+            FROM tasks t
+            JOIN users u ON t.user_id = u.id
+            LEFT JOIN designations des ON u.designation_id = des.id
+            WHERE FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
+              AND (
+                  (t.status = 'completed' AND NOT EXISTS (
+                      SELECT 1 FROM task_activities a 
+                      WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
+                  ))
+                  OR (t.status != 'completed' AND {$submittedForReviewSql})
+              )
+            ORDER BY COALESCE(t.updated_at, t.created_at) DESC
+            LIMIT 2
+        ");
+        $stmtReviewList->bind_param("i", $userId);
+        $stmtReviewList->execute();
+        $reviewTasks = $stmtReviewList->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // 8. Focus Panel: Task Attention (Priority or response needed)
+        // Reviewer submitted review on assignee's task -> show latest review submission
+        $stmtAttention = $this->db->prepare("
+            SELECT 
+                t.*,
+                u_by.full_name AS assigned_by_name,
+                des_by.name AS assigned_by_designation,
+                act.activity AS last_review_activity,
+                act.created_at AS last_review_time,
+                u_rev.full_name AS reviewer_name,
+                des_rev.name AS reviewer_designation
+            FROM tasks t
+            LEFT JOIN users u_by ON t.assigned_by = u_by.id
+            LEFT JOIN designations des_by ON u_by.designation_id = des_by.id
+            LEFT JOIN (
+                SELECT a1.task_id, a1.user_id, a1.activity, a1.created_at
+                FROM task_activities a1
+                INNER JOIN (
+                    SELECT task_id, MAX(id) AS max_id
+                    FROM task_activities
+                    WHERE activity LIKE 'Requested changes%'
+                    GROUP BY task_id
+                ) a2 ON a1.id = a2.max_id
+            ) act ON act.task_id = t.id
+            LEFT JOIN users u_rev ON act.user_id = u_rev.id
+            LEFT JOIN designations des_rev ON u_rev.designation_id = des_rev.id
+            WHERE (t.user_id = ? OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ','')))
+              AND t.status != 'completed'
+              AND (act.task_id IS NOT NULL OR t.remarks LIKE '%Reviewer Note%')
+            ORDER BY COALESCE(act.created_at, t.updated_at, t.created_at) DESC
+            LIMIT 1
+        ");
+        $stmtAttention->bind_param("ii", $userId, $userId);
+        $stmtAttention->execute();
+        $blockedTask = $stmtAttention->get_result()->fetch_assoc();
+
+        if ($blockedTask) {
+            $blockedTask['is_review_submission'] = true;
+        } else {
+            // Fallback to urgent / blocked task if no review submission exists
+            $stmtBlocked = $this->db->prepare("
+                SELECT 
+                    t.*,
+                    u_by.full_name AS assigned_by_name,
+                    des_by.name AS assigned_by_designation,
+                    NULL AS last_review_activity,
+                    NULL AS last_review_time,
+                    NULL AS reviewer_name,
+                    NULL AS reviewer_designation
+                FROM tasks t
+                LEFT JOIN users u_by ON t.assigned_by = u_by.id
+                LEFT JOIN designations des_by ON u_by.designation_id = des_by.id
+                WHERE (t.user_id = ? OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ','')))
+                  AND t.status != 'completed'
+                ORDER BY 
+                    (CASE WHEN t.remarks LIKE '%block%' OR t.priority = 'urgent' THEN 1 ELSE 2 END),
+                    (CASE WHEN t.deadline < NOW() THEN 1 ELSE 2 END),
+                    t.deadline ASC
+                LIMIT 1
+            ");
+            $stmtBlocked->bind_param("ii", $userId, $userId);
+            $stmtBlocked->execute();
+            $blockedTask = $stmtBlocked->get_result()->fetch_assoc();
+            if ($blockedTask) {
+                $blockedTask['is_review_submission'] = false;
+            }
+        }
+
+        // If AJAX request: Return JSON response without reloading page
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            $tableHtml = $this->renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl);
+            if ($viewAll) {
+                $footerInfoText = 'Showing all ' . count($tasks) . ' tasks · Sorted by deadline';
+            } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
+                $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
+            } elseif ($statusFilter === 'open') {
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
+            } elseif ($statusFilter === 'completed') {
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $completedTasksCount . ' completed tasks · Sorted by deadline';
+            } else {
+                $totalInTab = $openTasksCount + $completedTasksCount;
+                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
+            }
+            $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks);
+            $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
+            echo json_encode([
+                'status' => 'success',
+                'active_status' => $statusFilter,
+                'all_stats' => $allStats,
+                'tab_counts' => $tabCounts,
+                'counts' => [
+                    'overdue'        => $overdueCount,
+                    'due_today'      => $dueTodayCount,
+                    'next7'          => $next7DaysCount,
+                    'waiting_review' => $waitingReviewCount,
+                    'open'           => $openTasksCount,
+                    'completed'      => $completedTasksCount,
+                    'my_reviewed'    => $myReviewedCompletedCount,
+                    'showing'        => count($tasks)
+                ],
+                'table_html' => $tableHtml,
+                'review_card_html' => $reviewCardHtml,
+                'attention_card_html' => $attentionCardHtml,
+                'footer_info' => $footerInfoText
+            ]);
+            exit;
+        }
+
+        // Fetch dropdown data for "Create task" slide drawer
+        $usersList = [];
+        $resUsers = $this->db->query("
+            SELECT
+                u.id, 
+                u.full_name,
+                COALESCE(e.employee_id, u.employee_id) AS employee_code,
+                des.name AS designation
+            FROM users AS u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations des ON u.designation_id = des.id
+            WHERE (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
+              AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+            ORDER BY u.full_name ASC
+        ");
+        if ($resUsers) {
+            $usersList = $resUsers->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $todoProjectsList = [];
+        $resTodoProj = $this->db->query("SELECT id, name FROM todo_projects ORDER BY name ASC");
+        if ($resTodoProj) {
+            $todoProjectsList = $resTodoProj->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $departmentsList = [];
+        $resDept = $this->db->query("SELECT id, name FROM departments WHERE status = 1 ORDER BY name ASC");
+        if ($resDept) {
+            $departmentsList = $resDept->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $realEstateProjectsList = [];
+        $resProj = $this->db->query("SELECT id, name FROM projects ORDER BY name ASC");
+        if ($resProj) {
+            $realEstateProjectsList = $resProj->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $previousTaskSheetData = ($tab === 'previous_task_sheet')
+            ? $this->buildPreviousTaskSheetPayload($prevSheetModel, $prevSheetEmpIds, $_GET)
+            : null;
+
+        // Full Page View
+        $this->view("my-work/index", [
+            "current_route"          => "my-work-dashboard",
+            "page_title"             => "My Work - Personal Workspace",
+            "user"                   => $user,
+            "userId"                 => $userId,
+            "tab"                    => $tab,
+            "search"                 => $search,
+            "priorityFilter"         => $priorityFilter,
+            "statusFilter"           => $statusFilter,
+            "metricFilter"           => $metricFilter,
+            "periodFrom"             => $periodFrom,
+            "periodTo"               => $periodTo,
+            "previousTaskSheetData"  => $previousTaskSheetData,
+            "overdueCount"           => $overdueCount,
+            "allStats"               => $allStats,
+            "tabCounts"              => $tabCounts,
+            "dueTodayCount"          => $dueTodayCount,
+            "next7DaysCount"         => $next7DaysCount,
+            "waitingReviewCount"     => $waitingReviewCount,
+            "openTasksCount"         => $openTasksCount,
+            "completedTasksCount"    => $completedTasksCount,
+            "myReviewedCompletedCount" => $myReviewedCompletedCount,
+            "tasks"                  => $tasks,
+            "reviewTasks"            => $reviewTasks,
+            "blockedTask"            => $blockedTask,
+            "usersList"              => $usersList,
+            "todoProjectsList"       => $todoProjectsList,
+            "departmentsList"        => $departmentsList,
+            "realEstateProjectsList" => $realEstateProjectsList
+        ]);
+    }
+
+    /**
+     * Resolve all matching employee IDs (db id & employee_id code) for the logged-in user.
+     */
+    private function getEmployeeIdsForTaskSheet(int $userId): array
+    {
+        $empDbId = !empty($_SESSION['user']['employee_db_id']) ? (int) $_SESSION['user']['employee_db_id'] : 0;
+        $empCode = !empty($_SESSION['user']['employee_id']) ? (string) $_SESSION['user']['employee_id'] : '';
+        $ids = [];
+
+        $stmt = $this->db->prepare("
+            SELECT id, employee_id
+            FROM employees
+            WHERE user_id = ?
+               OR (id > 0 AND id = ?)
+               OR (employee_id != '' AND (employee_id = ? OR employee_id = ?))
+            ORDER BY (user_id = ?) DESC, (id = ?) DESC
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param("iisssi", $userId, $empDbId, $empCode, $empDbId, $userId, $empDbId);
+            $stmt->execute();
+            $emp = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($emp) {
+                $ids[] = (int) $emp['id'];
+                if (!empty($emp['employee_id'])) {
+                    $ids[] = $emp['employee_id'];
+                }
+            }
+        }
+        if ($empDbId > 0) $ids[] = $empDbId;
+        if ($empCode !== '') $ids[] = $empCode;
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Build read-only Previous Task Sheet payload reusing EmployeeTask model.
+     */
+    private function buildPreviousTaskSheetPayload($taskModel, array $employeeIds, array $query): array
+    {
+        $year      = isset($query['ts_year']) ? trim((string) $query['ts_year']) : '';
+        $month     = isset($query['ts_month']) ? trim((string) $query['ts_month']) : '';
+        $dateFrom  = isset($query['ts_date_from']) ? trim((string) $query['ts_date_from']) : '';
+        $dateTo    = isset($query['ts_date_to']) ? trim((string) $query['ts_date_to']) : '';
+        $all       = !empty($query['ts_all']) && ($query['ts_all'] === '1' || $query['ts_all'] === 'true');
+
+        // Default to All Time for historical view when no filter is explicitly chosen
+        if (!$all && $year === '' && $month === '' && $dateFrom === '' && $dateTo === '') {
+            $all = true;
+        }
+
+        $filterParams = ['year' => 'all', 'month' => 'all', 'date_from' => '', 'date_to' => ''];
+        $exportParams = [];
+        $periodLabel  = 'All Time';
+
+        if ($all) {
+            $exportParams['all'] = 1;
+        } elseif ($dateFrom !== '' || $dateTo !== '') {
+            $filterParams['date_from'] = $dateFrom;
+            $filterParams['date_to']   = $dateTo;
+            if ($dateFrom !== '') $exportParams['date_from'] = $dateFrom;
+            if ($dateTo !== '')   $exportParams['date_to']   = $dateTo;
+            $fromLbl = $dateFrom ? date('d M Y', strtotime($dateFrom)) : 'Start';
+            $toLbl   = $dateTo ? date('d M Y', strtotime($dateTo)) : 'Present';
+            $periodLabel = "{$fromLbl} to {$toLbl}";
+        } else {
+            $y = ($year !== '' && $year !== 'all') ? $year : 'all';
+            $m = ($month !== '' && $month !== 'all') ? $month : 'all';
+            $filterParams['year']  = $y;
+            $filterParams['month'] = $m;
+            $exportParams['year']  = $y;
+            $exportParams['month'] = $m;
+            if ($m === 'all') $exportParams['all_months'] = 1;
+
+            if ($y === 'all' && $m === 'all') {
+                $periodLabel = 'All Time';
+            } elseif ($y !== 'all' && $m === 'all') {
+                $periodLabel = "Year {$y} (All Months)";
+            } elseif ($y === 'all' && $m !== 'all') {
+                $periodLabel = 'All Years — ' . date('F', mktime(0, 0, 0, (int) $m, 10));
+            } else {
+                $periodLabel = date('F', mktime(0, 0, 0, (int) $m, 10)) . " {$y}";
+            }
+        }
+
+        $rows = ($taskModel && !empty($employeeIds))
+            ? $taskModel->getTasksByEmployee($employeeIds, $filterParams)
+            : [];
+
+        $totalCount = count($rows);
+        $doneCount = 0;
+        $pendingCount = 0;
+        $totalHours = 0.0;
+
+        ob_start();
+        if (empty($rows)) {
+            echo '<tr><td colspan="6"><div class="mw-empty-state"><i class="fa-regular fa-clipboard d-block"></i><div>No previous task sheet records found for ' . htmlspecialchars($periodLabel) . '.</div></div></td></tr>';
+        } else {
+            foreach ($rows as $i => $t) {
+                $rawStatus = strtolower(str_replace(' ', '_', trim((string) ($t['status'] ?? ''))));
+                if ($rawStatus === 'done' || $rawStatus === 'completed') {
+                    $doneCount++;
+                } else {
+                    $pendingCount++;
+                }
+                $hours = (float) ($t['hours_spent'] ?? 0);
+                $totalHours += $hours;
+
+                $badgeClass = match ($rawStatus) {
+                    'done', 'completed' => 'bg-success-subtle text-success',
+                    'in_progress', 'in progress' => 'bg-info-subtle text-info',
+                    default => 'bg-warning-subtle text-warning-emphasis',
+                };
+                $dateStr = !empty($t['work_date']) ? date('d M Y', strtotime($t['work_date'])) : '—';
+                $desc    = htmlspecialchars((string) ($t['task_description'] ?? ''));
+                $remarks = htmlspecialchars((string) ($t['remarks'] ?? '—'));
+                $statusLabel = htmlspecialchars(ucwords(str_replace('_', ' ', (string) ($t['status'] ?? 'Pending'))));
+
+                echo '<tr>';
+                echo '<td class="text-muted" style="width:48px;">' . ($i + 1) . '</td>';
+                echo '<td style="white-space:nowrap; font-weight:600; color:#142D26;">' . $dateStr . '</td>';
+                echo '<td>' . nl2br($desc) . '</td>';
+                echo '<td style="white-space:nowrap; font-weight:600;">' . number_format($hours, 2) . 'h</td>';
+                echo '<td><span class="badge rounded-pill ' . $badgeClass . '">' . $statusLabel . '</span></td>';
+                echo '<td class="text-muted">' . ($remarks !== '' ? $remarks : '—') . '</td>';
+                echo '</tr>';
+            }
+        }
+        $rowsHtml = ob_get_clean();
+
+        return [
+            'period_label' => $periodLabel,
+            'export_query' => http_build_query($exportParams),
+            'summary'      => [
+                'total'       => $totalCount,
+                'done'        => $doneCount,
+                'pending'     => $pendingCount,
+                'total_hours' => number_format($totalHours, 2),
+            ],
+            'rows_html'    => $rowsHtml,
+        ];
+    }
+
+    /**
+     * Helper to render task rows HTML for seamless AJAX
+     */
+    private function renderReviewCardHtml($reviewTasks)
+    {
+        $count = count($reviewTasks);
+        $s = $count === 1 ? '' : 's';
+        $out = '<h4 class="mw-focus-title">Needs your review</h4>';
+        $out .= '<div class="mw-focus-subtitle">' . $count . ' completed task' . $s . ' waiting for your review</div>';
+
+        if (!empty($reviewTasks)) {
+            foreach ($reviewTasks as $idx => $rt) {
+                $time = date('j M, g:i A', strtotime($rt['updated_at'] ?? $rt['created_at']));
+                $empName = htmlspecialchars($rt['employee_name'] ?? 'Team Member');
+                $title = htmlspecialchars($rt['title']);
+                $taskId = (int)$rt['id'];
+
+                $out .= '<div class="mw-review-item">';
+                $out .= '<div class="mw-review-item-title">' . $title . '</div>';
+                $out .= '<div class="mw-review-item-meta">' . $empName . ' · Completed ' . $time . '</div>';
+                if ($idx === 0) {
+                    $out .= '<button type="button" class="mw-btn-review" onclick="openTaskDetail(' . $taskId . ')">Review submission</button>';
+                } else {
+                    $out .= '<div class="mw-review-divider"></div>';
+                    $out .= '<a href="javascript:void(0);" onclick="openTaskDetail(' . $taskId . ')" class="mw-review-link-row">';
+                    $out .= '<span class="mw-review-item-title" style="font-size: 12.5px;">View details</span>';
+                    $out .= '<i class="fa-solid fa-arrow-right mw-arrow-icon"></i></a>';
+                }
+                $out .= '</div>';
+            }
+        } else {
+            $out .= '<div class="text-muted small py-2"><i class="fa-regular fa-circle-check text-success me-1"></i> No completed tasks pending your review.</div>';
+        }
+        return $out;
+    }
+
+    private function renderAttentionCardHtml($blockedTask)
+    {
+        $out = '<h4 class="mw-focus-title">Task Attention</h4>';
+        $out .= '<div class="mw-focus-subtitle">Priority or response needed</div>';
+
+        if ($blockedTask) {
+            $isRevSub = !empty($blockedTask['is_review_submission']);
+            $badgeText = $isRevSub
+                ? 'Review Feedback'
+                : ((!empty($blockedTask['remarks']) && stripos($blockedTask['remarks'], 'block') !== false) ? 'Action Blocked' : 'High Priority');
+
+            $nextActionPerson = !empty($blockedTask['reviewer_name']) 
+                ? $blockedTask['reviewer_name'] 
+                : (!empty($blockedTask['assigned_by_name']) ? $blockedTask['assigned_by_name'] : 'Lead');
+            $nextActionDate = !empty($blockedTask['last_review_time']) 
+                ? date('j M', strtotime($blockedTask['last_review_time']))
+                : (!empty($blockedTask['deadline']) ? date('j M', strtotime($blockedTask['deadline'])) : 'Soon');
+
+            $displayNote = '';
+            if (!empty($blockedTask['last_review_activity']) && preg_match('/note:\s*["\']?(.*?)["\']?$/is', $blockedTask['last_review_activity'], $mNote)) {
+                $displayNote = trim($mNote[1], " \"'\t\n\r");
+            } elseif (!empty($blockedTask['remarks'])) {
+                if (preg_match('/Reviewer Note \([^)]+\):\s*(.*?)(?=\n|$)/is', $blockedTask['remarks'], $mNote)) {
+                    $displayNote = trim($mNote[1]);
+                } else {
+                    $displayNote = $blockedTask['remarks'];
+                }
+            }
+
+            $taskId = (int)$blockedTask['id'];
+            $titleSafe = htmlspecialchars($blockedTask['title']);
+            $badgeTextSafe = htmlspecialchars($badgeText);
+            $nextActionPersonSafe = htmlspecialchars($nextActionPerson);
+            $nextActionDateSafe = htmlspecialchars($nextActionDate);
+
+            $noteHtml = '';
+            if (!empty($displayNote)) {
+                $noteTrunc = htmlspecialchars(mb_strimwidth($displayNote, 0, 80, '...'));
+                $noteHtml = '<br><small class="text-muted"><i class="fa-regular fa-comment-dots me-1"></i>' . $noteTrunc . '</small>';
+            }
+
+            $out .= '<span class="mw-badge-waiting">' . $badgeTextSafe . '</span>';
+            $out .= '<p class="mw-blocked-desc" style="cursor: pointer;" onclick="openTaskDetail(' . $taskId . '); return false;" title="Click to view task details">';
+            $out .= $titleSafe . $noteHtml;
+            $out .= '</p>';
+            $out .= '<div class="mw-blocked-action">';
+            $out .= 'Next action: ' . $nextActionPersonSafe . ' · ' . $nextActionDateSafe;
+            $out .= '</div>';
+            $out .= '<a href="javascript:void(0);" onclick="openTaskDetail(' . $taskId . '); return false;" class="mw-btn-opentask" id="btnAttentionOpenTask" title="Open task details">';
+            $out .= '<i class="fa-solid fa-arrow-right"></i><span>Open task</span>';
+            $out .= '</a>';
+        } else {
+            $out .= '<div class="text-muted small py-2"><i class="fa-regular fa-circle-check text-success me-1"></i> All active tasks are progressing on track!</div>';
+        }
+        return $out;
+    }
+
+    private function renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl)
+    {
+        if (empty($tasks)) {
+            return '<tr>
+                <td colspan="6">
+                    <div class="mw-empty-state">
+                        <i class="fa-regular fa-clipboard d-block"></i>
+                        <div>No tasks found for this view.</div>
+                    </div>
+                </td>
+            </tr>';
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $html = '';
+        foreach ($tasks as $index => $t) {
+            $taskId = (int) $t['id'];
+            $isCompleted = ($t['status'] === 'completed');
+            $isBlocked = (!empty($t['remarks']) && stripos($t['remarks'], 'block') !== false) || stripos($t['title'], 'block') !== false;
+
+            $isOverdue = false;
+            $duePrimary = 'No deadline';
+            $dueSub = '';
+
+            if (!empty($t['deadline'])) {
+                $deadlineTime = strtotime($t['deadline']);
+                $now = time();
+
+                if (!$isCompleted && $deadlineTime < $now) {
+                    $isOverdue = true;
+                    $diffDays = (int) ceil(($now - $deadlineTime) / 86400);
+                    $duePrimary = date('j M', $deadlineTime);
+                    $dueSub = ($diffDays <= 1) ? '1 day overdue' : "{$diffDays} days overdue";
+                } elseif (date('Y-m-d', $deadlineTime) === date('Y-m-d')) {
+                    $duePrimary = date('j M', $deadlineTime);
+                    $dueSub = 'Today · ' . date('g:i A', $deadlineTime);
+                } else {
+                    $duePrimary = date('j M', $deadlineTime);
+                    $dueSub = date('D · g:i A', $deadlineTime);
+                }
+            }
+
+            $statusClass = 'todo';
+            $statusLabel = 'To do';
+            if ($t['status'] === 'in_progress') {
+                $statusClass = 'in-progress';
+                $statusLabel = 'In progress';
+            } elseif ($t['status'] === 'completed') {
+                $statusClass = 'completed';
+                $statusLabel = 'Completed';
+            } elseif ($t['status'] === 'expired') {
+                $statusClass = 'expired';
+                $statusLabel = 'Expired';
+            }
+            $rowReviewers = $ids($t['mentioned_user_ids'] ?? '');
+            $isSubmittedForReview = !empty($t['is_submitted_for_review']);
+            if (!$isCompleted && $isSubmittedForReview && count($rowReviewers) > 0) {
+                $statusClass = 'in-review';
+                $statusLabel = 'In review';
+            }
+
+            if ($tab === 'assigned_by_me') {
+                $nextActionName = !empty($t['assignee_name']) ? htmlspecialchars($t['assignee_name']) : 'Assignee';
+                $nextActionRole = !empty($t['assignee_designation']) ? ' · ' . htmlspecialchars($t['assignee_designation']) : '';
+            } else {
+                if ((int)$t['assigned_by'] === (int)$userId) {
+                    $nextActionName = 'You';
+                    $nextActionRole = '';
+                } else {
+                    $nextActionName = !empty($t['assigned_by_name']) ? htmlspecialchars($t['assigned_by_name']) : 'You';
+                    $nextActionRole = !empty($t['assigned_by_designation']) ? ' · ' . htmlspecialchars($t['assigned_by_designation']) : '';
+                }
+            }
+
+            $isHighlighted = ($index === 1 && $isBlocked) || ($index === 0 && $isOverdue);
+            $rowClass = $isHighlighted ? 'row-selected' : '';
+            $checkedAttr = $isCompleted ? 'checked' : '';
+            $blockedBadge = $isBlocked ? '<span class="mw-badge-blocked">Blocked</span>' : '';
+            $hasReviewFeedback = (!empty($t['remarks']) && stripos($t['remarks'], 'Reviewer Note') !== false);
+            $reviewFeedbackBadge = $hasReviewFeedback ? '<span class="mw-badge-waiting" style="background:#FFF4E5; color:#B76E00; border:1px solid #FFE0B2; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600; margin-left:6px;"><i class="fa-solid fa-reply me-1"></i>Review Feedback</span>' : '';
+            $titleSafe = htmlspecialchars($t['title']);
+            $projectSafe = htmlspecialchars($t['project_name'] ?? 'General');
+            $createdMonth = date('F', strtotime($t['created_at']));
+            $prioritySafe = htmlspecialchars(ucfirst($t['priority'] ?? 'Normal'));
+            $priorityClass = ($t['priority'] === 'urgent') ? 'urgent' : '';
+            $dueClass = $isOverdue ? 'overdue' : '';
+            $dueSubHtml = !empty($dueSub) ? "<div class=\"mw-due-sub {$dueClass}\">{$dueSub}</div>" : '';
+
+            $isOwner = ((int)$t['assigned_by'] === (int)$userId);
+            $actionButtonsHtml = '';
+            if ($isOwner) {
+                $actionButtonsHtml = "
+                    <button type=\"button\" class=\"mw-action-btn edit\" onclick=\"openEditTaskDrawer({$taskId}, event)\" title=\"Edit task\">
+                        <i class=\"fa-solid fa-pen\"></i>
+                    </button>
+                    <button type=\"button\" class=\"mw-action-btn delete\" onclick=\"deleteMyWorkTask({$taskId}, this)\" title=\"Delete task\">
+                        <i class=\"fa-solid fa-trash-can\"></i>
+                    </button>
+                ";
+            }
+
+            $html .= "<tr class=\"{$rowClass}\" data-task-id=\"{$taskId}\">
+                <td>
+                    <div class=\"d-flex align-items-start\">
+                        <div>
+                            <a href=\"javascript:void(0);\" onclick=\"openTaskDetail({$taskId}); return false;\" class=\"mw-task-name\">
+                                {$titleSafe}
+                            </a>
+                            {$blockedBadge}
+                            {$reviewFeedbackBadge}
+                            <div class=\"mw-task-sub\">
+                                T-{$taskId} · {$projectSafe} · {$createdMonth}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class=\"mw-priority-text {$priorityClass}\">
+                        {$prioritySafe}
+                    </span>
+                </td>
+                <td>
+                    <span class=\"mw-status-pill {$statusClass}\">
+                        {$statusLabel}
+                    </span>
+                </td>
+                <td>
+                    <div class=\"mw-due-date {$dueClass}\">
+                        {$duePrimary}
+                    </div>
+                    {$dueSubHtml}
+                </td>
+                <td>
+                    <span class=\"mw-assignee\">
+                        {$nextActionName}{$nextActionRole}
+                    </span>
+                </td>
+                <td style=\"text-align: right;\">
+                    <div class=\"mw-actions-group\">
+                        {$actionButtonsHtml}
+                    </div>
+                </td>
+            </tr>";
+        }
+
+        return $html;
+    }
+
+    /**
+     * Single-Page Workspace: delete task with permissions check
+     */
+    public function deleteTask($id)
+    {
+        $id = (int)$id;
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        if (!$userId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+                exit;
+            }
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/login");
+            exit;
+        }
+
+        $taskModel = new Task($this->db);
+        $task = $taskModel->find($id);
+
+        if (!$task) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task not found']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task not found.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        // Permission check: Task creator (assigned_by), assignee (user_id), or Admin/Management (roles 1, 3, 33)
+        $isOwner = ((int)$task['assigned_by'] === $userId);
+        if (!$isOwner && !in_array($roleId, [1, 3, 33], true)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => "Only the task owner can delete this task."]);
+                exit;
+            }
+            if (function_exists('setError')) setError("Only the task owner can delete this task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        // My Work isolated full cascade delete: removes task and all related data without touching legacy Task model
+        $deleteSuccess = false;
+        $this->db->begin_transaction();
+        try {
+            // 1. Delete associated task activities & comments (My Work timeline)
+            $stAct = $this->db->prepare("DELETE FROM task_activities WHERE task_id = ?");
+            if ($stAct) {
+                $stAct->bind_param("i", $id);
+                $stAct->execute();
+                $stAct->close();
+            }
+
+            // 2. Delete associated notifications
+            $stNotif = $this->db->prepare("DELETE FROM notifications WHERE task_id = ?");
+            if ($stNotif) {
+                $stNotif->bind_param("i", $id);
+                $stNotif->execute();
+                $stNotif->close();
+            }
+
+            // 3. Delete attachment file from disk if exists
+            if (!empty($task['attachment_image'])) {
+                $filePath = __DIR__ . '/../../public/uploads/tasks/' . $task['attachment_image'];
+                if (file_exists($filePath) && is_file($filePath)) {
+                    @unlink($filePath);
+                }
+            }
+
+            // 4. Delete the task record itself
+            $stTask = $this->db->prepare("DELETE FROM tasks WHERE id = ?");
+            if ($stTask) {
+                $stTask->bind_param("i", $id);
+                $stTask->execute();
+                $stTask->close();
+            }
+
+            $this->db->commit();
+            $deleteSuccess = true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            $deleteSuccess = false;
+        }
+
+        if ($deleteSuccess) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'success', 'message' => 'Task has been deleted successfully.']);
+                exit;
+            }
+            if (function_exists('setSuccess')) setSuccess("Task has been deleted successfully.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        } else {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Failed to delete task.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Failed to delete task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+    }
+
+    /**
+     * Single-Page Workspace: store a new task from the slide drawer
+     */
+    public function storeTask()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        if (!$userId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+                exit;
+            }
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/login");
+            exit;
+        }
+
+        $title = trim($_POST['title'] ?? '');
+        // user_id = the person the task is assigned to (defaults to the creator); assigned_by = creator (Owner)
+        $ownerId = (int)($_POST['assigned_to_id'] ?? 0) ?: $userId;
+
+        if (empty($title)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task title is required.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task title is required.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $deadline = !empty($_POST['deadline']) ? $_POST['deadline'] : null;
+        $priority = in_array($_POST['priority'] ?? '', ['low', 'medium', 'high', 'urgent'], true) ? $_POST['priority'] : 'medium';
+        $expectedOutput = trim($_POST['expected_output'] ?? '');
+        // Acceptance checklist: one or many entries (description[]); several are stored as an HTML list
+        $descItems = array_values(array_filter(array_map('trim', (array)($_POST['description'] ?? [])), 'strlen'));
+        $description = count($descItems) > 1
+            ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $descItems)) . '</ul>'
+            : ($descItems[0] ?? '');
+        $todoProjectId = !empty($_POST['todo_project_id']) ? (int)$_POST['todo_project_id'] : null;
+        $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
+
+        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $assignedById = $userId;
+        [$isRecurring, $recurrenceType, $recurrenceEnd, $recurrenceCustomDatesJson] = $this->parseRecurrencePayload($isAjax);
+
+        $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
+        $toIdList = fn($v) => array_values(array_unique(array_filter(array_map('intval', (array)$v))));
+        $ccIds = $toIdList($_POST['cc_ids'] ?? []);
+        $collaboratorIds = $toIdList($_POST['collaborator_ids'] ?? []);
+
+        $mentionedUserIds = [];
+        if ($reviewerId) {
+            $mentionedUserIds[] = $reviewerId;
+        }
+        $mentionedJson = !empty($mentionedUserIds) ? json_encode($mentionedUserIds) : null;
+        $ccJson = !empty($ccIds) ? json_encode($ccIds) : null;
+        $collaboratorJson = !empty($collaboratorIds) ? json_encode($collaboratorIds) : null;
+
+        // Attachment handling
+        $attachmentImage = null;
+        if (!empty($_FILES['attachment']['name'])) {
+            $uploadDir = __DIR__ . '/../../public/uploads/tasks/';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+            $ext = pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
+            $fileName = time() . '_' . uniqid() . '.' . $ext;
+            $targetPath = $uploadDir . $fileName;
+            if (@move_uploaded_file($_FILES['attachment']['tmp_name'], $targetPath)) {
+                $attachmentImage = $fileName;
+            }
+        }
+
+        $checklistData = null;
+        if (!empty($descItems)) {
+            $clArr = [];
+            foreach ($descItems as $idx => $item) {
+                $clArr[] = [
+                    'id' => $idx + 1,
+                    'text' => $item,
+                    'completed' => false
+                ];
+            }
+            $checklistData = json_encode($clArr, JSON_UNESCAPED_UNICODE);
+        }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO tasks (
+                title, expected_output, user_id, assigned_by, todo_project_id,
+                description, checklist_data, start_date, deadline, priority,
+                status, progress, employee_accept, mentioned_user_ids,
+                cc_user_ids, attachment_image, project_id,
+                is_recurring, recurrence_type, recurrence_end_date, recurrence_custom_dates, collaborator_user_ids, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+
+        $stmt->bind_param(
+            "ssiiissssssssiissss",
+            $title,
+            $expectedOutput,
+            $ownerId,
+            $assignedById,
+            $todoProjectId,
+            $description,
+            $checklistData,
+            $startDate,
+            $deadline,
+            $priority,
+            $mentionedJson,
+            $ccJson,
+            $attachmentImage,
+            $projectId,
+            $isRecurring,
+            $recurrenceType,
+            $recurrenceEnd,
+            $recurrenceCustomDatesJson,
+            $collaboratorJson
+        );
+
+        if ($stmt->execute()) {
+            $newTaskId = $stmt->insert_id;
+            $stmt->close();
+
+            // Log creation activity
+            $this->logTaskActivity($newTaskId, $userId, 'system', "Task created and assigned to " . ($ownerId === $userId ? "self" : "user #{$ownerId}"));
+
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Task created and assigned successfully.',
+                    'task_id' => $newTaskId
+                ]);
+                exit;
+            }
+            if (function_exists('setSuccess')) setSuccess("Task created successfully.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        } else {
+            $err = $stmt->error;
+            $stmt->close();
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Failed to create task: ' . $err]);
+                exit;
+            }
+            if (function_exists('setError')) setError("Failed to create task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+    }
+
+    /**
+     * JSON detail for the task detail drawer (only for tasks related to the logged-in user)
+     */
+    public function taskDetail($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("
+            SELECT t.*, COALESCE(rp.name, tp.name, 'General') AS project_name,
+                   u_o.full_name AS owner_name, u_b.full_name AS assigned_by_name,
+                   dept.name AS department_name
+            FROM tasks t
+            LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
+            LEFT JOIN users u_o ON t.user_id = u_o.id
+            LEFT JOIN users u_b ON t.assigned_by = u_b.id
+            LEFT JOIN employees e_owner ON (e_owner.user_id = u_b.id OR e_owner.id = u_b.employee_id)
+            LEFT JOIN departments dept ON e_owner.department_id = dept.id
+            WHERE t.id = ?
+        ");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $t = $st->get_result()->fetch_assoc();
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $t ? $ids($t['mentioned_user_ids'] ?? '') : [];
+        $ccIds = $t ? $ids($t['cc_user_ids'] ?? '') : [];
+        $collabIds = $t ? $ids($t['collaborator_user_ids'] ?? '') : [];
+
+        $related = $t && (
+            (int)$t['user_id'] === $userId || (int)$t['assigned_by'] === $userId ||
+            in_array($userId, $reviewerIds, true) || in_array($userId, $ccIds, true) || in_array($userId, $collabIds, true)
+        );
+        if (!$related) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $base = $GLOBALS['base_url'] ?? '';
+
+        $peopleMap = [];
+        $ownerId = (int)$t['assigned_by'];
+        $assigneeId = (int)$t['user_id'];
+        $allIds = array_values(array_unique(array_filter(array_merge([$ownerId, $assigneeId], $reviewerIds, $ccIds, $collabIds))));
+        if ($allIds) {
+            $in = implode(',', $allIds); // ints only
+            $res = $this->db->query("
+                SELECT u.id, u.full_name, COALESCE(e.employee_id, u.employee_id) AS employee_code, u.photo AS user_photo, e.photo AS emp_photo
+                FROM users u
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE u.id IN ({$in})
+            ");
+            while ($res && ($r = $res->fetch_assoc())) {
+                $uid = (int)$r['id'];
+                $photo = null;
+                if (!empty($r['emp_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/employees/' . $r['emp_photo'])) {
+                    $photo = $base . '/public/uploads/employees/' . rawurlencode($r['emp_photo']);
+                } elseif (!empty($r['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $r['user_photo'])) {
+                    $photo = $base . '/public/uploads/users/' . rawurlencode($r['user_photo']);
+                }
+                $rawCode = !empty($r['employee_code']) ? trim((string)$r['employee_code']) : '';
+                $empCode = preg_replace('/^EMP-?/i', '', $rawCode);
+                $displayName = ($r['full_name'] ?: 'User') . ($empCode !== '' ? " ({$empCode})" : '');
+                $peopleMap[$uid] = [
+                    'id' => $uid,
+                    'name' => $displayName,
+                    'raw_name' => $r['full_name'] ?: 'User',
+                    'employee_code' => $empCode,
+                    'photo' => $photo
+                ];
+            }
+        }
+        $personObj = fn($id, $fallbackName = '—') => $peopleMap[$id] ?? ['id' => $id, 'name' => $fallbackName, 'photo' => null];
+        $peopleList = fn(array $list) => array_values(array_filter(array_map(fn($i) => $peopleMap[$i] ?? null, $list)));
+
+        $isCompleted = $t['status'] === 'completed';
+        $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$t['status']] ?? 'To do';
+        $statusClass = $t['status'];
+
+        // Check if task was submitted for review
+        $isSubmittedForReview = false;
+        if (!$isCompleted && count($reviewerIds) > 0) {
+            $stSub = $this->db->prepare("
+                SELECT 1 FROM task_activities a_sub
+                WHERE a_sub.task_id = ? 
+                  AND a_sub.activity LIKE '%submitted for review%'
+                  AND a_sub.id > COALESCE(
+                      (SELECT MAX(a_req.id) FROM task_activities a_req WHERE a_req.task_id = ? AND (a_req.activity LIKE 'Requested changes%' OR a_req.activity LIKE 'Unchecked acceptance%')),
+                      0
+                  )
+                LIMIT 1
+            ");
+            if ($stSub) {
+                $stSub->bind_param("ii", $id, $id);
+                $stSub->execute();
+                if ($stSub->get_result()->num_rows > 0) {
+                    $isSubmittedForReview = true;
+                }
+                $stSub->close();
+            }
+        }
+
+        if (!$isCompleted && $isSubmittedForReview && count($reviewerIds) > 0) {
+            $statusLabel = 'In review';
+            $statusClass = 'in_review';
+        }
+
+        $deadlineText = null;
+        $overdueText = null;
+        $dueBadge = null;
+        if (!empty($t['deadline'])) {
+            $dl = strtotime($t['deadline']);
+            $deadlineText = date('j M Y', $dl);
+            $now = time();
+            if (!$isCompleted && $dl < $now) {
+                $days = (int) ceil(($now - $dl) / 86400);
+                $overdueText = $days <= 1 ? '1 day overdue' : "{$days} days overdue";
+                $dueBadge = $overdueText;
+            } elseif (date('Y-m-d', $dl) === date('Y-m-d')) {
+                $dueBadge = 'Due today';
+            } else {
+                $dueBadge = 'Due ' . date('j M', $dl);
+            }
+        }
+
+        $blocked = !empty($t['remarks']) && stripos($t['remarks'], 'block') !== false;
+        $base = $GLOBALS['base_url'] ?? '';
+
+        // Build structured checklist items from checklist_data or parse from description
+        $checklistItems = [];
+        $rawChecklist = $t['checklist_data'] ?? '';
+        if ($rawChecklist) {
+            $decoded = json_decode($rawChecklist, true);
+            if (is_array($decoded)) {
+                $checklistItems = $decoded;
+            }
+        }
+        if (empty($checklistItems)) {
+            // Fallback: parse <li> from description for tasks created before checklist_data column
+            $descRaw = (string)($t['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklistItems[] = [
+                            'id' => $idx + 1,
+                            'text' => $itemText,
+                            'completed' => ($t['status'] === 'completed')
+                        ];
+                    }
+                }
+            } elseif (trim(strip_tags($descRaw)) !== '') {
+                $checklistItems[] = [
+                    'id' => 1,
+                    'text' => trim(html_entity_decode(strip_tags($descRaw))),
+                    'completed' => ($t['status'] === 'completed')
+                ];
+            }
+        }
+
+        // Can check checklist if Assignee (user_id) or Collaborator
+        $canCheckChecklist = ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true));
+
+        // Fetch recent activities for this task
+        $activities = [];
+        $actStmt = $this->db->prepare("
+            SELECT a.id, a.type, a.activity, a.attachment_name, a.attachment_path, a.created_at, u.id AS user_id, u.full_name, u.photo AS user_photo, e.photo AS emp_photo
+            FROM task_activities a
+            LEFT JOIN users u ON a.user_id = u.id
+            LEFT JOIN employees e ON e.user_id = u.id
+            WHERE a.task_id = ?
+            ORDER BY a.id ASC
+            LIMIT 50
+        ");
+        $actStmt->bind_param("i", $id);
+        $actStmt->execute();
+        $actRes = $actStmt->get_result();
+        while ($ar = $actRes->fetch_assoc()) {
+            $userPhoto = null;
+            if (!empty($ar['emp_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/employees/' . $ar['emp_photo'])) {
+                $userPhoto = $base . '/public/uploads/employees/' . rawurlencode($ar['emp_photo']);
+            } elseif (!empty($ar['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $ar['user_photo'])) {
+                $userPhoto = $base . '/public/uploads/users/' . rawurlencode($ar['user_photo']);
+            }
+
+            $attachmentUrl = null;
+            if (!empty($ar['attachment_path'])) {
+                $attachmentUrl = $base . '/' . ltrim($ar['attachment_path'], '/');
+            }
+
+            $activities[] = [
+                'id' => (int)$ar['id'],
+                'type' => $ar['type'],
+                'activity' => $ar['activity'],
+                'attachment_name' => $ar['attachment_name'],
+                'attachment_url' => $attachmentUrl,
+                'created_at' => date('d M Y, h:i A', strtotime($ar['created_at'])),
+                'user_id' => (int)$ar['user_id'],
+                'user_name' => $ar['full_name'] ?: 'User',
+                'user_photo' => $userPhoto,
+            ];
+        }
+        $actStmt->close();
+
+        // Check if this task has already been approved by a reviewer
+        $isReviewApproved = false;
+        foreach ($activities as $actItem) {
+            if ($actItem['type'] === 'system' && stripos($actItem['activity'], 'Approved task as completed') !== false) {
+                $isReviewApproved = true;
+                break;
+            }
+        }
+
+        // Team members for @mention autocomplete - all valid users
+        $teammates = [];
+        $resTeam = $this->db->query("
+            SELECT u.id, MAX(u.full_name) AS full_name, MAX(u.photo) AS user_photo, MAX(e.photo) AS emp_photo, MAX(des.name) AS designation
+            FROM users u
+            LEFT JOIN employees e ON (e.user_id = u.id OR (u.employee_id IS NOT NULL AND e.id = u.employee_id))
+            LEFT JOIN designations des ON (u.designation_id = des.id OR e.designation_id = des.id)
+            WHERE u.full_name IS NOT NULL AND TRIM(u.full_name) != ''
+            GROUP BY u.id
+            ORDER BY full_name ASC
+        ");
+        while ($resTeam && ($tm = $resTeam->fetch_assoc())) {
+            $tmPhoto = null;
+            if (!empty($tm['emp_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/employees/' . $tm['emp_photo'])) {
+                $tmPhoto = $base . '/public/uploads/employees/' . rawurlencode($tm['emp_photo']);
+            } elseif (!empty($tm['user_photo']) && file_exists(dirname(__DIR__, 2) . '/public/uploads/users/' . $tm['user_photo'])) {
+                $tmPhoto = $base . '/public/uploads/users/' . rawurlencode($tm['user_photo']);
+            }
+            $teammates[] = [
+                'id' => (int)$tm['id'],
+                'name' => $tm['full_name'],
+                'designation' => $tm['designation'] ?: '',
+                'photo' => $tmPhoto
+            ];
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'task' => [
+                'id' => (int)$t['id'],
+                'code' => 'T-' . (int)$t['id'],
+                'project' => $t['project_name'] ?: 'General',
+                'title' => $t['title'],
+                'status' => $t['status'],
+                'is_completed' => $isCompleted,
+                'is_review_approved' => $isReviewApproved,
+                'is_owner' => ((int)$t['assigned_by'] === $userId),
+                'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
+                'is_reviewer' => in_array($userId, $reviewerIds, true),
+                'can_complete' => (!$isCompleted && $canCheckChecklist),
+                'can_request_extension' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
+                'can_check' => $canCheckChecklist,
+                'status_label' => $statusLabel,
+                'status_class' => $statusClass,
+                'priority' => ucfirst($t['priority'] ?? 'medium'),
+                'deadline' => $deadlineText,
+                'raw_deadline' => !empty($t['deadline']) ? $t['deadline'] : null,
+                'overdue' => $overdueText,
+                'due_badge' => $dueBadge,
+                'owner' => !empty($peopleMap[$ownerId]['name']) ? $peopleMap[$ownerId]['name'] : ($t['assigned_by_name'] ?: '—'),
+                'assigned_to' => !empty($peopleMap[$assigneeId]['name']) ? $peopleMap[$assigneeId]['name'] : ($t['owner_name'] ?: '—'),
+                'owner_user' => $personObj($ownerId, $t['assigned_by_name'] ?: '—'),
+                'assigned_user' => $personObj($assigneeId, $t['owner_name'] ?: '—'),
+                'reviewers' => $peopleList($reviewerIds),
+                'collaborators' => $peopleList($collabIds),
+                'cc' => $peopleList($ccIds),
+                'expected_output' => $t['expected_output'] ?? '',
+                'description_html' => strip_tags((string)$t['description'], '<p><br><ul><ol><li><strong><b><em><i>'),
+                'checklist' => $checklistItems,
+                'activities' => $activities,
+                'remarks' => $t['remarks'],
+                'department' => $t['department_name'] ?: 'General',
+                'submission_time' => !empty($t['updated_at']) ? date('j M Y · g:i A', strtotime($t['updated_at'])) : date('j M Y · g:i A', strtotime($t['created_at'])),
+                'current_user_id' => $userId,
+                'current_user_name' => $_SESSION['user']['full_name'] ?? 'You',
+                'blocked' => $blocked,
+                'teammates' => $teammates,
+                'attachment_name' => $t['attachment_image'] ?: null,
+                'attachment_url' => !empty($t['attachment_image']) ? $base . '/public/uploads/tasks/' . rawurlencode($t['attachment_image']) : null,
+                'show_url' => $base . '/show-task/' . (int)$t['id'],
+            ],
+        ]);
+        exit;
+    }
+
+    /**
+     * Fetch raw data for the edit drawer (only owner can edit)
+     */
+    public function taskEditData($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $t = $st->get_result()->fetch_assoc();
+
+        if (!$t) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $isOwner = ((int)$t['assigned_by'] === $userId);
+        if (!$isOwner && !in_array($roleId, [1, 3, 33], true)) {
+            echo json_encode(['status' => 'error', 'message' => "Only the task owner can edit this task."]);
+            exit;
+        }
+
+        // Parse expected output items from HTML <ul><li> or single text
+        $descRaw = (string)($t['description'] ?? '');
+        $descItems = [];
+        if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+            foreach ($matches[1] as $item) {
+                $itemClean = trim(html_entity_decode(strip_tags($item)));
+                if ($itemClean !== '') $descItems[] = $itemClean;
+            }
+        }
+        if (empty($descItems) && trim(strip_tags($descRaw)) !== '') {
+            $descItems[] = trim(html_entity_decode(strip_tags($descRaw)));
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($t['mentioned_user_ids'] ?? '');
+        $ccIds = $ids($t['cc_user_ids'] ?? '');
+        $collabIds = $ids($t['collaborator_user_ids'] ?? '');
+
+        $deadlineDate = !empty($t['deadline']) ? date('Y-m-d', strtotime($t['deadline'])) : '';
+        $startDate = !empty($t['start_date']) ? date('Y-m-d', strtotime($t['start_date'])) : '';
+        $recurrenceEnd = !empty($t['recurrence_end_date']) ? date('Y-m-d', strtotime($t['recurrence_end_date'])) : '';
+        $customDatesDecoded = !empty($t['recurrence_custom_dates']) ? json_decode((string)$t['recurrence_custom_dates'], true) : [];
+        if (!is_array($customDatesDecoded)) {
+            $customDatesDecoded = [];
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'task' => [
+                'id' => (int)$t['id'],
+                'title' => $t['title'],
+                'assigned_to_id' => (int)$t['user_id'],
+                'deadline' => $deadlineDate,
+                'priority' => $t['priority'] ?? 'medium',
+                'project_id' => !empty($t['project_id']) ? (int)$t['project_id'] : '',
+                'is_recurring' => (int)($t['is_recurring'] ?? 0),
+                'recurrence_type' => $t['recurrence_type'] ?? '',
+                'recurrence_end_date' => $recurrenceEnd,
+                'recurrence_custom_dates' => array_values($customDatesDecoded),
+                'expected_output' => $t['expected_output'] ?? '',
+                'descriptions' => $descItems,
+                'reviewer_id' => !empty($reviewerIds[0]) ? (int)$reviewerIds[0] : null,
+                'cc_ids' => $ccIds,
+                'collaborator_ids' => $collabIds,
+                'start_date' => $startDate,
+            ]
+        ]);
+        exit;
+    }
+
+    /**
+     * Update task via drawer (AJAX) - only owner can update
+     */
+    public function updateTask($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        if (!$userId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+                exit;
+            }
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/login");
+            exit;
+        }
+
+        $stCheck = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $stCheck->bind_param("i", $id);
+        $stCheck->execute();
+        $existingTask = $stCheck->get_result()->fetch_assoc();
+
+        if (!$existingTask) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task not found.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $isOwner = ((int)$existingTask['assigned_by'] === $userId);
+        if (!$isOwner && !in_array($roleId, [1, 3, 33], true)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => "Only the task owner can edit this task."]);
+                exit;
+            }
+            if (function_exists('setError')) setError("Only the task owner can edit this task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $title = trim($_POST['title'] ?? '');
+        $assignedToId = (int)($_POST['assigned_to_id'] ?? 0) ?: (int)$existingTask['user_id'];
+
+        if (empty($title)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task title is required.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task title is required.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $deadline = !empty($_POST['deadline']) ? $_POST['deadline'] : null;
+        $priority = in_array($_POST['priority'] ?? '', ['low', 'medium', 'high', 'urgent'], true) ? $_POST['priority'] : 'medium';
+        $expectedOutput = trim($_POST['expected_output'] ?? '');
+        $descItems = array_values(array_filter(array_map('trim', (array)($_POST['description'] ?? [])), 'strlen'));
+        $description = count($descItems) > 1
+            ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $descItems)) . '</ul>'
+            : ($descItems[0] ?? '');
+        $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
+
+        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        [$isRecurring, $recurrenceType, $recurrenceEnd, $recurrenceCustomDatesJson] = $this->parseRecurrencePayload($isAjax);
+
+        $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
+        $toIdList = fn($v) => array_values(array_unique(array_filter(array_map('intval', (array)$v))));
+        $ccIds = $toIdList($_POST['cc_ids'] ?? []);
+        $collaboratorIds = $toIdList($_POST['collaborator_ids'] ?? []);
+
+        $mentionedUserIds = [];
+        if ($reviewerId) {
+            $mentionedUserIds[] = $reviewerId;
+        }
+        $mentionedJson = !empty($mentionedUserIds) ? json_encode($mentionedUserIds) : null;
+        $ccJson = !empty($ccIds) ? json_encode($ccIds) : null;
+        $collaboratorJson = !empty($collaboratorIds) ? json_encode($collaboratorIds) : null;
+
+        // Attachment handling (keep existing if none uploaded)
+        $attachmentImage = $existingTask['attachment_image'];
+        if (!empty($_FILES['attachment']['name'])) {
+            $uploadDir = __DIR__ . '/../../public/uploads/tasks/';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+            $ext = pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
+            $fileName = time() . '_' . uniqid() . '.' . $ext;
+            $targetPath = $uploadDir . $fileName;
+            if (@move_uploaded_file($_FILES['attachment']['tmp_name'], $targetPath)) {
+                $attachmentImage = $fileName;
+            }
+        }
+
+        // Reconcile checklist_data when updated
+        // Fetch existing checklist to preserve completed flags if item text matches
+        $existingCL = [];
+        $rawCL = $task['checklist_data'] ?? '';
+        if ($rawCL) {
+            $decoded = json_decode($rawCL, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $item) {
+                    if (isset($item['text'])) {
+                        $existingCL[trim($item['text'])] = !empty($item['completed']);
+                    }
+                }
+            }
+        }
+        $newCL = [];
+        foreach ($descItems as $idx => $item) {
+            $newCL[] = [
+                'id' => $idx + 1,
+                'text' => $item,
+                'completed' => !empty($existingCL[$item])
+            ];
+        }
+        $checklistData = !empty($newCL) ? json_encode($newCL, JSON_UNESCAPED_UNICODE) : null;
+
+        $stmt = $this->db->prepare("
+            UPDATE tasks SET
+                title = ?,
+                expected_output = ?,
+                user_id = ?,
+                description = ?,
+                checklist_data = ?,
+                start_date = ?,
+                deadline = ?,
+                priority = ?,
+                mentioned_user_ids = ?,
+                cc_user_ids = ?,
+                attachment_image = ?,
+                project_id = ?,
+                is_recurring = ?,
+                recurrence_type = ?,
+                recurrence_end_date = ?,
+                recurrence_custom_dates = ?,
+                collaborator_user_ids = ?,
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $stmt->bind_param(
+            "ssissssssssiissssi",
+            $title,
+            $expectedOutput,
+            $assignedToId,
+            $description,
+            $checklistData,
+            $startDate,
+            $deadline,
+            $priority,
+            $mentionedJson,
+            $ccJson,
+            $attachmentImage,
+            $projectId,
+            $isRecurring,
+            $recurrenceType,
+            $recurrenceEnd,
+            $recurrenceCustomDatesJson,
+            $collaboratorJson,
+            $id
+        );
+
+        if ($stmt->execute()) {
+            $stmt->close();
+
+            // Detect changes and log system activities
+            $oldDl = !empty($existingTask['deadline']) ? date('Y-m-d', strtotime($existingTask['deadline'])) : null;
+            $newDl = !empty($deadline) ? date('Y-m-d', strtotime($deadline)) : null;
+
+            if ($oldDl !== $newDl) {
+                $oldDlText = $oldDl ? date('d M Y', strtotime($oldDl)) : 'none';
+                $newDlText = $newDl ? date('d M Y', strtotime($newDl)) : 'none';
+                $actText = "Updated deadline from {$oldDlText} to {$newDlText}.";
+                $this->logTaskActivity($id, $userId, 'system', $actText);
+
+                // Notify assignee about the deadline update
+                $assigneeId = (int)$existingTask['user_id'];
+                if ($assigneeId && $assigneeId !== $userId) {
+                    $actorName = $_SESSION['user']['full_name'] ?? 'Task owner';
+                    $notifMsg = "{$actorName} updated the deadline for task T-{$id} to {$newDlText}.";
+                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                    if ($stNotif) {
+                        $stNotif->bind_param("iiis", $assigneeId, $id, $userId, $notifMsg);
+                        $stNotif->execute();
+                        $stNotif->close();
+                    }
+                }
+            }
+
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Task updated successfully.',
+                    'task_id' => $id
+                ]);
+                exit;
+            }
+            if (function_exists('setSuccess')) setSuccess("Task updated successfully.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        } else {
+            $err = $stmt->error;
+            $stmt->close();
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update task: ' . $err]);
+                exit;
+            }
+            if (function_exists('setError')) setError("Failed to update task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+    }
+
+    /**
+     * Mark task as completed or submit for review (Assignee / Collaborator / Owner / Admin)
+     */
+    public function completeTask($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+        $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
+        if (!$userId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+                exit;
+            }
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/login");
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+                exit;
+            }
+            if (function_exists('setError')) setError("Task not found.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+
+        // Can complete/submit if Assignee (user_id) or Collaborator
+        $canComplete = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
+
+        if (!$canComplete) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => "You don't have permission to complete this task."]);
+                exit;
+            }
+            if (function_exists('setError')) setError("You don't have permission to complete this task.");
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        }
+
+        // Validate checklist: All checklist items must be completed before completing the task
+        $rawChecklist = $task['checklist_data'] ?? '';
+        $checklistItems = [];
+        if ($rawChecklist) {
+            $decoded = json_decode($rawChecklist, true);
+            if (is_array($decoded)) {
+                $checklistItems = $decoded;
+            }
+        }
+        if (empty($checklistItems)) {
+            $descRaw = (string)($task['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklistItems[] = ['id' => $idx + 1, 'text' => $itemText, 'completed' => false];
+                    }
+                }
+            }
+        }
+        if (!empty($checklistItems)) {
+            $uncompletedCount = 0;
+            foreach ($checklistItems as $item) {
+                if (empty($item['completed'])) {
+                    $uncompletedCount++;
+                }
+            }
+            if ($uncompletedCount > 0) {
+                $msg = "Please complete all acceptance ({$uncompletedCount} remaining) before completing the task.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => $msg]);
+                    exit;
+                }
+                if (function_exists('setError')) setError($msg);
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
+        }
+
+        $hasReviewers = count($reviewerIds) > 0;
+
+        if ($hasReviewers) {
+            // Task has reviewer -> Submit for review: progress 85%, status remains in_progress (or in review flag), notify reviewers
+            $newProgress = 85;
+            $newStatus = 'in_progress';
+            $stmtUp = $this->db->prepare("UPDATE tasks SET progress = ?, status = ?, employee_accept = 1, updated_at = NOW() WHERE id = ?");
+            $stmtUp->bind_param("isi", $newProgress, $newStatus, $id);
+            $success = $stmtUp->execute();
+            $stmtUp->close();
+
+            if ($success) {
+                $this->logTaskActivity($id, $userId, 'system', "Completed task and submitted for review.");
+
+                // Notify reviewers
+                $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+                $notifMsg = "{$actorName} completed task T-{$id} and submitted it for your review.";
+                foreach ($reviewerIds as $rId) {
+                    if ($rId !== $userId) {
+                        $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                        if ($stNotif) {
+                            $stNotif->bind_param("iiis", $rId, $id, $userId, $notifMsg);
+                            $stNotif->execute();
+                            $stNotif->close();
+                        }
+                    }
+                }
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Task submitted for review successfully.',
+                        'task_id' => $id,
+                        'is_in_review' => true
+                    ]);
+                    exit;
+                }
+                if (function_exists('setSuccess')) setSuccess("Task submitted for review successfully.");
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
+        } else {
+            // No reviewer -> mark as completed directly (100% progress)
+            $taskModel = new Task($this->db);
+            if ($taskModel->updateProgress($id, 100, $task['remarks'] ?? null)) {
+                $this->logTaskActivity($id, $userId, 'system', "Marked task as completed.");
+                $this->spawnNextRecurringTask($task, $userId);
+
+                // Notify task creator if creator is different
+                $creatorId = (int)$task['assigned_by'];
+                if ($creatorId && $creatorId !== $userId) {
+                    $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+                    $notifMsg = "{$actorName} completed task T-{$id}.";
+                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                    if ($stNotif) {
+                        $stNotif->bind_param("iiis", $creatorId, $id, $userId, $notifMsg);
+                        $stNotif->execute();
+                        $stNotif->close();
+                    }
+                }
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Task marked as completed successfully.',
+                        'task_id' => $id,
+                        'is_in_review' => false
+                    ]);
+                    exit;
+                }
+                if (function_exists('setSuccess')) setSuccess("Task marked as completed successfully.");
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
+        }
+
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update task.']);
+            exit;
+        }
+        if (function_exists('setError')) setError("Failed to update task.");
+        header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+        exit;
+    }
+
+    /**
+     * Start task: Change status from pending (To do) to in_progress
+     * POST /my-work/start-task/{id}
+     */
+    public function startTask($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+
+        // Can start if Assignee (user_id), Collaborator, Owner, or Admin
+        $canStart = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true) || (int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+
+        if (!$canStart) {
+            echo json_encode(['status' => 'error', 'message' => "You don't have permission to start this task."]);
+            exit;
+        }
+
+        if ($task['status'] === 'in_progress') {
+            echo json_encode(['status' => 'success', 'message' => 'Task is already in progress.', 'task_id' => $id]);
+            exit;
+        }
+
+        $newProgress = max((int)$task['progress'], 10);
+        $stmtUp = $this->db->prepare("UPDATE tasks SET status = 'in_progress', progress = ?, employee_accept = 1, updated_at = NOW() WHERE id = ?");
+        $stmtUp->bind_param("ii", $newProgress, $id);
+        if ($stmtUp->execute()) {
+            $stmtUp->close();
+            $this->logTaskActivity($id, $userId, 'system', "Started working on this task (Status: In progress).");
+
+            // Notify task assigner / creator
+            $creatorId = (int)$task['assigned_by'];
+            if ($creatorId && $creatorId !== $userId) {
+                $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+                $notifMsg = "{$actorName} started working on task T-{$id}.";
+                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                if ($stNotif) {
+                    $stNotif->bind_param("iiis", $creatorId, $id, $userId, $notifMsg);
+                    $stNotif->execute();
+                    $stNotif->close();
+                }
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Task started! Status is now In progress.',
+                'task_id' => $id
+            ]);
+            exit;
+        } else {
+            $err = $stmtUp->error;
+            $stmtUp->close();
+            echo json_encode(['status' => 'error', 'message' => 'Failed to start task: ' . $err]);
+            exit;
+        }
+    }
+
+    /**
+     * Reviewer Action: either approve (Done) or request improvements (add note & return to in_progress)
+     */
+    public function reviewerAction($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+
+        $isReviewer = in_array($userId, $reviewerIds, true);
+        if (!$isReviewer) {
+            echo json_encode(['status' => 'error', 'message' => "Only an assigned reviewer can review this task."]);
+            exit;
+        }
+
+        $action = trim($_POST['review_action'] ?? '');
+        $note = trim($_POST['review_note'] ?? '');
+
+        if ($action === 'approve') {
+            // Mark task as fully approved / completed
+            $taskModel = new Task($this->db);
+            $remarks = !empty($task['remarks']) ? $task['remarks'] : 'Approved by reviewer.';
+            if ($taskModel->updateProgress($id, 100, $remarks)) {
+                $this->logTaskActivity($id, $userId, 'system', "Approved task as completed (Done).");
+                $this->spawnNextRecurringTask($task, $userId);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Task reviewed and approved as completed.',
+                    'task_id' => $id
+                ]);
+                exit;
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Failed to approve task.']);
+                exit;
+            }
+        } elseif ($action === 'request_changes') {
+            if ($note === '') {
+                echo json_encode(['status' => 'error', 'message' => 'Please write a review note explaining the needed improvements.']);
+                exit;
+            }
+            $reviewerName = $_SESSION['user']['full_name'] ?? 'Reviewer';
+            $datedNote = "[" . date('d M Y, h:i A') . "] Reviewer Note (" . $reviewerName . "): " . $note;
+            $newRemarks = !empty($task['remarks']) ? $task['remarks'] . "\n\n" . $datedNote : $datedNote;
+
+            // Revert status to in_progress and progress to 60%
+            $stmt = $this->db->prepare("UPDATE tasks SET status = 'in_progress', progress = 60, remarks = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->bind_param("si", $newRemarks, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $this->logTaskActivity($id, $userId, 'system', "Requested changes with note: \"{$note}\"");
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Review note added and task sent back for improvement.',
+                    'task_id' => $id
+                ]);
+                exit;
+            } else {
+                $err = $stmt->error;
+                $stmt->close();
+                echo json_encode(['status' => 'error', 'message' => 'Failed to update task: ' . $err]);
+                exit;
+            }
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid review action.']);
+            exit;
+        }
+    }
+
+    /**
+     * Toggle acceptance checklist item state and auto-complete when 100% checked
+     */
+    public function toggleChecklist($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+
+        // Can toggle checklist if Assignee (user_id) or Collaborator
+        $canToggle = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
+        if (!$canToggle) {
+            echo json_encode(['status' => 'error', 'message' => "Only the assignee or collaborators can check checklist items."]);
+            exit;
+        }
+
+        $itemIndex = isset($_POST['index']) ? (int)$_POST['index'] : -1;
+        $completed = !empty($_POST['completed']);
+
+        // Load existing checklist items or reconstruct from description
+        $checklist = [];
+        $raw = $task['checklist_data'] ?? '';
+        if ($raw) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) $checklist = $decoded;
+        }
+        if (empty($checklist)) {
+            $descRaw = (string)($task['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklist[] = [
+                            'id' => $idx + 1,
+                            'text' => $itemText,
+                            'completed' => false
+                        ];
+                    }
+                }
+            } elseif (trim(strip_tags($descRaw)) !== '') {
+                $checklist[] = [
+                    'id' => 1,
+                    'text' => trim(html_entity_decode(strip_tags($descRaw))),
+                    'completed' => false
+                ];
+            }
+        }
+
+        if ($itemIndex < 0 || !isset($checklist[$itemIndex])) {
+            echo json_encode(['status' => 'error', 'message' => 'Checklist item not found.']);
+            exit;
+        }
+
+        $checklist[$itemIndex]['completed'] = $completed;
+
+        // Calculate progress percentage
+        $totalItems = count($checklist);
+        $completedItems = 0;
+        foreach ($checklist as $ci) {
+            if (!empty($ci['completed'])) $completedItems++;
+        }
+
+        $allDone = ($totalItems > 0 && $completedItems === $totalItems);
+        $progress = $totalItems > 0 ? (int)round(($completedItems / $totalItems) * 100) : (int)($task['progress'] ?? 0);
+
+        // Status update logic: unchecking reverts completed status back to in_progress
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+        $hasReviewers = count($reviewerIds) > 0;
+
+        $newStatus = $task['status'];
+        if ($task['status'] === 'completed' && !$allDone) {
+            // Unchecking any item reverts status back to in_progress
+            $newStatus = 'in_progress';
+        }
+
+        $jsonChecklist = json_encode($checklist, JSON_UNESCAPED_UNICODE);
+        $stmt = $this->db->prepare("UPDATE tasks SET checklist_data = ?, progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("sisi", $jsonChecklist, $progress, $newStatus, $id);
+        if ($stmt->execute()) {
+            $stmt->close();
+
+            // Log activity event
+            $itemText = $checklist[$itemIndex]['text'] ?? 'item';
+            $actMsg = $completed ? "Completed Acceptence : \"{$itemText}\"" : "Unchecked acceptance: \"{$itemText}\"";
+            $this->logTaskActivity($id, $userId, 'system', $actMsg);
+
+            if ($allDone && $task['status'] !== 'completed') {
+                $this->logTaskActivity($id, $userId, 'system', "All acceptance completed.");
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'task_id' => $id,
+                'checklist' => $checklist,
+                'progress' => $progress,
+                'task_status' => $newStatus,
+                'all_completed' => $allDone,
+                'message' => $allDone ? 'All acceptance completed!' : 'Acceptance updated.'
+            ]);
+            exit;
+        } else {
+            $err = $stmt->error;
+            $stmt->close();
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $err]);
+            exit;
+        }
+    }
+
+    /**
+     * Add a comment to a task
+     */
+    public function addComment($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $comment = trim($_POST['comment'] ?? '');
+        $attachmentName = null;
+        $attachmentPath = null;
+
+        // Handle comment file attachment if provided
+        if (!empty($_FILES['attachment']['name']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
+            $origName = basename($_FILES['attachment']['name']);
+            $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+            $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip', 'csv'];
+
+            if (!in_array($ext, $allowedExts, true)) {
+                echo json_encode(['status' => 'error', 'message' => 'Invalid file type. Allowed: images, docs, pdf, excel, zip.']);
+                exit;
+            }
+
+            // Max 15MB
+            if ($_FILES['attachment']['size'] > 15 * 1024 * 1024) {
+                echo json_encode(['status' => 'error', 'message' => 'File size exceeds maximum limit of 15MB.']);
+                exit;
+            }
+
+            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/tasks/comments';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+
+            $fileName = 'cmt_' . $id . '_' . time() . '_' . substr(md5(uniqid()), 0, 8) . '.' . $ext;
+            $destPath = $uploadDir . '/' . $fileName;
+
+            if (@move_uploaded_file($_FILES['attachment']['tmp_name'], $destPath)) {
+                $attachmentName = $origName;
+                $attachmentPath = 'public/uploads/tasks/comments/' . $fileName;
+            }
+        }
+
+        if ($comment === '' && !$attachmentName) {
+            echo json_encode(['status' => 'error', 'message' => 'Comment or attachment is required.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        if ($this->logTaskActivity($id, $userId, 'comment', $comment, $attachmentName, $attachmentPath)) {
+            // Check for @mentions and notify mentioned users
+            $mentionedUserIds = [];
+            if (!empty($_POST['mentioned_ids'])) {
+                $rawIds = is_array($_POST['mentioned_ids']) ? $_POST['mentioned_ids'] : explode(',', (string)$_POST['mentioned_ids']);
+                $mentionedUserIds = array_filter(array_map('intval', $rawIds));
+            }
+
+            // Also parse regex @[Name](id) or @Name if needed
+            if (!empty($mentionedUserIds)) {
+                $actorName = $_SESSION['user']['full_name'] ?? 'A teammate';
+                $notifMsg = "{$actorName} mentioned you in task T-{$id}: " . mb_strimwidth($comment ?: 'shared an attachment', 0, 60, '...');
+                foreach (array_unique($mentionedUserIds) as $mUid) {
+                    if ($mUid !== $userId) {
+                        $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                        if ($stNotif) {
+                            $stNotif->bind_param("iiis", $mUid, $id, $userId, $notifMsg);
+                            $stNotif->execute();
+                            $stNotif->close();
+                        }
+                    }
+                }
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Comment added successfully.',
+                'task_id' => $id
+            ]);
+            exit;
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save comment.']);
+            exit;
+        }
+    }
+
+    /**
+     * Request a deadline extension for a task
+     * POST /my-work/request-extension/{id}
+     */
+    public function requestExtension($id)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $newDeadline = trim($_POST['new_deadline'] ?? '');
+        $reason = trim($_POST['reason'] ?? '');
+
+        if (empty($newDeadline)) {
+            echo json_encode(['status' => 'error', 'message' => 'Please select a proposed new deadline date.']);
+            exit;
+        }
+        if (empty($reason)) {
+            echo json_encode(['status' => 'error', 'message' => 'Please provide a reason for the extension request.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, deadline, mentioned_user_ids, collaborator_user_ids FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $isAssignee = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
+
+        if (!$isAssignee) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task assignee can request a deadline extension.']);
+            exit;
+        }
+
+        $formattedDate = date('d M Y', strtotime($newDeadline));
+        $activityText = "Requested deadline extension to {$formattedDate}. Reason: \"{$reason}\"";
+
+        if ($this->logTaskActivity($id, $userId, 'system', $activityText)) {
+            // Notify task owner / assigned_by
+            $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
+            $notifMsg = "{$actorName} requested a deadline extension for task T-{$id} to {$formattedDate}. Reason: {$reason}";
+
+            $notifyRecipients = array_filter([(int)$task['assigned_by']]);
+            // Also notify reviewers if defined
+            if (!empty($task['mentioned_user_ids'])) {
+                $revs = explode(',', (string)$task['mentioned_user_ids']);
+                foreach ($revs as $rId) {
+                    $rId = (int)trim($rId);
+                    if ($rId) $notifyRecipients[] = $rId;
+                }
+            }
+
+            foreach (array_unique($notifyRecipients) as $recipientId) {
+                if ($recipientId !== $userId) {
+                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                    if ($stNotif) {
+                        $stNotif->bind_param("iiis", $recipientId, $id, $userId, $notifMsg);
+                        $stNotif->execute();
+                        $stNotif->close();
+                    }
+                }
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Extension request submitted successfully.',
+                'task_id' => $id
+            ]);
+            exit;
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to log extension request.']);
+            exit;
+        }
+    }
+
+    /**
+     * Submit task owner feedback and 1-5 satisfaction rating
+     * POST /my-work/submit-feedback/{id}
+     */
+    public function submitFeedback($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $rating = isset($_POST['rating']) ? (int)$_POST['rating'] : 0;
+        $feedbackText = trim($_POST['feedback'] ?? '');
+
+        if ($rating < 1 || $rating > 5) {
+            echo json_encode(['status' => 'error', 'message' => 'Please select a rating between 1 and 5 stars.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, status FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        // Only allowed if task is completed
+        if ($task['status'] !== 'completed') {
+            echo json_encode(['status' => 'error', 'message' => 'Feedback can only be provided for completed tasks.']);
+            exit;
+        }
+
+        // Only Task Owner (assigned_by) or Admin can give feedback
+        $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        if (!$isOwner) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task owner can submit feedback and rating.']);
+            exit;
+        }
+
+        // Update satisfaction_rating in tasks table
+        $stmtUp = $this->db->prepare("UPDATE tasks SET satisfaction_rating = ?, updated_at = NOW() WHERE id = ?");
+        $stmtUp->bind_param("ii", $rating, $id);
+        if (!$stmtUp->execute()) {
+            $err = $stmtUp->error;
+            $stmtUp->close();
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save rating: ' . $err]);
+            exit;
+        }
+        $stmtUp->close();
+
+        // Format activity entry
+        $starIcons = str_repeat('★', $rating) . str_repeat('☆', 5 - $rating);
+        $ownerName = $_SESSION['user']['full_name'] ?? 'Task owner';
+        $logActivityText = "{$ownerName} rated this task {$rating}/5 stars ({$starIcons}).";
+        if ($feedbackText !== '') {
+            $logActivityText .= " Feedback: \"{$feedbackText}\"";
+        }
+
+        $this->logTaskActivity($id, $userId, 'system', $logActivityText);
+
+        // Notify the assignee (user_id) about the rating & feedback
+        $assigneeId = (int)$task['user_id'];
+        if ($assigneeId && $assigneeId !== $userId) {
+            $notifMsg = "{$ownerName} gave you a {$rating}-star rating on task T-{$id}";
+            if ($feedbackText !== '') {
+                $notifMsg .= ': "' . mb_strimwidth($feedbackText, 0, 50, '...') . '"';
+            } else {
+                $notifMsg .= '.';
+            }
+
+            $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+            if ($stNotif) {
+                $stNotif->bind_param("iiis", $assigneeId, $id, $userId, $notifMsg);
+                $stNotif->execute();
+                $stNotif->close();
+            }
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Feedback and rating submitted successfully.',
+            'task_id' => $id,
+            'rating' => $rating
+        ]);
+        exit;
+    }
+
+    /**
+     * Send task reminder email from Task Owner to Assignee, Collaborators, Reviewers, and CC
+     * POST /my-work/send-reminder/{id}
+     */
+    public function sendReminder($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("
+            SELECT t.*, COALESCE(rp.name, tp.name, 'General') AS project_name,
+                   u_owner.full_name AS owner_name,
+                   u_assignee.full_name AS assignee_name
+            FROM tasks t
+            LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+            LEFT JOIN projects rp ON t.project_id = rp.id
+            LEFT JOIN users u_owner ON t.assigned_by = u_owner.id
+            LEFT JOIN users u_assignee ON t.user_id = u_assignee.id
+            WHERE t.id = ?
+        ");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        // Only Task Owner (assigned_by) or Admin can send reminder
+        $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
+        if (!$isOwner) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task owner can send a reminder.']);
+            exit;
+        }
+
+        if ($task['status'] === 'completed') {
+            echo json_encode(['status' => 'error', 'message' => 'Cannot send a reminder for a completed task.']);
+            exit;
+        }
+
+        // Collect all recipient user IDs: Assignee, Collaborators, Reviewers, CC
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $assigneeId = (int)($task['user_id'] ?? 0);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+        $ccIds = $ids($task['cc_user_ids'] ?? '');
+
+        $allUserIds = array_values(array_unique(array_filter(array_merge(
+            [$assigneeId],
+            $collabIds,
+            $reviewerIds,
+            $ccIds
+        ))));
+
+        if (empty($allUserIds)) {
+            echo json_encode(['status' => 'error', 'message' => 'No recipients found for this task.']);
+            exit;
+        }
+
+        // Fetch user details (id, full_name, email)
+        $inClause = implode(',', array_map('intval', $allUserIds));
+        $resUsers = $this->db->query("SELECT id, full_name, email FROM users WHERE id IN ({$inClause})");
+        $recipients = [];
+        while ($resUsers && ($u = $resUsers->fetch_assoc())) {
+            $recipients[(int)$u['id']] = $u;
+        }
+
+        if (empty($recipients)) {
+            echo json_encode(['status' => 'error', 'message' => 'No valid user accounts found to notify.']);
+            exit;
+        }
+
+        $ownerName = $_SESSION['user']['full_name'] ?? ($task['owner_name'] ?: 'Task Owner');
+        $taskCode = 'T-' . $id;
+        $taskTitle = $task['title'] ?? 'Untitled Task';
+        $projectName = $task['project_name'] ?: 'General';
+        $priorityLabel = ucfirst($task['priority'] ?? 'medium');
+        $statusLabel = ['pending' => 'To do', 'in_progress' => 'In progress', 'completed' => 'Completed', 'expired' => 'Expired'][$task['status']] ?? 'To do';
+        $deadlineFormatted = !empty($task['deadline']) ? date('d M Y', strtotime($task['deadline'])) : 'No deadline';
+        $assigneeName = $task['assignee_name'] ?: 'Unassigned';
+
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 0) == 443) ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
+        $dashboardUrl = $protocol . $host . ($GLOBALS['base_url'] ?? '') . '/my-work-dashboard?task_id=' . $id;
+
+        $emailSubject = "Reminder: [{$taskCode}] {$taskTitle}";
+        $sentEmailsCount = 0;
+        $notifiedNames = [];
+
+        foreach ($recipients as $rUid => $rUser) {
+            $rName = $rUser['full_name'] ?: 'Team Member';
+            $rEmail = trim((string)($rUser['email'] ?? ''));
+
+            // Determine role label for this recipient in the task
+            $rolesInTask = [];
+            if ($rUid === $assigneeId) $rolesInTask[] = 'Assignee';
+            if (in_array($rUid, $collabIds, true)) $rolesInTask[] = 'Collaborator';
+            if (in_array($rUid, $reviewerIds, true)) $rolesInTask[] = 'Reviewer';
+            if (in_array($rUid, $ccIds, true)) $rolesInTask[] = 'CC';
+            $roleTag = !empty($rolesInTask) ? implode(', ', $rolesInTask) : 'Team Member';
+
+            $notifiedNames[] = "{$rName} ({$roleTag})";
+
+            // 1. Send Email if valid email exists
+            if ($rEmail !== '' && filter_var($rEmail, FILTER_VALIDATE_EMAIL)) {
+                $emailBody = "
+                <div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 32px 15px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(20,45,38,0.08); border: 1px solid #e2eae5;'>
+                        <div style='background: #087F5B; padding: 20px 26px;'>
+                            <div style='font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.85); margin-bottom: 4px;'>TPHL ERP &middot; Task Reminder</div>
+                            <h2 style='margin: 0; color: #ffffff; font-size: 19px; font-weight: 700;'>Gentle Reminder on Task {$taskCode}</h2>
+                        </div>
+                        <div style='padding: 26px;'>
+                            <p style='color: #142D26; font-size: 15px; margin: 0 0 12px;'>Hello <strong>" . htmlspecialchars($rName) . "</strong>,</p>
+                            <p style='color: #4A5D55; font-size: 14px; line-height: 1.6; margin: 0 0 20px;'>
+                                Task owner <strong>" . htmlspecialchars($ownerName) . "</strong> has sent a reminder regarding the following task where you are listed as <strong>" . htmlspecialchars($roleTag) . "</strong>:
+                            </p>
+                            <div style='background-color: #F8FAF9; border-left: 4px solid #087F5B; border-radius: 6px; padding: 16px 18px; margin-bottom: 22px;'>
+                                <div style='font-size: 12px; font-weight: 700; color: #087F5B; margin-bottom: 4px;'>" . htmlspecialchars($taskCode . ' · ' . $projectName) . "</div>
+                                <div style='font-size: 16px; font-weight: 700; color: #142D26; margin-bottom: 10px;'>" . htmlspecialchars($taskTitle) . "</div>
+                                <table style='width: 100%; font-size: 13px; color: #4A5D55; border-collapse: collapse;'>
+                                    <tr>
+                                        <td style='padding: 4px 0;'><strong>Assigned To:</strong> " . htmlspecialchars($assigneeName) . "</td>
+                                        <td style='padding: 4px 0;'><strong>Status:</strong> " . htmlspecialchars($statusLabel) . "</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 4px 0;'><strong>Deadline:</strong> <span style='color: #C92A2A; font-weight: 600;'>" . htmlspecialchars($deadlineFormatted) . "</span></td>
+                                        <td style='padding: 4px 0;'><strong>Priority:</strong> " . htmlspecialchars($priorityLabel) . "</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style='text-align: center; margin: 24px 0 8px;'>
+                                <a href='{$dashboardUrl}' style='background-color: #087F5B; color: #ffffff; padding: 11px 26px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;'>Open My Work Dashboard &rarr;</a>
+                            </div>
+                        </div>
+                        <div style='background-color: #F8FAF9; padding: 14px 26px; text-align: center; border-top: 1px solid #E2EAE5;'>
+                            <p style='margin: 0; font-size: 11.5px; color: #8A9992;'>This is an automated task reminder from TPHL ERP.</p>
+                        </div>
+                    </div>
+                </div>";
+
+                if (function_exists('sendGenericMail')) {
+                    try {
+                        if (sendGenericMail($rEmail, $emailSubject, $emailBody)) {
+                            $sentEmailsCount++;
+                        }
+                    } catch (\Throwable $e) {
+                        error_log("Task Reminder Mail Error ({$rEmail}): " . $e->getMessage());
+                    }
+                }
+            }
+
+            // 2. Insert in-app notification (if recipient is not the sender themselves)
+            if ($rUid !== $userId) {
+                $notifMsg = "{$ownerName} sent a reminder for task {$taskCode}: \"{$taskTitle}\" (Deadline: {$deadlineFormatted}).";
+                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+                if ($stNotif) {
+                    $stNotif->bind_param("iiis", $rUid, $id, $userId, $notifMsg);
+                    $stNotif->execute();
+                    $stNotif->close();
+                }
+            }
+        }
+
+        // 3. Log activity on the task
+        $activitySummary = "Sent a task reminder email to " . implode(', ', $notifiedNames) . ".";
+        $this->logTaskActivity($id, $userId, 'system', $activitySummary);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => "Reminder sent successfully ({$sentEmailsCount} email" . ($sentEmailsCount === 1 ? '' : 's') . " dispatched).",
+            'sent_count' => $sentEmailsCount
+        ]);
+        exit;
+    }
+
+    /**
+     * Helper to log an activity/comment to task_activities
+     */
+    private function logTaskActivity($taskId, $userId, $type, $activity, $attachmentName = null, $attachmentPath = null)
+    {
+        $stmt = $this->db->prepare("INSERT INTO task_activities (task_id, user_id, type, activity, attachment_name, attachment_path, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        if (!$stmt) return false;
+        $stmt->bind_param("iissss", $taskId, $userId, $type, $activity, $attachmentName, $attachmentPath);
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
+    }
+
+    /**
+     * Parse and validate recurring task fields from POST payload.
+     */
+    private function parseRecurrencePayload(bool $isAjax): array
+    {
+        $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
+        $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly', 'custom'], true)
+            ? $_POST['recurrence_type']
+            : null;
+
+        $abort = function (string $msg) use ($isAjax) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => $msg]);
+                exit;
+            }
+            if (function_exists('setError')) setError($msg);
+            header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+            exit;
+        };
+
+        if ($isRecurring && $recurrenceType === null) {
+            $abort("Please select a repeat type for the recurring task.");
+        }
+
+        if (!$isRecurring) {
+            return [0, null, null, null];
+        }
+
+        $recurrenceEnd = !empty($_POST['recurrence_end_date']) ? $_POST['recurrence_end_date'] : null;
+        $customDatesJson = null;
+
+        if ($recurrenceType === 'custom') {
+            $weekdayOrder = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+            $rawItems = (array)($_POST['recurrence_custom_dates'] ?? []);
+            $selectedDays = [];
+            $validDates = [];
+
+            foreach ($rawItems as $item) {
+                $val = strtolower(trim((string)$item));
+                if (in_array($val, $weekdayOrder, true)) {
+                    $selectedDays[] = $val;
+                } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
+                    $validDates[] = $val;
+                }
+            }
+
+            if (!empty($selectedDays)) {
+                $selectedDays = array_values(array_intersect($weekdayOrder, array_unique($selectedDays)));
+                $customDatesJson = json_encode($selectedDays);
+            } elseif (!empty($validDates)) {
+                $validDates = array_values(array_unique($validDates));
+                sort($validDates);
+                $customDatesJson = json_encode($validDates);
+            } else {
+                $abort("Please select at least one day for the custom recurring schedule.");
+            }
+        }
+
+        return [1, $recurrenceType, $recurrenceEnd, $customDatesJson];
+    }
+
+    /**
+     * Spawn the next recurring occurrence when a recurring task is completed.
+     */
+    private function spawnNextRecurringTask(array $task, int $actorUserId): ?int
+    {
+        if (empty($task['is_recurring']) || empty($task['recurrence_type'])) {
+            return null;
+        }
+
+        $type = (string)$task['recurrence_type'];
+        $baseDate = !empty($task['deadline']) ? date('Y-m-d', strtotime($task['deadline'])) : date('Y-m-d');
+        $nextDate = null;
+
+        if ($type === 'custom') {
+            $dates = !empty($task['recurrence_custom_dates']) ? json_decode((string)$task['recurrence_custom_dates'], true) : [];
+            $weekdayMap = ['sun' => 0, 'mon' => 1, 'tue' => 2, 'wed' => 3, 'thu' => 4, 'fri' => 5, 'sat' => 6];
+            $targetWeekdays = [];
+            if (is_array($dates)) {
+                foreach ($dates as $item) {
+                    $k = strtolower(trim((string)$item));
+                    if (isset($weekdayMap[$k])) {
+                        $targetWeekdays[$weekdayMap[$k]] = true;
+                    }
+                }
+            }
+
+            if (!empty($targetWeekdays)) {
+                for ($i = 1; $i <= 7; $i++) {
+                    $ts = strtotime($baseDate . " +{$i} days");
+                    if (isset($targetWeekdays[(int)date('w', $ts)])) {
+                        $nextDate = date('Y-m-d', $ts);
+                        break;
+                    }
+                }
+            } elseif (is_array($dates) && count($dates) > 1) {
+                sort($dates);
+                foreach ($dates as $d) {
+                    if (is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d > $baseDate) {
+                        $nextDate = $d;
+                        break;
+                    }
+                }
+            } else {
+                $startDate = (!empty($dates[0]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dates[0])) ? $dates[0] : $baseDate;
+                $nextDate = ($baseDate < $startDate) ? $startDate : date('Y-m-d', strtotime($baseDate . ' +1 day'));
+            }
+        } elseif ($type === 'daily') {
+            $nextDate = date('Y-m-d', strtotime($baseDate . ' +1 day'));
+        } elseif ($type === 'weekly') {
+            $nextDate = date('Y-m-d', strtotime($baseDate . ' +1 week'));
+        } elseif ($type === 'monthly') {
+            $nextDate = date('Y-m-d', strtotime($baseDate . ' +1 month'));
+        }
+
+        if ($nextDate === null) {
+            return null;
+        }
+
+        if (!empty($task['recurrence_end_date'])) {
+            $endDate = date('Y-m-d', strtotime($task['recurrence_end_date']));
+            if ($nextDate > $endDate) {
+                return null;
+            }
+        }
+
+        // Reset checklist completion flags for the next occurrence
+        $checklistData = $task['checklist_data'] ?? null;
+        if (!empty($checklistData)) {
+            $decodedCl = json_decode((string)$checklistData, true);
+            if (is_array($decodedCl)) {
+                foreach ($decodedCl as &$item) {
+                    $item['completed'] = false;
+                }
+                unset($item);
+                $checklistData = json_encode($decodedCl, JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        $nextDeadline = $nextDate . ' 00:00:00';
+        $stmt = $this->db->prepare("
+            INSERT INTO tasks (
+                title, expected_output, user_id, assigned_by, todo_project_id,
+                description, checklist_data, start_date, deadline, priority,
+                status, progress, employee_accept, mentioned_user_ids,
+                cc_user_ids, attachment_image, project_id,
+                is_recurring, recurrence_type, recurrence_end_date, recurrence_custom_dates, collaborator_user_ids, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, 1, ?, ?, ?, ?, NOW())
+        ");
+        if (!$stmt) {
+            return null;
+        }
+
+        $stmt->bind_param(
+            "ssiiisssssssissss",
+            $task['title'],
+            $task['expected_output'],
+            $task['user_id'],
+            $task['assigned_by'],
+            $task['todo_project_id'],
+            $task['description'],
+            $checklistData,
+            $nextDeadline,
+            $task['priority'],
+            $task['mentioned_user_ids'],
+            $task['cc_user_ids'],
+            $task['attachment_image'],
+            $task['project_id'],
+            $task['recurrence_type'],
+            $task['recurrence_end_date'],
+            $task['recurrence_custom_dates'],
+            $task['collaborator_user_ids']
+        );
+
+        $newId = null;
+        if ($stmt->execute()) {
+            $newId = (int)$stmt->insert_id;
+            $this->logTaskActivity($newId, $actorUserId, 'system', "Auto-generated next recurring occurrence from T-{$task['id']}.");
+        }
+        $stmt->close();
+        return $newId;
+    }
+}

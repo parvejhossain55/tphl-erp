@@ -662,16 +662,32 @@ class Con_BOQController extends Controller
 
 
         if ($this->boqModel->updateStatus($id, $status, $userId)) {
-            // ── Send Email Notification on Submission ────────────────────────
-            if ($status === 'Submitted' && $boq) {
-                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
-                $mailService = new \ProjectWorkflowMailService($this->db);
-                $project = $this->projectModel->find($boq['project_id']);
-                if ($project) {
-                    $mailService->notifyApproversForNewBOQ($boq['project_id'], $project['name'], $id);
+            if (in_array($status, ['Approved', 'Rejected'], true) && $boq) {
+                require_once __DIR__ . '/../../models/Con_ApprovalLog.php';
+                $attr = \Con_ApprovalLog::formatApprovalAttribution($roleId, $_SESSION['user']['full_name'] ?? 'User', strtolower($status));
+                $logModel = new \Con_ApprovalLog($this->db);
+                $logModel->logConstructionApproval(
+                    'boq_master',
+                    (int)$id,
+                    'Dept. Head Approval',
+                    strtolower($status),
+                    isset($boq['project_id']) ? (int)$boq['project_id'] : null,
+                    (float)($boq['total_estimated_cost'] ?? $boq['total_amount'] ?? 0),
+                    ''
+                );
+                setSuccess("BOQ — " . $attr['approval_label'] . ".");
+            } else {
+                // ── Send Email Notification on Submission ────────────────────────
+                if ($status === 'Submitted' && $boq) {
+                    require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                    $mailService = new \ProjectWorkflowMailService($this->db);
+                    $project = $this->projectModel->find($boq['project_id']);
+                    if ($project) {
+                        $mailService->notifyApproversForNewBOQ($boq['project_id'], $project['name'], $id);
+                    }
                 }
+                setSuccess("BOQ status updated to {$status}.");
             }
-            setSuccess("BOQ status updated to {$status}.");
         } else {
             setError('Failed to update status.');
         }

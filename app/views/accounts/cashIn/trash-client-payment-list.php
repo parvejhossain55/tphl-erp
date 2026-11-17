@@ -1,3 +1,8 @@
+<?php
+$roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$roleName = strtolower($_SESSION['user']['role'] ?? '');
+$isManagementUser = !empty($isManagementUser) || ($roleId === 1 || $roleId === 3 || strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false);
+?>
 <style>
 .table th, .table td { vertical-align: middle; }
 </style>
@@ -18,6 +23,9 @@
         <div class="card custom-card">
             <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                 <div class="card-title">Trashed Transactions</div>
+                <?php if (!$isManagementUser): ?>
+                    <span class="badge bg-secondary-subtle text-secondary border fs-12 fw-normal"><i class="fa-solid fa-shield-halved me-1"></i>Permanent deletion restricted to Management</span>
+                <?php endif; ?>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -73,9 +81,11 @@
                                             <button type="button" class="btn btn-sm btn-success" onclick="restoreTransaction(<?= $transaction['id'] ?>, <?= $transaction['booking_id'] ?>)" title="Restore">
                                                 <i class="fa-solid fa-rotate-left"></i> Restore
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-danger ms-1" onclick="deleteTransactionPermanently(<?= $transaction['id'] ?>, <?= $transaction['booking_id'] ?>)" title="Delete Permanently">
-                                                <i class="fa-solid fa-trash"></i> Delete
-                                            </button>
+                                            <?php if ($isManagementUser): ?>
+                                                <button type="button" class="btn btn-sm btn-danger ms-1" onclick="deleteTransactionPermanently(<?= $transaction['id'] ?>, <?= $transaction['booking_id'] ?>)" title="Delete Permanently (Management Only)">
+                                                    <i class="fa-solid fa-trash"></i> Delete
+                                                </button>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

@@ -42,34 +42,115 @@ class Employee extends Model
             }
 
             // 2. Ensure required columns on employees
-            $isBranchColNew = false;
-            $resBranch = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'office_branch_id'");
-            if ($resBranch && $resBranch->num_rows === 0) {
-                $this->db->query("ALTER TABLE `employees` ADD COLUMN `office_branch_id` INT NULL DEFAULT 2");
-                $isBranchColNew = true;
+            $empCols = [];
+            $colRes = $this->db->query("SHOW COLUMNS FROM `employees`");
+            if ($colRes) {
+                while ($cRow = $colRes->fetch_assoc()) {
+                    $empCols[$cRow['Field']] = true;
+                }
             }
 
-            $resMealAmt = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'per_meal_amount'");
-            if ($resMealAmt && $resMealAmt->num_rows === 0) {
-                $this->db->query("ALTER TABLE `employees` ADD COLUMN `per_meal_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+            $isBranchColNew = !isset($empCols['office_branch_id']);
+            $isMealColNew   = !isset($empCols['is_meal_deduction']);
+
+            if (!empty($empCols)) {
+                $requiredEmpCols = [
+                    'employee_id'         => "VARCHAR(100) NULL DEFAULT NULL",
+                    'full_name'           => "VARCHAR(150) NULL DEFAULT NULL",
+                    'gross_salary'        => "DECIMAL(15,2) NOT NULL DEFAULT 0.00",
+                    'basic_salary'        => "DECIMAL(15,2) NOT NULL DEFAULT 0.00",
+                    'per_meal_amount'     => "DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+                    'is_meal_deduction'   => "TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 = Subject to meal deduction, 0 = No deduction'",
+                    'per_meal_percentage' => "DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Percentage of standard meal amount employee pays'",
+                    'username'            => "VARCHAR(100) NULL DEFAULT NULL",
+                    'email'               => "VARCHAR(150) NULL DEFAULT NULL",
+                    'father_name'         => "VARCHAR(150) NULL DEFAULT NULL",
+                    'phone'               => "VARCHAR(50) NULL DEFAULT NULL",
+                    'emergency_contact'   => "VARCHAR(50) NULL DEFAULT NULL",
+                    'qualification'       => "VARCHAR(255) NULL DEFAULT NULL",
+                    'experience'          => "VARCHAR(255) NULL DEFAULT NULL",
+                    'address'             => "TEXT NULL DEFAULT NULL",
+                    'pass_num'            => "VARCHAR(100) NULL DEFAULT NULL",
+                    'nid'                 => "VARCHAR(100) NULL DEFAULT NULL",
+                    'department_id'       => "INT NULL DEFAULT 0",
+                    'designation_id'      => "INT NULL DEFAULT 0",
+                    'dob'                 => "DATE NULL DEFAULT NULL",
+                    'joining_date'        => "DATE NULL DEFAULT NULL",
+                    'resign_date'         => "DATE NULL DEFAULT NULL",
+                    'account_holder_name' => "VARCHAR(150) NULL DEFAULT NULL",
+                    'account_number'      => "VARCHAR(100) NULL DEFAULT NULL",
+                    'bank_name'           => "VARCHAR(150) NULL DEFAULT NULL",
+                    'branch_name'         => "VARCHAR(150) NULL DEFAULT NULL",
+                    'social_media1'       => "VARCHAR(255) NULL DEFAULT NULL",
+                    'social_media2'       => "VARCHAR(255) NULL DEFAULT NULL",
+                    'social_media3'       => "VARCHAR(255) NULL DEFAULT NULL",
+                    'photo'               => "VARCHAR(255) NULL DEFAULT NULL",
+                    'make_user'           => "TINYINT(1) NOT NULL DEFAULT 0",
+                    'user_id'             => "INT NULL DEFAULT NULL",
+                    'password'            => "VARCHAR(255) NULL DEFAULT NULL",
+                    'created_by'          => "INT NULL DEFAULT NULL",
+                    'employee_type'       => "VARCHAR(50) NULL DEFAULT 'full_time'",
+                    'employee_status'     => "VARCHAR(50) NULL DEFAULT 'active'",
+                    'workplace'           => "VARCHAR(150) NULL DEFAULT NULL",
+                    'office_branch_id'    => "INT NULL DEFAULT 2",
+                    'responsibilities'    => "TEXT NULL DEFAULT NULL",
+                    'team_id'             => "INT NULL DEFAULT 0",
+                    'is_team_leader'      => "TINYINT(1) NOT NULL DEFAULT 0",
+                    'is_sales_co_leader'  => "TINYINT(1) NOT NULL DEFAULT 0",
+                    'is_dept_head'        => "TINYINT(1) NOT NULL DEFAULT 0",
+                    'reporting_user_id'   => "INT NULL DEFAULT NULL",
+                    'deleted_at'          => "DATETIME NULL DEFAULT NULL",
+                ];
+                foreach ($requiredEmpCols as $colName => $colDef) {
+                    if (!isset($empCols[$colName])) {
+                        $this->db->query("ALTER TABLE `employees` ADD COLUMN `{$colName}` {$colDef}");
+                    }
+                }
+
+                // Normalize any legacy zero-dates ('0000-00-00') to NULL safely (MySQL 8.0 NO_ZERO_DATE compatible)
+                try {
+                    $this->db->query("UPDATE `employees` SET `joining_date` = NULL WHERE CAST(`joining_date` AS CHAR) = '0000-00-00'");
+                    $this->db->query("UPDATE `employees` SET `resign_date` = NULL WHERE CAST(`resign_date` AS CHAR) = '0000-00-00'");
+                } catch (\Throwable $zde) {
+                    // Ignore if read-only or not needed
+                }
             }
 
-            $isMealColNew = false;
-            $resMeal = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'is_meal_deduction'");
-            if ($resMeal && $resMeal->num_rows === 0) {
-                $this->db->query("ALTER TABLE `employees` ADD COLUMN `is_meal_deduction` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 = Subject to meal deduction, 0 = No deduction'");
-                $isMealColNew = true;
-            }
-
-            $resMealPct = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'per_meal_percentage'");
-            if ($resMealPct && $resMealPct->num_rows === 0) {
-                $this->db->query("ALTER TABLE `employees` ADD COLUMN `per_meal_percentage` DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Percentage of standard meal amount employee pays'");
-            }
-
-            $resDel = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'deleted_at'");
-            if ($resDel && $resDel->num_rows === 0) {
-                $this->db->query("ALTER TABLE `employees` ADD COLUMN `deleted_at` DATETIME NULL DEFAULT NULL");
-            }
+            // Ensure employee_salary_items & employee_leave_balances tables exist
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `employee_salary_items` (
+                    `id` int NOT NULL AUTO_INCREMENT,
+                    `employee_id` int NOT NULL,
+                    `payslip_item_id` int NOT NULL,
+                    `amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+                    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    KEY `idx_emp_id` (`employee_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `employee_leave_balances` (
+                    `id` int NOT NULL AUTO_INCREMENT,
+                    `employee_id` int NOT NULL,
+                    `leave_type_id` int NOT NULL,
+                    `remaining_days` int NOT NULL DEFAULT 0,
+                    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    KEY `idx_emp_leave` (`employee_id`, `leave_type_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `leave_types` (
+                    `id` int NOT NULL AUTO_INCREMENT,
+                    `name` varchar(100) NOT NULL,
+                    `total_days` int NOT NULL DEFAULT 0,
+                    `is_paid` tinyint(1) NOT NULL DEFAULT 1,
+                    `status` varchar(20) DEFAULT 'active',
+                    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+            ");
 
             // 3. Synchronize office_branch_id ONLY when newly added or NULL/0 (never overwrite existing live branch assignments)
             if ($isBranchColNew) {
@@ -476,6 +557,10 @@ class Employee extends Model
             is_dept_head, reporting_user_id
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
+
+        if (!$stmt) {
+            throw new \Exception("Employee create prepare failed: " . $this->db->error);
+        }
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
         $joining_date = !empty($data['joining_date']) ? $data['joining_date'] : null;

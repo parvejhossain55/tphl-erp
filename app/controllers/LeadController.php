@@ -72,16 +72,31 @@ class LeadController extends Controller
             $filterCountry = null;
         }
 
-        // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default (unless filtered), others filter by team.
+        // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default (unless filtered),
+        // Sales Manager (multi-team) sees their assigned teams, others filter by own team.
+        $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
+        $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
+
         if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamIdForQuery = $filterTeamId;
+        } elseif ($isSalesManagerUser) {
+            if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedTeamIds, true)) {
+                $teamIdForQuery = (int)$filterTeamId;
+            } else {
+                $teamIdForQuery = !empty($managedTeamIds) ? $managedTeamIds : [-1];
+            }
         } else {
-            // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
+            // If they have no team_id, let them see everything (e.g. Sales Team Leader with no team)
             $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
         // When a team is selected or scoped, only display that team's current members (leader + executives) in executive filter
-        if (!empty($teamIdForQuery)) {
+        if ($isSalesManagerUser && !in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+            $allowedTids = is_array($teamIdForQuery) ? $teamIdForQuery : [(int)$teamIdForQuery];
+            $assignedUsers = array_values(array_filter($allRoleUsers, function ($u) use ($allowedTids) {
+                return in_array((int)($u['team_id'] ?? 0), $allowedTids, true);
+            }));
+        } elseif (!empty($teamIdForQuery)) {
             $assignedUsers = $this->userModel->getUsersByTeamAndRole($teamIdForQuery);
             if (empty($assignedUsers)) {
                 $assignedUsers = $allRoleUsers;
@@ -94,10 +109,10 @@ class LeadController extends Controller
             $assignedUsers = $allRoleUsers;
         }
 
-        // Bulk Assign Users: Management & Sales Team Head can assign leads to any sales member across all teams
+        // Bulk Assign Users: Management & Head of Sales can assign leads to any sales member across all teams
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $isSalesTeamHead = ((int)$userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($userRoleName, 'team head') !== false || strpos($userRoleName, 'sales team head') !== false);
+        $isSalesTeamHead = ((int)$userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($userRoleName, 'team head') !== false || strpos($userRoleName, 'sales team head') !== false || strpos($userRoleName, 'head of sales') !== false);
         $isManagementRole = in_array((int)$userRoleId, [1, 3, 20, 32, 33, 34, 35], true)
             || in_array($userSecondaryRoleId, [1, 3, 20, 32, 33, 34, 35], true)
             || strpos($userRoleName, 'admin') !== false
@@ -136,8 +151,8 @@ class LeadController extends Controller
         }
 
         // Get total count for pagination
-        // Co-leader & Team Leader get team-scoped data same as role_id=5 (Sales Manager)
-        $effectiveRoleId = (($isCoLeader || $isTeamLeader) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
+        // Co-leader, Team Leader & Sales Manager get team-scoped data same as role_id=5 (Sales Team Leader)
+        $effectiveRoleId = (($isCoLeader || $isTeamLeader || $isSalesManagerUser) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
         $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours, $date_type);
 
         // Period total leads: overall leads count in period regardless of active filter_card (so Total Leads card and Conversion Rate stay accurate)
@@ -310,6 +325,8 @@ class LeadController extends Controller
 
         $locRes = $this->db->query("SELECT DISTINCT name FROM locations WHERE name IS NOT NULL AND name != '' ORDER BY name ASC");
         $allLocationsList = $locRes ? $locRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        [$teams, $projects, $assignedUsers] = filterSalesDropdowns($this->db, $teams ?? [], $projects ?? [], $assignedUsers ?? []);
 
         $this->view("sales-developments/leads/lead-lists", [
             "current_route" => "lead-lists",
@@ -485,15 +502,24 @@ class LeadController extends Controller
         }
 
         // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default, but can filter.
+        $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
+        $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
+
         if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamIdForQuery = $filterTeamId;
+        } elseif ($isSalesManagerUser) {
+            if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedTeamIds, true)) {
+                $teamIdForQuery = (int)$filterTeamId;
+            } else {
+                $teamIdForQuery = !empty($managedTeamIds) ? $managedTeamIds : [-1];
+            }
         } else {
-            // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
+            // If they have no team_id, let them see everything (e.g. Sales Team Leader with no team)
             $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
-        // Co-leader & Team Leader get same team-scoped access as Sales Manager (role_id=5)
-        $effectiveRoleId = ((isSalesCoLeader() || isTeamLeader()) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
+        // Co-leader, Team Leader & Sales Manager get team-scoped access (not executive-only)
+        $effectiveRoleId = ((isSalesCoLeader() || isTeamLeader() || $isSalesManagerUser) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
 
         if ($filter_card === 'booked') {
             $filter_card = 'total_booked';
@@ -634,6 +660,12 @@ class LeadController extends Controller
                     'is_automated'     => (int)($lead['is_automated'] ?? 0),
                     'approved_by_name' => $lead['approved_by_name'] ?? '',
                     'approved_at'      => $lead['approved_at'] ?? '',
+                    'booking_team_id'  => $lead['booking_team_id'] ?? null,
+                    'booking_team_name' => $lead['booking_team_name'] ?? '',
+                    'booking_agent_name' => $lead['booking_agent_name'] ?? '',
+                    'booking_sales_current_team_name' => $lead['booking_sales_current_team_name'] ?? '',
+                    'booking_sales_current_team_id'   => $lead['booking_sales_current_team_id'] ?? null,
+                    'booking_sales_status' => $lead['booking_sales_status'] ?? '',
                 ];
             }
             echo json_encode([
@@ -843,8 +875,27 @@ class LeadController extends Controller
                 
                 $assignedDateHtml = '';
             } else {
-                $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . htmlspecialchars($lead['agent_name']) . '</span>';
+                $agentNameDisplay = htmlspecialchars($lead['agent_name']);
+                $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . $agentNameDisplay . '</span>';
                 
+                // If booked, display the team under which the booking occurred and current team if switched
+                if (!empty($lead['booking_team_name'])) {
+                    $bTeamBadge = '<div class="mt-1 d-flex flex-wrap gap-1 align-items-center">';
+                    $bTeamBadge .= '<span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 10px;" title="Booked under team"><i class="bi bi-people-fill me-1"></i>Sale: ' . htmlspecialchars($lead['booking_team_name']) . '</span>';
+                    
+                    $bTid = !empty($lead['booking_team_id']) ? (int)$lead['booking_team_id'] : 0;
+                    $bCurrTid = !empty($lead['booking_sales_current_team_id']) ? (int)$lead['booking_sales_current_team_id'] : 0;
+                    $bResigned = in_array(strtolower($lead['booking_sales_status'] ?? ''), ['resigned', 'terminated']);
+                    
+                    if ($bTid > 0 && $bCurrTid > 0 && $bTid !== $bCurrTid && !empty($lead['booking_sales_current_team_name'])) {
+                        $bTeamBadge .= '<span class="badge bg-warning-subtle text-dark border border-warning" style="font-size: 10px;" title="Currently in another team"><i class="bi bi-arrow-right me-0.5"></i>Now: ' . htmlspecialchars($lead['booking_sales_current_team_name']) . '</span>';
+                    } elseif ($bResigned) {
+                        $bTeamBadge .= '<span class="badge bg-secondary-subtle text-muted border" style="font-size: 10px;"><i class="bi bi-person-x me-1"></i>Resigned</span>';
+                    }
+                    $bTeamBadge .= '</div>';
+                    $agentBadge .= $bTeamBadge;
+                }
+
                 $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
                     ? $lead['assigned_at']
                     : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
@@ -1076,13 +1127,22 @@ class LeadController extends Controller
         }
 
         // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default, but can filter.
+        $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
+        $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
+
         if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamIdForQuery = $filterTeamId;
+        } elseif ($isSalesManagerUser) {
+            if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedTeamIds, true)) {
+                $teamIdForQuery = (int)$filterTeamId;
+            } else {
+                $teamIdForQuery = !empty($managedTeamIds) ? $managedTeamIds : [-1];
+            }
         } else {
             $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
-        $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
+        $effectiveRoleId = (($isCoLeader || $isSalesManagerUser) && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
 
         // Fetch all matching records without LIMIT / OFFSET
         $leads = $this->leadModel->getAllWithFilter(
@@ -1542,13 +1602,13 @@ class LeadController extends Controller
                     $targetTid = $userTeamRes && $userTeamRes['team_id'] !== null ? (int)$userTeamRes['team_id'] : $leadObj['team_id'];
                 }
                 
-                // Keep original created_by intact (only set if NULL); update assigned_by
+                // Keep original created_by intact (only set if NULL); update assigned_by; set initial_team_id if not set yet
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
-                    SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
+                    SET assigned_id = ?, team_id = ?, initial_team_id = COALESCE(initial_team_id, ?), assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                     WHERE id = ?
                 ");
-                $stmtUpdate->bind_param("iisiii", $targetUid, $targetTid, $assignedAt, $assignedBy, $assignedBy, $leadId);
+                $stmtUpdate->bind_param("iiisiii", $targetUid, $targetTid, $targetTid, $assignedAt, $assignedBy, $assignedBy, $leadId);
                 $stmtUpdate->execute();
 
                 // Log into lead_assignment_history
@@ -1576,14 +1636,14 @@ class LeadController extends Controller
                 }
             }
 
-            // Update leads preserving created_by, setting assigned_by
+            // Update leads preserving created_by, setting assigned_by, preserving initial_team_id
             if ($userTeamId !== null) {
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
-                    SET assigned_id = ?, team_id = ?, assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
+                    SET assigned_id = ?, team_id = ?, initial_team_id = COALESCE(initial_team_id, ?), assigned_at = ?, assigned_by = ?, created_by = COALESCE(created_by, ?) 
                     WHERE id IN ($idsStr)
                 ");
-                $stmtUpdate->bind_param("iisii", $userId, $userTeamId, $assignedAt, $assignedBy, $assignedBy);
+                $stmtUpdate->bind_param("iiisii", $userId, $userTeamId, $userTeamId, $assignedAt, $assignedBy, $assignedBy);
             } else {
                 $stmtUpdate = $this->db->prepare("
                     UPDATE leads 
@@ -1625,34 +1685,137 @@ class LeadController extends Controller
 
     public function showOnboardClient()
     {
-        $year  = $_GET['year']  ?? null;
-        $month = $_GET['month'] ?? null;
-        $project_id = $_GET['project_id'] ?? null;
-        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month, $project_id);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $loggedInUser        = $_SESSION['user'] ?? [];
+        $userId              = (int)($loggedInUser['id'] ?? 0);
+        $userRoleId          = (int)($loggedInUser['role_id'] ?? 0);
+        $userSecondaryRoleId = (int)($loggedInUser['secondary_role_id'] ?? 0);
+        $userRoleName        = strtolower(trim($loggedInUser['role_name'] ?? ''));
+        $sessionTeamId       = (int)($loggedInUser['team_id'] ?? 0);
+
+        // Fetch team_id & employee flags from employees table if missing in session
+        $empTeamId = 0;
+        $empCheck = $this->db->query("SELECT team_id, is_team_leader, is_sales_co_leader FROM employees WHERE user_id = {$userId} LIMIT 1");
+        if ($empCheck && $empRow = $empCheck->fetch_assoc()) {
+            $empTeamId = (int)($empRow['team_id'] ?? 0);
+        }
+        $actualTeamId = !empty($sessionTeamId) ? $sessionTeamId : $empTeamId;
+
+        // 1. Role-wise check for Global/Unrestricted access:
+        // Management (1, 3, 20, 32, 33, 34, 35, 38), Sales Head (9)
+        // CRITICAL: Sales Head (Role 9) might ALSO have is_team_leader = 1 in employees table.
+        // Role check takes absolute precedence over is_team_leader flag so Sales Head can view all teams!
+        $isSalesTeamHead = ($userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($userRoleName, 'team head') !== false || strpos($userRoleName, 'sales head') !== false || strpos($userRoleName, 'sales team head') !== false);
+        $isSalesManager  = ($userRoleId === 38 || $userSecondaryRoleId === 38);
+        $isManagementRole = in_array($userRoleId, [1, 3, 20, 32, 33, 34, 35], true)
+            || in_array($userSecondaryRoleId, [1, 3, 20, 32, 33, 34, 35], true)
+            || strpos($userRoleName, 'admin') !== false
+            || strpos($userRoleName, 'management') !== false
+            || strpos($userRoleName, 'chief') !== false
+            || strpos($userRoleName, 'ceo') !== false;
+
+        $canViewAllTeams = ($isSalesTeamHead || $isManagementRole);
+
+        // Determine team for query:
+        // - Top-level roles can see all by default, or filter by requested team_id
+        // - Sales Manager (38) is strictly scoped to teams assigned in sales_manager_teams
+        // - Team Leader (5), Sales Executive (8), and other team members are strictly scoped to their own team
+        $teamIdForQuery = null;
+        if ($canViewAllTeams) {
+            $teamIdForQuery = !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null;
+        } elseif ($isSalesManager) {
+            $mgrTeams = [];
+            $mtRes = $this->db->query("SELECT team_id FROM sales_manager_teams WHERE manager_user_id = {$userId} AND is_active = 1");
+            if ($mtRes) {
+                while ($mtRow = $mtRes->fetch_assoc()) {
+                    $mgrTeams[] = (int)$mtRow['team_id'];
+                }
+            }
+            if (!empty($_GET['team_id'])) {
+                $reqTeam = (int)$_GET['team_id'];
+                $teamIdForQuery = in_array($reqTeam, $mgrTeams, true) ? $reqTeam : -1;
+            } else {
+                $teamIdForQuery = !empty($mgrTeams) ? $mgrTeams : -1;
+            }
+        } else {
+            $teamIdForQuery = $actualTeamId > 0 ? $actualTeamId : -1;
+        }
+
+        $year        = $_GET['year']        ?? null;
+        $month       = $_GET['month']       ?? null;
+        $project_id  = $_GET['project_id']  ?? null;
+        $from_date   = !empty($_GET['from_date']) ? trim($_GET['from_date']) : null;
+        $to_date     = !empty($_GET['to_date'])   ? trim($_GET['to_date'])   : null;
+        $sales_by_id = !empty($_GET['sales_by_id']) ? (int)$_GET['sales_by_id'] : null;
+
+        $leads = $this->leadBookedModel->getAllOnboardClientBooking($year, $month, $project_id, $teamIdForQuery, $from_date, $to_date, $sales_by_id);
         $leadCounts = count($leads);
+
+        // Fetch salespersons and their client counts for the filter dropdown
+        $salesPersonsWithCounts = $this->leadBookedModel->getOnboardSalespersonCounts($teamIdForQuery, $year, $month, $project_id, $from_date, $to_date);
+
+        // Resolve selected salesperson display name
+        $selectedSalesPersonName = null;
+        if (!empty($sales_by_id)) {
+            foreach ($salesPersonsWithCounts as $sp) {
+                if ((int)$sp['user_id'] === $sales_by_id) {
+                    $selectedSalesPersonName = $sp['sales_name'];
+                    break;
+                }
+            }
+            if (!$selectedSalesPersonName) {
+                $uRow = $this->userModel->getById($sales_by_id);
+                $selectedSalesPersonName = $uRow['full_name'] ?? null;
+            }
+        }
+
         $bookingCount = $this->leadBookedModel->getBookingCountByLead();
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
         $totalTodayFollowUps = array_sum($todayFollowUp);
         $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLead();
         $paymentCount = (new PaymentLeadBooking($this->db))->getpaymentCount();
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
 
         $projects = $this->projectModel->getProjectsWithActiveBookings();
+        $allTeams = $this->teamsModel->getAll();
+
+        // Resolve current team name for header display
+        $currentTeamName = null;
+        if (!empty($teamIdForQuery)) {
+            foreach ($allTeams as $t) {
+                if ((int)$t['id'] === (int)$teamIdForQuery) {
+                    $currentTeamName = $t['name'] ?? null;
+                    break;
+                }
+            }
+        }
+
+        $pageTitle = ($canViewAllTeams && empty($teamIdForQuery)) ? "All Onboard Clients" : "Team Onboarding Clients";
 
         $this->view("sales-developments/leads/onboard-clients", [
-            "current_route" => "onboarding-clients",
-            "page_title" => "All Onboard Clients",
-            "followUpCounts" => $followUpCounts,
-            "bookingCount" => $bookingCount,
-            "paymentCount" => $paymentCount,
-            "leadCounts" => $leadCounts,
-            "totalPeriodLeadsCount" => $totalPeriodLeadsCount,
-            "totalTodayFollowUps" => $totalTodayFollowUps,
-            "leads" => $leads,
-            "projects" => $projects,
-            "selected_project_id" => $project_id,
+            "current_route"             => "onboarding-clients",
+            "page_title"                => $pageTitle,
+            "followUpCounts"            => $followUpCounts,
+            "bookingCount"              => $bookingCount,
+            "paymentCount"              => $paymentCount,
+            "leadCounts"                => $leadCounts,
+            "totalTodayFollowUps"       => $totalTodayFollowUps,
+            "leads"                     => $leads,
+            "projects"                  => $projects,
+            "selected_project_id"       => $project_id,
+            "allTeams"                  => $allTeams,
+            "canViewAllTeams"           => $canViewAllTeams,
+            "teamIdForQuery"            => $teamIdForQuery,
+            "currentTeamName"           => $currentTeamName,
+            "salesPersonsWithCounts"    => $salesPersonsWithCounts,
+            "selected_sales_by_id"      => $sales_by_id,
+            "selected_sales_person_name"=> $selectedSalesPersonName,
+            "from_date"                 => $from_date,
+            "to_date"                   => $to_date,
+            "selected_year"             => $year,
+            "selected_month"            => $month,
         ]);
     }
 
@@ -1742,6 +1905,7 @@ class LeadController extends Controller
             'lead_quality' => $optStr('lead_quality') ?? 'Pending',
             'created_by' => $_SESSION['user']['id'] ?? null,
             'team_id' => $optInt('team_id'),
+            'initial_team_id' => $optInt('initial_team_id') ?? $optInt('team_id'),
             'country' => $optStr('country'),
             '2nd_lead_owner_name' => $optStr('2nd_lead_owner_name'),
             '2nd_owner_phone' => $optStr('2nd_owner_phone'),
@@ -2655,7 +2819,7 @@ class LeadController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $canDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
-            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team head'], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true) 
             || isSalesCoLeader();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -2763,7 +2927,7 @@ class LeadController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $canDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
-            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team head'], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true) 
             || isSalesCoLeader();
 
         $redirectUrl = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ($GLOBALS['base_url'] . "/lead-lists");
@@ -2889,7 +3053,7 @@ class LeadController extends Controller
         $isCoLeader = isSalesCoLeader();
 
         $canBulkDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
-            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team head'], true)
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true)
             || $isCoLeader;
 
         if (!$canBulkDelete || $userRoleId === 35) {
@@ -2923,7 +3087,7 @@ class LeadController extends Controller
                 }
             }
 
-            // If Sales Manager with a team, check if lead belongs to their team / assigned to their team / assigned to them
+            // If Sales Team Leader (5) or Sales Manager, check if lead belongs to their team(s) / assigned to them
             if ($userRoleId === 5 && !empty($userTeamId)) {
                 $checkStmt = $this->db->prepare("
                     SELECT l.id FROM leads l 
@@ -2934,7 +3098,24 @@ class LeadController extends Controller
                 $checkStmt->bind_param("iiii", $leadId, $userTeamId, $userId, $userTeamId);
                 $checkStmt->execute();
                 if ($checkStmt->get_result()->num_rows === 0) {
-                    continue; // Skip lead if not belonging to sales manager's team
+                    continue; // Skip lead if not belonging to sales team leader's team
+                }
+            } elseif (function_exists('isSalesManager') && isSalesManager()) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $userId);
+                if (empty($mgrTeamIds)) {
+                    continue;
+                }
+                $inList = implode(',', array_map('intval', $mgrTeamIds));
+                $checkStmt = $this->db->prepare("
+                    SELECT l.id FROM leads l
+                    WHERE l.id = ?
+                      AND (l.team_id IN ($inList) OR l.assigned_id = ? OR l.assigned_id IN (SELECT u.id FROM users u WHERE u.team_id IN ($inList)))
+                    LIMIT 1
+                ");
+                $checkStmt->bind_param("ii", $leadId, $userId);
+                $checkStmt->execute();
+                if ($checkStmt->get_result()->num_rows === 0) {
+                    continue;
                 }
             }
 

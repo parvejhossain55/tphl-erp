@@ -27,9 +27,33 @@ class PayrollController extends Controller
         self::$payrollSchemaChecked = true;
 
         try {
-            // Ensure employee office branch & meal columns exist
+            // Ensure employee office branch, service dates & meal columns exist directly on employees
             if ($this->employeeModel && method_exists($this->employeeModel, 'ensureOfficeBranchSchema')) {
                 $this->employeeModel->ensureOfficeBranchSchema();
+            }
+            $empColMap = [];
+            $empColRes = $this->db->query("SHOW COLUMNS FROM `employees`");
+            if ($empColRes) {
+                while ($ecr = $empColRes->fetch_assoc()) {
+                    $empColMap[$ecr['Field']] = true;
+                }
+            }
+            if (!empty($empColMap)) {
+                $reqEmpPayrollCols = [
+                    'joining_date'        => "DATE NULL DEFAULT NULL",
+                    'resign_date'         => "DATE NULL DEFAULT NULL",
+                    'deleted_at'          => "DATETIME NULL DEFAULT NULL",
+                    'employee_status'     => "VARCHAR(50) NULL DEFAULT 'active'",
+                    'per_meal_amount'     => "DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+                    'is_meal_deduction'   => "TINYINT(1) NOT NULL DEFAULT 1",
+                    'per_meal_percentage' => "DECIMAL(5,2) NOT NULL DEFAULT 100.00",
+                    'office_branch_id'    => "INT NULL DEFAULT 2",
+                ];
+                foreach ($reqEmpPayrollCols as $ecName => $ecDef) {
+                    if (!isset($empColMap[$ecName])) {
+                        $this->db->query("ALTER TABLE `employees` ADD COLUMN `{$ecName}` {$ecDef}");
+                    }
+                }
             }
 
             // Ensure Meal Tracker tables (meal_projects, meal_records, etc.) exist
@@ -198,6 +222,8 @@ class PayrollController extends Controller
                     'arrears_earning'         => 'DECIMAL(15,2) NOT NULL DEFAULT 0.00',
                     'duty_allowance'          => 'DECIMAL(15,2) NOT NULL DEFAULT 0.00',
                     'tax'                     => 'DECIMAL(15,2) NOT NULL DEFAULT 0.00',
+                    'effective_days'          => 'DECIMAL(10,2) NULL DEFAULT NULL',
+                    'cycle_days'              => 'INT NULL DEFAULT NULL',
                 ];
                 foreach ($requiredPayslipCols as $colName => $colDef) {
                     if (!isset($existingCols[$colName])) {
@@ -208,6 +234,121 @@ class PayrollController extends Controller
         } catch (\Throwable $e) {
             error_log("PayrollController::ensurePayrollSchema error: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Standard 26th-of-previous-month to 25th-of-selected-month payroll cycle range.
+     */
+    public function getPayrollCycleDates(int $year, int $month): array
+    {
+        if ($year < 2000) {
+            $year = (int) date('Y');
+        }
+        if ($month < 1 || $month > 12) {
+            $month = (int) date('m');
+        }
+        $prevMonth = $month - 1;
+        $prevYear  = $year;
+        if ($prevMonth <= 0) {
+            $prevMonth = 12;
+            $prevYear  = $year - 1;
+        }
+        $start = sprintf('%04d-%02d-26', $prevYear, $prevMonth);
+        $end   = sprintf('%04d-%02d-25', $year, $month);
+        $days  = max(1, (int) (new \DateTime($start))->diff(new \DateTime($end))->days + 1);
+
+        return [
+            'start' => $start,
+            'end'   => $end,
+            'days'  => $days,
+        ];
+    }
+
+    /**
+     * Resolve canonical start_date, end_date, and total cycle days for a payroll_projects record.
+     */
+    public function resolveProjectCycleRange(array $proj): array
+    {
+        $rawStart = trim((string) ($proj['start_date'] ?? ''));
+        $rawEnd   = trim((string) ($proj['end_date'] ?? ''));
+        $validCustom = !empty($proj['is_custom_date'])
+            && $rawStart !== '' && $rawStart !== '0000-00-00' && preg_match('/^\d{4}-\d{2}-\d{2}/', $rawStart)
+            && $rawEnd !== '' && $rawEnd !== '0000-00-00' && preg_match('/^\d{4}-\d{2}-\d{2}/', $rawEnd);
+
+        if ($validCustom) {
+            $start = substr($rawStart, 0, 10);
+            $end   = substr($rawEnd, 0, 10);
+            $d1    = new \DateTime($start);
+            $d2    = new \DateTime($end);
+            if ($d1 > $d2) {
+                [$d1, $d2, $start, $end] = [$d2, $d1, $end, $start];
+            }
+            $days = max(1, (int) $d1->diff($d2)->days + 1);
+            return [
+                'start'       => $start,
+                'end'         => $end,
+                'days'        => $days,
+                'is_custom'   => true,
+                'filter_type' => 'custom',
+                'year'        => (int) substr($end, 0, 4),
+                'month'       => substr($end, 5, 2),
+            ];
+        }
+
+        $dateVal = trim((string) ($proj['date'] ?? ''));
+        $parts   = explode('-', $dateVal);
+        $year    = (isset($parts[0]) && (int) $parts[0] >= 2000) ? (int) $parts[0] : (int) date('Y');
+        $month   = (isset($parts[1]) && (int) $parts[1] >= 1 && (int) $parts[1] <= 12) ? (int) $parts[1] : (int) date('m');
+        $cycle   = $this->getPayrollCycleDates($year, $month);
+
+        return [
+            'start'       => $cycle['start'],
+            'end'         => $cycle['end'],
+            'days'        => $cycle['days'],
+            'is_custom'   => false,
+            'filter_type' => 'monthly',
+            'year'        => $year,
+            'month'       => sprintf('%02d', $month),
+        ];
+    }
+
+    /**
+     * Calculate active service days within [cycleStart, cycleEnd] (inclusive of joining_date and resign_date).
+     */
+    public function computeServiceDays(string $cycleStart, string $cycleEnd, ?string $joiningDate, ?string $resignDate): int
+    {
+        $cStart = new \DateTime(substr(trim($cycleStart), 0, 10));
+        $cEnd   = new \DateTime(substr(trim($cycleEnd), 0, 10));
+        if ($cStart > $cEnd) {
+            return 0;
+        }
+        $cycleTotalDays = max(1, (int) $cStart->diff($cEnd)->days + 1);
+
+        $jStr = trim((string) ($joiningDate ?? ''));
+        $rStr = trim((string) ($resignDate ?? ''));
+
+        $effStart = $cStart;
+        if ($jStr !== '' && $jStr !== '0000-00-00' && preg_match('/^\d{4}-\d{2}-\d{2}/', $jStr)) {
+            $jDt = new \DateTime(substr($jStr, 0, 10));
+            if ($jDt > $effStart) {
+                $effStart = $jDt;
+            }
+        }
+
+        $effEnd = $cEnd;
+        if ($rStr !== '' && $rStr !== '0000-00-00' && preg_match('/^\d{4}-\d{2}-\d{2}/', $rStr)) {
+            $rDt = new \DateTime(substr($rStr, 0, 10));
+            if ($rDt < $effEnd) {
+                $effEnd = $rDt;
+            }
+        }
+
+        if ($effStart > $effEnd) {
+            return 0;
+        }
+
+        $days = (int) $effStart->diff($effEnd)->days + 1;
+        return min($cycleTotalDays, max(0, $days));
     }
 
     public function index()
@@ -236,9 +377,12 @@ class PayrollController extends Controller
             $projQuery = $this->db->query('SELECT * FROM payroll_projects WHERE id = ' . $selectedProjectId);
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
                 if (empty($_GET['year']) || empty($_GET['month'])) {
-                    if (!empty($projData['is_custom_date']) && !empty($projData['start_date'])) {
-                        $selectedYear = date('Y', strtotime($projData['start_date']));
-                        $selectedMonth = date('m', strtotime($projData['start_date']));
+                    if (!empty($projData['is_custom_date']) && (!empty($projData['end_date']) || !empty($projData['start_date']))) {
+                        $refProjDate = (!empty($projData['end_date']) && $projData['end_date'] !== '0000-00-00')
+                            ? $projData['end_date']
+                            : $projData['start_date'];
+                        $selectedYear = date('Y', strtotime($refProjDate));
+                        $selectedMonth = date('m', strtotime($refProjDate));
                     } elseif (!empty($projData['date'])) {
                         $parts = explode('-', $projData['date']);
                         if (count($parts) >= 2) {
@@ -512,8 +656,14 @@ class PayrollController extends Controller
             require_once __DIR__ . '/../models/ApprovalRequest.php';
         }
         $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'payslips', (int) $payslipId);
-        $pRow = $this->db->query('SELECT status FROM payslips WHERE id = ' . (int) $payslipId . ' LIMIT 1');
-        $pStatus = ($pRow && ($pData = $pRow->fetch_assoc())) ? strtolower($pData['status'] ?? 'pending') : 'pending';
+        $pRow = $this->db->query('SELECT status, salary_hold FROM payslips WHERE id = ' . (int) $payslipId . ' LIMIT 1');
+        $pData = $pRow ? $pRow->fetch_assoc() : null;
+        if ($pData && strtolower(trim((string) ($pData['salary_hold'] ?? ''))) === 'hold') {
+            $_SESSION['error'] = 'Payment cannot be disbursed because this employee is currently on Salary Hold.';
+            header('Location: ' . $GLOBALS['base_url'] . '/payslip-lists');
+            exit;
+        }
+        $pStatus = $pData ? strtolower($pData['status'] ?? 'pending') : 'pending';
         $isMgmtPending = empty($ahCheck['is_mgmt_approved']) && !in_array($pStatus, ['approved', 'paid'], true);
         $isAhPending = !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved']);
 
@@ -906,10 +1056,18 @@ class PayrollController extends Controller
             exit;
         }
 
+        // Resolve canonical project cycle (26th-25th for monthly, start_date-end_date for custom)
+        $projRes = $this->db->query("SELECT * FROM payroll_projects WHERE id = $projectId LIMIT 1");
+        $projRow = ($projRes && $projRes->num_rows > 0) ? $projRes->fetch_assoc() : ['date' => $monthStr];
+        $cycleInfo = $this->resolveProjectCycleRange($projRow);
+        $cycleStart = $cycleInfo['start'];
+        $cycleEnd   = $cycleInfo['end'];
+        $cycleDays  = (int) $cycleInfo['days'];
+
         // 1. Fetch only employees that were saved in the workspace and NOT deselected (is_excluded = 0)
         $sql = "
             SELECT e.id, e.full_name, e.employee_id, e.email, e.gross_salary, e.basic_salary, e.designation_id,
-                   e.workplace, e.joining_date, e.per_meal_amount, e.account_number, e.bank_name, e.account_holder_name,
+                   e.workplace, e.joining_date, e.resign_date, e.deleted_at, e.per_meal_amount, e.account_number, e.bank_name, e.account_holder_name,
                    IF(e.account_number IS NOT NULL AND TRIM(e.account_number) != '', 'bank', 'cash') AS payment_method,
                    desg.name AS designation_name,
                    dept.name AS department_name,
@@ -933,6 +1091,8 @@ class PayrollController extends Controller
                    p.arrears_earning,
                    p.duty_allowance,
                    p.tax,
+                   p.effective_days AS saved_effective_days,
+                   p.cycle_days AS saved_cycle_days,
                    p.bank_amount,
                    p.cash_amount,
                    p.salary_hold,
@@ -984,10 +1144,20 @@ class PayrollController extends Controller
                 }
             }
 
-            // Sync attendance and meal fields from workspace saved data
+            $resignRaw = (!empty($emp['resign_date']) && $emp['resign_date'] !== '0000-00-00')
+                ? substr(trim($emp['resign_date']), 0, 10)
+                : (!empty($emp['deleted_at']) ? substr(trim($emp['deleted_at']), 0, 10) : '');
+            $serviceDays = $this->computeServiceDays($cycleStart, $cycleEnd, $emp['joining_date'] ?? null, $resignRaw ?: null);
+            $unpaidDays = (float) ($emp['late_unpaid_absent_days'] ?? 0);
+
+            // Sync attendance, cycle, and effective days fields from workspace saved data
             $emp['matched_in_tipsoi'] = true;
-            $emp['absent_days'] = (float) ($emp['late_unpaid_absent_days'] ?? 0);
-            $emp['late_unpaid_absent_days'] = (float) ($emp['late_unpaid_absent_days'] ?? 0);
+            $emp['resignation_date'] = $resignRaw;
+            $emp['cycle_days'] = $cycleDays;
+            $emp['service_days'] = $serviceDays;
+            $emp['absent_days'] = $unpaidDays;
+            $emp['late_unpaid_absent_days'] = $unpaidDays;
+            $emp['effective_days'] = max(0, round($serviceDays - $unpaidDays, 2));
             $emp['tipsoi_present'] = (float) ($emp['meal_count'] ?? 0);
             $emp['absent_deduction'] = (float) ($emp['unpaid_absent_amount'] ?? 0);
         }
@@ -995,6 +1165,9 @@ class PayrollController extends Controller
 
         echo json_encode([
             'success' => true,
+            'cycle_days' => $cycleDays,
+            'cycle_start' => $cycleStart,
+            'cycle_end' => $cycleEnd,
             'employees' => $employees,
             'payslip_items' => $allPayslipItems
         ]);
@@ -1021,6 +1194,11 @@ class PayrollController extends Controller
         $payslipDate = !empty($payload['payslip_date']) ? $payload['payslip_date'] : date('Y-m-d');
         $payrollProjectId = (int) $payload['payroll_project_id'];
         $generatedBy = $_SESSION['user']['id'] ?? 1;
+
+        $projRes = $this->db->query("SELECT * FROM payroll_projects WHERE id = $payrollProjectId LIMIT 1");
+        $projRow = ($projRes && $projRes->num_rows > 0) ? $projRes->fetch_assoc() : ['date' => $payload['payslip_month']];
+        $projCycle = $this->resolveProjectCycleRange($projRow);
+        $defaultCycleDays = (int) $projCycle['days'];
 
         $detailsModel = new PayslipDetail($this->db);
         $approvalModel = new ApprovalRequest($this->db);
@@ -1097,6 +1275,8 @@ class PayrollController extends Controller
                 $arrearsEarning = (float) ($empData['arrears_earning'] ?? 0);
                 $dutyAllowance = (float) ($empData['duty_allowance'] ?? 0);
                 $tax = (float) ($empData['tax'] ?? 0);
+                $cycleDays = !empty($empData['cycle_days']) ? (int) $empData['cycle_days'] : $defaultCycleDays;
+                $effectiveDays = isset($empData['effective_days']) ? (float) $empData['effective_days'] : max(0, round($cycleDays - $lateUnpaidAbsentDays, 2));
                 $remarks = trim((string) ($empData['remarks'] ?? ''));
                 $attRemarks = trim((string) ($empData['attendance_remarks'] ?? ''));
 
@@ -1133,6 +1313,8 @@ class PayrollController extends Controller
                             arrears_earning = ?,
                             duty_allowance = ?,
                             tax = ?,
+                            effective_days = ?,
+                            cycle_days = ?,
                             created_by = ?
                         WHERE id = ?
                     ");
@@ -1140,7 +1322,7 @@ class PayrollController extends Controller
                         throw new Exception('Prepare update failed: ' . $this->db->error);
                     }
                     $stmtUp->bind_param(
-                        'isdddsdddssddddddddddddddddii',
+                        'isdddsdddssdddddddddddddddddiii',
                         $designationId,
                         $payslipMonth,
                         $totalEarning,
@@ -1168,6 +1350,8 @@ class PayrollController extends Controller
                         $arrearsEarning,
                         $dutyAllowance,
                         $tax,
+                        $effectiveDays,
+                        $cycleDays,
                         $generatedBy,
                         $payslipId
                     );
@@ -1185,7 +1369,7 @@ class PayrollController extends Controller
                             advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount,
                             arrears_deduction, others_deduction,
                             punctuality_bonus, overtime, arrears_earning, duty_allowance,
-                            tax
+                            tax, effective_days, cycle_days
                         ) VALUES (
                             ?, ?, ?, ?,
                             'pending', 0, 'manual', ?,
@@ -1196,14 +1380,14 @@ class PayrollController extends Controller
                             ?, ?, ?, ?,
                             ?, ?,
                             ?, ?, ?, ?,
-                            ?
+                            ?, ?, ?
                         )
                     ");
                     if (!$stmtIns) {
                         throw new Exception('Prepare insert failed: ' . $this->db->error);
                     }
                     $stmtIns->bind_param(
-                        'iiisidddsdddssdddddddddddddddd',
+                        'iiisidddsdddssdddddddddddddddddi',
                         $employeeId,
                         $payrollProjectId,
                         $designationId,
@@ -1233,7 +1417,9 @@ class PayrollController extends Controller
                         $overtime,
                         $arrearsEarning,
                         $dutyAllowance,
-                        $tax
+                        $tax,
+                        $effectiveDays,
+                        $cycleDays
                     );
                     $stmtIns->execute();
                     $payslipId = $stmtIns->insert_id;
@@ -1413,10 +1599,10 @@ class PayrollController extends Controller
             exit;
         }
 
-        // Mandatory Management & Accounts Head Approval Guard
+        // Mandatory Salary Hold + Management & Accounts Head Approval Guard
         $idListStr = implode(',', $payslipIds);
         $checkAppr = $this->db->query("
-            SELECT p.id, p.status AS payslip_status,
+            SELECT p.id, p.status AS payslip_status, p.salary_hold,
                    ar.id AS ar_id, ar.status AS mgmt_status, ar.accounts_head_status
             FROM payslips p
             LEFT JOIN approval_requests ar 
@@ -1425,8 +1611,12 @@ class PayrollController extends Controller
         ");
         $pendingMgmt = false;
         $pendingAh = false;
+        $heldCount = 0;
         if ($checkAppr) {
             while ($row = $checkAppr->fetch_assoc()) {
+                if (strtolower(trim((string) ($row['salary_hold'] ?? ''))) === 'hold') {
+                    $heldCount++;
+                }
                 $mStatus = strtolower($row['mgmt_status'] ?? $row['payslip_status'] ?? 'pending');
                 $pStatus = strtolower($row['payslip_status'] ?? 'pending');
                 if (!in_array($mStatus, ['approved', 'paid'], true) && !in_array($pStatus, ['approved', 'paid'], true)) {
@@ -1436,6 +1626,16 @@ class PayrollController extends Controller
                     $pendingAh = true;
                 }
             }
+        }
+        if ($heldCount > 0) {
+            if (ob_get_length()) {
+                ob_clean();
+            }
+            echo json_encode([
+                'success' => false,
+                'message' => "Payment cannot be disbursed. {$heldCount} selected payslip(s) are currently on Salary Hold."
+            ]);
+            exit;
         }
         if ($pendingMgmt || $pendingAh) {
             if ($pendingMgmt && $pendingAh) {
@@ -1982,25 +2182,17 @@ class PayrollController extends Controller
         $filterType = (isset($_GET['filter_type']) && $_GET['filter_type'] === 'custom') || (!empty($targetStartDate) && !empty($targetEndDate)) ? 'custom' : 'monthly';
 
         // If project selected, fetch project date to ensure year/month/effective dates are synchronized with the project
+        $selectedProjectData = null;
         if ($selectedProject) {
             $projQuery = $this->db->query('SELECT * FROM payroll_projects WHERE id = ' . (int) $selectedProject);
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
-                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
-                    $filterType = 'custom';
-                    $targetStartDate = $projData['start_date'];
-                    $targetEndDate = $projData['end_date'];
-                    $selectedYear = date('Y', strtotime($targetStartDate));
-                    $selectedMonth = date('m', strtotime($targetStartDate));
-                } elseif (!empty($projData['date'])) {
-                    $filterType = 'monthly';
-                    $parts = explode('-', $projData['date']);
-                    if (count($parts) >= 2) {
-                        $selectedYear = $parts[0];
-                        $selectedMonth = $parts[1];
-                        $targetStartDate = sprintf('%04d-%02d-01', (int) $selectedYear, (int) $selectedMonth);
-                        $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
-                    }
-                }
+                $selectedProjectData = $projData;
+                $resolved = $this->resolveProjectCycleRange($projData);
+                $filterType = $resolved['filter_type'];
+                $targetStartDate = $resolved['start'];
+                $targetEndDate = $resolved['end'];
+                $selectedYear = sprintf('%04d', (int) $resolved['year']);
+                $selectedMonth = sprintf('%02d', (int) $resolved['month']);
             }
         }
 
@@ -2033,8 +2225,9 @@ class PayrollController extends Controller
             $selectedMonth = $currentMonth;
         }
         if (empty($targetStartDate) || empty($targetEndDate)) {
-            $targetStartDate = sprintf('%04d-%02d-01', (int) $selectedYear, (int) $selectedMonth);
-            $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
+            $cRange = $this->getPayrollCycleDates((int) $selectedYear, (int) $selectedMonth);
+            $targetStartDate = $cRange['start'];
+            $targetEndDate = $cRange['end'];
         }
 
         // Fetch dynamic payslip items
@@ -2066,7 +2259,7 @@ class PayrollController extends Controller
         $query = '
         SELECT p.*, e.id as real_emp_id_fk,
                e.full_name, e.employee_id as emp_id, e.email, e.workplace, 
-               e.joining_date, e.account_holder_name, e.account_number, e.bank_name,
+               e.joining_date, e.resign_date, e.account_holder_name, e.account_number, e.bank_name,
                e.gross_salary as emp_gross, e.basic_salary as emp_basic,
                e.deleted_at, e.designation_id as emp_designation_id,
                e.per_meal_amount, e.is_meal_deduction, e.per_meal_percentage,
@@ -2093,12 +2286,13 @@ class PayrollController extends Controller
                 GROUP BY employee_id
             ) latest_amu ON amu.id = latest_amu.max_id
         ) override_att ON e.id = override_att.employee_id
-        WHERE e.employee_status = \'active\'
+        WHERE e.deleted_at IS NULL
           AND (
               p.id IS NOT NULL 
               OR (
-                  (e.joining_date IS NULL OR e.joining_date <= \'' . $escapedTargetEnd . '\')
-                  AND (e.deleted_at IS NULL OR e.deleted_at >= \'' . $escapedTargetStart . '\')
+                  (LOWER(TRIM(COALESCE(e.employee_status, \'\'))) = \'active\' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != \'0000-00-00\' AND e.resign_date >= \'' . $escapedTargetStart . '\'))
+                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = \'0000-00-00\' OR e.joining_date <= \'' . $escapedTargetEnd . '\')
+                  AND (e.resign_date IS NULL OR CAST(e.resign_date AS CHAR) = \'0000-00-00\' OR e.resign_date >= \'' . $escapedTargetStart . '\')
               )
           )
         ORDER BY e.employee_id ASC 
@@ -2219,13 +2413,19 @@ class PayrollController extends Controller
             }
         }
 
-        $res = $this->db->query($query);
+        $res = false;
+        try {
+            $res = $this->db->query($query);
+        } catch (\Throwable $pqe) {
+            error_log('PayrollController::workspace primary query exception: ' . $pqe->getMessage());
+            $res = false;
+        }
         if (!$res) {
             error_log('PayrollController::workspace primary query error: ' . $this->db->error);
             $fallbackQuery = "
                 SELECT e.id as real_emp_id_fk, NULL as id,
                        e.full_name, e.employee_id as emp_id, e.email, e.workplace,
-                       e.joining_date, e.account_holder_name, e.account_number, e.bank_name,
+                       e.joining_date, e.resign_date, e.account_holder_name, e.account_number, e.bank_name,
                        e.gross_salary as emp_gross, e.basic_salary as emp_basic,
                        e.deleted_at, e.per_meal_amount, e.is_meal_deduction, e.per_meal_percentage,
                        dept.name as department_name, desg.name as designation_name,
@@ -2235,10 +2435,40 @@ class PayrollController extends Controller
                 FROM employees e
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
-                WHERE e.employee_status = 'active' AND e.deleted_at IS NULL
+                WHERE e.deleted_at IS NULL
+                  AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedTargetStart'))
+                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedTargetEnd')
                 ORDER BY e.employee_id ASC
             ";
-            $res = $this->db->query($fallbackQuery);
+            try {
+                $res = $this->db->query($fallbackQuery);
+            } catch (\Throwable $fqe) {
+                error_log('PayrollController::workspace fallback query exception: ' . $fqe->getMessage());
+                $res = false;
+            }
+            if (!$res) {
+                $minimalFallbackQuery = "
+                    SELECT e.id as real_emp_id_fk, NULL as id,
+                           e.full_name, e.employee_id as emp_id, e.email, e.workplace,
+                           e.joining_date, NULL as resign_date, e.account_holder_name, e.account_number, e.bank_name,
+                           e.gross_salary as emp_gross, e.basic_salary as emp_basic,
+                           NULL as deleted_at, 0 as per_meal_amount, 1 as is_meal_deduction, 100 as per_meal_percentage,
+                           dept.name as department_name, desg.name as designation_name,
+                           NULL as saved_late_unpaid_absent_days, NULL as saved_unpaid_absent_amount,
+                           NULL as tipsoi_present, NULL as tipsoi_absent, NULL as tipsoi_leave, NULL as tipsoi_late,
+                           NULL as att_late_unpaid_absent_days, NULL as att_deduction, NULL as att_final_late, NULL as att_updated_at
+                    FROM employees e
+                    LEFT JOIN departments dept ON e.department_id = dept.id
+                    LEFT JOIN designations desg ON e.designation_id = desg.id
+                    WHERE LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active'
+                    ORDER BY e.employee_id ASC
+                ";
+                try {
+                    $res = $this->db->query($minimalFallbackQuery);
+                } catch (\Throwable $mfqe) {
+                    error_log('PayrollController::workspace minimal fallback query exception: ' . $mfqe->getMessage());
+                }
+            }
         }
         $payslips = [];
         if ($res) {
@@ -2256,10 +2486,17 @@ class PayrollController extends Controller
             }
             $advanceSalaryModel = new AdvanceSalary($this->db);
             $advanceSalaryItemId = null;
+            $lunchItemId = null;
+            $absentItemId = null;
             foreach ($items as $i) {
-                if (strtolower(trim($i['name'])) === 'advance salary') {
-                    $advanceSalaryItemId = $i['id'];
-                    break;
+                $iNameLc = strtolower(trim($i['name'] ?? ''));
+                $iTypeLc = strtolower(trim($i['type'] ?? ''));
+                if ($iNameLc === 'advance salary') {
+                    $advanceSalaryItemId = (int) $i['id'];
+                } elseif ($iTypeLc === 'deduction' && ($lunchItemId === null) && (strpos($iNameLc, 'lunch') !== false || strpos($iNameLc, 'meal') !== false)) {
+                    $lunchItemId = (int) $i['id'];
+                } elseif ($iTypeLc === 'deduction' && ($absentItemId === null) && (strpos($iNameLc, 'absent') !== false || strpos($iNameLc, 'lwp') !== false)) {
+                    $absentItemId = (int) $i['id'];
                 }
             }
             $monthStr = $selectedYear && $selectedMonth ? $selectedYear . '-' . str_pad($selectedMonth, 2, '0', STR_PAD_LEFT) : date('Y-m');
@@ -2328,9 +2565,9 @@ class PayrollController extends Controller
             }
 
             $payslipMonthDate = sprintf('%04d-%02d-01', (int) $selectedYear, (int) $selectedMonth);
-            $cycleStartTs = strtotime($targetStartDate);
-            $cycleEndTs   = strtotime($targetEndDate);
-            $cycleTotalDays = max(1, (int) round(($cycleEndTs - $cycleStartTs) / 86400) + 1);
+            $cycleStartDt = new \DateTime($targetStartDate);
+            $cycleEndDt   = new \DateTime($targetEndDate);
+            $cycleTotalDays = max(1, (int) $cycleStartDt->diff($cycleEndDt)->days + 1);
             $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0
                 ? (float) $activeMealProject['standard_meal_amount']
                 : 120.00;
@@ -2365,25 +2602,57 @@ class PayrollController extends Controller
                     $effectiveMealRate = max(0, round($standardMealRate * ($mealPct / 100), 2));
                 }
 
+                $resignClean = (!empty($row['resign_date']) && $row['resign_date'] !== '0000-00-00')
+                    ? substr(trim((string) $row['resign_date']), 0, 10)
+                    : ((!empty($row['deleted_at']) && $row['deleted_at'] !== '0000-00-00') ? substr(trim((string) $row['deleted_at']), 0, 10) : null);
+                $serviceDays = $this->computeServiceDays($targetStartDate, $targetEndDate, $row['joining_date'] ?? null, $resignClean);
+                $gross = (float) ($row['emp_gross'] ?? 0);
+                $daily = $cycleTotalDays > 0 ? ($gross / $cycleTotalDays) : 0.0;
+                $serviceGross = ($serviceDays < $cycleTotalDays && $daily > 0) ? round($serviceDays * $daily, 2) : $gross;
+                $row['service_days'] = $serviceDays;
+                $row['resolved_resign_date'] = $resignClean;
+
                 $details = [];
                 if ($pid > 0) {
                     $details = $allPayslipDetails[$pid] ?? [];
-                    // Keep Meal Count & Subsidized Lunch in real-time sync with the linked Meal Project (`meal_records`)
-                    if (!empty($selectedProject) && !empty($activeMealProject)) {
-                        $liveMealCount = isset($mealCountsByEmp[$empId]) ? (float) $mealCountsByEmp[$empId] : 0.00;
-                        $liveSubLunch  = round($liveMealCount * $effectiveMealRate, 2);
+                    // Keep Meal Count, Subsidized Lunch, Cycle Days & Effective Days synchronized on draft project rows
+                    if (!empty($selectedProject) && ($row['status'] ?? 'draft') !== 'paid') {
+                        $liveMealCount = (!empty($activeMealProject) && isset($mealCountsByEmp[$empId]))
+                            ? (float) $mealCountsByEmp[$empId]
+                            : (float) ($row['meal_count'] ?? 0);
+                        $liveSubLunch  = !empty($activeMealProject)
+                            ? round($liveMealCount * $effectiveMealRate, 2)
+                            : (float) ($row['subsidized_lunch'] ?? 0);
                         $savedMealCnt  = (float) ($row['meal_count'] ?? 0);
                         $savedSubLunch = (float) ($row['subsidized_lunch'] ?? 0);
+                        $savedCycleDays = (int) ($row['cycle_days'] ?? 0);
+                        $savedUnpaidDays = (float) ($row['late_unpaid_absent_days'] ?? 0);
+                        $liveEffDays   = max(0, round($serviceDays - $savedUnpaidDays, 2));
+                        $savedEffDays  = isset($row['effective_days']) && $row['effective_days'] !== null ? (float) $row['effective_days'] : -1.0;
 
-                        if (abs($savedMealCnt - $liveMealCount) > 0.009 || abs($savedSubLunch - $liveSubLunch) > 0.009) {
-                            $advSal      = (float) ($row['advance_salary'] ?? 0);
-                            $unpaidAmt   = (float) ($row['unpaid_absent_amount'] ?? 0);
-                            $arrDed      = (float) ($row['arrears_deduction'] ?? 0);
-                            $othDed      = (float) ($row['others_deduction'] ?? 0);
-                            $taxAmt      = (float) ($row['tax'] ?? 0);
-                            $totEarn     = (float) ($row['total_earning'] ?? 0);
-                            $newTotalDed = round($advSal + $liveSubLunch + $unpaidAmt + $arrDed + $othDed + $taxAmt, 2);
-                            $newNetSalary = max(0, round($totEarn - $newTotalDed, 2));
+                        $extraEarn = (float) ($row['special_allowance'] ?? 0)
+                                   + (float) ($row['arrears_earning'] ?? 0)
+                                   + (float) ($row['duty_allowance'] ?? 0)
+                                   + (float) ($row['punctuality_bonus'] ?? 0)
+                                   + (float) ($row['overtime'] ?? 0);
+                        $liveTotEarn = round($serviceGross + $extraEarn, 2);
+                        $savedTotEarn = (float) ($row['total_earning'] ?? 0);
+
+                        $cycleMismatch = ($savedCycleDays !== $cycleTotalDays);
+                        $effMismatch   = (abs($savedEffDays - $liveEffDays) > 0.009);
+                        $earnMismatch  = (abs($savedTotEarn - $liveTotEarn) > 0.009);
+                        $mealMismatch  = !empty($activeMealProject) && (abs($savedMealCnt - $liveMealCount) > 0.009 || abs($savedSubLunch - $liveSubLunch) > 0.009);
+
+                        if ($cycleMismatch || $effMismatch || $earnMismatch || $mealMismatch) {
+                            $advSal    = (float) ($row['advance_salary'] ?? 0);
+                            $unpaidAmt = $cycleMismatch
+                                ? round($savedUnpaidDays * $daily, 2)
+                                : (float) ($row['unpaid_absent_amount'] ?? 0);
+                            $arrDed    = (float) ($row['arrears_deduction'] ?? 0);
+                            $othDed    = (float) ($row['others_deduction'] ?? 0);
+                            $taxAmt    = (float) ($row['tax'] ?? 0);
+                            $newTotalDed  = round($advSal + $liveSubLunch + $unpaidAmt + $arrDed + $othDed + $taxAmt, 2);
+                            $newNetSalary = max(0, round($liveTotEarn - $newTotalDed, 2));
 
                             $hasBank = !empty(trim((string) ($row['account_number'] ?? '')));
                             $oldBank = (float) ($row['bank_amount'] ?? 0);
@@ -2405,21 +2674,48 @@ class PayrollController extends Controller
                             }
 
                             $this->db->query(sprintf(
-                                "UPDATE payslips SET meal_count = %.2f, subsidized_lunch = %.2f, total_deduction = %.2f, net_salary = %.2f, bank_amount = %.2f, cash_amount = %.2f WHERE id = %d",
+                                "UPDATE payslips SET meal_count = %.2f, subsidized_lunch = %.2f, unpaid_absent_amount = %.2f, total_earning = %.2f, total_deduction = %.2f, net_salary = %.2f, bank_amount = %.2f, cash_amount = %.2f, effective_days = %.2f, cycle_days = %d WHERE id = %d",
                                 $liveMealCount,
                                 $liveSubLunch,
+                                $unpaidAmt,
+                                $liveTotEarn,
                                 $newTotalDed,
                                 $newNetSalary,
                                 $newBank,
                                 $newCash,
+                                $liveEffDays,
+                                $cycleTotalDays,
                                 $pid
                             ));
-                            $row['meal_count']       = $liveMealCount;
-                            $row['subsidized_lunch'] = $liveSubLunch;
-                            $row['total_deduction']  = $newTotalDed;
-                            $row['net_salary']       = $newNetSalary;
-                            $row['bank_amount']      = $newBank;
-                            $row['cash_amount']      = $newCash;
+                            if ($lunchItemId) {
+                                $this->db->query(sprintf("DELETE FROM payslip_details WHERE payslip_id = %d AND payslip_item_id = %d", $pid, $lunchItemId));
+                                if ($liveSubLunch > 0) {
+                                    $this->db->query(sprintf("INSERT INTO payslip_details (payslip_id, payslip_item_id, amount) VALUES (%d, %d, %.2f)", $pid, $lunchItemId, $liveSubLunch));
+                                    $details[$lunchItemId] = $liveSubLunch;
+                                } else {
+                                    unset($details[$lunchItemId]);
+                                }
+                            }
+                            if ($absentItemId) {
+                                $this->db->query(sprintf("DELETE FROM payslip_details WHERE payslip_id = %d AND payslip_item_id = %d", $pid, $absentItemId));
+                                if ($unpaidAmt > 0) {
+                                    $this->db->query(sprintf("INSERT INTO payslip_details (payslip_id, payslip_item_id, amount) VALUES (%d, %d, %.2f)", $pid, $absentItemId, $unpaidAmt));
+                                    $details[$absentItemId] = $unpaidAmt;
+                                } else {
+                                    unset($details[$absentItemId]);
+                                }
+                            }
+                            $row['meal_count']                 = $liveMealCount;
+                            $row['subsidized_lunch']           = $liveSubLunch;
+                            $row['unpaid_absent_amount']       = $unpaidAmt;
+                            $row['saved_unpaid_absent_amount'] = $unpaidAmt;
+                            $row['total_earning']              = $liveTotEarn;
+                            $row['total_deduction']            = $newTotalDed;
+                            $row['net_salary']                 = $newNetSalary;
+                            $row['bank_amount']                = $newBank;
+                            $row['cash_amount']                = $newCash;
+                            $row['effective_days']             = $liveEffDays;
+                            $row['cycle_days']                 = $cycleTotalDays;
                         }
                     }
                 } else {
@@ -2441,16 +2737,10 @@ class PayrollController extends Controller
                     if (!empty($selectedProject)) {
                         $projIdInt = (int) $selectedProject;
                         $desgId = !empty($row['emp_designation_id']) ? (int) $row['emp_designation_id'] : null;
-                        $gross = (float) ($row['emp_gross'] ?? 0);
                         $basic = (float) ($row['emp_basic'] ?? 0);
-                        $daily = $gross / 30;
-
-                        $empJoinTs   = !empty($row['joining_date']) ? strtotime($row['joining_date']) : $cycleStartTs;
-                        $empResignTs = !empty($row['deleted_at']) ? strtotime(substr($row['deleted_at'], 0, 10)) : $cycleEndTs;
-                        $effStartTs  = max($cycleStartTs, $empJoinTs);
-                        $effEndTs    = min($cycleEndTs, $empResignTs);
-                        $empEffDays  = ($effStartTs > $effEndTs) ? 0 : min($cycleTotalDays, max(0, (int) round(($effEndTs - $effStartTs) / 86400) + 1));
-                        $effGross    = ($empEffDays < $cycleTotalDays && $daily > 0) ? round($empEffDays * $daily, 2) : $gross;
+                        if ($gross > 0 && ($basic <= 0 || abs(($basic * 2.0) - $gross) > 1.0)) {
+                            $basic = round($gross * 0.50, 2);
+                        }
 
                         $recAllow  = round($basic * 0.10, 2);
                         $convAllow = round($basic * 0.10, 2);
@@ -2464,12 +2754,13 @@ class PayrollController extends Controller
                         } else {
                             $unpaidDays = (float) ($row['tipsoi_absent'] ?? 0);
                         }
-                        $unpaidAmt = round($unpaidDays * $daily, 2);
+                        $unpaidAmt  = round($unpaidDays * $daily, 2);
+                        $empEffDays = max(0, round($serviceDays - $unpaidDays, 2));
 
                         $initMealCount = isset($mealCountsByEmp[$empId]) ? (float) $mealCountsByEmp[$empId] : 0.00;
                         $initSubLunch  = round($initMealCount * $effectiveMealRate, 2);
 
-                        $initTotalEarning   = $effGross;
+                        $initTotalEarning   = $serviceGross;
                         $initTotalDeduction = round($monthlyAdvance + $initSubLunch + $unpaidAmt, 2);
                         $initNetSalary      = max(0, round($initTotalEarning - $initTotalDeduction, 2));
 
@@ -2482,10 +2773,10 @@ class PayrollController extends Controller
                         $zeroVal   = 0.00;
                         $zeroInt   = 0;
 
-                        $initStmt = $this->db->prepare('INSERT INTO payslips (employee_id, payroll_project_id, designation_id, payment_method, payslip_month, status, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, special_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                        $initStmt = $this->db->prepare('INSERT INTO payslips (employee_id, payroll_project_id, designation_id, payment_method, payslip_month, status, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, special_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax, effective_days, cycle_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
                         if ($initStmt) {
                             $initStmt->bind_param(
-                                'iiisssdddsdddssidddddddddddddddd',
+                                'iiisssdddsdddssidddddddddddddddddi',
                                 $empId,
                                 $projIdInt,
                                 $desgId,
@@ -2517,7 +2808,9 @@ class PayrollController extends Controller
                                 $zeroVal,
                                 $zeroVal,
                                 $zeroVal,
-                                $zeroVal
+                                $zeroVal,
+                                $empEffDays,
+                                $cycleTotalDays
                             );
                             if ($initStmt->execute()) {
                                 $newPid = (int) $initStmt->insert_id;
@@ -2543,6 +2836,8 @@ class PayrollController extends Controller
                                 $row['advance_salary']                = $monthlyAdvance;
                                 $row['meal_count']                    = $initMealCount;
                                 $row['subsidized_lunch']              = $initSubLunch;
+                                $row['effective_days']                = $empEffDays;
+                                $row['cycle_days']                    = $cycleTotalDays;
                                 $row['is_excluded']                   = 0;
                             }
                             $initStmt->close();
@@ -2555,22 +2850,26 @@ class PayrollController extends Controller
             }
         }
 
-        // Check for active employees without a valid joining_date so project creation can warn/block
+        // Check for active employees without a valid joining_date so project creation can warn/block (MySQL 8.0 NO_ZERO_DATE safe)
         $missingJoiningDateEmployees = [];
-        $missingJoinRes = $this->db->query("
-            SELECT e.id, e.employee_id, e.full_name, d.name as department_name, desg.name as designation_name
-            FROM employees e
-            LEFT JOIN departments d ON e.department_id = d.id
-            LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE e.employee_status = 'active'
-              AND e.deleted_at IS NULL
-              AND (e.joining_date IS NULL OR TRIM(e.joining_date) = '' OR e.joining_date = '0000-00-00')
-            ORDER BY e.employee_id ASC
-        ");
-        if ($missingJoinRes) {
-            while ($mjRow = $missingJoinRes->fetch_assoc()) {
-                $missingJoiningDateEmployees[] = $mjRow;
+        try {
+            $missingJoinRes = $this->db->query("
+                SELECT e.id, e.employee_id, e.full_name, d.name as department_name, desg.name as designation_name
+                FROM employees e
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                WHERE e.employee_status = 'active'
+                  AND e.deleted_at IS NULL
+                  AND (e.joining_date IS NULL OR TRIM(CAST(e.joining_date AS CHAR)) = '' OR CAST(e.joining_date AS CHAR) = '0000-00-00')
+                ORDER BY e.employee_id ASC
+            ");
+            if ($missingJoinRes) {
+                while ($mjRow = $missingJoinRes->fetch_assoc()) {
+                    $missingJoiningDateEmployees[] = $mjRow;
+                }
             }
+        } catch (\Throwable $mje) {
+            error_log('PayrollController::workspace missingJoinRes warning: ' . $mje->getMessage());
         }
 
         $this->view('payrolls/payslips/workspace', [
@@ -2589,7 +2888,7 @@ class PayrollController extends Controller
             'mealCountsByEmp' => $mealCountsByEmp,
             'selectedFromDate' => $targetStartDate,
             'selectedToDate' => $targetEndDate,
-            'cycleTotalDays' => max(1, (int) round((strtotime($targetEndDate) - strtotime($targetStartDate)) / 86400) + 1),
+            'cycleTotalDays' => $cycleTotalDays ?? max(1, (int) (new \DateTime($targetStartDate))->diff(new \DateTime($targetEndDate))->days + 1),
             'missingJoiningDateEmployees' => $missingJoiningDateEmployees
         ]);
     }
@@ -2603,15 +2902,20 @@ class PayrollController extends Controller
         session_write_close();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Block project creation if any active employee has no joining_date set
-            $missingJoinCheck = $this->db->query("
-                SELECT employee_id, full_name
-                FROM employees
-                WHERE employee_status = 'active'
-                  AND deleted_at IS NULL
-                  AND (joining_date IS NULL OR TRIM(joining_date) = '' OR joining_date = '0000-00-00')
-                ORDER BY employee_id ASC
-            ");
+            // Block project creation if any active employee has no joining_date set (MySQL 8.0 NO_ZERO_DATE safe)
+            $missingJoinCheck = false;
+            try {
+                $missingJoinCheck = $this->db->query("
+                    SELECT employee_id, full_name
+                    FROM employees
+                    WHERE employee_status = 'active'
+                      AND deleted_at IS NULL
+                      AND (joining_date IS NULL OR TRIM(CAST(joining_date AS CHAR)) = '' OR CAST(joining_date AS CHAR) = '0000-00-00')
+                    ORDER BY employee_id ASC
+                ");
+            } catch (\Throwable $mjce) {
+                error_log('PayrollController::storePayrollProject missingJoinCheck warning: ' . $mjce->getMessage());
+            }
             if ($missingJoinCheck && $missingJoinCheck->num_rows > 0) {
                 $missingNames = [];
                 while ($mRow = $missingJoinCheck->fetch_assoc()) {
@@ -2648,8 +2952,16 @@ class PayrollController extends Controller
             }
 
             if ($is_custom) {
-                // For custom projects, derive 'date' from start_date month to satisfy UI backward compatibility.
-                $rawDate = date('Y-m', strtotime($rawStart));
+                // For custom projects (e.g. 26th Oct to 25th Nov), derive canonical month from end_date (closing month)
+                $rawDate = date('Y-m', strtotime($rawEnd ?: $rawStart));
+            } else {
+                // For monthly projects, persist the 26th-to-25th cycle dates explicitly in start_date & end_date
+                $mParts = explode('-', $rawDate);
+                if (count($mParts) >= 2) {
+                    $cRange = $this->getPayrollCycleDates((int) $mParts[0], (int) $mParts[1]);
+                    $rawStart = $cRange['start'];
+                    $rawEnd   = $cRange['end'];
+                }
             }
 
             $date = $this->db->real_escape_string($rawDate);
@@ -2671,17 +2983,8 @@ class PayrollController extends Controller
 
                 // Auto-link or auto-create matching Meal Project based on date range
                 $meal_project_id = !empty($_POST['meal_project_id']) ? (int) $_POST['meal_project_id'] : 0;
-                $checkStart = $is_custom ? $rawStart : '';
-                $checkEnd   = $is_custom ? $rawEnd : '';
-
-                if (!$is_custom && !empty($rawDate)) {
-                    $mParts = explode('-', $rawDate);
-                    if (count($mParts) === 2) {
-                        $cRange = $this->getCycleDateRange((int)$mParts[0], (int)$mParts[1]);
-                        $checkStart = date('Y-m-d', strtotime($cRange['start']));
-                        $checkEnd   = date('Y-m-d', strtotime($cRange['end']));
-                    }
-                }
+                $checkStart = $rawStart;
+                $checkEnd   = $rawEnd;
 
                 try {
                     if ($newProjId > 0 && !empty($checkStart) && !empty($checkEnd)) {
@@ -3310,10 +3613,23 @@ class PayrollController extends Controller
         // ORIGINAL LOGIC FALLBACK
         $items = $this->payslipItemModel->getAll();
 
+        $pdfRange = $this->getPayrollCycleDates((int) $selectedYear, (int) $selectedMonth);
+        if ($payrollProjectId > 0) {
+            $pRangeRes = $this->db->query("SELECT * FROM payroll_projects WHERE id = $payrollProjectId LIMIT 1");
+            if ($pRangeRes && $pRangeRow = $pRangeRes->fetch_assoc()) {
+                $pdfRange = $this->resolveProjectCycleRange($pRangeRow);
+            }
+        }
+        $pdfStartDate = $pdfRange['start'];
+        $pdfEndDate   = $pdfRange['end'];
+        $pdfCycleDays = max(1, (int) ($pdfRange['days'] ?? 30));
+        $escapedTargetStart = $this->db->real_escape_string($pdfStartDate);
+        $escapedTargetEnd   = $this->db->real_escape_string($pdfEndDate);
+
         $query = "
             SELECT p.*, 
                    e.full_name, e.employee_id as emp_id, e.email, e.workplace, 
-                   e.joining_date, e.account_holder_name, e.account_number, e.bank_name,
+                   e.joining_date, e.resign_date, e.account_holder_name, e.account_number, e.bank_name,
                    e.gross_salary as emp_gross, e.basic_salary as emp_basic,
                    e.deleted_at,
                    e.per_meal_amount,
@@ -3322,17 +3638,23 @@ class PayrollController extends Controller
             LEFT JOIN employees e ON p.employee_id = e.id
             LEFT JOIN departments dept ON e.department_id = dept.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE e.employee_status = 'active' " . ($payrollProjectId > 0 ? " AND p.payroll_project_id = $payrollProjectId" : " AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'") . "
+            WHERE e.deleted_at IS NULL " . ($payrollProjectId > 0 ? " AND p.payroll_project_id = $payrollProjectId" : " AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'") . "
             ORDER BY e.employee_id ASC
         ";
 
-        $res = $this->db->query($query);
+        $res = false;
+        try {
+            $res = $this->db->query($query);
+        } catch (\Throwable $pqe) {
+            error_log('PayrollController::workspace primary query exception: ' . $pqe->getMessage());
+            $res = false;
+        }
         if (!$res) {
             error_log('PayrollController::workspace primary query error: ' . $this->db->error);
             $fallbackQuery = "
                 SELECT e.id as real_emp_id_fk, NULL as id,
                        e.full_name, e.employee_id as emp_id, e.email, e.workplace,
-                       e.joining_date, e.account_holder_name, e.account_number, e.bank_name,
+                       e.joining_date, e.resign_date, e.account_holder_name, e.account_number, e.bank_name,
                        e.gross_salary as emp_gross, e.basic_salary as emp_basic,
                        e.deleted_at, e.per_meal_amount, e.is_meal_deduction, e.per_meal_percentage,
                        dept.name as department_name, desg.name as designation_name,
@@ -3342,10 +3664,40 @@ class PayrollController extends Controller
                 FROM employees e
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
-                WHERE e.employee_status = 'active' AND e.deleted_at IS NULL
+                WHERE e.deleted_at IS NULL
+                  AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedTargetStart'))
+                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedTargetEnd')
                 ORDER BY e.employee_id ASC
             ";
-            $res = $this->db->query($fallbackQuery);
+            try {
+                $res = $this->db->query($fallbackQuery);
+            } catch (\Throwable $fqe) {
+                error_log('PayrollController::workspace fallback query exception: ' . $fqe->getMessage());
+                $res = false;
+            }
+            if (!$res) {
+                $minimalFallbackQuery = "
+                    SELECT e.id as real_emp_id_fk, NULL as id,
+                           e.full_name, e.employee_id as emp_id, e.email, e.workplace,
+                           e.joining_date, NULL as resign_date, e.account_holder_name, e.account_number, e.bank_name,
+                           e.gross_salary as emp_gross, e.basic_salary as emp_basic,
+                           NULL as deleted_at, 0 as per_meal_amount, 1 as is_meal_deduction, 100 as per_meal_percentage,
+                           dept.name as department_name, desg.name as designation_name,
+                           NULL as saved_late_unpaid_absent_days, NULL as saved_unpaid_absent_amount,
+                           NULL as tipsoi_present, NULL as tipsoi_absent, NULL as tipsoi_leave, NULL as tipsoi_late,
+                           NULL as att_late_unpaid_absent_days, NULL as att_deduction, NULL as att_final_late, NULL as att_updated_at
+                    FROM employees e
+                    LEFT JOIN departments dept ON e.department_id = dept.id
+                    LEFT JOIN designations desg ON e.designation_id = desg.id
+                    WHERE LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active'
+                    ORDER BY e.employee_id ASC
+                ";
+                try {
+                    $res = $this->db->query($minimalFallbackQuery);
+                } catch (\Throwable $mfqe) {
+                    error_log('PayrollController::workspace minimal fallback query exception: ' . $mfqe->getMessage());
+                }
+            }
         }
         $payslips = [];
         if ($res) {
@@ -3435,7 +3787,8 @@ class PayrollController extends Controller
         foreach ($payslips as $p) {
             $gross = (float) $p['emp_gross'];
             $basic = (float) $p['emp_basic'];
-            $daily = $gross / 30;
+            $rowCycleDays = !empty($p['cycle_days']) ? (int) $p['cycle_days'] : $pdfCycleDays;
+            $daily = $rowCycleDays > 0 ? ($gross / $rowCycleDays) : 0;
             $netSalary = (float) $p['net_salary'];
             $paymentMethod = strtolower($p['payment_method']);
             $bank = ($paymentMethod == 'bank' || $paymentMethod == 'bank transfer') ? $netSalary : 0;
@@ -3512,13 +3865,18 @@ class PayrollController extends Controller
                 }
             }
 
+            $lwpDaysVal = isset($p['late_unpaid_absent_days']) ? (float) $p['late_unpaid_absent_days'] : ($daily > 0 ? round($unpaidAbsents / $daily, 2) : 0);
+            if ($unpaidAbsents <= 0 && !empty($p['unpaid_absent_amount'])) {
+                $unpaidAbsents = (float) $p['unpaid_absent_amount'];
+            }
+
             $html .= '
                 <td>' . number_format($gross, 2) . '</td>
                 <td>' . number_format($daily, 2) . '</td>
                 <td>' . number_format($advanceSalary, 2) . '</td>
                 <td>' . $mealCount . '</td>
                 <td>' . number_format($subsidizeLunch, 2) . '</td>
-                <td>0</td>
+                <td>' . (floor($lwpDaysVal) == $lwpDaysVal ? (int) $lwpDaysVal : number_format($lwpDaysVal, 2)) . '</td>
                 <td>' . number_format($unpaidAbsents, 2) . '</td>';
 
             foreach ($items as $item) {
@@ -3530,8 +3888,18 @@ class PayrollController extends Controller
                 }
             }
 
-            $joinDate = !empty($p['joining_date']) ? date('d-M-y', strtotime($p['joining_date'])) : '';
-            $resignDate = !empty($p['deleted_at']) ? date('d-M-y', strtotime($p['deleted_at'])) : '';
+            $joinRaw = (!empty($p['joining_date']) && $p['joining_date'] !== '0000-00-00') ? $p['joining_date'] : null;
+            $resignRaw = (!empty($p['resign_date']) && $p['resign_date'] !== '0000-00-00')
+                ? $p['resign_date']
+                : ((!empty($p['deleted_at']) && $p['deleted_at'] !== '0000-00-00') ? substr($p['deleted_at'], 0, 10) : null);
+            $joinDate = $joinRaw ? date('d-M-y', strtotime($joinRaw)) : '';
+            $resignDate = $resignRaw ? date('d-M-y', strtotime($resignRaw)) : '';
+
+            $serviceDaysRow = $this->computeServiceDays($pdfStartDate, $pdfEndDate, $joinRaw, $resignRaw);
+            $effDaysRow = (isset($p['effective_days']) && $p['effective_days'] !== null)
+                ? (float) $p['effective_days']
+                : max(0, round($serviceDaysRow - $lwpDaysVal, 2));
+            $effDaysDisp = (floor($effDaysRow) == $effDaysRow) ? (int) $effDaysRow : number_format($effDaysRow, 2);
 
             $html .= '
                 <td>' . ($punctBonus > 0 ? number_format($punctBonus, 2) : '0.00') . '</td>
@@ -3540,7 +3908,7 @@ class PayrollController extends Controller
                 <td>' . ($otherAllow > 0 ? number_format($otherAllow, 2) : '0.00') . '</td>
                 <td>' . ($joinDate ?: '&nbsp;') . '</td>
                 <td>' . ($resignDate ?: '&nbsp;') . '</td>
-                <td>30</td>
+                <td>' . $effDaysDisp . '</td>
                 <td>' . number_format($netSalary, 2) . '</td>
                 <td>' . number_format($tax, 2) . '</td>
                 <td>' . number_format($netSalary, 2) . '</td>
@@ -3604,29 +3972,31 @@ class PayrollController extends Controller
         // Strict priority: resolve canonical timeframe from payroll_projects
         $projStartDate = '';
         $projEndDate   = '';
+        $projCycleDays = (int) ($input['cycle_days'] ?? 0);
         if ($projectId > 0) {
             $projRes = $this->db->query('SELECT date, is_custom_date, start_date, end_date FROM payroll_projects WHERE id = ' . $projectId);
             if ($projRes && $pRow = $projRes->fetch_assoc()) {
-                if (!empty($pRow['is_custom_date']) && !empty($pRow['start_date'])) {
-                    $projStartDate = $pRow['start_date'];
-                    $projEndDate   = $pRow['end_date'] ?? '';
-                    $year = (int) date('Y', strtotime($pRow['start_date']));
-                    $month = (int) date('m', strtotime($pRow['start_date']));
-                } elseif (!empty($pRow['date'])) {
-                    $parts = explode('-', $pRow['date']);
-                    if (count($parts) >= 2) {
-                        $year = (int) $parts[0];
-                        $month = (int) $parts[1];
-                        $projStartDate = sprintf('%04d-%02d-01', $year, $month);
-                        $projEndDate   = date('Y-m-t', strtotime($projStartDate));
-                    }
-                }
+                $resolvedRange = $this->resolveProjectCycleRange($pRow);
+                $projStartDate = $resolvedRange['start'];
+                $projEndDate   = $resolvedRange['end'];
+                $projCycleDays = (int) $resolvedRange['days'];
+                $year          = (int) $resolvedRange['year'];
+                $month         = (int) $resolvedRange['month'];
             }
         }
         if ($year < 2000)
             $year = (int) date('Y');
         if ($month < 1 || $month > 12)
             $month = (int) date('m');
+        if (empty($projStartDate) || empty($projEndDate)) {
+            $fallbackRange = $this->getPayrollCycleDates($year, $month);
+            $projStartDate = $fallbackRange['start'];
+            $projEndDate   = $fallbackRange['end'];
+            $projCycleDays = (int) $fallbackRange['days'];
+        }
+        if ($projCycleDays <= 0) {
+            $projCycleDays = max(1, (int) (new \DateTime($projStartDate))->diff(new \DateTime($projEndDate))->days + 1);
+        }
 
         $payslipMonth = sprintf('%04d-%02d-01', $year, $month);
 
@@ -3666,12 +4036,21 @@ class PayrollController extends Controller
             $this->db->query("ALTER TABLE payslips ADD COLUMN special_allowance DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER house_rent_allowance");
         }
 
-        // Pre-fetch employee designation mapping
+        // Pre-fetch employee designation & tenure dates mapping
         $empDesgMap = [];
-        $edRes = $this->db->query('SELECT id, designation_id FROM employees');
+        $empDateMap = [];
+        $edRes = $this->db->query('SELECT id, designation_id, joining_date, resign_date, deleted_at FROM employees');
         if ($edRes) {
             while ($ed = $edRes->fetch_assoc()) {
-                $empDesgMap[(int) $ed['id']] = !empty($ed['designation_id']) ? (int) $ed['designation_id'] : null;
+                $eidInt = (int) $ed['id'];
+                $empDesgMap[$eidInt] = !empty($ed['designation_id']) ? (int) $ed['designation_id'] : null;
+                $rClean = (!empty($ed['resign_date']) && $ed['resign_date'] !== '0000-00-00')
+                    ? substr(trim((string) $ed['resign_date']), 0, 10)
+                    : ((!empty($ed['deleted_at']) && $ed['deleted_at'] !== '0000-00-00') ? substr(trim((string) $ed['deleted_at']), 0, 10) : null);
+                $empDateMap[$eidInt] = [
+                    'joining_date' => $ed['joining_date'] ?? null,
+                    'resign_date'  => $rClean
+                ];
             }
         }
 
@@ -3689,6 +4068,12 @@ class PayrollController extends Controller
                 $cashAmount = (float) ($row['cash_amount'] ?? 0);
                 $paymentMethod = ($cashAmount > 0 && $bankAmount <= 0) ? 'cash' : 'bank';
                 $lateUnpaidAbsentDays = (float) ($row['late_unpaid_absent_days'] ?? 0);
+                $empDates = $empDateMap[$employeeId] ?? ['joining_date' => null, 'resign_date' => null];
+                $empSrvDays = $this->computeServiceDays($projStartDate, $projEndDate, $empDates['joining_date'], $empDates['resign_date']);
+                $effectiveDays = isset($row['effective_days']) && $row['effective_days'] !== ''
+                    ? max(0, (float) $row['effective_days'])
+                    : max(0, round($empSrvDays - $lateUnpaidAbsentDays, 2));
+                $rowCycleDays = !empty($row['cycle_days']) ? (int) $row['cycle_days'] : $projCycleDays;
                 $remarks = trim((string) ($row['remarks'] ?? ''));
                 $attRemarks = trim((string) ($row['attendance_remarks'] ?? ''));
                 $isExcluded = isset($row['is_excluded']) ? (int) $row['is_excluded'] : 0;
@@ -3728,18 +4113,18 @@ class PayrollController extends Controller
                 $saveStatus = ($existingStatus === 'paid') ? 'paid' : 'draft';
 
                 if ($payslipId > 0) {
-                    $stmt = $this->db->prepare('UPDATE payslips SET designation_id=?, payment_method=?, payslip_month=?, status=?, total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, special_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=?, updated_at=NOW() WHERE id=?');
+                    $stmt = $this->db->prepare('UPDATE payslips SET designation_id=?, payment_method=?, payslip_month=?, status=?, total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, special_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=?, effective_days=?, cycle_days=?, updated_at=NOW() WHERE id=?');
                     if ($stmt) {
-                        $stmt->bind_param('isssdddsdddssiddddddddddddddddi', $designationId, $paymentMethod, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $special_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $payslipId);
+                        $stmt->bind_param('isssdddsdddssidddddddddddddddddii', $designationId, $paymentMethod, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $special_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $effectiveDays, $rowCycleDays, $payslipId);
                         $stmt->execute();
                         $stmt->close();
                     } else {
                         throw new Exception('Payslips update failed: ' . $this->db->error);
                     }
                 } else {
-                    $stmt = $this->db->prepare('INSERT INTO payslips (employee_id, payroll_project_id, designation_id, payment_method, payslip_month, status, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, special_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                    $stmt = $this->db->prepare('INSERT INTO payslips (employee_id, payroll_project_id, designation_id, payment_method, payslip_month, status, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, special_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax, effective_days, cycle_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
                     if ($stmt) {
-                        $stmt->bind_param('iiisssdddsdddssidddddddddddddddd', $employeeId, $projectId, $designationId, $paymentMethod, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $special_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax);
+                        $stmt->bind_param('iiisssdddsdddssidddddddddddddddddi', $employeeId, $projectId, $designationId, $paymentMethod, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $special_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $effectiveDays, $rowCycleDays);
                         $stmt->execute();
                         $payslipId = $stmt->insert_id;
                         $stmt->close();
@@ -3933,13 +4318,21 @@ class PayrollController extends Controller
             return (int) $row['id'];
         }
 
-        // 2. If full calendar month (YYYY-MM-01 to YYYY-MM-t), match monthly project by date = 'YYYY-MM'
+        // 2. If 26th-to-25th monthly cycle OR full calendar month, match monthly project by date = 'YYYY-MM'
+        $endY = (int) date('Y', strtotime($toDate));
+        $endM = (int) date('n', strtotime($toDate));
+        $expectedCycle = $this->getPayrollCycleDates($endY, $endM);
+        $isStandardCycle = ($fromDate === $expectedCycle['start'] && $toDate === $expectedCycle['end']);
+
         $monthStart = date('Y-m-01', strtotime($fromDate));
         $monthEnd = date('Y-m-t', strtotime($fromDate));
-        $monthCode = date('Y-m', strtotime($fromDate));
         $isFullMonth = ($fromDate === $monthStart && $toDate === $monthEnd);
 
-        if ($isFullMonth) {
+        $monthCode = $isStandardCycle
+            ? sprintf('%04d-%02d', $endY, $endM)
+            : date('Y-m', strtotime($fromDate));
+
+        if ($isStandardCycle || $isFullMonth) {
             $escMonth = $this->db->real_escape_string($monthCode);
             $mRes = $this->db->query("SELECT id FROM payroll_projects WHERE (is_custom_date = 0 OR is_custom_date IS NULL) AND date = '$escMonth' ORDER BY id DESC LIMIT 1");
             if ($mRes && $mRow = $mRes->fetch_assoc()) {
@@ -3949,9 +4342,9 @@ class PayrollController extends Controller
 
         // 3. Optionally auto-create if saving attendance modifications without a pre-existing project
         if ($createIfMissing) {
-            $isCustom = $isFullMonth ? 0 : 1;
-            $projName = $isFullMonth
-                ? ('Salary - ' . date('F Y', strtotime($fromDate)))
+            $isCustom = $isStandardCycle ? 0 : 1;
+            $projName = $isStandardCycle
+                ? ('Salary - ' . date('F Y', strtotime($monthCode . '-01')))
                 : ('Attendance (' . date('d M Y', strtotime($fromDate)) . ' - ' . date('d M Y', strtotime($toDate)) . ')');
             $stmt = $this->db->prepare('INSERT INTO payroll_projects (name, date, is_custom_date, start_date, end_date) VALUES (?, ?, ?, ?, ?)');
             if ($stmt) {
@@ -4107,18 +4500,9 @@ class PayrollController extends Controller
             return false;
         }
 
-        $fromDateStr = '';
-        $toDateStr = '';
-        if (!empty($proj['is_custom_date']) && !empty($proj['start_date']) && !empty($proj['end_date'])) {
-            $fromDateStr = $proj['start_date'];
-            $toDateStr = $proj['end_date'];
-        } elseif (!empty($proj['date'])) {
-            $parts = explode('-', $proj['date']);
-            if (count($parts) === 2) {
-                $fromDateStr = sprintf('%04d-%02d-01', (int)$parts[0], (int)$parts[1]);
-                $toDateStr = date('Y-m-t', strtotime($fromDateStr));
-            }
-        }
+        $resolved = $this->resolveProjectCycleRange($proj);
+        $fromDateStr = $resolved['start'];
+        $toDateStr   = $resolved['end'];
 
         if (empty($fromDateStr) || empty($toDateStr)) {
             return false;
@@ -4204,18 +4588,9 @@ class PayrollController extends Controller
             if ($pRow = $pRes->fetch_assoc()) {
                 $projectName = $pRow['name'];
                 if (empty($_GET['from_date']) || empty($_GET['to_date'])) {
-                    if (!empty($pRow['is_custom_date']) && !empty($pRow['start_date']) && !empty($pRow['end_date'])) {
-                        $fromDateStr = $pRow['start_date'];
-                        $toDateStr = $pRow['end_date'];
-                    } elseif (!empty($pRow['date'])) {
-                        $parts = explode('-', $pRow['date']);
-                        if (count($parts) >= 2) {
-                            $y = (int) $parts[0];
-                            $m = (int) $parts[1];
-                            $fromDateStr = sprintf('%04d-%02d-01', $y, $m);
-                            $toDateStr = date('Y-m-t', strtotime($fromDateStr));
-                        }
-                    }
+                    $resolvedRange = $this->resolveProjectCycleRange($pRow);
+                    $fromDateStr = $resolvedRange['start'];
+                    $toDateStr   = $resolvedRange['end'];
                 }
             }
             $pStmt->close();
@@ -4258,8 +4633,10 @@ class PayrollController extends Controller
                      FROM employees e 
                      LEFT JOIN departments d ON e.department_id = d.id 
                      LEFT JOIN designations des ON e.designation_id = des.id 
-                     WHERE (e.employee_status = 'active' OR e.resign_date >= '$escapedFromDate')
-                       AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
+                     WHERE e.deleted_at IS NULL
+                       AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedFromDate'))
+                       AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedToDate')
+                       AND (e.resign_date IS NULL OR CAST(e.resign_date AS CHAR) = '0000-00-00' OR e.resign_date >= '$escapedFromDate')
                      ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC";
         $localQuery = $this->db->query($localSql);
         $localEmployees = [];
@@ -4652,8 +5029,9 @@ class PayrollController extends Controller
     {
         $currentYear = date('Y');
         $currentMonth = date('m');
-        $defaultFrom = date('Y-m-01');
-        $defaultTo = date('Y-m-t');
+        $defaultCycle = $this->getPayrollCycleDates((int) $currentYear, (int) $currentMonth);
+        $defaultFrom = $defaultCycle['start'];
+        $defaultTo = $defaultCycle['end'];
 
         $filterType = $_GET['filter_type'] ?? 'monthly';
         $fromDate = $defaultFrom;
@@ -4671,36 +5049,35 @@ class PayrollController extends Controller
         $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
 
         // Auto-synchronize dates from selected project (project dates take authoritative precedence)
+        $resolvedFromProject = false;
         if ($payrollProjectId) {
             foreach ($payroll_projects as $prj) {
-                if ($prj['id'] == $payrollProjectId) {
-                    if (!empty($prj['is_custom_date']) && !empty($prj['start_date']) && !empty($prj['end_date'])) {
-                        $filterType = 'custom';
-                        $fromDate = $prj['start_date'];
-                        $toDate = $prj['end_date'];
-                    } elseif (!empty($prj['date'])) {
-                        $filterType = 'monthly';
-                        $parts = explode('-', $prj['date']);
-                        if (count($parts) >= 2) {
-                            $currentYear = $parts[0];
-                            $currentMonth = $parts[1];
-                            $_GET['year'] = $parts[0];
-                            $_GET['month'] = $parts[1];
-                        }
-                    }
+                if ((int) $prj['id'] === $payrollProjectId) {
+                    $resolved = $this->resolveProjectCycleRange($prj);
+                    $filterType = $resolved['filter_type'];
+                    $fromDate = $resolved['start'];
+                    $toDate = $resolved['end'];
+                    $currentYear = (string) $resolved['year'];
+                    $currentMonth = (string) $resolved['month'];
+                    $_GET['year'] = $currentYear;
+                    $_GET['month'] = $currentMonth;
+                    $resolvedFromProject = true;
                     break;
                 }
             }
         }
 
-        if ($filterType === 'monthly') {
-            $m = $_GET['month'] ?? $currentMonth;
-            $y = $_GET['year'] ?? $currentYear;
-            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
-            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
-        } elseif ($filterType === 'custom') {
-            $fromDate = $_GET['from_date'] ?? $fromDate;
-            $toDate = $_GET['to_date'] ?? $toDate;
+        if (!$resolvedFromProject) {
+            if ($filterType === 'monthly') {
+                $m = (int) ($_GET['month'] ?? $currentMonth);
+                $y = (int) ($_GET['year'] ?? $currentYear);
+                $cycle = $this->getPayrollCycleDates($y, $m);
+                $fromDate = $cycle['start'];
+                $toDate = $cycle['end'];
+            } elseif ($filterType === 'custom') {
+                $fromDate = !empty($_GET['from_date']) ? $_GET['from_date'] : $fromDate;
+                $toDate = !empty($_GET['to_date']) ? $_GET['to_date'] : $toDate;
+            }
         }
 
         $localSql = 'SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
@@ -4771,8 +5148,9 @@ class PayrollController extends Controller
     {
         $currentYear = date('Y');
         $currentMonth = date('m');
-        $defaultFrom = date('Y-m-01');
-        $defaultTo = date('Y-m-t');
+        $defaultCycle = $this->getPayrollCycleDates((int) $currentYear, (int) $currentMonth);
+        $defaultFrom = $defaultCycle['start'];
+        $defaultTo = $defaultCycle['end'];
 
         $filterType = $_GET['filter_type'] ?? 'monthly';
         $fromDate = $defaultFrom;
@@ -4781,6 +5159,7 @@ class PayrollController extends Controller
         $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
 
         $projectName = '';
+        $resolvedFromProject = false;
         if ($payrollProjectId) {
             $pStmt = $this->db->prepare('SELECT name, date, is_custom_date, start_date, end_date FROM payroll_projects WHERE id = ?');
             $pStmt->bind_param('i', $payrollProjectId);
@@ -4788,31 +5167,28 @@ class PayrollController extends Controller
             $pRes = $pStmt->get_result();
             if ($pRow = $pRes->fetch_assoc()) {
                 $projectName = $pRow['name'];
-                if (empty($_GET['from_date']) && empty($_GET['month'])) {
-                    if (!empty($pRow['is_custom_date']) && !empty($pRow['start_date']) && !empty($pRow['end_date'])) {
-                        $filterType = 'custom';
-                        $fromDate = $pRow['start_date'];
-                        $toDate = $pRow['end_date'];
-                    } elseif (!empty($pRow['date'])) {
-                        $parts = explode('-', $pRow['date']);
-                        if (count($parts) >= 2) {
-                            $_GET['year'] = $parts[0];
-                            $_GET['month'] = $parts[1];
-                        }
-                    }
-                }
+                $resolved = $this->resolveProjectCycleRange($pRow);
+                $filterType = $resolved['filter_type'];
+                $fromDate = $resolved['start'];
+                $toDate = $resolved['end'];
+                $_GET['year'] = (string) $resolved['year'];
+                $_GET['month'] = (string) $resolved['month'];
+                $resolvedFromProject = true;
             }
             $pStmt->close();
         }
 
-        if ($filterType === 'monthly') {
-            $m = $_GET['month'] ?? $currentMonth;
-            $y = $_GET['year'] ?? $currentYear;
-            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
-            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
-        } elseif ($filterType === 'custom') {
-            $fromDate = $_GET['from_date'] ?? $fromDate;
-            $toDate = $_GET['to_date'] ?? $toDate;
+        if (!$resolvedFromProject) {
+            if ($filterType === 'monthly') {
+                $m = (int) ($_GET['month'] ?? $currentMonth);
+                $y = (int) ($_GET['year'] ?? $currentYear);
+                $cycle = $this->getPayrollCycleDates($y, $m);
+                $fromDate = $cycle['start'];
+                $toDate = $cycle['end'];
+            } elseif ($filterType === 'custom') {
+                $fromDate = !empty($_GET['from_date']) ? $_GET['from_date'] : $fromDate;
+                $toDate = !empty($_GET['to_date']) ? $_GET['to_date'] : $toDate;
+            }
         }
 
         $localSql = 'SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
@@ -4934,8 +5310,9 @@ class PayrollController extends Controller
     {
         $currentYear = date('Y');
         $currentMonth = date('m');
-        $defaultFrom = date('Y-m-01');
-        $defaultTo = date('Y-m-t');
+        $defaultCycle = $this->getPayrollCycleDates((int) $currentYear, (int) $currentMonth);
+        $defaultFrom = $defaultCycle['start'];
+        $defaultTo = $defaultCycle['end'];
 
         $filterType = $_GET['filter_type'] ?? 'monthly';
         $fromDate = $defaultFrom;
@@ -4952,32 +5329,36 @@ class PayrollController extends Controller
 
         $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
 
-        // Auto-synchronize dates from selected project if not explicitly customized
+        // Auto-synchronize dates from selected project
+        $resolvedFromProject = false;
         if ($payrollProjectId) {
             foreach ($payroll_projects as $prj) {
-                if ($prj['id'] == $payrollProjectId) {
-                    if (empty($_GET['month']) && empty($_GET['from_date'])) {
-                        if (!empty($prj['date'])) {
-                            $parts = explode('-', $prj['date']);
-                            if (count($parts) >= 2) {
-                                $_GET['year'] = $parts[0];
-                                $_GET['month'] = $parts[1];
-                            }
-                        }
-                    }
+                if ((int) $prj['id'] === $payrollProjectId) {
+                    $resolved = $this->resolveProjectCycleRange($prj);
+                    $filterType = $resolved['filter_type'];
+                    $fromDate = $resolved['start'];
+                    $toDate = $resolved['end'];
+                    $currentYear = (string) $resolved['year'];
+                    $currentMonth = (string) $resolved['month'];
+                    $_GET['year'] = $currentYear;
+                    $_GET['month'] = $currentMonth;
+                    $resolvedFromProject = true;
                     break;
                 }
             }
         }
 
-        if ($filterType === 'monthly') {
-            $m = $_GET['month'] ?? $currentMonth;
-            $y = $_GET['year'] ?? $currentYear;
-            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
-            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
-        } elseif ($filterType === 'custom') {
-            $fromDate = $_GET['from_date'] ?? $defaultFrom;
-            $toDate = $_GET['to_date'] ?? $defaultTo;
+        if (!$resolvedFromProject) {
+            if ($filterType === 'monthly') {
+                $m = (int) ($_GET['month'] ?? $currentMonth);
+                $y = (int) ($_GET['year'] ?? $currentYear);
+                $cycle = $this->getPayrollCycleDates($y, $m);
+                $fromDate = $cycle['start'];
+                $toDate = $cycle['end'];
+            } elseif ($filterType === 'custom') {
+                $fromDate = !empty($_GET['from_date']) ? $_GET['from_date'] : $defaultFrom;
+                $toDate = !empty($_GET['to_date']) ? $_GET['to_date'] : $defaultTo;
+            }
         }
 
         $sql = 'SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
@@ -5043,8 +5424,9 @@ class PayrollController extends Controller
     {
         $currentYear = date('Y');
         $currentMonth = date('m');
-        $defaultFrom = date('Y-m-01');
-        $defaultTo = date('Y-m-t');
+        $defaultCycle = $this->getPayrollCycleDates((int) $currentYear, (int) $currentMonth);
+        $defaultFrom = $defaultCycle['start'];
+        $defaultTo = $defaultCycle['end'];
 
         $filterType = $_GET['filter_type'] ?? 'monthly';
         $fromDate = $defaultFrom;
@@ -5053,34 +5435,36 @@ class PayrollController extends Controller
         $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
 
         $projectName = '';
+        $resolvedFromProject = false;
         if ($payrollProjectId) {
-            $pStmt = $this->db->prepare('SELECT name, date FROM payroll_projects WHERE id = ?');
+            $pStmt = $this->db->prepare('SELECT name, date, is_custom_date, start_date, end_date FROM payroll_projects WHERE id = ?');
             $pStmt->bind_param('i', $payrollProjectId);
             $pStmt->execute();
             $pRes = $pStmt->get_result();
             if ($pRow = $pRes->fetch_assoc()) {
                 $projectName = $pRow['name'];
-                if (empty($_GET['month']) && empty($_GET['from_date'])) {
-                    if (!empty($pRow['date'])) {
-                        $parts = explode('-', $pRow['date']);
-                        if (count($parts) >= 2) {
-                            $_GET['year'] = $parts[0];
-                            $_GET['month'] = $parts[1];
-                        }
-                    }
-                }
+                $resolved = $this->resolveProjectCycleRange($pRow);
+                $filterType = $resolved['filter_type'];
+                $fromDate = $resolved['start'];
+                $toDate = $resolved['end'];
+                $_GET['year'] = (string) $resolved['year'];
+                $_GET['month'] = (string) $resolved['month'];
+                $resolvedFromProject = true;
             }
             $pStmt->close();
         }
 
-        if ($filterType === 'monthly') {
-            $m = $_GET['month'] ?? $currentMonth;
-            $y = $_GET['year'] ?? $currentYear;
-            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
-            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
-        } elseif ($filterType === 'custom') {
-            $fromDate = $_GET['from_date'] ?? $defaultFrom;
-            $toDate = $_GET['to_date'] ?? $defaultTo;
+        if (!$resolvedFromProject) {
+            if ($filterType === 'monthly') {
+                $m = (int) ($_GET['month'] ?? $currentMonth);
+                $y = (int) ($_GET['year'] ?? $currentYear);
+                $cycle = $this->getPayrollCycleDates($y, $m);
+                $fromDate = $cycle['start'];
+                $toDate = $cycle['end'];
+            } elseif ($filterType === 'custom') {
+                $fromDate = !empty($_GET['from_date']) ? $_GET['from_date'] : $defaultFrom;
+                $toDate = !empty($_GET['to_date']) ? $_GET['to_date'] : $defaultTo;
+            }
         }
 
         $sql = 'SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,

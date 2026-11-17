@@ -18,7 +18,9 @@
                             <select id="projectSelect" class="form-select select2">
                                 <option value="">-- Select Project --</option>
                                 <?php foreach ($payroll_projects as $proj): 
-                                    $projEffectiveDate = !empty($proj['date']) ? $proj['date'] : ($proj['start_date'] ?? '');
+                                    $projEffectiveDate = (!empty($proj['is_custom_date']) && !empty($proj['end_date']) && $proj['end_date'] !== '0000-00-00')
+                                        ? $proj['end_date']
+                                        : (!empty($proj['date']) ? $proj['date'] : ($proj['start_date'] ?? ''));
                                 ?>
                                     <option value="<?= $proj['id'] ?>" data-date="<?= htmlspecialchars($projEffectiveDate) ?>" <?= (isset($selected_project_id) && $selected_project_id == $proj['id']) ? 'selected' : '' ?>><?= htmlspecialchars($proj['name']) ?></option>
                                 <?php endforeach; ?>
@@ -249,6 +251,7 @@
 
         let payslipItems = [];
         let employeeDataList = [];
+        let projectCycleDays = 30;
 
         function syncMonthFromProject() {
             const selectedOpt = projectSelect.options[projectSelect.selectedIndex];
@@ -307,6 +310,7 @@
                     if (res && res.success) {
                         payslipItems = res.payslip_items || [];
                         employeeDataList = res.employees || [];
+                        projectCycleDays = parseInt(res.cycle_days, 10) || 30;
                         populateItemMap();
 
                         if (employeeDataList.length === 0) {
@@ -397,13 +401,29 @@
                 
                 const sl = index + 1;
                 const gross = parseFloat(emp.gross_salary) || 0;
-                const basic = parseFloat(emp.basic_salary) || 0;
-                const daily = gross / 30;
+                const rawBasic = parseFloat(emp.basic_salary) || 0;
+                const basic = (gross > 0 && (rawBasic <= 0 || Math.abs((rawBasic * 2) - gross) > 1))
+                    ? Math.round(gross * 0.50 * 100) / 100
+                    : rawBasic;
+                const cycleDays = parseInt(emp.cycle_days, 10) || projectCycleDays || 30;
+                const parsedSrv = (emp.service_days !== undefined && emp.service_days !== null && emp.service_days !== '')
+                    ? parseFloat(emp.service_days)
+                    : NaN;
+                const serviceDays = !isNaN(parsedSrv) ? parsedSrv : cycleDays;
+                const daily = cycleDays > 0 ? (gross / cycleDays) : 0;
+                tr.dataset.cycleDays = cycleDays;
+                tr.dataset.serviceDays = serviceDays;
 
-                const recVal = (emp.recreation_allowance !== null && emp.recreation_allowance !== undefined && emp.recreation_allowance !== '') ? parseFloat(emp.recreation_allowance) : (basic * itemPercents.recreation);
-                const convVal = (emp.conveyance_allowance !== null && emp.conveyance_allowance !== undefined && emp.conveyance_allowance !== '') ? parseFloat(emp.conveyance_allowance) : (basic * itemPercents.conveyance);
-                const medVal = (emp.medical_allowance !== null && emp.medical_allowance !== undefined && emp.medical_allowance !== '') ? parseFloat(emp.medical_allowance) : (basic * itemPercents.medical);
-                const hrVal = (emp.house_rent_allowance !== null && emp.house_rent_allowance !== undefined && emp.house_rent_allowance !== '') ? parseFloat(emp.house_rent_allowance) : (basic * itemPercents.houserent);
+                let recVal = (emp.recreation_allowance !== null && emp.recreation_allowance !== undefined && emp.recreation_allowance !== '') ? parseFloat(emp.recreation_allowance) : (basic * itemPercents.recreation);
+                let convVal = (emp.conveyance_allowance !== null && emp.conveyance_allowance !== undefined && emp.conveyance_allowance !== '') ? parseFloat(emp.conveyance_allowance) : (basic * itemPercents.conveyance);
+                let medVal = (emp.medical_allowance !== null && emp.medical_allowance !== undefined && emp.medical_allowance !== '') ? parseFloat(emp.medical_allowance) : (basic * itemPercents.medical);
+                let hrVal = (emp.house_rent_allowance !== null && emp.house_rent_allowance !== undefined && emp.house_rent_allowance !== '') ? parseFloat(emp.house_rent_allowance) : (basic * itemPercents.houserent);
+                if (gross > 0 && Math.abs((basic + recVal + convVal + medVal + hrVal) - gross) > 1) {
+                    recVal = Math.round(basic * 0.10 * 100) / 100;
+                    convVal = Math.round(basic * 0.10 * 100) / 100;
+                    medVal = Math.round(basic * 0.30 * 100) / 100;
+                    hrVal = Math.round(basic * 0.50 * 100) / 100;
+                }
                 const specialVal = (emp.special_allowance !== null && emp.special_allowance !== undefined && emp.special_allowance !== '') ? parseFloat(emp.special_allowance) : (parseFloat(emp.configured_items && itemMap.special ? emp.configured_items[itemMap.special] : 0) || 0);
 
                 const mealCount = parseFloat(emp.meal_count !== undefined && emp.meal_count !== null ? emp.meal_count : (emp.tipsoi_present || 0));
@@ -411,6 +431,8 @@
                 const advanceSalary = parseFloat(emp.advance_salary || 0);
                 const subsidizedLunch = parseFloat(emp.subsidized_lunch || 0);
                 const unpaidAbsentAmount = (emp.unpaid_absent_amount !== undefined && emp.unpaid_absent_amount !== null && parseFloat(emp.unpaid_absent_amount) > 0) ? parseFloat(emp.unpaid_absent_amount) : (unpaidAbsentsDays * daily);
+                const effDays = Math.max(0, Math.round((serviceDays - unpaidAbsentsDays) * 100) / 100);
+                const effDaysDisp = Number.isInteger(effDays) ? String(effDays) : effDays.toFixed(2);
 
                 const isHold = String(emp.salary_hold || '').toLowerCase().trim() === 'hold';
                 const arrearsDeduction = parseFloat(emp.arrears_deduction || 0);
@@ -453,8 +475,8 @@
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-houserent bg-light" ${itemMap.houserent ? `data-item-id="${itemMap.houserent}"` : ''} value="${hrVal.toFixed(2)}" readonly tabindex="-1" style="min-width: 80px; pointer-events: none;"></td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-special" ${itemMap.special ? `data-item-id="${itemMap.special}"` : ''} value="${specialVal.toFixed(2)}" style="min-width: 90px;"></td>
 
-                <td class="cell-gross fw-bold text-nowrap">${gross.toFixed(2)}</td>
-                <td class="cell-daily text-nowrap" data-val="${daily.toFixed(2)}">${daily.toFixed(2)}</td>
+                <td class="cell-gross fw-bold text-nowrap" data-val="${gross}">${gross.toFixed(2)}</td>
+                <td class="cell-daily text-nowrap" data-val="${daily}">${daily.toFixed(2)}</td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-advance" ${itemMap.advance ? `data-item-id="${itemMap.advance}"` : ''} value="${advanceSalary.toFixed(2)}" style="min-width: 80px;"></td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-mealcount" data-permeal="${emp.per_meal_amount || 0}" value="${mealCount}" style="width: 60px;"></td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-sublunch" ${itemMap.lunch ? `data-item-id="${itemMap.lunch}"` : ''} value="${subsidizedLunch.toFixed(2)}" style="min-width: 80px;"></td>
@@ -474,7 +496,7 @@
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-otherallow" ${itemMap.duty ? `data-item-id="${itemMap.duty}"` : ''} value="${dutyAllowance.toFixed(2)}" style="min-width: 80px;"></td>
                 <td class="text-nowrap">${joiningDate}</td>
                 <td class="text-nowrap">${resignationDate}</td>
-                <td class="cell-effective-days text-center">30</td>
+                <td class="cell-effective-days text-center" data-service-days="${serviceDays}" data-val="${effDays}">${effDaysDisp}</td>
                 <td class="cell-net fw-bold text-primary text-nowrap" data-payment-method="${emp.payment_method || 'bank'}">${savedNetSalary > 0 ? savedNetSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-tax" ${itemMap.tax ? `data-item-id="${itemMap.tax}"` : ''} value="${tax.toFixed(2)}" style="min-width: 80px;"></td>
                 <td class="cell-netpayable fw-bold text-success text-nowrap">${savedNetSalary > 0 ? savedNetSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
@@ -515,7 +537,7 @@
                 }
             }
 
-            const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
+            const absentDays = Math.max(0, parseFloat(row.querySelector('.in-absent-days').value) || 0);
             const currentUnpaid = row.querySelector('.in-unpaid');
             if (!isInitial) {
                 // User interacted
@@ -525,8 +547,25 @@
                 }
             }
 
-            let gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
-            let totalEarning = gross;
+            const cycleDays = parseInt(row.dataset.cycleDays, 10) || projectCycleDays || 30;
+            const effDaysCell = row.querySelector('.cell-effective-days');
+            const parsedSrv = effDaysCell && effDaysCell.dataset.serviceDays !== undefined
+                ? parseFloat(effDaysCell.dataset.serviceDays)
+                : parseFloat(row.dataset.serviceDays);
+            const serviceDays = !isNaN(parsedSrv) ? parsedSrv : cycleDays;
+            const actualEffectiveDays = Math.max(0, Math.round((serviceDays - absentDays) * 100) / 100);
+            if (effDaysCell) {
+                effDaysCell.dataset.val = actualEffectiveDays;
+                effDaysCell.textContent = Number.isInteger(actualEffectiveDays)
+                    ? String(actualEffectiveDays)
+                    : actualEffectiveDays.toFixed(2);
+            }
+
+            let gross = parseFloat(row.querySelector('.cell-gross').dataset.val || row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
+            let serviceGross = (serviceDays < cycleDays && daily > 0)
+                ? Math.round(serviceDays * daily * 100) / 100
+                : gross;
+            let totalEarning = serviceGross;
             row.querySelectorAll('.in-earning').forEach(inp => {
                 if (!inp.classList.contains('in-basic-allowance')) {
                     totalEarning += (parseFloat(inp.value) || 0);
@@ -538,7 +577,7 @@
                 totalDeduction += (parseFloat(inp.value) || 0);
             });
 
-            let netSalary = totalEarning - totalDeduction;
+            let netSalary = Math.max(0, Math.round((totalEarning - totalDeduction) * 100) / 100);
             let netCell = row.querySelector('.cell-net');
             if (netCell) netCell.textContent = netSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -595,6 +634,13 @@
                         if (e.target.classList.contains('in-absent-days')) {
                             const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
                             row.querySelector('.in-unpaid').value = (absentDays * daily).toFixed(2);
+                        } else if (e.target.classList.contains('in-unpaid')) {
+                            const unpaidAmt = parseFloat(row.querySelector('.in-unpaid').value) || 0;
+                            if (unpaidAmt <= 0) {
+                                row.querySelector('.in-absent-days').value = 0;
+                            } else if (daily > 0) {
+                                row.querySelector('.in-absent-days').value = (unpaidAmt / daily).toFixed(2);
+                            }
                         }
 
                         if (e.target.classList.contains('in-bank')) {
@@ -647,8 +693,15 @@
                         rowDeductions += parseFloat(inp.value || 0);
                     });
 
-                    const gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
-                    totalEarnings += (gross + rowExtraEarnings);
+                    const gross = parseFloat(row.querySelector('.cell-gross').dataset.val || row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
+                    const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
+                    const cycleDays = parseInt(row.dataset.cycleDays, 10) || projectCycleDays || 30;
+                    const parsedSrv = parseFloat(row.dataset.serviceDays);
+                    const serviceDays = !isNaN(parsedSrv) ? parsedSrv : cycleDays;
+                    const serviceGross = (serviceDays < cycleDays && daily > 0)
+                        ? Math.round(serviceDays * daily * 100) / 100
+                        : gross;
+                    totalEarnings += (serviceGross + rowExtraEarnings);
                     totalDeductions += rowDeductions;
                     totalNetPayroll += parseFloat(row.querySelector('.cell-netpayable').textContent.replace(/,/g, '')) || 0;
                 }
@@ -723,9 +776,16 @@
                     });
 
                     const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
-                    const gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || parseFloat(emp.gross_salary) || 0;
-                    const totalEarning = gross + extraAllowances;
-                    const netSalary = parseFloat(row.querySelector('.cell-netpayable').textContent.replace(/,/g, '')) || (totalEarning - rowDeductions);
+                    const gross = parseFloat(row.querySelector('.cell-gross').dataset.val || row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || parseFloat(emp.gross_salary) || 0;
+                    const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
+                    const cycleDays = parseInt(row.dataset.cycleDays, 10) || projectCycleDays || 30;
+                    const parsedSrv = parseFloat(row.dataset.serviceDays);
+                    const serviceDays = !isNaN(parsedSrv) ? parsedSrv : cycleDays;
+                    const serviceGross = (serviceDays < cycleDays && daily > 0)
+                        ? Math.round(serviceDays * daily * 100) / 100
+                        : gross;
+                    const totalEarning = serviceGross + extraAllowances;
+                    const netSalary = parseFloat(row.querySelector('.cell-netpayable').textContent.replace(/,/g, '')) || Math.max(0, totalEarning - rowDeductions);
 
                     // Breakdown columns
                     const advanceSalary = parseFloat(row.querySelector('.in-advance')?.value || 0);
@@ -733,6 +793,10 @@
                     const subsidizedLunch = parseFloat(row.querySelector('.in-sublunch')?.value || 0);
                     const absentDays = parseFloat(row.querySelector('.in-absent-days')?.value || 0);
                     const unpaidAbsentAmount = parseFloat(row.querySelector('.in-unpaid')?.value || 0);
+                    const effDaysCell = row.querySelector('.cell-effective-days');
+                    const effectiveDays = effDaysCell && effDaysCell.dataset.val !== undefined
+                        ? parseFloat(effDaysCell.dataset.val)
+                        : Math.max(0, Math.round((serviceDays - absentDays) * 100) / 100);
                     const salaryHold = row.querySelector('.in-salary-hold-string')?.value || emp.salary_hold || '';
                     const arrearsDeduction = parseFloat(row.querySelector('.in-arrears-deduct')?.value || 0);
                     const othersDeduction = parseFloat(row.querySelector('.in-others-deduct')?.value || 0);
@@ -756,6 +820,9 @@
                         absent_days: absentDays,
                         late_unpaid_absent_days: absentDays,
                         unpaid_absent_amount: unpaidAbsentAmount,
+                        effective_days: effectiveDays,
+                        cycle_days: cycleDays,
+                        service_days: serviceDays,
                         total_earning: totalEarning,
                         total_deduction: rowDeductions,
                         net_salary: netSalary,
@@ -802,6 +869,7 @@
                 payroll_project_id: projectSelect.value,
                 payslip_month: month,
                 payslip_date: genDate,
+                cycle_days: projectCycleDays,
                 employees: selectedEmployees
             };
 

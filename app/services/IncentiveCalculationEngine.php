@@ -60,13 +60,13 @@ class IncentiveCalculationEngine extends Model
     }
 
     /**
-     * Check if a flat is special floor: 1st or 2nd floor OR Top Floor / Below Top Floor
+     * Check if a flat is special floor: 1st floor OR Top Floor / Below Top Floor
      */
     public function isFloorSpecial($floorNo, $buildingType)
     {
         $fn = (int)preg_replace('/[^0-9]/', '', (string)$floorNo);
-        if ($fn === 1 || $fn === 2) {
-            return true; // 1st & 2nd Floor
+        if ($fn === 1) {
+            return true; // 1st Floor Only
         }
 
         $topFloor = $this->getTopFloorFromBuildingType($buildingType);
@@ -428,20 +428,23 @@ class IncentiveCalculationEngine extends Model
                 $unitRate = $isFloorSpecial ? (float)$settings['floor_special_rate'] : (float)$settings['flat_base_rate'];
             }
 
-            // Check Deadline / Speed Bonus (+0.20%):
-            // Deal completed within defined deadline (2 months / 60 days of lead creation OR before target to_date)
+            // Check Deadline / Speed Bonus (Dynamic rate & deadline):
+            // Deal completed within defined deadline (speed_bonus_months * 30 days of lead/booking creation)
+            $speedBonusRate = (float)($settings['speed_bonus_rate'] ?? 0.00);
+            $speedBonusMonths = (int)($settings['speed_bonus_months'] ?? 2);
+            $deadlineDays = $speedBonusMonths * 30;
+
             $isWithinDeadline = false;
-            $bDate = $b['booking_date'];
-            $refDate = !empty($b['lead_created_at']) ? $b['lead_created_at'] : $b['booking_created_at'];
-            $daysToClose = round((strtotime($bDate) - strtotime($refDate)) / 86400);
-
-            if (($daysToClose <= 60 && $daysToClose >= 0) || ($bDate <= $targetToDate)) {
-                $isWithinDeadline = true;
-            }
-
             $bonusRate = 0.00;
-            if ($isWithinDeadline) {
-                $bonusRate = (float)$settings['speed_bonus_rate']; // +0.20%
+            if ($speedBonusRate > 0) {
+                $bDate = $b['booking_date'];
+                $refDate = !empty($b['lead_created_at']) ? $b['lead_created_at'] : $b['booking_created_at'];
+                $daysToClose = round((strtotime($bDate) - strtotime($refDate)) / 86400);
+
+                if ($daysToClose >= 0 && $daysToClose <= $deadlineDays) {
+                    $isWithinDeadline = true;
+                    $bonusRate = $speedBonusRate;
+                }
             }
 
             $finalApplicableRate = $unitRate + $bonusRate;
@@ -449,22 +452,44 @@ class IncentiveCalculationEngine extends Model
             // Full incentive for this booking
             $fullIncentive = round(($landShare * $finalApplicableRate) / 100.0, 2);
 
+            $fn = (int)preg_replace('/[^0-9]/', '', (string)$b['floor_no']);
+            $topFloor = $this->getTopFloorFromBuildingType($b['building_type']);
+            $isTopOrBelowTop = ($topFloor > 0 && ($fn === $topFloor || $fn === ($topFloor - 1)));
+            
+            $floorName = 'General Flat';
+            if ($fn === 1) {
+                $floorName = '1st Floor Special';
+            } elseif ($isTopOrBelowTop) {
+                $floorName = 'Top/Below-Top Special';
+            }
+
             if ($isAssigned) {
                 // ASSIGNED PROJECT / FLAT:
                 // If executive is eligible (achieved target or >= 25L), earns 100% of calculated incentive
                 $earned = $isEligible ? $fullIncentive : 0.00;
-                $rateLabel = ($isFloorSpecial ? 'Floor (0.80%)' : 'Flat (0.70%)');
+                $rateLabel = $floorName . ' (' . number_format($unitRate, 2) . '%)';
                 if ($achievementPct >= 300.0) $rateLabel = '300%+ Tier (1.20%)';
                 elseif ($achievementPct >= 200.0) $rateLabel = '200%-299% Tier (1.00%)';
-                if ($isWithinDeadline) $rateLabel .= ' + Speed Bonus (+0.20%)';
+                if ($isWithinDeadline && $bonusRate > 0) {
+                    $rateLabel .= ' + Speed Bonus (+' . number_format($bonusRate, 2) . '%)';
+                }
 
                 $detailedBookings[] = array_merge($b, [
                     'rate_type' => $rateLabel,
+                    'project_scope' => 'assigned',
+                    'base_unit_rate' => $finalApplicableRate,
+                    'seller_share_pct' => 100.0,
+                    'designated_share_pct' => 0.0,
+                    'seller_share_rate' => $finalApplicableRate,
+                    'designated_share_rate' => 0.0,
+                    'floor_name' => $floorName,
                     'applicable_rate' => $finalApplicableRate,
                     'calculated_incentive' => $earned,
                     'seller_incentive' => $earned,
                     'designated_incentive' => 0.00,
-                    'designated_user_id' => null,
+                    'has_designated_holder' => true,
+                    'designated_user_id' => $userId,
+                    'designated_user_name' => 'Assigned Project (Self)',
                     'is_on_hold' => 0,
                     'status_note' => $isEligible ? 'Eligible for claim' : 'Target/Minimum 25L not yet achieved'
                 ]);
@@ -478,8 +503,9 @@ class IncentiveCalculationEngine extends Model
                 $sellerShare = round($fullIncentive * 0.70, 2);
                 $designatedShare = round($fullIncentive * 0.30, 2);
                 $designatedInfo = $this->getDesignatedSalesperson($b['flat_id'], $b['project_id'], $yearMonth, $userId);
-                $designatedUserId = is_array($designatedInfo) ? ($designatedInfo['user_id'] ?? null) : $designatedInfo;
-                $designatedUserName = is_array($designatedInfo) ? ($designatedInfo['full_name'] ?? 'Unassigned / Open') : 'Unassigned / Open';
+                $hasDesignatedHolder = !empty($designatedInfo) && !empty($designatedInfo['user_id']);
+                $designatedUserId = $hasDesignatedHolder ? (int)$designatedInfo['user_id'] : null;
+                $designatedUserName = $hasDesignatedHolder ? ($designatedInfo['full_name'] ?? null) : null;
 
                 // Hold condition: 70% remains ON HOLD until seller achieves own assigned target/25L
                 $isOnHold = !$isEligible;
@@ -490,11 +516,19 @@ class IncentiveCalculationEngine extends Model
                 }
 
                 $detailedBookings[] = array_merge($b, [
-                    'rate_type' => 'Outside Designated (70% Seller Share)',
+                    'rate_type' => 'From Unassigned Project (70% Seller Share of ' . number_format($finalApplicableRate, 2) . '%)',
+                    'project_scope' => 'unassigned',
+                    'base_unit_rate' => $finalApplicableRate,
+                    'seller_share_pct' => 70.0,
+                    'designated_share_pct' => 30.0,
+                    'seller_share_rate' => round($finalApplicableRate * 0.70, 4),
+                    'designated_share_rate' => round($finalApplicableRate * 0.30, 4),
+                    'floor_name' => $floorName,
                     'applicable_rate' => $finalApplicableRate * 0.70,
                     'calculated_incentive' => $sellerShare,
                     'seller_incentive' => $sellerShare,
                     'designated_incentive' => $designatedShare,
+                    'has_designated_holder' => $hasDesignatedHolder,
                     'designated_user_id' => $designatedUserId,
                     'designated_user_name' => $designatedUserName,
                     'is_on_hold' => $isOnHold ? 1 : 0,
@@ -566,6 +600,11 @@ class IncentiveCalculationEngine extends Model
                     'seller_name' => $ob['seller_name'],
                     'project_name' => $ob['project_name'],
                     'flat_name' => $ob['flat_name'],
+                    'floor_no' => $ob['floor_no'] ?? null,
+                    'is_floor_special' => $isFloorSpecial,
+                    'base_unit_rate' => $bRate,
+                    'designated_rate' => round($bRate * 0.30, 4),
+                    'seller_rate' => round($bRate * 0.70, 4),
                     'land_share_value' => $ls,
                     'credit_amount' => $creditAmount,
                     'is_eligible' => $isEligible

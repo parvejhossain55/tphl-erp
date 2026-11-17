@@ -109,9 +109,8 @@ class SalesActivityReportController extends Controller
         });
         $monthlyData['teams'] = $teamsArray;
 
-        // Fetch all active teams for dropdown filter
-        $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
-        $teams = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];
+        // Fetch teams for dropdown filter scoped by role (Team Leader = own team, Sales Manager = managed teams, Head/Admin = all)
+        $teams = $this->getScopedTeamsForDropdown();
 
         // Check if Export requested
         if (isset($_GET['export'])) {
@@ -735,8 +734,7 @@ class SalesActivityReportController extends Controller
         // Fetch Team Performance Data (with teamId filter)
         $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo, $teamId);
 
-        $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
-        $teamsList = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];
+        $teamsList = $this->getScopedTeamsForDropdown();
 
         $this->view('sales-activity-report/team-performance', [
             'current_route' => 'team-performance',
@@ -876,5 +874,33 @@ class SalesActivityReportController extends Controller
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('php://output');
         exit;
+    }
+
+    /**
+     * Return teams list for dropdown filters scoped to current user's hierarchy:
+     * - Sales Team Leader (Role 5): own team only
+     * - Sales Manager: assigned teams only
+     * - Head of Sales / Admin / Management: all teams
+     */
+    private function getScopedTeamsForDropdown(): array
+    {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $sessionTeamId = (int)($_SESSION['user']['team_id'] ?? 0);
+        $scope = function_exists('getSalesFilterScope')
+            ? getSalesFilterScope($this->db, $roleId, $sessionTeamId)
+            : ['is_global' => true, 'team_ids' => []];
+
+        if (!empty($scope['is_global'])) {
+            $res = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
+            return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        $allowedIds = array_values(array_unique(array_filter(array_map('intval', $scope['team_ids'] ?? []))));
+        if (empty($allowedIds)) {
+            return [];
+        }
+        $inList = implode(',', $allowedIds);
+        $res = $this->db->query("SELECT id, name FROM teams WHERE id IN ({$inList}) ORDER BY name ASC");
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
     }
 }

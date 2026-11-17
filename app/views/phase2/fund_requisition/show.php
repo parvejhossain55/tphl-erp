@@ -148,6 +148,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
             ?>
                 <form action="<?php echo $base; ?>/fund-requisitions/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this requisition request?')">
                     <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                     <button type="submit" class="btn btn-outline-danger btn-sm px-3 shadow-sm">
                         <i class="fa-solid fa-trash-can me-1"></i> Delete Request
                     </button>
@@ -1308,6 +1309,7 @@ if ($canShowQcModal):
             <div class="modal-header bg-info bg-opacity-10"><h5 class="modal-title text-info"><i class="fa-solid fa-check me-1"></i> QC & Internal Audit Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 <input type="hidden" name="status" value="approved">
                 <div class="mb-3 p-3 bg-light rounded border">
                     <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested Amount</small>
@@ -1340,6 +1342,7 @@ if ($canShowQcModal):
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 <input type="hidden" name="status" value="rejected">
                 <div class="mb-3">
                     <label class="form-label fw-bold">Reason for QC Rejection <span class="text-danger">*</span></label>
@@ -1364,6 +1367,7 @@ if (!in_array($req['status'], ['paid', 'partially_paid']) && $canApproveDept):
             <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-check me-1"></i> Department Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 <input type="hidden" name="status" value="approved">
                 <div class="mb-3 p-3 bg-light rounded border">
                     <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested Amount</small>
@@ -1387,14 +1391,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Pending ' + overrideStage + "'s Approval",
-                        html: 'This fund requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                        html: 'This fund requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Choose whether to approve <strong>only " + overrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.',
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonColor: '#198754',
+                        showDenyButton: true,
+                        confirmButtonColor: '#0d6efd',
+                        denyButtonColor: '#198754',
                         cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, Approve All Stages'
+                        confirmButtonText: 'Approve Only ' + overrideStage,
+                        denyButtonText: 'Approve All & Finalize'
                     }).then(function(result) {
+                        var modeInput = frForm.querySelector('input[name="approve_mode"]');
                         if (result.isConfirmed) {
+                            if (modeInput) modeInput.value = 'single';
+                            frForm.setAttribute('data-confirmed-override', '1');
+                            frForm.submit();
+                        } else if (result.isDenied) {
+                            if (modeInput) modeInput.value = 'override';
                             frForm.setAttribute('data-confirmed-override', '1');
                             frForm.submit();
                         }
@@ -1420,6 +1433,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 <input type="hidden" name="status" value="rejected">
                 <div class="mb-3">
                     <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
@@ -1463,6 +1477,7 @@ if ($canApprove && $dueToApprove > 0 && $req['status'] !== 'rejected' && ($isAdm
             <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-stamp me-1"></i> Approve Requisition</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 
                 <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
                     <div class="d-flex align-items-start gap-2 p-2.5 px-3 mb-2 rounded-2 border border-info bg-info-subtle text-dark small lh-base">
@@ -1510,14 +1525,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Pending ' + overrideStage + "'s Approval",
-                        html: 'This fund requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                        html: 'This fund requisition is pending for <strong>' + overrideStage + "'s</strong> approval. Choose whether to approve <strong>only " + overrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.',
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonColor: '#198754',
+                        showDenyButton: true,
+                        confirmButtonColor: '#0d6efd',
+                        denyButtonColor: '#198754',
                         cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, Approve All Stages'
+                        confirmButtonText: 'Approve Only ' + overrideStage,
+                        denyButtonText: 'Approve All & Finalize'
                     }).then(function(result) {
+                        var modeInput = frForm.querySelector('input[name="approve_mode"]');
                         if (result.isConfirmed) {
+                            if (modeInput) modeInput.value = 'single';
+                            frForm.setAttribute('data-confirmed-override', '1');
+                            frForm.submit();
+                        } else if (result.isDenied) {
+                            if (modeInput) modeInput.value = 'override';
                             frForm.setAttribute('data-confirmed-override', '1');
                             frForm.submit();
                         }
@@ -1543,6 +1567,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 <input type="hidden" name="status" value="rejected">
                 <div class="mb-3">
                     <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
@@ -1567,6 +1592,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 <input type="hidden" name="status" value="rejected">
                 <div class="mb-3">
                     <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
@@ -1589,6 +1615,7 @@ if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'
             <div class="modal-header"><h5 class="modal-title">Process Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
                 <div class="mb-2 p-3 bg-light rounded border">
                     <strong><?php echo htmlspecialchars($req['requester_name']??'---'); ?></strong> &mdash; <?php echo htmlspecialchars($req['department_name']??''); ?>
                     <div class="fs-18 text-success fw-bold mt-1">Due to Pay: &#2547; <?php echo number_format($dueToPay, 2); ?></div>

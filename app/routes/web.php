@@ -137,6 +137,8 @@ return [
     'store-team' => ['controller' => 'TeamController', 'method' => 'store'],
     'update-team' => ['controller' => 'TeamController', 'method' => 'update'],
     'delete-team' => ['controller' => 'TeamController', 'method' => 'delete'],
+    'team-manager-history' => ['controller' => 'TeamController', 'method' => 'managerHistory'],
+    'assign-manager-teams' => ['controller' => 'TeamController', 'method' => 'assignManagerTeams'],
 
     // =========================================================================
     // Controller: ProjectProgressController
@@ -251,6 +253,8 @@ return [
     'todo/update' => ['controller' => 'TodoListController', 'method' => 'update'],
     'todo/test-email' => ['controller' => 'TodoListController', 'method' => 'testEmail'],
     'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
+    'approval-requests/approve-sales-head' => ['controller' => 'ApprovalRequestController', 'method' => 'approveSalesHead'],
+    'approval-requests/reject-sales-head' => ['controller' => 'ApprovalRequestController', 'method' => 'rejectSalesHead'],
     'approval-requests/approve-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'approveAccountsHead'],
     'approval-requests/reject-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'rejectAccountsHead'],
     'approval-requests/approve-operation-head' => ['controller' => 'ApprovalRequestController', 'method' => 'approveOperationHead'],

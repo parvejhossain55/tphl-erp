@@ -1922,7 +1922,10 @@ class AccountClient extends Model
 
             // Add calculated fields to response
             $agreementValForTarget = (float) ($clientDetails['agreement_value'] ?? 0);
-            $clientDetails['effective_booking_target']             = ($agreementValForTarget > 0) ? $agreementValForTarget : 300000;
+            $discountValForTarget  = (float) ($clientDetails['discount_amount'] ?? 0);
+            $clientDetails['effective_booking_target']             = ($agreementValForTarget > 0) 
+                ? max(0, $agreementValForTarget - $discountValForTarget) 
+                : 300000;
             $clientDetails['total_land_share_paid']                = $totalLandSharePaid;
             $clientDetails['landshare_paid']                       = $totalLandSharePaid;
             $clientDetails['total_land_share_paid_total']          = $totalLandSharePaidTotal;
@@ -2834,6 +2837,10 @@ class AccountClient extends Model
         // Booking is fully paid when verified-only payments cover the effective target (after discount)
         // We add a 1.0 TK tolerance to avoid 0.01 float issues locking the system
         $isBookingFullyPaid  = ($effectiveBookingTarget > 0 && $bookingMoneyPaid >= ($effectiveBookingTarget - 1.0));
+        // If total land share is already completed (or remaining land share <= 0), booking money is also fully settled
+        if (!empty($clientDetails['is_land_share_completed']) || ((float)($clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'] ?? 0) <= 0 && (float)($clientDetails['total_land_share_paid'] ?? 0) > 0)) {
+            $isBookingFullyPaid = true;
+        }
         // Also consider fully paid if no agreement set at all
         if ($effectiveBookingTarget <= 0 && $agreementValue <= 0) {
             $isBookingFullyPaid = false; // no agreement set, assume not paid
@@ -2855,7 +2862,7 @@ class AccountClient extends Model
             'total_land_share_paid'                => $clientDetails['total_land_share_paid'],  // booking+landshare+registration (verified)
             'total_land_share_paid_total'          => $clientDetails['total_land_share_paid_total'] ?? $clientDetails['total_land_share_paid'], // unrejected total
             'landshare_paid'                       => $clientDetails['landshare_paid'],          // alias
-            'remaining_land_share'                 => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
+            'remaining_land_share'                 => $clientDetails['remaining_land_share'],
             'remaining_land_share_total'           => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
             'discount_amount'                      => $clientDetails['discount_amount'],
             'registration_paid'                    => $clientDetails['registration_paid'],
@@ -2931,7 +2938,8 @@ class AccountClient extends Model
                     if ($summary['is_booking_fully_paid']) {
                         throw new Exception("Booking money has already been fully paid for this booking.");
                     }
-                    $remainingBooking = $summary['agreement_value'] - $summary['booking_money_paid'];
+                    $effectiveBookingTarget = (float) ($summary['effective_booking_target'] ?? max(0, (float)($summary['agreement_value'] ?? 0) - (float)($summary['discount_amount'] ?? 0)));
+                    $remainingBooking = max(0, $effectiveBookingTarget - (float)($summary['booking_money_paid'] ?? 0));
                     if ($amount > $remainingBooking) {
                         throw new Exception("Amount exceeds outstanding booking balance: Tk. " . number_format($remainingBooking, 2));
                     }
@@ -2939,11 +2947,12 @@ class AccountClient extends Model
                     break;
 
                 case 'land_share':
-                    if ($summary['remaining_land_share'] <= 0) {
+                    $remLSTarget = (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']);
+                    if ($remLSTarget <= 0) {
                         throw new Exception("Land share payment is already completed!");
                     }
-                    if ($amount > $summary['remaining_land_share']) {
-                        throw new Exception("Land share amount cannot exceed remaining land share: Tk. " . number_format($summary['remaining_land_share'], 2));
+                    if ($amount > $remLSTarget) {
+                        throw new Exception("Land share amount cannot exceed remaining land share: Tk. " . number_format($remLSTarget, 2));
                     }
                     $landShareAmount = $amount;
                     break;
@@ -3961,7 +3970,8 @@ class AccountClient extends Model
                     (float) $oldTransaction['amount'] : 0;
 
                 $effectiveAmountChange = $newAmount - $oldAmount;
-                $remainingAfterChange = $summary['remaining_land_share'] - $effectiveAmountChange;
+                $remLSTarget = (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']);
+                $remainingAfterChange = $remLSTarget - $effectiveAmountChange;
 
                 if ($remainingAfterChange < 0) {
                     throw new Exception("Land share amount would exceed remaining land share by: Tk. " .
@@ -4651,9 +4661,14 @@ class AccountClient extends Model
             
             // Calculate remaining targets
             $agreementValForBooking = (float) ($summary['agreement_value'] ?? 0);
-            $bookingTargetForTx     = ($agreementValForBooking > 0) ? $agreementValForBooking : (float) ($summary['effective_booking_target'] ?? 300000);
-            $bookingMoneyRemaining  = max(0, $bookingTargetForTx - (float) ($summary['booking_money_total'] ?? 0));
-            $landShareRemaining = max(0, $summary['remaining_land_share']);
+            $discountForBooking     = (float) ($summary['discount_amount'] ?? 0);
+            $bookingTargetForTx     = ($agreementValForBooking > 0) 
+                ? max(0, $agreementValForBooking - $discountForBooking) 
+                : (float) ($summary['effective_booking_target'] ?? 300000);
+            $landShareRemaining = max(0, (float)($summary['remaining_land_share_total'] ?? $summary['remaining_land_share']));
+            $bookingMoneyRemaining = ($landShareRemaining <= 0 || !empty($summary['is_land_share_completed']))
+                ? 0
+                : min($landShareRemaining, max(0, $bookingTargetForTx - (float) ($summary['booking_money_total'] ?? 0)));
             $isShop = !empty($clientDetails['is_shop']);
             // Development Charge (flats.development_charges) — applies to both flats and shops
             $flatDevTarget    = (float) ($summary['flat_development_charges'] ?? 0);
@@ -5482,8 +5497,20 @@ class AccountClient extends Model
         $stmt = $this->db->prepare("
             SELECT
                 COUNT(*) as total_flats,
-                SUM(CASE WHEN f.status = 'booked' OR f.is_booked = 1 THEN 1 ELSE 0 END) as booked_flats,
-                SUM(CASE WHEN f.status = 'available' AND f.is_booked = 0 THEN 1 ELSE 0 END) as available_flats,
+                SUM(CASE WHEN EXISTS (
+                    SELECT 1 FROM lead_bookings lb 
+                    WHERE lb.flat_id = f.id 
+                      AND lb.deleted_at IS NULL 
+                      AND lb.booking_status IN ('completed', 'booked') 
+                      AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                ) THEN 1 ELSE 0 END) as booked_flats,
+                SUM(CASE WHEN NOT EXISTS (
+                    SELECT 1 FROM lead_bookings lb 
+                    WHERE lb.flat_id = f.id 
+                      AND lb.deleted_at IS NULL 
+                      AND lb.booking_status IN ('completed', 'booked') 
+                      AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+                ) AND (f.status != 'sold') THEN 1 ELSE 0 END) as available_flats,
                 SUM(CASE WHEN f.status = 'sold' THEN 1 ELSE 0 END) as sold_flats
             FROM flats f
             WHERE f.project_id = ?
@@ -5675,8 +5702,14 @@ class AccountClient extends Model
             FROM flats f
             WHERE f.project_id = ?
             AND f.deleted_at IS NULL
-            AND f.status = 'available'
-            AND f.is_booked = 0
+            AND (f.status != 'sold')
+            AND NOT EXISTS (
+                SELECT 1 FROM lead_bookings lb 
+                WHERE lb.flat_id = f.id 
+                  AND lb.deleted_at IS NULL 
+                  AND lb.booking_status IN ('completed', 'booked') 
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
+            )
             ORDER BY f.floor_no ASC, f.flat_name ASC
         ");
 

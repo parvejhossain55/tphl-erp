@@ -21,7 +21,7 @@ return [
     'team-performance/member/(\d+)' => ['controller' => 'TaskController', 'method' => 'teamMemberTasks'],
     'team-performance/assign-task' => ['controller' => 'TaskController', 'method' => 'assignTeamTask'],
     'team-performance/create-project' => ['controller' => 'TaskController', 'method' => 'createTodoProject'],
-    'management-task-overview' => ['controller' => 'TaskController', 'method' => 'managementTaskOverview'],
+    'management-task-overview' => ['controller' => 'TaskV2Controller', 'method' => 'managementTaskOverview'],
     'create-task' => ['controller' => 'TaskController', 'method' => 'create'],
     'store-task' => ['controller' => 'TaskController', 'method' => 'store'],
     'task-dashboard' => ['controller' => 'TaskController', 'method' => 'taskDashboard'],
@@ -32,6 +32,34 @@ return [
     'edit-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'edit'],
     'update-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'update'],
     'delete-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'delete'],
+
+    // =========================================================================
+    // Controller: TaskV2Controller (Task Manage V2)
+    // =========================================================================
+    'team-performance-v2' => ['controller' => 'TaskV2Controller', 'method' => 'teamPerformance'],
+    'team-performance-v2/member/(\d+)' => ['controller' => 'TaskV2Controller', 'method' => 'teamMemberTasks'],
+    'team-performance-v2/assign-task' => ['controller' => 'TaskV2Controller', 'method' => 'assignTeamTask'],
+    'team-performance-v2/create-project' => ['controller' => 'TaskV2Controller', 'method' => 'createTodoProject'],
+    'management-task-overview-v2' => ['controller' => 'TaskV2Controller', 'method' => 'managementTaskOverview'],
+
+    // =========================================================================
+    // Controller: MyWorkController (Personal Workspace)
+    // =========================================================================
+    'my-work' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work-dashboard' => ['controller' => 'MyWorkController', 'method' => 'index'],
+    'my-work/delete/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'deleteTask'],
+    'my-work/store-task' => ['controller' => 'MyWorkController', 'method' => 'storeTask'],
+    'my-work/task-detail/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskDetail'],
+    'my-work/task-data/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'taskEditData'],
+    'my-work/update-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'updateTask'],
+    'my-work/complete-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'completeTask'],
+    'my-work/start-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'startTask'],
+    'my-work/reviewer-action/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'reviewerAction'],
+    'my-work/toggle-checklist/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'toggleChecklist'],
+    'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
+    'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
+    'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
+    'my-work/send-reminder/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'sendReminder'],
 
     // =========================================================================
     // Controller: EmployeeController
@@ -348,6 +376,8 @@ return [
     'tipsoi-email-logs' => ['controller' => 'LeaveController', 'method' => 'tipsoiEmailLogsView'],
     'api/hrm/tipsoi-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiEmailLogs'],
     'api/hrm/send-tipsoi-reminders' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiReminders'],
+    'api/tipsoi/trigger-login-reminder' => ['controller' => 'HrmApiController', 'method' => 'triggerLoginReminder'],
+    'api/tipsoi/send-reminders-test' => ['controller' => 'HrmApiController', 'method' => 'testTipsoiReminders'],
     'api/hrm/tipsoi-holidays' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiHolidays'],
     'api/hrm/import-tipsoi-holiday' => ['controller' => 'HrmApiController', 'method' => 'importTipsoiHoliday'],
     'hrm-monthly-lwp' => ['controller' => 'LeaveController', 'method' => 'monthlyLwpDashboardView'],

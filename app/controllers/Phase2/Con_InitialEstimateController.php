@@ -672,17 +672,29 @@ class Con_InitialEstimateController extends Controller
 
         $status = $budget['status'] ?? '';
 
-        // ── PM Approval: pending → pm_approved ──────────────────────────
+        // ── Dept. Head Approval (PD / PC on behalf): pending → pm_approved ────
         if ($status === 'pending') {
             if (!in_array($roleId, [15, 22])) {
-                setError('শুধুমাত্র PM (role 15/22) pending estimate approve করতে পারবেন।');
+                setError('শুধুমাত্র Dept. Head (PD) বা PC (role 15/22) pending estimate approve করতে পারবেন।');
                 header("Location: {$GLOBALS['base_url']}/con-estimate-show/{$id}");
                 exit;
             }
             if ($this->model->pmApproveBudget($id, $userId)) {
-                setSuccess('✅ PM Approved — এখন Management Final Approval বাকি।');
+                require_once __DIR__ . '/../../models/Con_ApprovalLog.php';
+                $attr = \Con_ApprovalLog::formatApprovalAttribution($roleId, $_SESSION['user']['full_name'] ?? 'User', 'approved');
+                $logModel = new \Con_ApprovalLog($this->db);
+                $logModel->logConstructionApproval(
+                    'initial_estimate_budgets',
+                    (int)$id,
+                    'Dept. Head Approval',
+                    'approved',
+                    isset($budget['project_id']) ? (int)$budget['project_id'] : null,
+                    (float)($budget['total_estimated_cost'] ?? 0),
+                    ''
+                );
+                setSuccess('✅ ' . $attr['approval_label'] . ' — এখন Management Final Approval বাকি।');
             } else {
-                setError('PM Approval failed. Estimate may not be in pending state.');
+                setError('Dept. Head Approval failed. Estimate may not be in pending state.');
             }
 
         // ── Management Final Approval: pm_approved → approved ───────────
@@ -693,9 +705,20 @@ class Con_InitialEstimateController extends Controller
                 exit;
             }
             if ($this->model->approveBudget($id, $userId)) {
+                require_once __DIR__ . '/../../models/Con_ApprovalLog.php';
+                $logModel = new \Con_ApprovalLog($this->db);
+                $logModel->logConstructionApproval(
+                    'initial_estimate_budgets',
+                    (int)$id,
+                    'Management Final Approval',
+                    'approved',
+                    isset($budget['project_id']) ? (int)$budget['project_id'] : null,
+                    (float)($budget['total_estimated_cost'] ?? 0),
+                    ''
+                );
                 setSuccess('✅ Estimate Fully Approved by Management.');
             } else {
-                setError('Final approval failed. Estimate must be PM-approved first.');
+                setError('Final approval failed. Estimate must be Dept. Head approved first.');
             }
 
         } else {

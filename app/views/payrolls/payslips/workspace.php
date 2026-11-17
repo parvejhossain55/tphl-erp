@@ -28,10 +28,14 @@ $page = "Payroll Workplace";
 $show_breadcrumb = true;
 
 $_filterType      = !empty($filterType) ? $filterType : (!empty($_GET['filter_type']) ? $_GET['filter_type'] : 'monthly');
-$_fromDate        = !empty($selectedFromDate) ? $selectedFromDate : (!empty($_GET['from_date']) ? $_GET['from_date'] : date('Y-m-01'));
-$_toDate          = !empty($selectedToDate) ? $selectedToDate : (!empty($_GET['to_date']) ? $_GET['to_date'] : date('Y-m-t'));
 $_selectedYear    = !empty($selectedYear) ? $selectedYear : (!empty($_GET['year']) ? $_GET['year'] : date('Y'));
 $_selectedMonth   = !empty($selectedMonth) ? $selectedMonth : (!empty($_GET['month']) ? $_GET['month'] : date('m'));
+$_defaultEndDt    = sprintf('%04d-%02d-25', (int)$_selectedYear, (int)$_selectedMonth);
+$_prevYr          = ((int)$_selectedMonth === 1) ? ((int)$_selectedYear - 1) : (int)$_selectedYear;
+$_prevMo          = ((int)$_selectedMonth === 1) ? 12 : ((int)$_selectedMonth - 1);
+$_defaultStartDt  = sprintf('%04d-%02d-26', $_prevYr, $_prevMo);
+$_fromDate        = !empty($selectedFromDate) ? $selectedFromDate : (!empty($_GET['from_date']) ? $_GET['from_date'] : $_defaultStartDt);
+$_toDate          = !empty($selectedToDate) ? $selectedToDate : (!empty($_GET['to_date']) ? $_GET['to_date'] : $_defaultEndDt);
 $_selectedProject = !empty($selectedProject) ? $selectedProject : ($_GET['payroll_project_id'] ?? '');
 
 $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -679,9 +683,24 @@ window.executeDeleteProject = function(projId) {
                                 <?php $projSl = 1; foreach ($payroll_projects as $proj): ?>
                                     <?php 
                                     $isCust = !empty($proj['is_custom_date']);
-                                    $dateRangeText = ($isCust && !empty($proj['start_date']) && !empty($proj['end_date']))
-                                        ? date('d M Y', strtotime($proj['start_date'])) . ' - ' . date('d M Y', strtotime($proj['end_date']))
-                                        : (!empty($proj['date']) ? date('F Y', strtotime($proj['date'] . '-01')) : 'N/A');
+                                    $pStartRaw = (!empty($proj['start_date']) && $proj['start_date'] !== '0000-00-00') ? $proj['start_date'] : '';
+                                    $pEndRaw   = (!empty($proj['end_date']) && $proj['end_date'] !== '0000-00-00') ? $proj['end_date'] : '';
+                                    if (!$isCust && !empty($proj['date']) && strpos($proj['date'], '-') !== false) {
+                                        $dParts = explode('-', $proj['date']);
+                                        $pYr = (int)$dParts[0];
+                                        $pMo = (int)$dParts[1];
+                                        $prvYr = ($pMo === 1) ? ($pYr - 1) : $pYr;
+                                        $prvMo = ($pMo === 1) ? 12 : ($pMo - 1);
+                                        $cStart = sprintf('%04d-%02d-26', $prvYr, $prvMo);
+                                        $cEnd   = sprintf('%04d-%02d-25', $pYr, $pMo);
+                                        $cDays  = (int)(new \DateTime($cStart))->diff(new \DateTime($cEnd))->days + 1;
+                                        $dateRangeText = date('F Y', strtotime($proj['date'] . '-01')) . ' (' . date('d M Y', strtotime($cStart)) . ' - ' . date('d M Y', strtotime($cEnd)) . ', ' . $cDays . ' days)';
+                                    } elseif ($pStartRaw && $pEndRaw) {
+                                        $cDays = (int)(new \DateTime($pStartRaw))->diff(new \DateTime($pEndRaw))->days + 1;
+                                        $dateRangeText = date('d M Y', strtotime($pStartRaw)) . ' - ' . date('d M Y', strtotime($pEndRaw)) . ' (' . $cDays . ' days)';
+                                    } else {
+                                        $dateRangeText = 'N/A';
+                                    }
                                     ?>
                                     <tr>
                                         <td><?= $projSl++ ?></td>
@@ -868,36 +887,46 @@ window.executeDeleteProject = function(projId) {
                         }
 
                         $sl = 1;
+                        $cycleStartDtObj = new \DateTime($_fromDate);
+                        $cycleEndDtObj   = new \DateTime($_toDate);
+                        $cycleTotalDays  = max(1, (int) $cycleStartDtObj->diff($cycleEndDtObj)->days + 1);
+
                         if (!empty($payslips)):
                             foreach ($payslips as $p):
                                 $isExisting = !empty($p['id']);
                                 $empIdFk = (int)($p['real_emp_id_fk'] ?? $p['id'] ?? 0);
                                 $gross = (float) $p['emp_gross'];
-                                $basic = (float) $p['emp_basic'];
-                                $daily = $gross / 30;
+                                $rawBasic = (float) $p['emp_basic'];
+                                $basic = ($gross > 0 && ($rawBasic <= 0 || abs(($rawBasic * 2.0) - $gross) > 1.0))
+                                    ? round($gross * 0.50, 2)
+                                    : $rawBasic;
+                                $daily = $cycleTotalDays > 0 ? ($gross / $cycleTotalDays) : 0.0;
 
-                                // Calculate employee effective days within active payroll cycle
-                                $cycleStartTs = strtotime($_fromDate);
-                                $cycleEndTs   = strtotime($_toDate);
-                                $cycleTotalDays = max(1, (int) round(($cycleEndTs - $cycleStartTs) / 86400) + 1);
+                                // Resolve clean joining_date & resign_date (Last Working Day, inclusive)
+                                $joinDateClean = (!empty($p['joining_date']) && $p['joining_date'] !== '0000-00-00')
+                                    ? substr(trim((string)$p['joining_date']), 0, 10)
+                                    : '';
+                                $resignDateClean = (!empty($p['resign_date']) && $p['resign_date'] !== '0000-00-00')
+                                    ? substr(trim((string)$p['resign_date']), 0, 10)
+                                    : ((!empty($p['deleted_at']) && $p['deleted_at'] !== '0000-00-00') ? substr(trim((string)$p['deleted_at']), 0, 10) : '');
 
-                                $empJoinTs = !empty($p['joining_date']) ? strtotime($p['joining_date']) : $cycleStartTs;
-                                $empResignTs = !empty($p['deleted_at']) ? strtotime(substr($p['deleted_at'], 0, 10)) : $cycleEndTs;
-
-                                $effectiveStartTs = max($cycleStartTs, $empJoinTs);
-                                $effectiveEndTs   = min($cycleEndTs, $empResignTs);
-
-                                if ($effectiveStartTs > $effectiveEndTs) {
-                                    $empEffectiveDays = 0;
+                                if (isset($p['service_days'])) {
+                                    $empServiceDays = (int) $p['service_days'];
                                 } else {
-                                    $empEffectiveDays = (int) round(($effectiveEndTs - $effectiveStartTs) / 86400) + 1;
-                                    $empEffectiveDays = min($cycleTotalDays, max(0, $empEffectiveDays));
+                                    $effStartStr = ($joinDateClean !== '' && $joinDateClean > $_fromDate) ? $joinDateClean : $_fromDate;
+                                    $effEndStr   = ($resignDateClean !== '' && $resignDateClean < $_toDate) ? $resignDateClean : $_toDate;
+                                    if ($effStartStr > $effEndStr) {
+                                        $empServiceDays = 0;
+                                    } else {
+                                        $empServiceDays = (int) (new \DateTime($effStartStr))->diff(new \DateTime($effEndStr))->days + 1;
+                                        $empServiceDays = min($cycleTotalDays, max(0, $empServiceDays));
+                                    }
                                 }
 
-                                $nonWorkingCycleDays = max(0, $cycleTotalDays - $empEffectiveDays);
+                                $nonWorkingCycleDays = max(0, $cycleTotalDays - $empServiceDays);
 
-                                $effectiveGross = ($empEffectiveDays < $cycleTotalDays && $daily > 0)
-                                    ? round($empEffectiveDays * $daily, 2)
+                                $serviceGross = ($empServiceDays < $cycleTotalDays && $daily > 0)
+                                    ? round($empServiceDays * $daily, 2)
                                     : $gross;
 
                                 // Base salary allowances
@@ -905,6 +934,12 @@ window.executeDeleteProject = function(projId) {
                                 $convAllow = ($isExisting && isset($p['conveyance_allowance'])) ? (float)$p['conveyance_allowance'] : round($basic * $itemPercents['conveyance'], 2);
                                 $medAllow = ($isExisting && isset($p['medical_allowance'])) ? (float)$p['medical_allowance'] : round($basic * $itemPercents['medical'], 2);
                                 $hrAllow = ($isExisting && isset($p['house_rent_allowance'])) ? (float)$p['house_rent_allowance'] : round($basic * $itemPercents['houserent'], 2);
+                                if ($gross > 0 && abs(($basic + $recAllow + $convAllow + $medAllow + $hrAllow) - $gross) > 1.0) {
+                                    $recAllow  = round($basic * 0.10, 2);
+                                    $convAllow = round($basic * 0.10, 2);
+                                    $medAllow  = round($basic * 0.30, 2);
+                                    $hrAllow   = round($basic * 0.50, 2);
+                                }
 
                                 // Additional earnings
                                 $specialAllow = $isExisting ? (float)($p['special_allowance'] ?? 0) : 0;
@@ -932,7 +967,8 @@ window.executeDeleteProject = function(projId) {
                                     if ($unpaidAbsentsDays <= 0) {
                                         $unpaidAbsentsAmount = 0.00;
                                     } else {
-                                        $unpaidAbsentsAmount = (isset($p['saved_unpaid_absent_amount']) && (float)$p['saved_unpaid_absent_amount'] > 0)
+                                        $savedRowCycle = (int) ($p['cycle_days'] ?? 0);
+                                        $unpaidAbsentsAmount = ($savedRowCycle === $cycleTotalDays && isset($p['saved_unpaid_absent_amount']) && (float)$p['saved_unpaid_absent_amount'] > 0)
                                             ? (float)$p['saved_unpaid_absent_amount']
                                             : round($unpaidAbsentsDays * $daily, 2);
                                     }
@@ -949,6 +985,12 @@ window.executeDeleteProject = function(projId) {
                                     $unpaidAbsentsDays = isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0;
                                     $unpaidAbsentsAmount = round($unpaidAbsentsDays * $daily, 2);
                                 }
+
+                                // Actual Effective Days = Service Days - Late/Unpaid/Absent Days
+                                $empEffectiveDays = max(0, round($empServiceDays - $unpaidAbsentsDays, 2));
+                                $empEffectiveDaysDisp = (floor($empEffectiveDays) == $empEffectiveDays)
+                                    ? (int) $empEffectiveDays
+                                    : number_format($empEffectiveDays, 2, '.', '');
 
                                 // Advance salary
                                 $advanceSalary = $isExisting ? (float)($p['advance_salary'] ?? 0) : 0;
@@ -982,8 +1024,8 @@ window.executeDeleteProject = function(projId) {
                                 $othersDeduction = $isExisting ? (float)($p['others_deduction'] ?? 0) : 0;
                                 $tax = $isExisting ? (float)($p['tax'] ?? 0) : 0;
 
-                                // Net salary calculation (prorated gross + additions - deductions)
-                                $totalEarnings = $effectiveGross + $specialAllow + $arrearsEarning + $dutyAllow + $punctBonus + $overtime;
+                                // Net salary calculation (service gross + additions - deductions)
+                                $totalEarnings = $serviceGross + $specialAllow + $arrearsEarning + $dutyAllow + $punctBonus + $overtime;
                                 $totalDeductions = $advanceSalary + $subsidizeLunch + $unpaidAbsentsAmount + $arrearsDeduction + $othersDeduction + $tax;
                                 $netSalary = max(0, round($totalEarnings - $totalDeductions, 2));
 
@@ -1014,7 +1056,7 @@ window.executeDeleteProject = function(projId) {
                                 }
                                 $paymentMethod = $hasBankDetails ? (($cash > 0 && $bank <= 0) ? 'cash' : 'bank') : 'cash';
                                 ?>
-                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-employee-name="<?= htmlspecialchars($p['full_name']) ?>" data-has-bank="<?= $hasBankDetails ? '1' : '0' ?>" data-joining-date="<?= !empty($p['joining_date']) ? date('Y-m-d', strtotime($p['joining_date'])) : '' ?>" data-resignation-date="<?= !empty($p['deleted_at']) ? date('Y-m-d', strtotime($p['deleted_at'])) : '' ?>" data-effective-days="<?= $empEffectiveDays ?>" data-non-working-days="<?= $nonWorkingCycleDays ?>" data-has-db="<?= ($hasAttOverride || ($isExisting && !$attIsNewer) || isset($p['tipsoi_present'])) ? 'true' : 'false' ?>">
+                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-employee-name="<?= htmlspecialchars($p['full_name']) ?>" data-has-bank="<?= $hasBankDetails ? '1' : '0' ?>" data-joining-date="<?= htmlspecialchars($joinDateClean) ?>" data-resignation-date="<?= htmlspecialchars($resignDateClean) ?>" data-service-days="<?= $empServiceDays ?>" data-effective-days="<?= $empEffectiveDays ?>" data-cycle-days="<?= $cycleTotalDays ?>" data-non-working-days="<?= $nonWorkingCycleDays ?>" data-has-db="<?= ($hasAttOverride || ($isExisting && !$attIsNewer) || isset($p['tipsoi_present'])) ? 'true' : 'false' ?>">
                                             <?php $excludedState = (isset($p['is_excluded']) && $p['is_excluded'] == 1) ? "" : "checked"; ?>
                                             <td class="text-center"><input type="checkbox" autocomplete="off" class="form-check-input emp-checkbox" <?= $excludedState ?> style="cursor:pointer;"></td>
                                             <td><?= $sl++ ?></td>
@@ -1057,11 +1099,11 @@ window.executeDeleteProject = function(projId) {
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-overtime" value="<?= round($overtime, 2) ?>" style="min-width: 80px;"></td>
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-arrear" value="<?= round($arrearsEarning, 2) ?>" style="min-width: 80px;"></td>
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-otherallow" value="<?= round($dutyAllow, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><?= !empty($p['joining_date']) ? date('d-M-Y', strtotime($p['joining_date'])) : '&nbsp;' ?>
+                                            <td><?= $joinDateClean !== '' ? date('d-M-Y', strtotime($joinDateClean)) : '&nbsp;' ?>
                                             </td>
-                                            <td><?= !empty($p['deleted_at']) ? date('d-M-Y', strtotime($p['deleted_at'])) : '&nbsp;' ?>
+                                            <td><?= $resignDateClean !== '' ? date('d-M-Y', strtotime($resignDateClean)) : '&nbsp;' ?>
                                             </td>
-                                            <td class="cell-effective-days text-center" data-val="<?= $empEffectiveDays ?>"><?= $empEffectiveDays ?></td>
+                                            <td class="cell-effective-days text-center" data-service-days="<?= $empServiceDays ?>" data-val="<?= $empEffectiveDays ?>"><?= $empEffectiveDaysDisp ?></td>
                                             <td class="cell-net fw-bold text-primary text-nowrap"
                                                 data-payment-method="<?= $paymentMethod ?>">
                                                 <?= number_format($netSalary, 2) ?>
@@ -1200,18 +1242,31 @@ window.executeDeleteProject = function(projId) {
                         }
                     }
 
-                    // Calculate effective gross salary based on actual effective days
-                    let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;
-                    const effDaysCell = row.querySelector('.cell-effective-days');
-                    const effectiveDays = effDaysCell ? (parseFloat(effDaysCell.dataset.val || effDaysCell.textContent) || 30) : 30;
+                    // Live-update Actual Effective Days = Service Days - Late/Unpaid/Absent Days
                     const totalCycleDays = <?= (int) ($cycleTotalDays ?? 30) ?>;
+                    const effDaysCell = row.querySelector('.cell-effective-days');
+                    const parsedSrv = effDaysCell && effDaysCell.dataset.serviceDays !== undefined
+                        ? parseFloat(effDaysCell.dataset.serviceDays)
+                        : parseFloat(row.getAttribute('data-service-days'));
+                    const serviceDays = !isNaN(parsedSrv) ? parsedSrv : totalCycleDays;
+                    const currentAbsentDays = Math.max(0, parseFloat(absentInp.value) || 0);
+                    const actualEffectiveDays = Math.max(0, Math.round((serviceDays - currentAbsentDays) * 100) / 100);
+                    if (effDaysCell) {
+                        effDaysCell.dataset.val = actualEffectiveDays;
+                        effDaysCell.textContent = Number.isInteger(actualEffectiveDays)
+                            ? String(actualEffectiveDays)
+                            : actualEffectiveDays.toFixed(2);
+                    }
+                    row.setAttribute('data-effective-days', actualEffectiveDays);
 
-                    let effectiveGross = gross;
-                    if (effectiveDays < totalCycleDays && daily > 0) {
-                        effectiveGross = Math.round(effectiveDays * daily * 100) / 100;
+                    // Calculate prorated service gross salary (absent/LWP is deducted once via totalDeduction)
+                    let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;
+                    let serviceGross = gross;
+                    if (serviceDays < totalCycleDays && daily > 0) {
+                        serviceGross = Math.round(serviceDays * daily * 100) / 100;
                     }
 
-                    let totalEarning = effectiveGross;
+                    let totalEarning = serviceGross;
                     row.querySelectorAll('.in-earning').forEach(inp => {
                         if (!inp.classList.contains('in-basic-allowance')) {
                             totalEarning += (parseFloat(inp.value) || 0);
@@ -1223,7 +1278,7 @@ window.executeDeleteProject = function(projId) {
                     });
 
                     // Net Salary
-                    let netSalary = totalEarning - totalDeduction;
+                    let netSalary = Math.max(0, Math.round((totalEarning - totalDeduction) * 100) / 100);
                     row.querySelector('.cell-net').textContent = netSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                     const tax = parseFloat(row.querySelector('.in-tax').value) || 0;
@@ -1362,6 +1417,8 @@ window.executeDeleteProject = function(projId) {
                 let input = $(this).find('input[type="number"]');
                 if (input.length > 0) {
                     val = parseFloat(input.val()) || 0;
+                } else if ($(this).hasClass('cell-effective-days')) {
+                    val = parseFloat($(this).attr('data-val') || $(this).text().replace(/,/g, '')) || 0;
                 } else if ($(this).hasClass('text-center') || $(this).find('button').length > 0 || $(this).text().includes('-') && $(this).text().trim().length > 6) {
                     // Skip dates and buttons (Salary Hold, Joining Date, Resignation Date)
                     val = 0;
@@ -1396,49 +1453,9 @@ window.executeDeleteProject = function(projId) {
 
 // Removed redundant initial dispatchEvent loop for 10x faster rendering
 
-        // --- Date range from PHP (works for both Monthly and Custom Range modes) ---
-        const fromDateStr = "<?= $selectedFromDate ?? date('Y-m-01') ?>";
-        const toDateStr   = "<?= $selectedToDate   ?? date('Y-m-t')  ?>";
-
-        // Calculate effective days per employee in the range and update "Actual Effective Days" cells
-        (function () {
-            const cycleFrom = new Date(fromDateStr);
-            const cycleTo   = new Date(toDateStr);
-            const totalCycleDays = Math.round((cycleTo - cycleFrom) / (1000 * 60 * 60 * 24)) + 1;
-
-            document.querySelectorAll('#workspaceTable tbody tr.calc-row').forEach(row => {
-                const cell = row.querySelector('.cell-effective-days');
-                if (!cell) return;
-
-                const joinStr = row.getAttribute('data-joining-date') || '';
-                const resignStr = row.getAttribute('data-resignation-date') || '';
-
-                let empStart = cycleFrom;
-                if (joinStr) {
-                    const jDate = new Date(joinStr);
-                    if (!isNaN(jDate) && jDate > cycleFrom) {
-                        empStart = jDate;
-                    }
-                }
-
-                let empEnd = cycleTo;
-                if (resignStr) {
-                    const rDate = new Date(resignStr);
-                    if (!isNaN(rDate) && rDate < cycleTo) {
-                        empEnd = rDate;
-                    }
-                }
-
-                let effDays = 0;
-                if (empStart <= empEnd) {
-                    effDays = Math.round((empEnd - empStart) / (1000 * 60 * 60 * 24)) + 1;
-                    effDays = Math.max(0, Math.min(totalCycleDays, effDays));
-                }
-
-                cell.textContent = effDays;
-                cell.setAttribute('data-val', effDays);
-            });
-        })();
+        // --- Date range from PHP (works for both Monthly 26th-25th and Custom Range modes) ---
+        const fromDateStr = "<?= $_fromDate ?>";
+        const toDateStr   = "<?= $_toDate ?>";
 
         // --- Tipsoi Attendance Sync (Fast Server-Side Sync & Direct DB Save) ---
         window.syncTipsoiAttendance = function(btn) {
@@ -1920,6 +1937,7 @@ window.executeDeleteProject = function(projId) {
 
                 var rowData = [];
                 var dtNodes = table.rows().nodes();
+                var totalCycleDaysPayload = <?= (int) ($cycleTotalDays ?? 30) ?>;
 
                 $(dtNodes).each(function () {
                     var tr = $(this);
@@ -1928,16 +1946,25 @@ window.executeDeleteProject = function(projId) {
                     var payslipIdStr = tr.attr('data-payslip-id');
                     var payslipId = parseInt(payslipIdStr || '0', 10);
                     var employeeId = parseInt(tr.attr('data-employee-id') || '0', 10);
-                    console.log('Sending row:', { payslipIdStr: payslipIdStr, parsedPayslipId: payslipId, employeeId: employeeId });
                     
                     var netSalary = parseFloat(tr.find('.cell-net').text().trim().replace(/,/g, '')) || 0;
-                    var totalEarningBase = parseFloat(tr.find('.cell-gross').attr('data-val')) || 0;
+                    var grossVal = parseFloat(tr.find('.cell-gross').attr('data-val')) || 0;
+                    var dailyVal = parseFloat(tr.find('.cell-daily').attr('data-val')) || 0;
+                    var parsedSrv = parseFloat(tr.attr('data-service-days'));
+                    var serviceDays = !isNaN(parsedSrv) ? parsedSrv : totalCycleDaysPayload;
+                    var totalEarningBase = (serviceDays < totalCycleDaysPayload && dailyVal > 0)
+                        ? Math.round(serviceDays * dailyVal * 100) / 100
+                        : grossVal;
                     var totalEarning = totalEarningBase;
                     var totalDeduction = 0;
                     var salaryHoldString = tr.find('.in-salary-hold-string').val() || '';
                     var bankAmount = parseFloat(tr.find('.in-bank').val()) || 0;
                     var cashAmount = parseFloat(tr.find('.in-cash').val()) || 0;
                     var lateUnpaidAbsentDays = parseFloat(tr.find('.in-absent-days').val()) || 0;
+                    var effectiveDaysVal = parseFloat(tr.find('.cell-effective-days').attr('data-val'));
+                    if (isNaN(effectiveDaysVal)) {
+                        effectiveDaysVal = Math.max(0, Math.round((serviceDays - lateUnpaidAbsentDays) * 100) / 100);
+                    }
                     var remarks = tr.find('.in-remarks').val() || '';
                     var attRemarks = tr.find('.in-att-remarks').val() || '';
 
@@ -1981,6 +2008,8 @@ window.executeDeleteProject = function(projId) {
                         bank_amount: bankAmount,
                         cash_amount: cashAmount,
                         late_unpaid_absent_days: lateUnpaidAbsentDays,
+                        effective_days: effectiveDaysVal,
+                        cycle_days: totalCycleDaysPayload,
                         remarks: remarks,
                         attendance_remarks: attRemarks,
                         is_excluded: isExcluded,
@@ -2019,6 +2048,7 @@ window.executeDeleteProject = function(projId) {
                         project_id: projectId,
                         year: $('select[name="year"]').val() || '',
                         month: $('select[name="month"]').val() || '',
+                        cycle_days: totalCycleDaysPayload,
                         rows: rowData
                     }),
                     success: function (res) {

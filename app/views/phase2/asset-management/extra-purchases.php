@@ -1065,14 +1065,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Pending ' + overrideStage + "'s Approval",
-                        html: 'This purchase request is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                        html: 'This purchase request is pending for <strong>' + overrideStage + "'s</strong> approval. Choose whether to approve <strong>only " + overrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.',
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonColor: '#198754',
+                        showDenyButton: true,
+                        confirmButtonColor: '#0d6efd',
+                        denyButtonColor: '#198754',
                         cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, Approve All Stages'
+                        confirmButtonText: 'Approve Only ' + overrideStage,
+                        denyButtonText: 'Approve All & Finalize'
                     }).then(function(result) {
-                        if (result.isConfirmed) {
+                        var modeVal = result.isConfirmed ? 'single' : (result.isDenied ? 'override' : '');
+                        if (modeVal !== '') {
+                            var inp = approvalFormEl.querySelector('input[name="approve_mode"]');
+                            if (!inp) { inp = document.createElement('input'); inp.type = 'hidden'; inp.name = 'approve_mode'; approvalFormEl.appendChild(inp); }
+                            inp.value = modeVal;
                             approvalFormEl.setAttribute('data-confirmed-override', '1');
                             approvalFormEl.submit();
                         }
@@ -1094,14 +1101,21 @@ function submitDetailInlineApproval(id, overrideStage) {
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 title: 'Pending ' + overrideStage + "'s Approval",
-                html: 'This purchase request is pending for <strong>' + overrideStage + "'s</strong> approval. Are you ready to approve for <strong>" + overrideStage + '</strong> first?<br><small class="text-muted d-block mt-2">Your name will be recorded as the approver for all bypassed stages as well as final Management approval.</small>',
+                html: 'This purchase request is pending for <strong>' + overrideStage + "'s</strong> approval. Choose whether to approve <strong>only " + overrideStage + '</strong> and forward to the next stage, or override all stages &amp; finalize now.',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#198754',
+                showDenyButton: true,
+                confirmButtonColor: '#0d6efd',
+                denyButtonColor: '#198754',
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, Approve All Stages'
+                confirmButtonText: 'Approve Only ' + overrideStage,
+                denyButtonText: 'Approve All & Finalize'
             }).then(function(result) {
-                if (result.isConfirmed) {
+                var modeVal = result.isConfirmed ? 'single' : (result.isDenied ? 'override' : '');
+                if (modeVal !== '') {
+                    var inp = form.querySelector('input[name="approve_mode"]');
+                    if (!inp) { inp = document.createElement('input'); inp.type = 'hidden'; inp.name = 'approve_mode'; form.appendChild(inp); }
+                    inp.value = modeVal;
                     form.submit();
                 }
             });

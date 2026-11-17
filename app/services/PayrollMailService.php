@@ -80,11 +80,12 @@ class PayrollMailService
                 }
             }
             $totEarning = (float)($payslip['total_earning'] ?? 0);
-            $totDeduction = $deductionTotal > 0 ? $deductionTotal : (float)($payslip['total_deduction'] ?? 0);
-            $netSalaryVal = $totEarning - $totDeduction;
-            if ($netSalaryVal <= 0 && (float)($payslip['net_salary'] ?? 0) > 0) {
-                $netSalaryVal = (float)$payslip['net_salary'];
-            }
+            $totDeduction = (isset($payslip['total_deduction']) && ((float)$payslip['total_deduction'] > 0 || $deductionTotal <= 0))
+                ? (float)$payslip['total_deduction']
+                : $deductionTotal;
+            $netSalaryVal = isset($payslip['net_salary'])
+                ? (float)$payslip['net_salary']
+                : max(0, $totEarning - $totDeduction);
 
             $bankAmountVal = (float)($payslip['bank_amount'] ?? 0);
             $cashAmountVal = (float)($payslip['cash_amount'] ?? 0);
@@ -227,11 +228,12 @@ class PayrollMailService
             }
         }
         $totEarning = (float)($payslip['total_earning'] ?? 0);
-        $totDeduction = $deductionTotal > 0 ? $deductionTotal : (float)($payslip['total_deduction'] ?? 0);
-        $netSalaryVal = $totEarning - $totDeduction;
-        if ($netSalaryVal <= 0 && (float)($payslip['net_salary'] ?? 0) > 0) {
-            $netSalaryVal = (float)$payslip['net_salary'];
-        }
+        $totDeduction = (isset($payslip['total_deduction']) && ((float)$payslip['total_deduction'] > 0 || $deductionTotal <= 0))
+            ? (float)$payslip['total_deduction']
+            : $deductionTotal;
+        $netSalaryVal = isset($payslip['net_salary'])
+            ? (float)$payslip['net_salary']
+            : max(0, $totEarning - $totDeduction);
 
         $bankAmountVal = (float) ($payslip['bank_amount'] ?? 0);
         $cashAmountVal = (float) ($payslip['cash_amount'] ?? 0);
@@ -359,8 +361,19 @@ class PayrollMailService
         }
 
         $displayTotalEarnings = (float)($payslip['total_earning'] ?? ($coreEarningTotal + $additionalEarningTotal));
-        $displayTotalDeduction = $deductionTotal > 0 ? $deductionTotal : (float)($payslip['total_deduction'] ?? 0);
-        $displayNetSalary = $displayTotalEarnings - $displayTotalDeduction;
+        $displayTotalDeduction = (isset($payslip['total_deduction']) && ((float)$payslip['total_deduction'] > 0 || $deductionTotal <= 0))
+            ? (float)$payslip['total_deduction']
+            : $deductionTotal;
+        $displayNetSalary = isset($payslip['net_salary'])
+            ? (float)$payslip['net_salary']
+            : max(0, $displayTotalEarnings - $displayTotalDeduction);
+        $empGrossCore = ((float)($payslip['gross_salary'] ?? 0) > 0) ? (float)$payslip['gross_salary'] : $coreEarningTotal;
+        $proRataServiceGross = max(0, round($displayTotalEarnings - $additionalEarningTotal, 2));
+        $proRataRowHtml = '';
+        if (($empGrossCore - $proRataServiceGross) > 0.50) {
+            $cycleLbl = !empty($payslip['cycle_days']) ? ' (' . (int)$payslip['cycle_days'] . 'd Cycle)' : '';
+            $proRataRowHtml = '<tr><td style="border-top: 1px dashed #cbd5e1; padding-top: 4px; color: #0f766e; font-weight: bold;">Pro-Rata Service Gross' . $cycleLbl . '</td><td align="right" style="border-top: 1px dashed #cbd5e1; padding-top: 4px; color: #0f766e;"><span style="font-weight: normal;">৳</span> <b>' . number_format($proRataServiceGross, 2) . '</b></td></tr>';
+        }
 
         $coreEarningsRows = '';
         foreach ($coreEarnings as $item) {
@@ -568,6 +581,7 @@ class PayrollMailService
                                 <td style="border-top: 1px solid #d1d5db; padding-top: 5px; font-weight: bold;">Gross Salary (Core)</td>
                                 <td align="right" style="border-top: 1px solid #d1d5db; padding-top: 5px;"><span style="font-weight: normal;">৳</span> <b>' . number_format($coreEarningTotal, 2) . '</b></td>
                             </tr>
+                            ' . $proRataRowHtml . '
                         </table>
                     </td>
                 </tr>

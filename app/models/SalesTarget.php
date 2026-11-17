@@ -896,6 +896,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
                   AND (l.assigned_id = ? OR lb.sales_by_id = ?)
                   AND lb.booking_status IN ('completed','booked')
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
                   AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("iissss", $userId, $userId, $startDate, $endDate, $startDate, $endDate);
@@ -925,6 +926,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
                   AND (l.assigned_id = ? OR lb.sales_by_id = ?)
                   AND lb.booking_status IN ('completed','booked')
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
                   AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("iissss", $userId, $userId, $startDate, $endDate, $startDate, $endDate);
@@ -992,9 +994,12 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
     /**
      * Get aggregate target and performance stats for a team
      */
-    public function getTeamRangeStats($teamId, array $memberUserIds, $year = null, $startMonth = null, $endMonth = null, $customFromDate = null, $customToDate = null)
+    public function getTeamRangeStats(int|array $teamId, array $memberUserIds, $year = null, $startMonth = null, $endMonth = null, $customFromDate = null, $customToDate = null)
     {
-        $teamId = (int)$teamId;
+        $teamIds = is_array($teamId)
+            ? array_values(array_unique(array_filter(array_map('intval', $teamId), fn($id) => $id > 0)))
+            : ((int)$teamId > 0 ? [(int)$teamId] : []);
+        $teamIdList = !empty($teamIds) ? implode(',', $teamIds) : '0';
         $memberUserIdsClean = array_values(array_filter(array_map('intval', $memberUserIds)));
         $memberList = !empty($memberUserIdsClean) ? implode(',', $memberUserIdsClean) : '0';
 
@@ -1040,7 +1045,7 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
             $stmt->close();
         }
 
-        $teamScope = "((l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN ($memberList) OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id = $teamId))) OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id = $teamId))";
+        $teamScope = "((l.assigned_id IS NOT NULL AND l.assigned_id > 0 AND (l.assigned_id IN ($memberList) OR l.assigned_id IN (SELECT u_tm.id FROM users u_tm WHERE u_tm.team_id IN ($teamIdList)))) OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id IN ($teamIdList)))";
 
         $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
         $autoFilter = "";
@@ -1077,7 +1082,8 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 FROM lead_bookings lb
                 JOIN leads l ON l.id = lb.lead_id
                 WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
-                  AND ($teamScope OR lb.sales_by_id IN ($memberList) OR lb.created_by IN ($memberList))
+                  AND COALESCE(lb.team_id, l.team_id) IN ({$teamIdList})
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
                   {$autoFilter} {$roleIsolation}
                   AND lb.booking_status IN ('completed','booked')
                   AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
@@ -1112,7 +1118,8 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 FROM lead_bookings lb
                 JOIN leads l ON l.id = lb.lead_id
                 WHERE lb.deleted_at IS NULL AND l.deleted_at IS NULL
-                  AND ($teamScope OR lb.sales_by_id IN ($memberList) OR lb.created_by IN ($memberList))
+                  AND COALESCE(lb.team_id, l.team_id) IN ({$teamIdList})
+                  AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))
                   {$autoFilter} {$roleIsolation}
                   AND lb.booking_status IN ('completed','booked')
                   AND (DATE(lb.booking_date) BETWEEN ? AND ? OR DATE(lb.created_at) BETWEEN ? AND ?)";
