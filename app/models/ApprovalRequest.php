@@ -2398,7 +2398,7 @@ class ApprovalRequest extends Model
             || strpos($roleName, 'head of sales') !== false;
 
         $salesHeadCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
-                          AND LOWER({$prefix}approve_role) = 'sales_head' 
+                          AND LOWER({$prefix}approve_role) IN ('sales_head', 'sales_manager') 
                           AND ({$prefix}sales_head_status = 'pending' OR {$prefix}sales_head_status IS NULL OR {$prefix}sales_head_status = ''))";
 
         // Chief Officer, Management Viewer & SEAL CEO have NO actionable approval items
@@ -2470,7 +2470,7 @@ class ApprovalRequest extends Model
         } elseif ($isSiteOperator && !$isManagement) {
             $siteOpCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND {$prefix}source_table != 'payslips'
-                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
+                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', 'op_head') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
                     AND ({$prefix}op_head_status != 'approved' OR {$prefix}op_head_status IS NULL))";
             if ($isSalesHead || $userRoleId === 20 || $userRoleId === 32 || $userSecRoleId === 9 || $userSecRoleId === 20) {
                 return "({$siteOpCond} OR {$salesHeadCond})";
@@ -2480,10 +2480,11 @@ class ApprovalRequest extends Model
             $mgmtCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '' OR {$prefix}source_table = 'payslips')
                     AND ({$prefix}source_table = 'payslips' 
+                         OR ({$prefix}source_table = 'client_refund_requests' AND {$prefix}op_head_status = 'approved')
                          OR ({$prefix}source_table = 'project_incentive_claims' AND {$prefix}sales_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')
-                         OR ({$prefix}request_amount <= 10000.01 AND {$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests', 'project_incentive_claims')) 
+                         OR ({$prefix}request_amount <= 10000.01 AND {$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests', 'project_incentive_claims', 'client_refund_requests')) 
                          OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
-            if ($isSalesHead) {
+            if ($isSalesHead || $userRoleId === 38) {
                 return "({$mgmtCond} OR {$salesHeadCond})";
             }
             return $mgmtCond;
@@ -2666,6 +2667,16 @@ class ApprovalRequest extends Model
                 'accent_hex'  => '#059669',
                 'portal_url'  => 'con-land-requisitions',
                 'portal_name' => 'Land Requisitions'
+            ],
+            'client_refund_requests' => [
+                'key'         => 'client_refund_requests',
+                'name'        => 'Client Refunds',
+                'dept'        => 'Sales & Accounts',
+                'icon'        => 'fa-solid fa-rotate-left',
+                'badge_color' => 'danger',
+                'accent_hex'  => '#dc2626',
+                'portal_url'  => 'client-refunds',
+                'portal_name' => 'Client Refunds'
             ],
         ];
 
@@ -5730,7 +5741,7 @@ class ApprovalRequest extends Model
                 $status = strtolower($row['status'] ?? 'pending');
                 $title = 'Client Refund — ' . ($row['client_name'] ?? 'Client') . ' | ' . ($row['flat_name'] ?? '') . ' | ' . ($row['project_name'] ?? '');
                 
-                $appRole = 'management';
+                $appRole = 'sales_manager';
                 if ($status === 'approved') {
                     $appRole = 'accounts_head';
                 } elseif ($status === 'refunded') {

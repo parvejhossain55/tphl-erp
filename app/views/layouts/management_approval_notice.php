@@ -80,7 +80,7 @@ $noticeId = 'mgmtApprovalNotice_' . substr(md5(__FILE__ . ($noticeContext ?? 'ge
                 <div>
                     <h6 class="mb-0 fw-bold fs-13 d-flex align-items-center gap-2 mgmt-notice-title">
                         <span>Management / DCEO / CEO Approval Schedule</span>
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-10 fw-semibold px-2 py-0.5 rounded-pill">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-10 fw-semibold px-2 py-1 rounded-pill">
                             Official Schedule
                         </span>
                     </h6>
@@ -90,7 +90,7 @@ $noticeId = 'mgmtApprovalNotice_' . substr(md5(__FILE__ . ($noticeContext ?? 'ge
 
             <!-- Live Status & Pulse Pill -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge <?= $sessionStatusBadge ?> rounded-pill px-3 py-1.5 fs-11 d-inline-flex align-items-center gap-1.5 shadow-sm">
+                <span class="badge <?= $sessionStatusBadge ?> rounded-pill px-3 py-1 fs-11 d-inline-flex align-items-center gap-2 shadow-sm">
                     <?php if ($sessionPulse): ?>
                         <span class="spinner-grow spinner-grow-sm text-light" style="width: 7px; height: 7px; animation-duration: 1.2s;" role="status"></span>
                     <?php else: ?>
@@ -141,22 +141,27 @@ $noticeId = 'mgmtApprovalNotice_' . substr(md5(__FILE__ . ($noticeContext ?? 'ge
 
                 <!-- Info message depending on user role -->
                 <div class="col-xl-6 col-lg-5 col-md-12">
-                    <div class="p-2 rounded-2 fs-11 mgmt-desc-box">
+                    <div class="p-2 px-3 rounded-2 fs-11 mgmt-desc-box" style="line-height: 1.45;">
                         <?php if ($isMgmtUserNotice): ?>
-                            <div class="d-flex align-items-start gap-1.5 mgmt-desc-text">
-                                <div>
-                                    <strong class="mgmt-desc-title">Management Desk (Management / DCEO / CEO):</strong> 
-                                    Your designated routine approval hours are shown above. 
-                                    <span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-0.5"></i>However, you are fully authorized to review and approve urgent pending requests at any time (24/7).</span>
+                            <div class="mgmt-desc-text">
+                                <div class="mb-1">
+                                    <strong class="mgmt-desc-title">Management Desk (Management / DCEO / CEO):</strong>
+                                    Your designated routine approval hours are shown alongside.
+                                </div>
+                                <div class="text-success fw-semibold d-flex align-items-start gap-1">
+                                    <i class="fa-solid fa-circle-check mt-1 flex-shrink-0"></i>
+                                    <span>You are fully authorized to review and approve urgent pending requests at any time (24/7).</span>
                                 </div>
                             </div>
                         <?php else: ?>
-                            <div class="d-flex align-items-start gap-1.5 mgmt-desc-text">
-                                <i class="fa-solid fa-circle-info text-primary mt-0.5 fs-12"></i>
+                            <div class="d-flex align-items-start gap-2 mgmt-desc-text">
+                                <i class="fa-solid fa-circle-info text-primary mt-1 fs-12 flex-shrink-0"></i>
                                 <div>
-                                    <strong class="mgmt-desc-title">Attention Requesters & Staff:</strong> 
-                                    Payment requests and requisitions requiring Management / DCEO / CEO approval are officially reviewed during these daily executive hours. 
-                                    <span class="mgmt-desc-muted">(Emergency requests may be approved by Management at any time).</span>
+                                    <div class="mb-1">
+                                        <strong class="mgmt-desc-title">Attention Requesters &amp; Staff:</strong>
+                                        Requests requiring Management / DCEO / CEO approval are reviewed during these daily executive hours.
+                                    </div>
+                                    <span class="mgmt-desc-muted">Urgent requests may still be approved by Management at any time.</span>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -164,7 +169,7 @@ $noticeId = 'mgmtApprovalNotice_' . substr(md5(__FILE__ . ($noticeContext ?? 'ge
                 </div>
             </div>
             
-            <div class="d-flex align-items-center justify-content-between mt-2 pt-1.5 border-top fs-10 mgmt-notice-footer">
+            <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top fs-11 mgmt-notice-footer">
                 <div>
                     <i class="fa-solid fa-hourglass-half me-1 text-primary"></i><?= htmlspecialchars($sessionSubtext) ?>
                 </div>

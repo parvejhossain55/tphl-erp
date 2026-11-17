@@ -268,6 +268,7 @@ return [
     // Controller: ClientRefundController
     // =========================================================================
     'client-refunds' => ['controller' => 'ClientRefundController', 'method' => 'index'],
+    'team-refunds'   => ['controller' => 'ClientRefundController', 'method' => 'teamRefunds'],
     'client-refund-create/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'create'],
     'client-refund-store' => ['controller' => 'ClientRefundController', 'method' => 'store'],
     'client-refund/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'show'],

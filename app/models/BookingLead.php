@@ -155,10 +155,21 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $types   .= "i";
         }
 
-        // Team filter (strictly scopes to the given team based on locked booking team_id or resolved team)
-        if (!empty($teamId)) {
+        // Team filter (strictly scopes to the given team or array of teams)
+        if (is_array($teamId)) {
+            $cleanIds = array_values(array_filter(array_map('intval', $teamId), fn($v) => $v > 0));
+            if (empty($cleanIds)) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) IN (" . implode(',', $cleanIds) . ")";
+            }
+        } elseif (!empty($teamId)) {
             $teamIdInt = (int)$teamId;
-            $sql .= " AND COALESCE(lb.team_id, l.team_id) = {$teamIdInt}";
+            if ($teamIdInt < 0) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) = {$teamIdInt}";
+            }
         }
 
         // Salesperson filter
@@ -212,10 +223,22 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         $params = [];
         $types  = "";
 
-        if (!empty($teamId)) {
-            $sql .= " AND COALESCE(lb.team_id, l.team_id) = ?";
-            $params[] = (int)$teamId;
-            $types   .= "i";
+        if (is_array($teamId)) {
+            $cleanIds = array_values(array_filter(array_map('intval', $teamId), fn($v) => $v > 0));
+            if (empty($cleanIds)) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) IN (" . implode(',', $cleanIds) . ")";
+            }
+        } elseif (!empty($teamId)) {
+            $teamIdInt = (int)$teamId;
+            if ($teamIdInt < 0) {
+                $sql .= " AND 1=0";
+            } else {
+                $sql .= " AND COALESCE(lb.team_id, l.team_id) = ?";
+                $params[] = $teamIdInt;
+                $types   .= "i";
+            }
         }
 
         if (!empty($project_id)) {

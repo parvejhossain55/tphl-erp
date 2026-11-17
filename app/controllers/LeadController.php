@@ -1709,8 +1709,9 @@ class LeadController extends Controller
         // CRITICAL: Sales Head (Role 9) might ALSO have is_team_leader = 1 in employees table.
         // Role check takes absolute precedence over is_team_leader flag so Sales Head can view all teams!
         $isSalesTeamHead = ($userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($userRoleName, 'team head') !== false || strpos($userRoleName, 'sales head') !== false || strpos($userRoleName, 'sales team head') !== false);
-        $isManagementRole = in_array($userRoleId, [1, 3, 20, 32, 33, 34, 35, 38], true)
-            || in_array($userSecondaryRoleId, [1, 3, 20, 32, 33, 34, 35, 38], true)
+        $isSalesManager  = ($userRoleId === 38 || $userSecondaryRoleId === 38);
+        $isManagementRole = in_array($userRoleId, [1, 3, 20, 32, 33, 34, 35], true)
+            || in_array($userSecondaryRoleId, [1, 3, 20, 32, 33, 34, 35], true)
             || strpos($userRoleName, 'admin') !== false
             || strpos($userRoleName, 'management') !== false
             || strpos($userRoleName, 'chief') !== false
@@ -1720,12 +1721,27 @@ class LeadController extends Controller
 
         // Determine team for query:
         // - Top-level roles can see all by default, or filter by requested team_id
-        // - Sales Manager (5), Team Leader, and other team members are strictly scoped to their own team
+        // - Sales Manager (38) is strictly scoped to teams assigned in sales_manager_teams
+        // - Team Leader (5), Sales Executive (8), and other team members are strictly scoped to their own team
         $teamIdForQuery = null;
         if ($canViewAllTeams) {
             $teamIdForQuery = !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null;
+        } elseif ($isSalesManager) {
+            $mgrTeams = [];
+            $mtRes = $this->db->query("SELECT team_id FROM sales_manager_teams WHERE manager_user_id = {$userId} AND is_active = 1");
+            if ($mtRes) {
+                while ($mtRow = $mtRes->fetch_assoc()) {
+                    $mgrTeams[] = (int)$mtRow['team_id'];
+                }
+            }
+            if (!empty($_GET['team_id'])) {
+                $reqTeam = (int)$_GET['team_id'];
+                $teamIdForQuery = in_array($reqTeam, $mgrTeams, true) ? $reqTeam : -1;
+            } else {
+                $teamIdForQuery = !empty($mgrTeams) ? $mgrTeams : -1;
+            }
         } else {
-            $teamIdForQuery = $actualTeamId > 0 ? $actualTeamId : null;
+            $teamIdForQuery = $actualTeamId > 0 ? $actualTeamId : -1;
         }
 
         $year        = $_GET['year']        ?? null;
