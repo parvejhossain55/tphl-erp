@@ -920,7 +920,11 @@ class MyWorkController extends Controller
                 ";
             }
 
-            $html .= "<tr class=\"{$rowClass}\" data-task-id=\"{$taskId}\">
+                $whBadge = (!empty($t['working_hour']) && (float)$t['working_hour'] > 0)
+                    ? ' · ' . rtrim(rtrim(number_format((float)$t['working_hour'], 2), '0'), '.') . 'h'
+                    : '';
+
+                $html .= "<tr class=\"{$rowClass}\" data-task-id=\"{$taskId}\">
                 <td>
                     <div class=\"d-flex align-items-start\">
                         <div>
@@ -930,7 +934,7 @@ class MyWorkController extends Controller
                             {$blockedBadge}
                             {$reviewFeedbackBadge}
                             <div class=\"mw-task-sub\">
-                                T-{$taskId} · {$projectSafe} · {$createdMonth}
+                                T-{$taskId} · {$projectSafe} · {$createdMonth}{$whBadge}
                             </div>
                         </div>
                     </div>
@@ -1131,6 +1135,7 @@ class MyWorkController extends Controller
         $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
 
         $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $workingHour = (isset($_POST['working_hour']) && $_POST['working_hour'] !== '') ? round(max(0, (float)$_POST['working_hour']), 2) : null;
         $assignedById = $userId;
         [$isRecurring, $recurrenceType, $recurrenceEnd, $recurrenceCustomDatesJson] = $this->parseRecurrencePayload($isAjax);
 
@@ -1162,6 +1167,11 @@ class MyWorkController extends Controller
             }
         }
 
+        $markCompleted = !empty($_POST['mark_completed']) && $ownerId === $userId;
+        $initialStatus = $markCompleted ? 'completed' : 'pending';
+        $initialProgress = $markCompleted ? 100 : 0;
+        $initialAccept = $markCompleted ? 1 : 0;
+
         $checklistData = null;
         if (!empty($descItems)) {
             $clArr = [];
@@ -1169,7 +1179,7 @@ class MyWorkController extends Controller
                 $clArr[] = [
                     'id' => $idx + 1,
                     'text' => $item,
-                    'completed' => false
+                    'completed' => $markCompleted
                 ];
             }
             $checklistData = json_encode($clArr, JSON_UNESCAPED_UNICODE);
@@ -1179,14 +1189,14 @@ class MyWorkController extends Controller
             INSERT INTO tasks (
                 title, expected_output, user_id, assigned_by, todo_project_id,
                 description, checklist_data, start_date, deadline, priority,
-                status, progress, employee_accept, mentioned_user_ids,
+                working_hour, status, progress, employee_accept, mentioned_user_ids,
                 cc_user_ids, attachment_image, project_id,
                 is_recurring, recurrence_type, recurrence_end_date, recurrence_custom_dates, collaborator_user_ids, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         $stmt->bind_param(
-            "ssiiissssssssiissss",
+            "ssiiisssssdsiisssiissss",
             $title,
             $expectedOutput,
             $ownerId,
@@ -1197,6 +1207,10 @@ class MyWorkController extends Controller
             $startDate,
             $deadline,
             $priority,
+            $workingHour,
+            $initialStatus,
+            $initialProgress,
+            $initialAccept,
             $mentionedJson,
             $ccJson,
             $attachmentImage,
@@ -1213,7 +1227,10 @@ class MyWorkController extends Controller
             $stmt->close();
 
             // Log creation activity
-            $this->logTaskActivity($newTaskId, $userId, 'system', "Task created and assigned to " . ($ownerId === $userId ? "self" : "user #{$ownerId}"));
+            $actText = $markCompleted
+                ? "Self-initiated task created and marked as completed."
+                : ("Task created and assigned to " . ($ownerId === $userId ? "self" : "user #{$ownerId}"));
+            $this->logTaskActivity($newTaskId, $userId, 'system', $actText);
 
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -1508,6 +1525,7 @@ class MyWorkController extends Controller
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
                 'priority' => ucfirst($t['priority'] ?? 'medium'),
+                'working_hour' => ($t['working_hour'] !== null && $t['working_hour'] !== '') ? (float)$t['working_hour'] : null,
                 'deadline' => $deadlineText,
                 'raw_deadline' => !empty($t['deadline']) ? $t['deadline'] : null,
                 'overdue' => $overdueText,
@@ -1606,6 +1624,7 @@ class MyWorkController extends Controller
                 'assigned_to_id' => (int)$t['user_id'],
                 'deadline' => $deadlineDate,
                 'priority' => $t['priority'] ?? 'medium',
+                'working_hour' => ($t['working_hour'] !== null && $t['working_hour'] !== '') ? (float)$t['working_hour'] : '',
                 'project_id' => !empty($t['project_id']) ? (int)$t['project_id'] : '',
                 'is_recurring' => (int)($t['is_recurring'] ?? 0),
                 'recurrence_type' => $t['recurrence_type'] ?? '',
@@ -1697,6 +1716,7 @@ class MyWorkController extends Controller
         $startDate = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
 
         $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $workingHour = (isset($_POST['working_hour']) && $_POST['working_hour'] !== '') ? round(max(0, (float)$_POST['working_hour']), 2) : null;
         [$isRecurring, $recurrenceType, $recurrenceEnd, $recurrenceCustomDatesJson] = $this->parseRecurrencePayload($isAjax);
 
         $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
@@ -1761,6 +1781,7 @@ class MyWorkController extends Controller
                 start_date = ?,
                 deadline = ?,
                 priority = ?,
+                working_hour = ?,
                 mentioned_user_ids = ?,
                 cc_user_ids = ?,
                 attachment_image = ?,
@@ -1775,7 +1796,7 @@ class MyWorkController extends Controller
         ");
 
         $stmt->bind_param(
-            "ssissssssssiissssi",
+            "ssisssssdsssiissssi",
             $title,
             $expectedOutput,
             $assignedToId,
@@ -1784,6 +1805,7 @@ class MyWorkController extends Controller
             $startDate,
             $deadline,
             $priority,
+            $workingHour,
             $mentionedJson,
             $ccJson,
             $attachmentImage,

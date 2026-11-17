@@ -2032,6 +2032,10 @@ $todayDateFormatted = date('j F');
                         <option value="urgent">Urgent</option>
                     </select>
                 </div>
+                <div class="mw-form-col" id="colWorkingHour">
+                    <label class="mw-form-label">Working Hour <span style="font-weight:400; color:#65776F;">(hrs)</span></label>
+                    <input type="number" name="working_hour" id="drawerWorkingHour" class="mw-form-input" step="0.25" min="0" max="24" placeholder="e.g. 1.5">
+                </div>
             </div>
 
             <!-- Row 2: Start Date & Deadline -->
@@ -2148,6 +2152,14 @@ $todayDateFormatted = date('j F');
             <div class="mw-form-group">
                 <label class="mw-form-label">Attachment</label>
                 <input type="file" name="attachment" id="drawerAttachment" class="mw-form-input">
+            </div>
+
+            <!-- Direct Mark as Completed (Self Create Mode only) -->
+            <div class="mw-form-group" id="wrapSelfCompleted" style="display:none;">
+                <label class="mw-checkbox-wrap" style="margin: 4px 0;">
+                    <input type="checkbox" name="mark_completed" value="1" id="chkSelfCompleted">
+                    <span>Mark as Completed immediately</span>
+                </label>
             </div>
 
             <!-- Callout Notice Box -->
@@ -2871,8 +2883,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const colTaskOwner = document.getElementById('colTaskOwner');
             const rowAssignedToCc = document.getElementById('rowAssignedToCc');
+            const colWorkingHour = document.getElementById('colWorkingHour');
             if (colTaskOwner) colTaskOwner.style.display = isSelf ? 'none' : '';
             if (rowAssignedToCc) rowAssignedToCc.style.display = isSelf ? 'none' : '';
+            if (colWorkingHour) {
+                colWorkingHour.style.display = isSelf ? '' : 'none';
+                if (!isSelf && !isEdit) {
+                    const whInput = document.getElementById('drawerWorkingHour');
+                    if (whInput) whInput.value = '';
+                }
+            }
+            const wrapSelfCompleted = document.getElementById('wrapSelfCompleted');
+            if (wrapSelfCompleted) {
+                wrapSelfCompleted.style.display = isSelf ? '' : 'none';
+                if (!isSelf) {
+                    const chkSC = document.getElementById('chkSelfCompleted');
+                    if (chkSC) chkSC.checked = false;
+                }
+            }
 
             if (drawerTitle) {
                 drawerTitle.innerText = isEdit ? 'Edit task' : (isSelf ? 'Create Self Task' : 'Create task');
@@ -3017,6 +3045,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const prioritySelect = formCreateTask.querySelector('select[name="priority"]');
                 if (prioritySelect && t.priority) prioritySelect.value = t.priority;
+
+                const workingHourInput = document.getElementById('drawerWorkingHour');
+                if (workingHourInput) workingHourInput.value = (t.working_hour !== null && t.working_hour !== undefined) ? t.working_hour : '';
+                const colWorkingHourEdit = document.getElementById('colWorkingHour');
+                if (colWorkingHourEdit) {
+                    const isSelfEdit = (parseInt(t.assigned_to_id, 10) === <?= (int)$userId ?>) || (t.working_hour !== null && t.working_hour !== '');
+                    colWorkingHourEdit.style.display = isSelfEdit ? '' : 'none';
+                }
 
                 const projectSelect = formCreateTask.querySelector('select[name="project_id"]');
                 if (projectSelect) projectSelect.value = t.project_id || '';
@@ -3666,6 +3702,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="mw-td-pills">
                 <span class="mw-td-pill status" id="mwTdStatusPill">${tdEsc(t.status_label)}</span>
                 <span class="mw-td-pill">${tdEsc(t.priority)} priority</span>
+                ${t.working_hour !== null && t.working_hour > 0 ? `<span class="mw-td-pill"><i class="fa-regular fa-clock me-1"></i>${t.working_hour}h</span>` : ''}
                 ${t.overdue ? `<span class="mw-td-pill overdue">${tdEsc(t.overdue)}</span>` : ''}
             </div>
             <div class="mw-td-tabs">${tabsHtml}${remindBtnHtml}</div>
