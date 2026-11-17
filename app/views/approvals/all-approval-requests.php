@@ -928,7 +928,18 @@
                                     }
                                 } elseif ($sourceTable === 'client_refund_requests') {
                                     if ($isPendingStatus) {
-                                        $rfStage = $reqApproveRole ?: 'sales_manager';
+                                        $rfSalesSt = strtolower($req['sales_head_status'] ?? 'pending');
+                                        $rfQcSt    = strtolower($req['qc_status'] ?? 'pending');
+                                        $rfOpSt    = strtolower($req['op_head_status'] ?? 'pending');
+                                        if ($rfSalesSt !== 'approved') {
+                                            $rfStage = 'sales_manager';
+                                        } elseif ($rfQcSt !== 'approved') {
+                                            $rfStage = 'qc';
+                                        } elseif ($rfOpSt !== 'approved') {
+                                            $rfStage = 'op_head';
+                                        } else {
+                                            $rfStage = 'management';
+                                        }
                                         if ($rfStage === 'sales_manager' && ($userRoleId === 38 || $isSalesHeadUser || $userRoleId === 3)) {
                                             $isActionableByMe = true;
                                             $canUserApprove = true;

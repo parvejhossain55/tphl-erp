@@ -3234,6 +3234,10 @@ class ApprovalRequest extends Model
                     ar.op_head_by,
                     ar.op_head_at,
                     ar.op_head_note,
+                    ar.qc_status,
+                    ar.qc_by,
+                    ar.qc_at,
+                    ar.qc_note,
                     u_req.full_name AS requester_name,
                     e_req.employee_id AS requester_code,
                     d_req.name AS requester_dept,
@@ -3382,7 +3386,28 @@ class ApprovalRequest extends Model
             if (empty($appRole)) $appRole = 'management';
             $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
 
-            if ($appRole === 'dept_head') {
+            if ($row['source_table'] === 'client_refund_requests' && in_array(strtolower($row['status'] ?? ''), ['pending', 'partially_approved', ''])) {
+                $rfSalesSt = strtolower($row['sales_head_status'] ?? 'pending');
+                $rfQcSt    = strtolower($row['qc_status'] ?? 'pending');
+                $rfOpSt    = strtolower($row['op_head_status'] ?? 'pending');
+                if ($rfSalesSt !== 'approved') {
+                    $row['approve_role'] = 'sales_manager';
+                    $pendingStageLabel   = 'Pending Sales Manager';
+                    $pendingForText      = 'Related Sales Manager';
+                } elseif ($rfQcSt !== 'approved') {
+                    $row['approve_role'] = 'qc';
+                    $pendingStageLabel   = 'Pending QC & Audit';
+                    $pendingForText      = 'QC & Internal Audit Head';
+                } elseif ($rfOpSt !== 'approved') {
+                    $row['approve_role'] = 'op_head';
+                    $pendingStageLabel   = 'Pending Operation Head';
+                    $pendingForText      = 'Admin & Operation Head';
+                } else {
+                    $row['approve_role'] = 'management';
+                    $pendingStageLabel   = 'Pending Super Admin';
+                    $pendingForText      = 'Super Admin';
+                }
+            } elseif ($appRole === 'dept_head') {
                 $pendingStageLabel = 'Pending Dept Head';
                 $pendingForText = 'Department Head / Reporting Boss';
             } elseif ($appRole === 'sales_manager') {
