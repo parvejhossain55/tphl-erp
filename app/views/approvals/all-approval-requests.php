@@ -926,6 +926,23 @@
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
+                                } elseif ($sourceTable === 'client_refund_requests') {
+                                    if ($isPendingStatus) {
+                                        $rfStage = $reqApproveRole ?: 'sales_manager';
+                                        if ($rfStage === 'sales_manager' && ($userRoleId === 38 || $isSalesHeadUser || $userRoleId === 3)) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        } elseif ($rfStage === 'qc' && ($isQcUser || $userRoleId === 3)) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        } elseif ($rfStage === 'op_head' && ($isSiteOperator || $userRoleId === 3)) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        } elseif ($rfStage === 'management' && $userRoleId === 3) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
+                                    }
                                 } elseif ($isSiteOperator) {
                                     $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
                                     if ($isPendingStatus && $sourceTable !== 'payslips' && in_array($reqApproveRole, ['management', 'operations', '']) && $reqOpStatus !== 'approved') {
@@ -1801,6 +1818,19 @@
                                                         ])) ?>)"
                                                         title="Review & Process Booking Discount">
                                                         <i class="fa-solid fa-stamp me-1"></i>Review / Process
+                                                    </button>
+                                                <?php elseif ($sourceTable === 'client_refund_requests'): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold"
+                                                        onclick="openRefundApprovalModal(<?= htmlspecialchars(json_encode([
+                                                            'id'         => (int)$req['id'],
+                                                            'source_id'  => (int)$req['source_id'],
+                                                            'title'      => $req['title'] ?? 'Client Refund Approval',
+                                                            'amount'     => (float)$req['request_amount'],
+                                                            'stage'      => $req['approve_role'] ?? 'sales_manager',
+                                                            'detail_url' => $targetUrl
+                                                        ]), ENT_QUOTES, 'UTF-8') ?>)"
+                                                        title="Approve or Reject Refund Request">
+                                                        <i class="fa-solid fa-stamp me-1"></i>Review / Approve
                                                     </button>
                                                 <?php else: ?>
                                                     <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
@@ -2824,6 +2854,117 @@
             }
         });
     }
+</script>
+
+<!-- Client Refund Direct Approval Modal -->
+<div class="modal fade" id="refundApprovalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom py-2.5">
+                <h6 class="modal-title fw-bold mb-0">
+                    <i class="fa-solid fa-rotate-left text-danger me-2"></i>Client Refund Approval
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="mb-2">
+                    <div class="text-muted fs-11">Request Title</div>
+                    <div class="fw-semibold text-dark fs-13" id="rfModTitle">—</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded-2 bg-light border mb-3">
+                    <div>
+                        <div class="text-muted fs-11">Current Stage</div>
+                        <span class="badge bg-warning text-dark fs-11" id="rfModStage">—</span>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted fs-11">Refund Amount</div>
+                        <strong class="text-success fs-16 font-monospace" id="rfModAmount">৳ 0.00</strong>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fs-12 fw-semibold text-muted mb-1">Approval / Rejection Note</label>
+                    <textarea id="rfModNote" class="form-control form-control-sm" rows="2" placeholder="Optional remarks..."></textarea>
+                </div>
+                <div class="text-end">
+                    <a href="#" id="rfModDetailLink" class="fs-12 text-primary text-decoration-none" target="_blank">
+                        <i class="fa-light fa-up-right-from-square me-1"></i>View Full Refund Details
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top py-2">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="rfBtnReject" onclick="submitRefundApproval('reject')">
+                    <i class="fa-solid fa-xmark me-1"></i> Reject
+                </button>
+                <button type="button" class="btn btn-sm btn-success fw-semibold" id="rfBtnApprove" onclick="submitRefundApproval('approve')">
+                    <i class="fa-solid fa-check me-1"></i> Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRefundApproval = null;
+const rfStageMap = {
+    'sales_manager': 'Stage 1: Related Sales Manager',
+    'qc':            'Stage 2: QC Verification',
+    'op_head':       'Stage 3: Operation Head',
+    'management':    'Stage 4: Super Admin Final Approval'
+};
+
+function openRefundApprovalModal(data) {
+    currentRefundApproval = data;
+    document.getElementById('rfModTitle').innerText = data.title || 'Client Refund';
+    document.getElementById('rfModStage').innerText = rfStageMap[data.stage] || data.stage;
+    document.getElementById('rfModAmount').innerText = '৳ ' + parseFloat(data.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('rfModNote').value = '';
+    document.getElementById('rfModDetailLink').href = data.detail_url || ('<?= $base_url ?>/client-refund/' + data.source_id);
+    const modalEl = document.getElementById('refundApprovalModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function submitRefundApproval(action) {
+    if (!currentRefundApproval) return;
+    const btn = document.getElementById(action === 'approve' ? 'rfBtnApprove' : 'rfBtnReject');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+
+    const fd = new FormData();
+    fd.append('ajax', '1');
+    fd.append('note', document.getElementById('rfModNote').value.trim());
+
+    const endpoint = action === 'approve'
+        ? '<?= $base_url ?>/client-refund-approve/' + currentRefundApproval.source_id + '?ajax=1'
+        : '<?= $base_url ?>/client-refund-reject/' + currentRefundApproval.source_id + '?ajax=1';
+
+    fetch(endpoint, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json())
+        .then(res => {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            if (res.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'success', title: 'Done', text: res.message }).then(() => window.location.reload());
+                } else {
+                    alert(res.message);
+                    window.location.reload();
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Not Allowed', text: res.message });
+                } else {
+                    alert(res.message);
+                }
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            alert('Network error: ' + err);
+        });
+}
 </script>
 
 <style>

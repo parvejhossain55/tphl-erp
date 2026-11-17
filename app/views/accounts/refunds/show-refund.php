@@ -348,7 +348,122 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 </div>
             </div>
 
-            <!-- Approval Actions (Management & Role 20 only, pending status) -->
+            <!-- Approval Pipeline Tracker (Visible to all roles — shows exact order & current stage) -->
+            <?php
+                $arData      = $approval ?? [];
+                $curStageKey = $currentStage ?? 'sales_manager';
+                $isRejected  = ($status === 'rejected');
+                $isPaidDone  = ($status === 'refunded');
+                $isMgmtDone  = in_array($status, ['approved', 'refunded'], true);
+
+                $pipelineSteps = [
+                    [
+                        'num'    => 1,
+                        'key'    => 'sales_manager',
+                        'title'  => 'Sales Manager (Primary)',
+                        'role'   => 'Related Sales Manager',
+                        'done'   => $isMgmtDone || (strtolower($arData['sales_head_status'] ?? 'pending') === 'approved'),
+                        'by'     => $arData['sales_head_name'] ?? null,
+                        'at'     => $arData['sales_head_at'] ?? null,
+                    ],
+                    [
+                        'num'    => 2,
+                        'key'    => 'qc',
+                        'title'  => 'QC Verification',
+                        'role'   => 'Quality Control / Audit',
+                        'done'   => $isMgmtDone || (strtolower($arData['qc_status'] ?? 'pending') === 'approved'),
+                        'by'     => $arData['qc_name'] ?? null,
+                        'at'     => $arData['qc_at'] ?? null,
+                    ],
+                    [
+                        'num'    => 3,
+                        'key'    => 'op_head',
+                        'title'  => 'Operation Head',
+                        'role'   => 'Admin & Operation Head',
+                        'done'   => $isMgmtDone || (strtolower($arData['op_head_status'] ?? 'pending') === 'approved'),
+                        'by'     => $arData['op_head_name'] ?? null,
+                        'at'     => $arData['op_head_at'] ?? null,
+                    ],
+                    [
+                        'num'    => 4,
+                        'key'    => 'management',
+                        'title'  => 'Management Final Approval',
+                        'role'   => 'Super Admin Only',
+                        'done'   => $isMgmtDone,
+                        'by'     => $arData['mgmt_name'] ?? ($refund['approved_by_name'] ?? null),
+                        'at'     => $arData['approved_at'] ?? ($refund['approved_at'] ?? null),
+                    ],
+                    [
+                        'num'    => 5,
+                        'key'    => 'accounts',
+                        'title'  => 'Accounts Disbursement',
+                        'role'   => 'Accounts Department',
+                        'done'   => $isPaidDone,
+                        'by'     => null,
+                        'at'     => $refund['refunded_at'] ?? null,
+                    ],
+                ];
+                $stageTitles = [
+                    'sales_manager' => 'Stage 1: Sales Manager Approval',
+                    'qc'            => 'Stage 2: QC Verification',
+                    'op_head'       => 'Stage 3: Operation Head Approval',
+                    'management'    => 'Stage 4: Super Admin Approval',
+                ];
+            ?>
+            <div class="card custom-card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0 fw-bold fs-13 text-dark">
+                        <i class="bi bi-diagram-3 text-primary me-1"></i> Approval Process
+                    </h6>
+                    <span class="badge bg-<?= $isRejected ? 'danger' : ($isPaidDone ? 'success' : ($isMgmtDone ? 'info' : 'warning text-dark')) ?> fs-10">
+                        <?= $isRejected ? 'Rejected' : ($isPaidDone ? 'Completed' : ($isMgmtDone ? 'Ready for Accounts' : ($stageTitles[$curStageKey] ?? 'Pending'))) ?>
+                    </span>
+                </div>
+                <div class="card-body p-3">
+                    <div class="d-flex flex-column gap-2">
+                        <?php foreach ($pipelineSteps as $step):
+                            $isCurrent = false;
+                            if (!$isRejected && !$step['done']) {
+                                if ($isPending && $step['key'] === $curStageKey) $isCurrent = true;
+                                elseif ($status === 'approved' && $step['key'] === 'accounts') $isCurrent = true;
+                            }
+                            $dotBg = $step['done'] ? '#16a34a' : ($isCurrent ? '#f59e0b' : ($isRejected ? '#ef4444' : '#cbd5e1'));
+                            $boxBg = $step['done'] ? '#f0fdf4' : ($isCurrent ? '#fffbeb' : '#f8fafc');
+                            $boxBorder = $step['done'] ? '#bbf7d0' : ($isCurrent ? '#fde68a' : '#e2e8f0');
+                        ?>
+                        <div class="d-flex align-items-start gap-2 p-2 rounded-2" style="background: <?= $boxBg ?>; border: 1px solid <?= $boxBorder ?>;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 text-white fw-bold"
+                                 style="width: 22px; height: 22px; font-size: 11px; background: <?= $dotBg ?>;">
+                                <?= $step['done'] ? '<i class="bi bi-check-lg"></i>' : $step['num'] ?>
+                            </div>
+                            <div class="flex-grow-1 min-w-0" style="line-height: 1.35;">
+                                <div class="d-flex justify-content-between align-items-center gap-1">
+                                    <strong class="fs-12 text-dark"><?= $step['title'] ?></strong>
+                                    <?php if ($step['done']): ?>
+                                        <span class="badge bg-success-subtle text-success fs-10">Done</span>
+                                    <?php elseif ($isCurrent): ?>
+                                        <span class="badge bg-warning text-dark fs-10">Current</span>
+                                    <?php elseif ($isRejected): ?>
+                                        <span class="badge bg-danger-subtle text-danger fs-10">Stopped</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-light text-muted border fs-10">Waiting</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="fs-11 text-muted"><?= $step['role'] ?></div>
+                                <?php if ($step['done'] && (!empty($step['by']) || !empty($step['at']))): ?>
+                                    <div class="fs-10 text-success mt-0.5">
+                                        <?= !empty($step['by']) ? htmlspecialchars($step['by']) : '' ?>
+                                        <?= !empty($step['at']) ? ' · ' . date('d M Y, h:i A', strtotime($step['at'])) : '' ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approval Actions (Current stage approver only, pending status) -->
             <?php if ($canApproveReq && $isPending): ?>
             <?php
             $refundAmtToCheck = (float)$refund['refund_amount'];
@@ -357,7 +472,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             $userRoleRefund = (int)($_SESSION['user']['role_id'] ?? 0);
             $roleNameRefund = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
             $isOpHeadUserRefund = (in_array($userRoleRefund, [20, 32], true) || str_contains($roleNameRefund, 'operation head'));
-            $isMgmtUserRefund = in_array($userRoleRefund, [1, 3, 38], true);
+            $isMgmtUserRefund = ($userRoleRefund === 3);
             ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #ffc107 !important; background: #fffdf5;">
                 <div class="card-body p-3">
@@ -366,8 +481,8 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <i class="bi bi-shield-lock-fill fs-6"></i>
                         </div>
                         <div>
-                            <h6 class="card-title mb-0 fw-bold text-dark fs-14">Management &amp; Role 20 Approval</h6>
-                            <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">Approval Action</span>
+                            <h6 class="card-title mb-0 fw-bold text-dark fs-14"><?= $stageTitles[$curStageKey] ?? 'Approval Action' ?></h6>
+                            <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">Your Action Required</span>
                         </div>
                     </div>
                     
@@ -538,31 +653,27 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
 
                     <div class="p-2 rounded bg-light border border-light-subtle small mt-3 text-secondary" style="font-size: 11.5px; line-height: 1.5;">
                         <i class="bi bi-shield-lock text-primary me-1"></i>
-                        Once retention is set, this request will automatically move to Management and Role 20 for approval.
+                        Once retention is set, the request continues through the 4-step approval chain (Sales Manager ➔ QC ➔ Operation Head ➔ Super Admin).
                     </div>
                 </div>
             </div>
             <?php endif; ?>
 
-            <!-- Informative Box for Non-Accounts / Non-Management when Pending -->
+            <!-- Informative Box for Non-Accounts / Non-Approvers when Pending -->
             <?php if ($isPending && !$canApproveReq && !$isAccountsRole): ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #0d6efd !important; background: #f8faff;">
                 <div class="card-body p-3">
-                    <div class="d-flex align-items-center mb-2.5">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(13, 110, 253, 0.12); color: #0d6efd;">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.12); color: #0d6efd;">
                             <i class="bi bi-hourglass-split fs-6"></i>
                         </div>
                         <div>
-                            <h6 class="mb-0 fw-bold fs-13 text-primary">Awaiting Management &amp; Role 20 Approval</h6>
-                            <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">Pending Approval</span>
+                            <h6 class="mb-0 fw-bold fs-13 text-primary"><?= $stageTitles[$curStageKey] ?? 'Awaiting Approval' ?></h6>
+                            <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">In Progress</span>
                         </div>
                     </div>
-                    
-                    <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mt-2 text-secondary" style="font-size: 12.5px; line-height: 1.6;">
-                        <div class="fw-semibold text-dark mb-1">
-                            <i class="bi bi-shield-check text-success me-1"></i> Retention &amp; Payout Guideline:
-                        </div>
-                        This refund request is awaiting <strong>Management &amp; Role 20</strong> approval. After approval, Accounts department can disburse payment with voucher/cheque attachments.
+                    <div class="p-2 rounded-2 bg-white border border-light-subtle small text-secondary" style="font-size: 12px; line-height: 1.5;">
+                        Follow the <strong>Approval Process</strong> steps above. After <strong>Super Admin</strong> final approval, Accounts will disburse the payout.
                     </div>
                 </div>
             </div>

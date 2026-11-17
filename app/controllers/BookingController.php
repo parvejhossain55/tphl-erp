@@ -533,12 +533,15 @@ class BookingController extends Controller
 
         $leadId = (int)$booking['lead_id'];
 
-        // Authorization check: Salesperson who made the sale (sales_by_id) OR roles [1, 3, 9, 20, 33]
-        $isSalesperson = (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === (int)$userId);
-        $hasBackupRole = in_array($userRole, [1, 3, 9, 20, 33]);
+        // Authorization check: Related Team Leader (Role 5 in same team) OR roles [1, 3, 9, 20]
+        // Sales Executives (Role 8) cannot create refund requests directly
+        require_once __DIR__ . '/../models/ClientRefund.php';
+        $crModel = new ClientRefund($this->db);
+        $isRelatedLeader = $crModel->isRelatedTeamLeader($userId, $userRole, $bookingId);
+        $hasBackupRole   = in_array($userRole, [1, 3, 9, 20], true);
 
-        if (!$isSalesperson && !$hasBackupRole) {
-            setError("You are not authorized to initiate refund for this booking. Only the assigned salesperson or authorized management can initiate.");
+        if ((int)$userRole === 8 || (!$isRelatedLeader && !$hasBackupRole)) {
+            setError("Only your sales leaders can create refund request.");
             header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
             exit;
         }
@@ -705,7 +708,7 @@ class BookingController extends Controller
                     'source_id'      => $refundId,
                     'requested_days' => 0,
                     'requested_by'   => $userId,
-                    'approve_role'   => 'accounts_retention',
+                    'approve_role'   => 'sales_manager',
                     'meta_data'      => null,
                     'request_amount' => $refundAmount,
                 ]);
