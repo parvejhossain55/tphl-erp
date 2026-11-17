@@ -102,8 +102,17 @@ $canApprove = $canApprove ?? false;
                         <select name="vendor_id" class="form-control form-control-sm select2">
                             <option value="">All Vendors</option>
                             <?php foreach ($vendorsList ?? [] as $vnd): ?>
+                                <?php
+                                $vComp = trim($vnd['company_name'] ?? '');
+                                $vName = trim($vnd['name'] ?? '');
+                                if (!empty($vComp) && !empty($vName) && strcasecmp($vComp, $vName) !== 0) {
+                                    $vLabel = $vComp . ' (' . $vName . ')';
+                                } else {
+                                    $vLabel = !empty($vComp) ? $vComp : $vName;
+                                }
+                                ?>
                                 <option value="<?= $vnd['id'] ?>" <?= ((string)($filters['vendor_id'] ?? '') === (string)$vnd['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($vnd['name'] . (!empty($vnd['company_name']) ? ' (' . $vnd['company_name'] . ')' : '')) ?>
+                                    <?= htmlspecialchars($vLabel) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

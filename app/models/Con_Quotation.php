@@ -42,7 +42,7 @@ class Con_Quotation extends Model
     public function getByRequest($requestId)
     {
         $stmt = $this->db->prepare(
-            "SELECT q.*, v.name AS vendor_name, v.phone AS vendor_phone,
+            "SELECT q.*, v.name AS vendor_name, v.company_name AS vendor_company_name, v.phone AS vendor_phone,
                     (SELECT SUM(qi.quantity * qi.unit_price) FROM {$this->itemTable} qi WHERE qi.quotation_id = q.id) AS total_amount
              FROM {$this->table} q
              JOIN vendors v ON v.id = q.vendor_id
@@ -68,7 +68,7 @@ class Con_Quotation extends Model
     public function find($id)
     {
         $stmt = $this->db->prepare(
-            "SELECT q.*, v.name AS vendor_name
+            "SELECT q.*, v.name AS vendor_name, v.company_name AS vendor_company_name
              FROM {$this->table} q
              JOIN vendors v ON v.id = q.vendor_id
              WHERE q.id = ?"
@@ -193,7 +193,14 @@ class Con_Quotation extends Model
         $totals  = [];
 
         foreach ($quotations as $q) {
-            $vendors[$q['vendor_id']] = $q['vendor_name'];
+            $comp = trim($q['vendor_company_name'] ?? '');
+            $pers = trim($q['vendor_name'] ?? '');
+            if (!empty($comp) && !empty($pers) && strcasecmp($comp, $pers) !== 0) {
+                $displayVName = $comp . ' (' . $pers . ')';
+            } else {
+                $displayVName = !empty($comp) ? $comp : $pers;
+            }
+            $vendors[$q['vendor_id']] = $displayVName;
             $totals[$q['vendor_id']] = 0;
             $qItems = $this->getItems($q['id']);
             foreach ($qItems as $qi) {

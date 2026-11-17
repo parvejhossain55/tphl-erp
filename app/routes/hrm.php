@@ -21,7 +21,7 @@ return [
     'team-performance/member/(\d+)' => ['controller' => 'TaskController', 'method' => 'teamMemberTasks'],
     'team-performance/assign-task' => ['controller' => 'TaskController', 'method' => 'assignTeamTask'],
     'team-performance/create-project' => ['controller' => 'TaskController', 'method' => 'createTodoProject'],
-    'management-task-overview' => ['controller' => 'TaskController', 'method' => 'managementTaskOverview'],
+    'management-task-overview' => ['controller' => 'TaskV2Controller', 'method' => 'managementTaskOverview'],
     'create-task' => ['controller' => 'TaskController', 'method' => 'create'],
     'store-task' => ['controller' => 'TaskController', 'method' => 'store'],
     'task-dashboard' => ['controller' => 'TaskController', 'method' => 'taskDashboard'],

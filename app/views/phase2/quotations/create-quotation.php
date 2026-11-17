@@ -60,7 +60,16 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                             <?php foreach ($existing as $i => $eq): ?>
                             <tr>
                                 <td><?= $i + 1 ?></td>
-                                <td class="fw-bold"><?= htmlspecialchars($eq['vendor_name']) ?></td>
+                                <?php
+                                $eqComp = trim($eq['vendor_company_name'] ?? $eq['company_name'] ?? '');
+                                $eqName = trim($eq['vendor_name'] ?? '');
+                                if (!empty($eqComp) && !empty($eqName) && strcasecmp($eqComp, $eqName) !== 0) {
+                                    $eqDisplay = $eqComp . ' (' . $eqName . ')';
+                                } else {
+                                    $eqDisplay = !empty($eqComp) ? $eqComp : $eqName;
+                                }
+                                ?>
+                                <td class="fw-bold"><?= htmlspecialchars($eqDisplay) ?></td>
                                 <td class="text-end">
                                     <?php if (!empty($eq['items'])): ?>
                                         <?php if (count($eq['items']) === 1): ?>
@@ -150,15 +159,33 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                             <div class="col-md-5">
                                 <label class="form-label fw-bold">Vendor <span class="text-danger">*</span></label>
                                 <?php if (!empty($isEdit)): ?>
+                                    <?php
+                                    $qComp = trim($quotation['vendor_company_name'] ?? $quotation['company_name'] ?? '');
+                                    $qName = trim($quotation['vendor_name'] ?? '');
+                                    if (!empty($qComp) && !empty($qName) && strcasecmp($qComp, $qName) !== 0) {
+                                        $qDisplay = $qComp . ' (' . $qName . ')';
+                                    } else {
+                                        $qDisplay = !empty($qComp) ? $qComp : $qName;
+                                    }
+                                    ?>
                                     <select class="form-select" disabled>
-                                        <option value="<?= $quotation['vendor_id'] ?>"><?= htmlspecialchars($quotation['vendor_name']) ?></option>
+                                        <option value="<?= $quotation['vendor_id'] ?>"><?= htmlspecialchars($qDisplay) ?></option>
                                     </select>
                                     <input type="hidden" name="vendor_id" value="<?= $quotation['vendor_id'] ?>">
                                 <?php else: ?>
-                                    <select name="vendor_id" class="form-select" required>
+                                    <select name="vendor_id" class="form-select select2" required>
                                         <option value="">-- Select Vendor --</option>
                                         <?php foreach ($vendors as $v): ?>
-                                            <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['name']) ?></option>
+                                            <?php
+                                            $comp = trim($v['company_name'] ?? '');
+                                            $pers = trim($v['name'] ?? '');
+                                            if (!empty($comp) && !empty($pers) && strcasecmp($comp, $pers) !== 0) {
+                                                $vLabel = $comp . ' (' . $pers . ')';
+                                            } else {
+                                                $vLabel = !empty($comp) ? $comp : $pers;
+                                            }
+                                            ?>
+                                            <option value="<?= $v['id'] ?>"><?= htmlspecialchars($vLabel) ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 <?php endif; ?>

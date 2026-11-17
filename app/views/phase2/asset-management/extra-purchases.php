@@ -676,8 +676,17 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             <select name="vendor_id" id="new_request_vendor_id" class="form-select select2-vendor" style="width: 100%;">
                                 <option value="">-- Optional: Select Vendor --</option>
                                 <?php foreach ($vendors ?? [] as $vnd): ?>
+                                    <?php
+                                    $vComp = trim($vnd['company_name'] ?? '');
+                                    $vName = trim($vnd['name'] ?? '');
+                                    if (!empty($vComp) && !empty($vName) && strcasecmp($vComp, $vName) !== 0) {
+                                        $vLabel = $vComp . ' (' . $vName . ')';
+                                    } else {
+                                        $vLabel = !empty($vComp) ? $vComp : $vName;
+                                    }
+                                    ?>
                                     <option value="<?= $vnd['id'] ?>">
-                                        <?= htmlspecialchars($vnd['name']) ?><?= (!empty($vnd['company_name']) && $vnd['company_name'] !== $vnd['name']) ? ' (' . htmlspecialchars($vnd['company_name']) . ')' : '' ?>
+                                        <?= htmlspecialchars($vLabel) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
