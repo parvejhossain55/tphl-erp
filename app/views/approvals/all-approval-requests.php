@@ -661,8 +661,8 @@
                         <option value="paid" <?= ($filters['status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled History</option>
                         <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>All Approved & Paid</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
-                        <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
-                        <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
+                        <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending</option>
+                        <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests</option>
                     </select>
                 </div>
 
@@ -1005,7 +1005,7 @@
                                             value="<?= $req['id'] ?>" <?= ((!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && !($isPendingAccountsHead && ($isAccountsHeadUser || $isManagementUser))) || !$canUserApprove || $isChiefOfficer) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
                                     </td>
                                     <!-- Req # & Date -->
-                                    <td>
+                                    <td class="text-nowrap">
                                         <?php
                                         // Standardized Requisition / Bill ID for all modules
                                         $displayReqCode = '';
@@ -1062,13 +1062,12 @@
                                     </td>
 
                                     <!-- Department & Module -->
-                                    <td>
-                                        <span
-                                            class="badge bg-success text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
-                                            <?= htmlspecialchars($req['department'] ?? 'General') ?>
-                                        </span>
-                                        <span class="badge bg-light text-muted border extra-small">
-                                            <?= htmlspecialchars($req['request_type'] ?? $req['source_table']) ?>
+                                    <td class="text-nowrap">
+                                        <div class="fw-semibold text-dark fs-12 mb-1">
+                                            <?= htmlspecialchars(ucwords(str_replace('_', ' ', $req['department'] ?? 'General'))) ?>
+                                        </div>
+                                        <span class="badge bg-light text-secondary border fw-normal extra-small px-2 py-0.5 rounded-pill">
+                                            <?= htmlspecialchars(ucwords(str_replace('_', ' ', $req['request_type'] ?? $req['source_table']))) ?>
                                         </span>
                                     </td>
 
@@ -1111,18 +1110,18 @@
                                                 </a>
                                             </div>
                                         <?php endif; ?>
-                                        <span class="text-muted extra-small">Source Table:
-                                            <code><?= htmlspecialchars($req['source_table']) ?></code></span>
                                     </td>
 
                                     <!-- Requested By -->
-                                    <td>
-                                        <div class="fw-bold text-dark extra-small">
+                                    <td class="text-nowrap">
+                                        <div class="fw-semibold text-dark fs-12">
                                             <?= htmlspecialchars($req['requester_name'] ?? 'N/A') ?>
                                         </div>
-                                        <span class="badge bg-light text-secondary border extra-small">
-                                            <?= !empty($req['requester_code']) ? htmlspecialchars($req['requester_code']) : 'null' ?>
-                                        </span>
+                                        <?php if (!empty($req['requester_code'])): ?>
+                                            <span class="text-muted extra-small">
+                                                ID: <?= htmlspecialchars($req['requester_code']) ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
 
                                     <!-- Requested Amount -->
@@ -1365,33 +1364,28 @@
                                             $pendingFor = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? 'Management');
                                             $pendingFor = trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $pendingFor));
 
-                                            $badgeClass = 'bg-warning text-dark';
+                                            $badgeStyle = 'background: #fef3c7; color: #92400e;';
                                             if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
-                                                $badgeClass = 'bg-info text-dark';
-                                            } elseif (stripos($stageLabel, 'Dept') !== false) {
-                                                $badgeClass = 'bg-secondary text-white';
-                                            } elseif (stripos($stageLabel, 'HR') !== false) {
-                                                $badgeClass = 'bg-primary text-white';
-                                            } elseif (stripos($stageLabel, 'Purchase') !== false) {
-                                                $badgeClass = 'bg-secondary text-white';
-                                            } elseif (stripos($stageLabel, 'PM') !== false) {
-                                                $badgeClass = 'bg-info text-white';
-                                            } elseif (stripos($stageLabel, 'Management') !== false) {
-                                                $badgeClass = 'bg-warning text-dark';
+                                                $badgeStyle = 'background: #e0f2fe; color: #075985;';
+                                            } elseif (stripos($stageLabel, 'Dept') !== false || stripos($stageLabel, 'Purchase') !== false) {
+                                                $badgeStyle = 'background: #f1f5f9; color: #334155;';
+                                            } elseif (stripos($stageLabel, 'HR') !== false || stripos($stageLabel, 'PM') !== false) {
+                                                $badgeStyle = 'background: #ede9fe; color: #5b21b6;';
                                             } elseif (stripos($stageLabel, 'Accounts') !== false) {
-                                                $badgeClass = 'bg-success text-white';
+                                                $badgeStyle = 'background: #dcfce7; color: #166534;';
                                             }
                                             ?>
                                             <div class="d-flex flex-column gap-1 text-center" style="max-width: 210px; margin: 0 auto;">
                                                 <div>
-                                                    <span class="badge <?= $badgeClass ?> rounded-pill px-2.5 py-1 extra-small fw-semibold">
+                                                    <span class="badge rounded-pill px-2.5 py-1 extra-small fw-semibold" style="<?= $badgeStyle ?>">
                                                         <i class="fa-solid fa-clock me-1"></i><?= htmlspecialchars($stageLabel) ?>
                                                     </span>
                                                 </div>
-                                                <div class="extra-small text-dark" style="font-size: 11px;">
-                                                    <i class="fa-solid fa-hourglass-half text-warning me-1"></i><span class="text-muted">Pending:</span>
-                                                    <span class="text-primary fw-semibold"><?= htmlspecialchars($pendingFor) ?></span>
+                                                <?php if (!empty($pendingFor) && strcasecmp(str_replace('Pending ', '', $stageLabel), $pendingFor) !== 0): ?>
+                                                <div class="text-muted" style="font-size: 11px;">
+                                                    <?= htmlspecialchars($pendingFor) ?>
                                                 </div>
+                                                <?php endif; ?>
                                                 <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
                                                     <div class="p-1 px-2 rounded-2 bg-secondary-subtle border border-secondary-subtle text-start d-flex align-items-center justify-content-between"
                                                          title="<?= htmlspecialchars(($req['op_head_name'] ?? 'Admin & Operation Head') . (!empty($req['op_head_at']) ? ' • ' . date('d M, Y h:i A', strtotime($req['op_head_at'])) : '')) ?>">
@@ -1850,8 +1844,8 @@
                                                     $pfShort = mb_substr($pfShort, 0, 28) . '…';
                                                 }
                                                 $ahDone = ($ahStatus === 'approved');
-                                                $awaitOpHead = ($reqAmount > 10000.01 && !$opHeadDone && $isManagementUser);
-                                                $awaitAh = ($reqAmount > 10000.01 && $opHeadDone && !$ahDone && $isManagementUser);
+                                                $awaitOpHead = ($sourceTable !== 'client_refund_requests' && $reqAmount > 10000.01 && !$opHeadDone && $isManagementUser);
+                                                $awaitAh = ($sourceTable !== 'client_refund_requests' && $reqAmount > 10000.01 && $opHeadDone && !$ahDone && $isManagementUser);
                                                 if ($awaitOpHead) {
                                                     $lockLabel = 'Awaiting Op Head';
                                                     $lockTitle = 'Amount exceeds ৳10,000 - Admin & Operation Head approval required first';
