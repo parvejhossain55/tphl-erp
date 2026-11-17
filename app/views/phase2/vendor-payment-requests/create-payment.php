@@ -62,7 +62,16 @@
                             <select name="vendor_id" id="vendorSelect" class="form-select select2" required>
                                 <option value="">-- Select Vendor --</option>
                                 <?php foreach ($vendors as $v): ?>
-                                    <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['name'] ?? 'N/A') ?> - <?= htmlspecialchars($v['company_name'] ?? '') ?></option>
+                                    <?php
+                                    $vComp = trim($v['company_name'] ?? '');
+                                    $vName = trim($v['name'] ?? '');
+                                    if (!empty($vComp) && !empty($vName) && strcasecmp($vComp, $vName) !== 0) {
+                                        $vLabel = $vComp . ' (' . $vName . ')';
+                                    } else {
+                                        $vLabel = !empty($vComp) ? $vComp : ($vName ?: 'N/A');
+                                    }
+                                    ?>
+                                    <option value="<?= $v['id'] ?>"><?= htmlspecialchars($vLabel) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

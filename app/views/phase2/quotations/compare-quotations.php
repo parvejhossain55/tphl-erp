@@ -41,7 +41,7 @@ $hasSavedSelections = !empty($savedSelectionsMap);
                         <div class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center justify-content-between border-danger shadow-sm" style="border-radius:10px; background:#fef2f2; color: #302d2d">
                             <div>
                            
-                                <strong class="text-danger">URGENT PURCHASE REQUISITION:</strong>
+                                <strong class="">URGENT PURCHASE REQUISITION:</strong>
                                 Required by: <strong><?= !empty($pr['required_date']) ? date('d M Y', strtotime($pr['required_date'])) : 'Immediate' ?></strong>
                                 <?php if (!empty($pr['urgent_reason'])): ?>
                                     — <em>Justification: <?= htmlspecialchars($pr['urgent_reason']) ?></em>

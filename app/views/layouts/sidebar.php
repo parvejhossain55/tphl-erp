@@ -935,9 +935,9 @@
                         <?php endif; ?>
                         <!-- Lead & Booking -->
                         <li
-                            class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds', 'team-refunds'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['create-lead', 'lead-lists', 'onboarding-clients', 'client-refunds', 'team-refunds'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                                 <span class="sidebar__menu-label">Lead & Booking</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1014,15 +1014,22 @@
                                             Onboarding Clients</a>
                                     </li>
                                 <?php endif; ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/client-refunds"
-                                        class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client
-                                        Refunds
-                                        <?php if ($unpaidRefundsCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
-                                        <?php endif; ?>
-                                    </a>
-                                </li>
+                                <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [5, 8], true)): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/team-refunds"
+                                            class="sidebar__menu-item <?= isActive('team-refunds', $current_route) ?>">Refunds</a>
+                                    </li>
+                                <?php else: ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/client-refunds"
+                                            class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client
+                                            Refunds
+                                            <?php if ($unpaidRefundsCount > 0): ?>
+                                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
+                                            <?php endif; ?>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
                             </ul>
                         </li>
 

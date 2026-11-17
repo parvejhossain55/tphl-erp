@@ -31,7 +31,7 @@ if (isset($_GET['force']) && ($_GET['force'] == '1' || $_GET['force'] == 'true')
     $isForce = true;
 }
 
-$runType = 'Daily 11:00 AM Scheduled Reminder';
+$runType = 'Daily 5:00 PM Scheduled Reminder';
 
 echo "========================================================\n";
 echo " TPHL ERP — Tipsoi Pending Requests Reminder Dispatcher \n";

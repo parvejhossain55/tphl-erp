@@ -1635,31 +1635,11 @@ class HrmApiController extends Controller
     public function triggerLoginReminder()
     {
         header('Content-Type: application/json');
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $userEmail = $_SESSION['user']['email'] ?? null;
-        if (!$userEmail) {
-            echo json_encode(['success' => false, 'message' => 'No active user session.']);
-            exit;
-        }
-
-        try {
-            require_once dirname(__DIR__) . '/services/TipsoiReminderService.php';
-            $service = new \TipsoiReminderService($this->db);
-            $result = $service->handleUserLogin($userEmail);
-
-            echo json_encode([
-                'success' => true,
-                'message' => 'Login reminder check completed.',
-                'data' => $result
-            ]);
-        } catch (\Exception $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-        }
+        echo json_encode([
+            'success' => false,
+            'message' => 'Login reminder trigger is disabled. Pending emails are sent strictly via scheduled cron job at 5:00 PM.'
+        ]);
+        exit;
     }
 
     /**

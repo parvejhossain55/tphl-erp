@@ -349,18 +349,29 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                 <?php endif; ?>
                                                 
                                                 <?php if ($canSalesRefund): ?>
-                                                    <button type="button"
-                                                        class="btn btn-sm btn-outline-danger quickRefundBtn"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#quickRefundModal"
-                                                        data-id="<?= $or['id'] ?>"
-                                                        data-paid="<?= (float)($or['total_verified_paid'] ?? 0) ?>"
-                                                        data-flat="<?= htmlspecialchars($or['flat_name'] ?? '') ?>"
-                                                        data-project="<?= htmlspecialchars($or['project_name'] ?? '') ?>"
-                                                        data-agreement="<?= number_format($or['agreement_value'] ?? 0, 2) ?>"
-                                                        data-client="<?= htmlspecialchars($lead['full_name'] ?? '') ?>">
-                                                        <i class="fa-solid fa-rotate-left"></i> Refund
-                                                    </button>
+                                                    <?php
+                                                        $canCreateRefundDirect = ($isManagement || in_array($currentUserRole, [5, 9]) || in_array($secondaryRoleId, [5, 9]));
+                                                    ?>
+                                                    <?php if ($canCreateRefundDirect): ?>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-danger quickRefundBtn"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#quickRefundModal"
+                                                            data-id="<?= $or['id'] ?>"
+                                                            data-paid="<?= (float)($or['total_verified_paid'] ?? 0) ?>"
+                                                            data-flat="<?= htmlspecialchars($or['flat_name'] ?? '') ?>"
+                                                            data-project="<?= htmlspecialchars($or['project_name'] ?? '') ?>"
+                                                            data-agreement="<?= number_format($or['agreement_value'] ?? 0, 2) ?>"
+                                                            data-client="<?= htmlspecialchars($lead['full_name'] ?? '') ?>">
+                                                            <i class="fa-solid fa-rotate-left"></i> Refund
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button type="button"
+                                                            class="btn btn-sm btn-outline-danger"
+                                                            onclick="if(typeof Swal !== 'undefined'){ Swal.fire({ icon: 'info', title: 'Restricted', text: 'Only your sales leaders can create refund request.' }); } else { alert('Only your sales leaders can create refund request.'); }">
+                                                            <i class="fa-solid fa-rotate-left"></i> Refund
+                                                        </button>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
 
                                                 <?php if ($or['approval_status'] === 'pending'): ?>
