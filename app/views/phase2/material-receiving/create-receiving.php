@@ -20,13 +20,25 @@
             <div class="card__wrapper shadow-sm">
                 <div class="card__header">
                     <h6 class="card__title mb-0">
-                        <i class="bi bi-box-seam me-2"></i>Log Material Receiving — PO-<?= $po['id'] ?>
+                        <i class="bi bi-box-seam me-2"></i><?= !empty($replacementReturn) ? 'Replacement Material Receiving Note (MRN) — RET-' . (int)$replacementReturn['id'] . ' (PO-' . $po['id'] . ')' : 'Material Receiving Note (MRN) — PO-' . $po['id'] ?>
                         <span class="text-muted ms-2">(<?= htmlspecialchars($po['project_name']) ?>)</span>
                     </h6>
                 </div>
                 <div class="card__body p-4">
+                    <?php if (!empty($replacementReturn)): ?>
+                        <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+                            <i class="bi bi-arrow-repeat fs-5"></i>
+                            <div>
+                                <strong>Replacement Receiving for Return #RET-<?= (int)$replacementReturn['id'] ?></strong>
+                                (Original GRN/MRN #<?= (int)$replacementReturn['receiving_id'] ?> · Vendor: <?= htmlspecialchars($replacementReturn['vendor_name'] ?? '—') ?>)
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <form action="<?= $base_url ?>/con-material-receiving-store" method="POST" id="receivingForm" enctype="multipart/form-data">
                         <input type="hidden" name="purchase_order_id" value="<?= $po['id'] ?>">
+                        <?php if (!empty($replacementReturn)): ?>
+                            <input type="hidden" name="return_id" value="<?= (int)$replacementReturn['id'] ?>">
+                        <?php endif; ?>
 
                         <!-- Header -->
                         <div class="row  mb-4">
