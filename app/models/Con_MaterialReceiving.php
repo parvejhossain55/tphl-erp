@@ -106,20 +106,22 @@ class Con_MaterialReceiving extends Model
             // Create receiving header
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table}
-                    (purchase_order_id, warehouse_id, received_by, receiving_date, received_status, overall_status, notes, site_eng_note, site_eng_photo, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    (purchase_order_id, return_id, warehouse_id, received_by, receiving_date, received_status, overall_status, notes, site_eng_note, site_eng_photo, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             if (!$stmt) {
                 throw new \Exception("Header prepare failed: " . $this->db->error);
             }
+            $returnId       = !empty($data['return_id']) ? (int)$data['return_id'] : null;
             $overallStatus  = 'Pending QC';
             $receivedStatus = $data['received_status'] ?? 'Full';
             $notes = $data['notes'] ?? '';
             $siteEngNote  = $data['site_eng_note'] ?? null;
             $siteEngPhoto = $data['site_eng_photo'] ?? null;
 
-            $stmt->bind_param('iiissssssi',
+            $stmt->bind_param('iiiissssssi',
                 $data['purchase_order_id'],
+                $returnId,
                 $data['warehouse_id'],
                 $data['received_by'],
                 $data['receiving_date'],
@@ -246,9 +248,8 @@ class Con_MaterialReceiving extends Model
                 } elseif ($status === 'Rejected' || $status === 'Partially Accepted') {
                     if ($status === 'Rejected') {
                         $rejectedCount++;
-                    } else {
-                        $acceptedCount++; // counts as partially accepted
                     }
+                    // Partially Accepted leaves $acceptedCount and $rejectedCount unchanged so overallStatus becomes 'Partially Accepted'
                     
                     if ($status === 'Partially Accepted' && $accQty > 0) {
                         // AUTO STOCK IN for Partially Accepted items
@@ -358,6 +359,16 @@ class Con_MaterialReceiving extends Model
             $oStmt->bind_param('sissi', $overallStatus, $userId, $qcNote, $qcPhoto, $receivingId);
             $oStmt->execute();
 
+            // If this MRN was a Replacement for a Return, mark the Return as acknowledged/completed
+            if (!empty($receiving['return_id'])) {
+                $retId = (int)$receiving['return_id'];
+                $retUpd = $this->db->prepare("UPDATE material_returns SET status = 'acknowledged' WHERE id = ?");
+                if ($retUpd) {
+                    $retUpd->bind_param('i', $retId);
+                    $retUpd->execute();
+                }
+            }
+
             // 4. Update PO status & delivery tracker
             $this->checkAndUpdatePOStatus($receiving['purchase_order_id']);
 
@@ -426,7 +437,7 @@ class Con_MaterialReceiving extends Model
     public function pmReview($receivingId, $userId, $pmNote)
     {
         $receiving = $this->find($receivingId);
-        if (!$receiving || !in_array($receiving['overall_status'], ['Pending PM', 'Accepted'])) return false;
+        if (!$receiving || !in_array($receiving['overall_status'], ['Pending PM', 'Accepted', 'Partially Accepted'])) return false;
 
         $stockModel = new \Con_Stock($this->db);
         $this->db->begin_transaction();
@@ -476,7 +487,13 @@ class Con_MaterialReceiving extends Model
     private function checkAndUpdatePOStatus($poId)
     {
         $sql = "SELECT poi.id, poi.quantity AS ordered,
-                       COALESCE(SUM(CASE WHEN mri.status = 'Accepted' THEN mri.received_quantity ELSE 0 END), 0) AS received
+                       COALESCE(SUM(
+                           CASE
+                               WHEN mri.status = 'Accepted' THEN mri.received_quantity
+                               WHEN mri.status = 'Partially Accepted' THEN GREATEST(0, mri.received_quantity - COALESCE(mri.return_quantity, 0))
+                               ELSE 0
+                           END
+                       ), 0) AS received
                 FROM purchase_order_items poi
                 LEFT JOIN {$this->itemTable} mri ON mri.purchase_order_item_id = poi.id
                 WHERE poi.purchase_order_id = ?

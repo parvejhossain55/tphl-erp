@@ -453,6 +453,10 @@ class Con_PurchaseOrderController extends Controller
             $siteSettings = $sQuery->fetch_assoc();
         }
 
+        require_once __DIR__ . '/../../models/Con_MaterialReturn.php';
+        $returnModel = new \Con_MaterialReturn($this->db);
+        $poReturns = $returnModel->getByPurchaseOrder($id);
+
         $this->view('phase2/purchase-orders/show-purchase-order', [
             'current_route'       => 'con-purchase-orders',
             'page_title'          => 'Purchase Order #' . $id,
@@ -489,6 +493,7 @@ class Con_PurchaseOrderController extends Controller
             'siteSettings'        => $siteSettings,
             'qtyLogs'             => $qtyLogs,
             'canEditItemQty'      => $canEditItemQty,
+            'poReturns'           => $poReturns,
         ]);
     }
 

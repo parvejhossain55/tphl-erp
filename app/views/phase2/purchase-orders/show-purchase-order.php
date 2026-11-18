@@ -12,6 +12,13 @@ $currentRoleId  = $currentRoleId ?? 0;
 $linkedBoq      = $linkedBoq ?? null;
 $canEditItemQty = $canEditItemQty ?? false;
 $qtyLogs        = $qtyLogs ?? [];
+$poReturns      = $poReturns ?? [];
+$hasReceiving   = $hasReceiving ?? false;
+$isViewOnlyRole = in_array((int)$currentRoleId, [13, 20, 24, 25, 32], true);
+$canLogGrn      = !$isViewOnlyRole;
+if ($currentRoleId == 12 && $hasReceiving) {
+    $canLogGrn = false; // Site Engineer can only create MRN once per PO
+}
 
 $statusBadge = [
   'Issued'             => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'Issued'],
@@ -176,6 +183,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             </a>
           <?php endif; ?>
           <a href="<?= $base_url ?>/con-purchase-orders" class="po-btn-w"><i class="fal fa-arrow-left"></i>Back</a>
+          <?php if ($fullyApproved && $po['status'] !== 'Cancelled' && $canLogGrn && $po['status'] !== 'Fully Received'): ?>
+            <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>" class="po-btn-w" style="background:#059669;border-color:#34d399;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.18)">
+              <i class="fal fa-box-seam"></i> Material Receiving Note (MRN)
+            </a>
+          <?php endif; ?>
           <?php if ($canDeletePO ?? false): ?>
             <button type="button" class="po-btn-w" style="background:rgba(239,68,68,0.25);border-color:rgba(239,68,68,0.55);color:#fff" data-bs-toggle="modal" data-bs-target="#deletePoModal">
               <i class="fal fa-trash-alt text-danger"></i> Delete PO
@@ -207,6 +219,88 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
     </div>
   </div>
 </div>
+
+<?php if (!empty($poReturns)): ?>
+<div class="po-panel" style="border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, .03);">
+  <div class="po-panel-title" style="margin-bottom:12px;">
+    <div class="po-dot" style="background:#f59e0b"></div>
+    Return &amp; Replacement Progress
+    <span class="badge bg-warning text-dark ms-auto" style="font-size:10px; font-weight:700;">
+      <?= count($poReturns) ?> Return(s)
+    </span>
+  </div>
+  <?php foreach ($poReturns as $ret):
+    $rStatus = $ret['status'] ?? 'pending';
+    $step = match($rStatus) {
+      'pending'             => 1,
+      'sent'                => 2,
+      'replacement_pending' => 3,
+      'acknowledged'        => 4,
+      default               => 1,
+    };
+    $pct = $step * 25;
+  ?>
+  <div class="p-3 rounded border mb-2 bg-white">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+      <div>
+        <strong class="text-dark" style="font-size:13px;">RET-<?= (int)$ret['id'] ?></strong>
+        <span class="text-muted small ms-2">From MRN/GRN-<?= (int)$ret['receiving_id'] ?> · Vendor: <?= htmlspecialchars($ret['vendor_name'] ?? '—') ?></span>
+        <?php if (!empty($ret['sent_at'])): ?>
+          <div class="text-muted" style="font-size:11px;">Sent by <?= htmlspecialchars($ret['sent_by_name'] ?? 'User') ?> on <?= date('d M Y, h:i A', strtotime($ret['sent_at'])) ?></div>
+        <?php endif; ?>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <?php if ($rStatus === 'pending'): ?>
+          <?php if (!$isViewOnlyRole): ?>
+            <form method="POST" action="<?= $base_url ?>/con-material-returns/update/<?= (int)$ret['id'] ?>" class="d-inline">
+              <input type="hidden" name="status" value="sent">
+              <input type="hidden" name="redirect_to" value="/con-purchase-order/<?= (int)$po['id'] ?>">
+              <button type="submit" class="btn btn-sm btn-info fw-bold text-white" onclick="return confirm('Mark RET-<?= (int)$ret['id'] ?> as Sent back to vendor?')">
+                <i class="fal fa-truck me-1"></i> Mark as Sent
+              </button>
+            </form>
+          <?php else: ?>
+            <span class="badge bg-light text-dark border">Awaiting Site Engineer to Send Back</span>
+          <?php endif; ?>
+        <?php elseif ($rStatus === 'sent'): ?>
+          <?php if (!$isViewOnlyRole): ?>
+            <a href="<?= $base_url ?>/con-material-receiving-replacement/<?= (int)$ret['id'] ?>" class="btn btn-sm btn-success fw-bold">
+              <i class="fal fa-box-seam me-1"></i> Receive Replacement (MRN)
+            </a>
+          <?php else: ?>
+            <span class="badge bg-light text-dark border">Awaiting Site Engineer Replacement MRN</span>
+          <?php endif; ?>
+        <?php elseif (!empty($ret['replacement_receiving_id'])): ?>
+          <a href="<?= $base_url ?>/con-material-receiving-qc/<?= (int)$ret['replacement_receiving_id'] ?>" class="btn btn-sm btn-outline-primary fw-bold">
+            <i class="fal fa-clipboard-check me-1"></i> View Replacement QC (MRN-<?= (int)$ret['replacement_receiving_id'] ?>)
+          </a>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <div class="progress mb-2" style="height:8px;border-radius:6px;">
+      <div class="progress-bar <?= $step === 4 ? 'bg-success' : ($step >= 2 ? 'bg-info' : 'bg-warning') ?>" role="progressbar" style="width:<?= $pct ?>%"></div>
+    </div>
+    <div class="d-flex justify-content-between text-muted mb-2" style="font-size:11px;">
+      <span class="<?= $step >= 1 ? 'fw-bold text-dark' : '' ?>">1. QC Rejected</span>
+      <span class="<?= $step >= 2 ? 'fw-bold text-dark' : '' ?>">2. Sent to Vendor</span>
+      <span class="<?= $step >= 3 ? 'fw-bold text-dark' : '' ?>">3. Replacement MRN</span>
+      <span class="<?= $step >= 4 ? 'fw-bold text-success' : '' ?>">4. QC Approved &amp; Stocked</span>
+    </div>
+
+    <?php if (!empty($ret['items'])): ?>
+      <div class="d-flex flex-wrap gap-2 mt-1">
+        <?php foreach ($ret['items'] as $ri): ?>
+          <span class="badge bg-light text-dark border" style="font-size:11px;">
+            <?= htmlspecialchars($ri['material_name']) ?>: <?= number_format((float)$ri['return_qty'], 2) ?> <?= htmlspecialchars($ri['unit']) ?>
+          </span>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </div>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
 <div class="row">
   <!-- Left: Items + Delivery Tracker -->
@@ -533,7 +627,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             <?php if ($canLogGrn && $po['status'] !== 'Fully Received'): ?>
               <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>"
                 style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
-                <i class="fal fa-box-seam"></i> Log Material Receiving (GRN)
+                <i class="fal fa-box-seam"></i> Material Receiving Note (MRN)
               </a>
             <?php endif; ?>
             

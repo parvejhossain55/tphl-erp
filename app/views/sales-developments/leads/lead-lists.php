@@ -384,7 +384,9 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <!-- Team Filter -->
                     <?php 
                     $sessionUserRoleId = $_SESSION['user']['role_id'] ?? null;
-                    if (in_array((int)$sessionUserRoleId, [1, 3, 9, 33, 34, 35], true) && !empty($teams)): 
+                    $canFilterByTeam = in_array((int)$sessionUserRoleId, [1, 3, 9, 33, 34, 35], true)
+                        || ($isSalesManagerUser ?? (function_exists('isSalesManager') && isSalesManager()));
+                    if ($canFilterByTeam && !empty($teams)): 
                     ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>
@@ -580,7 +582,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                 </div>
             </form>
         </div>
-        <?php if (($isManagementOrSalesHead ?? false) || (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 20, 32, 33, 34, 35])) || isSalesCoLeader()): ?>
+        <?php if (($isManagementOrSalesHead ?? false) || ($isSalesManagerUser ?? (function_exists('isSalesManager') && isSalesManager())) || (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 20, 32, 33, 34, 35])) || isSalesCoLeader()): ?>
             <div class="col-md-6">
                 <div id="assignCard"
                     class="card__wrapper shadow-sm p-3 my-2"
@@ -843,7 +845,7 @@ $activeCard = $_GET['filter_card'] ?? '';
             </form>
         </div>
 
-        <?php if (($isManagementOrSalesHead ?? false) || (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 20, 32, 33, 34, 35])) || isSalesCoLeader()): ?>
+        <?php if (($isManagementOrSalesHead ?? false) || ($isSalesManagerUser ?? (function_exists('isSalesManager') && isSalesManager())) || (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 20, 32, 33, 34, 35])) || isSalesCoLeader()): ?>
         <!-- Mobile Assign Card (sticky bottom) -->
         <div class="mobile-only mb-2" id="assignCardMobile"
             style="display:none; position:sticky; bottom:0; z-index:1000; background:#fff; padding:10px; border-top:1px solid #ccc;">

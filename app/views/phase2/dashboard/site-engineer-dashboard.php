@@ -395,7 +395,7 @@ if (!empty($approvedPOs)):
                     <i class="bi bi-eye"></i> View
                 </a>
                 <?php if (in_array($poStatus, ['Issued', 'Partially Received'])): ?>
-                <a href="<?= $base_url ?>/con-material-receiving-create?po_id=<?= $po['id'] ?>" class="btn btn-sm btn-success text-white" style="font-size:10px; padding: 2px 6px;">
+                <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>" class="btn btn-sm btn-success text-white" style="font-size:10px; padding: 2px 6px;">
                     <i class="bi bi-inbox-fill"></i> Receive
                 </a>
                 <?php endif; ?>
@@ -450,7 +450,7 @@ if (!empty($approvedPOs)):
                <i class="bi bi-eye"></i> View
            </a>
            <?php if (in_array($poStatus, ['Issued', 'Partially Received'])): ?>
-           <a href="<?= $base_url ?>/con-material-receiving-create?po_id=<?= $po['id'] ?>" class="btn btn-success flex-fill text-white" style="font-size:12px; padding: 6px 12px;">
+           <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>" class="btn btn-success flex-fill text-white" style="font-size:12px; padding: 6px 12px;">
                <i class="bi bi-inbox-fill"></i> Receive
            </a>
            <?php endif; ?>

@@ -165,6 +165,11 @@ class LeadController extends Controller
 
         // Fetch dropdown options for views
         $teams = $this->teamsModel->getAll();
+        if ($isSalesManagerUser && !in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35], true)) {
+            $teams = array_values(array_filter($teams, function ($t) use ($managedTeamIds) {
+                return in_array((int)($t['id'] ?? 0), $managedTeamIds, true);
+            }));
+        }
         $projects = $this->projectModel->getAll();
         $categories = (new ProjectCategory($this->db))->getAll();
         $countries = $this->leadModel->getDistinctCountries();
@@ -381,6 +386,7 @@ class LeadController extends Controller
             "teamMembers" => $assignedUsers,
             "bulkAssignUsers" => $bulkAssignUsers,
             "isManagementOrSalesHead" => $isManagementOrSalesHead,
+            "isSalesManagerUser" => $isSalesManagerUser,
             "transferableUsers" => $this->userModel->getSalesTransferableUsers(),
         ]);
     }
