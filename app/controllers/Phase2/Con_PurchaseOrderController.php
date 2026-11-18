@@ -377,10 +377,11 @@ class Con_PurchaseOrderController extends Controller
 
         // Fetch Selected Vendor Full Details
         $selectedVendor = null;
-        if (!empty($po['vendor_id'])) {
+        $targetVendorId = !empty($po['vendor_id']) ? (int)$po['vendor_id'] : (!empty($items[0]['selected_vendor_id']) ? (int)$items[0]['selected_vendor_id'] : 0);
+        if ($targetVendorId > 0) {
             $vStmt = $this->db->prepare("SELECT id, name, phone, email, address, company_name FROM vendors WHERE id = ?");
             if ($vStmt) {
-                $vStmt->bind_param('i', $po['vendor_id']);
+                $vStmt->bind_param('i', $targetVendorId);
                 $vStmt->execute();
                 $selectedVendor = $vStmt->get_result()->fetch_assoc();
             }
@@ -564,10 +565,11 @@ class Con_PurchaseOrderController extends Controller
 
         // Selected Vendor Full Details
         $selectedVendor = null;
-        if (!empty($po['vendor_id'])) {
+        $printTargetVendorId = !empty($po['vendor_id']) ? (int)$po['vendor_id'] : (!empty($items[0]['selected_vendor_id']) ? (int)$items[0]['selected_vendor_id'] : 0);
+        if ($printTargetVendorId > 0) {
             $vStmt = $this->db->prepare("SELECT id, name, phone, email, address, company_name FROM vendors WHERE id = ?");
             if ($vStmt) {
-                $vStmt->bind_param('i', $po['vendor_id']);
+                $vStmt->bind_param('i', $printTargetVendorId);
                 $vStmt->execute();
                 $selectedVendor = $vStmt->get_result()->fetch_assoc();
             }
