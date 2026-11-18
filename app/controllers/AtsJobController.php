@@ -300,11 +300,11 @@ class AtsJobController extends Controller
         $resumeLink = trim($input['resume_link'] ?? $input['cv_drive_link'] ?? '');
         $coverNote = trim($input['cover_note'] ?? $input['remarks'] ?? '');
 
-        if ($jobId <= 0 || $fullName === '' || $email === '' || $phone === '') {
+        if ($fullName === '' || $email === '' || $phone === '') {
             http_response_code(422);
             echo json_encode([
                 'success' => false,
-                'message' => 'Job ID, full name, email address, and phone number are required.'
+                'message' => 'Full name, email address, and phone number are required.'
             ]);
             exit;
         }
@@ -315,17 +315,20 @@ class AtsJobController extends Controller
             exit;
         }
 
-        $job = $this->jobModel->getById($jobId);
-        if (!$job || $job['status'] !== 'Published') {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'This job position is no longer accepting applications.']);
-            exit;
-        }
+        $job = null;
+        if ($jobId > 0) {
+            $job = $this->jobModel->getById($jobId);
+            if (!$job || $job['status'] !== 'Published') {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'This job position is no longer accepting applications.']);
+                exit;
+            }
 
-        if (!empty($job['deadline']) && $job['deadline'] < date('Y-m-d')) {
-            http_response_code(422);
-            echo json_encode(['success' => false, 'message' => 'The application deadline for this position has passed.']);
-            exit;
+            if (!empty($job['deadline']) && $job['deadline'] < date('Y-m-d')) {
+                http_response_code(422);
+                echo json_encode(['success' => false, 'message' => 'The application deadline for this position has passed.']);
+                exit;
+            }
         }
 
         // Handle optional local file upload (PDF, DOC, DOCX)
@@ -360,7 +363,7 @@ class AtsJobController extends Controller
             exit;
         }
 
-        if ($this->jobModel->hasCandidateApplied($jobId, $email, $phone)) {
+        if ($jobId > 0 && $this->jobModel->hasCandidateApplied($jobId, $email, $phone)) {
             http_response_code(409);
             echo json_encode([
                 'success' => false,
@@ -369,18 +372,19 @@ class AtsJobController extends Controller
             exit;
         }
 
-        $departmentName = $job['department_name'] ?: 'General';
-        $this->dropdownModel->ensureOptionExists('position', $job['title'], null);
+        $positionTitle = $job ? $job['title'] : (trim($input['position'] ?? '') ?: 'General Application');
+        $departmentName = $job ? ($job['department_name'] ?: 'General') : (trim($input['department'] ?? '') ?: 'General');
+        $this->dropdownModel->ensureOptionExists('position', $positionTitle, null);
         $this->dropdownModel->ensureOptionExists('department', $departmentName, null);
         $this->dropdownModel->ensureOptionExists('source', 'Website Career Page', null);
 
         $cvSource = $cvFilePath ? 'file' : 'drive_link';
         $candidateId = $this->candidateModel->create([
-            'job_id'        => $jobId,
+            'job_id'        => $jobId > 0 ? $jobId : null,
             'name'          => $fullName,
             'email'         => $email,
             'phone'         => $phone,
-            'position'      => $job['title'],
+            'position'      => $positionTitle,
             'department'    => $departmentName,
             'source'        => 'Website Career Page',
             'remarks'       => $coverNote !== '' ? $coverNote : null,
@@ -396,12 +400,16 @@ class AtsJobController extends Controller
             exit;
         }
 
+        $logDescription = $jobId > 0
+            ? "Website application received for '{$positionTitle}' from '{$fullName}'"
+            : "Website general resume drop received from '{$fullName}'";
+
         AtsActivityLog::log($this->db, [
             'action_type'    => 'create',
             'candidate_id'   => $candidateId,
             'candidate_name' => $fullName,
-            'description'    => "Website application received for '{$job['title']}' from '{$fullName}'",
-            'details'        => ['job_id' => $jobId, 'source' => 'Website Career Page', 'cv_source' => $cvSource]
+            'description'    => $logDescription,
+            'details'        => ['job_id' => $jobId > 0 ? $jobId : null, 'source' => 'Website Career Page', 'cv_source' => $cvSource]
         ]);
 
         http_response_code(201);

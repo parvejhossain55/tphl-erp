@@ -267,7 +267,7 @@ $empTypes = ['Full Time', 'Part Time', 'Contract', 'Internship'];
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <a href="<?= $baseUrl ?>/ats-tracker?reset_filter=1&position=<?= urlencode($job['title']) ?>"
+                                    <a href="<?= $baseUrl ?>/ats-tracker?job_id=<?= (int)$job['id'] ?>"
                                        class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle text-decoration-none px-3 py-1 fw-semibold"
                                        title="View applicants in Candidate Tracker">
                                         <i class="fa-solid fa-users me-1"></i><?= (int)$job['applicants_count'] ?>
@@ -619,7 +619,7 @@ function renderJobsTable(jobs) {
                 <td><span class="fw-semibold text-dark">${escapeHtml(job.salary_range || 'Negotiable')}</span></td>
                 <td>${formatDeadline(job.deadline)}</td>
                 <td class="text-center">
-                    <a href="${atsJobsBaseUrl}/ats-tracker?reset_filter=1&position=${encodeURIComponent(job.title)}"
+                    <a href="${atsJobsBaseUrl}/ats-tracker?job_id=${job.id}"
                        class="badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle text-decoration-none px-3 py-1 fw-semibold"
                        title="View applicants in Candidate Tracker">
                         <i class="fa-solid fa-users me-1"></i>${parseInt(job.applicants_count || 0, 10)}
