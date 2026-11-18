@@ -655,8 +655,6 @@ if (!empty($outstandingDues)) {
 
             return { remainingBooking, remainingReg };
         }
-            return { remainingBooking, remainingReg };
-        }
 
         // Function to update amount field help text and EMI due calculation
         function updateAmountField() {
