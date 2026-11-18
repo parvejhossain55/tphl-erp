@@ -482,5 +482,15 @@ return [
     'api/ats/bulk-force-delete' => ['controller' => 'AtsController', 'method' => 'bulkForceDelete'],
     'api/ats/empty-trash' => ['controller' => 'AtsController', 'method' => 'emptyTrash'],
     'ats-activity-logs' => ['controller' => 'AtsController', 'method' => 'activityLogs'],
+
+    // HR ATS Job Postings & Public Career Page APIs
+    'ats-jobs' => ['controller' => 'AtsJobController', 'method' => 'index'],
+    'api/ats/jobs/store' => ['controller' => 'AtsJobController', 'method' => 'store'],
+    'api/ats/jobs/details/(\d+)' => ['controller' => 'AtsJobController', 'method' => 'getDetails'],
+    'api/ats/jobs/update/(\d+)' => ['controller' => 'AtsJobController', 'method' => 'update'],
+    'api/ats/jobs/status' => ['controller' => 'AtsJobController', 'method' => 'updateStatus'],
+    'api/ats/jobs/delete' => ['controller' => 'AtsJobController', 'method' => 'delete'],
+    'api/jobs' => ['controller' => 'AtsJobController', 'method' => 'publicJobs'],
+    'api/jobs/apply' => ['controller' => 'AtsJobController', 'method' => 'publicApply'],
 ];
 

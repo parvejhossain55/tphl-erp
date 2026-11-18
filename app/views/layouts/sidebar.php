@@ -1741,13 +1741,19 @@
                     </li>
 
                     <!-- ATS Recruitment Module -->
-                    <li class="slide has-sub <?= isActive(['ats-tracker', 'ats-dashboard', 'ats-dropdown-settings', 'ats-trash', 'ats-activity-logs'], $current_route) ? 'open' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['ats-tracker', 'ats-dashboard', 'ats-dropdown-settings', 'ats-trash', 'ats-activity-logs'], $current_route) ? 'menu-open active' : '' ?>">
+                    <li class="slide has-sub <?= isActive(['ats-tracker', 'ats-jobs', 'ats-dashboard', 'ats-dropdown-settings', 'ats-trash', 'ats-activity-logs'], $current_route) ? 'open' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['ats-tracker', 'ats-jobs', 'ats-dashboard', 'ats-dropdown-settings', 'ats-trash', 'ats-activity-logs'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-address-book"></i></div>
                             <span class="sidebar__menu-label">ATS (Recruitment)</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         </a>
-                        <ul class="sidebar-menu child2" style="<?= isActive(['ats-tracker', 'ats-dashboard', 'ats-dropdown-settings', 'ats-trash', 'ats-activity-logs'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                        <ul class="sidebar-menu child2" style="<?= isActive(['ats-tracker', 'ats-jobs', 'ats-dashboard', 'ats-dropdown-settings', 'ats-trash', 'ats-activity-logs'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/ats-jobs"
+                                    class="sidebar__menu-item <?= isActive('ats-jobs', $current_route) ?>">
+                                    Job Postings
+                                </a>
+                            </li>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/ats-tracker"
                                     class="sidebar__menu-item <?= isActive('ats-tracker', $current_route) ?>">

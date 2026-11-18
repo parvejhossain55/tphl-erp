@@ -65,6 +65,7 @@ return [
     'store-department' => ['controller' => 'DepartmentController', 'method' => 'store'],
     'update-department' => ['controller' => 'DepartmentController', 'method' => 'update'],
     'delete-department' => ['controller' => 'DepartmentController', 'method' => 'delete'],
+    'api/departments' => ['controller' => 'DepartmentController', 'method' => 'publicList'],
 
     // =========================================================================
     // Controller: DesignationController
