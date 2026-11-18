@@ -920,9 +920,18 @@ class MyWorkController extends Controller
                 ";
             }
 
-                $whBadge = (!empty($t['working_hour']) && (float)$t['working_hour'] > 0)
-                    ? ' · ' . rtrim(rtrim(number_format((float)$t['working_hour'], 2), '0'), '.') . 'h'
-                    : '';
+                $whBadge = '';
+                if (!empty($t['working_hour']) && (float)$t['working_hour'] > 0) {
+                    $totalMins = (int)round((float)$t['working_hour'] * 60);
+                    $whH = intdiv($totalMins, 60);
+                    $whM = $totalMins % 60;
+                    $whParts = [];
+                    if ($whH > 0) $whParts[] = $whH . 'h';
+                    if ($whM > 0) $whParts[] = $whM . 'm';
+                    if (!empty($whParts)) {
+                        $whBadge = ' · ' . implode(' ', $whParts);
+                    }
+                }
 
                 $html .= "<tr class=\"{$rowClass}\" data-task-id=\"{$taskId}\">
                 <td>
