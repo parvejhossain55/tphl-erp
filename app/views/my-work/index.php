@@ -2033,8 +2033,18 @@ $todayDateFormatted = date('j F');
                     </select>
                 </div>
                 <div class="mw-form-col" id="colWorkingHour">
-                    <label class="mw-form-label">Working Hour <span style="font-weight:400; color:#65776F;">(hrs)</span></label>
-                    <input type="number" name="working_hour" id="drawerWorkingHour" class="mw-form-input" step="0.25" min="0" max="24" placeholder="e.g. 1.5">
+                    <label class="mw-form-label">Working Time <span style="font-weight:400; color:#65776F;">(hr : min)</span></label>
+                    <input type="hidden" name="working_hour" id="drawerWorkingHour" value="">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;">
+                            <input type="number" id="drawerWorkingHourHr" class="mw-form-input" min="0" max="24" step="1" placeholder="0" oninput="syncWorkingHourFromHm()" style="min-width:0; text-align:center;">
+                            <span style="font-size:12px; color:#65776F; font-weight:600;">hr</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;">
+                            <input type="number" id="drawerWorkingHourMin" class="mw-form-input" min="0" max="59" step="1" placeholder="0" oninput="syncWorkingHourFromHm()" style="min-width:0; text-align:center;">
+                            <span style="font-size:12px; color:#65776F; font-weight:600;">min</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2873,6 +2883,60 @@ document.addEventListener('DOMContentLoaded', function () {
     const formCreateTask = document.getElementById('mwCreateTaskForm');
     const btnSubmitDrawer = document.getElementById('btnSubmitDrawer');
 
+    window.syncWorkingHourFromHm = function () {
+        const hrEl = document.getElementById('drawerWorkingHourHr');
+        const minEl = document.getElementById('drawerWorkingHourMin');
+        const hiddenEl = document.getElementById('drawerWorkingHour');
+        if (!hrEl || !minEl || !hiddenEl) return;
+
+        const rawHr = hrEl.value.trim();
+        const rawMin = minEl.value.trim();
+        if (rawHr === '' && rawMin === '') {
+            hiddenEl.value = '';
+            return;
+        }
+
+        let h = Math.max(0, Math.min(24, parseInt(rawHr || '0', 10) || 0));
+        let m = Math.max(0, Math.min(59, parseInt(rawMin || '0', 10) || 0));
+        if (h === 24 && m > 0) m = 0;
+
+        if (rawHr !== '' && parseInt(rawHr, 10) !== h) hrEl.value = h;
+        if (rawMin !== '' && parseInt(rawMin, 10) !== m) minEl.value = m;
+
+        hiddenEl.value = (h + (m / 60)).toFixed(2);
+    };
+
+    window.setWorkingHourInputs = function (val) {
+        const hrEl = document.getElementById('drawerWorkingHourHr');
+        const minEl = document.getElementById('drawerWorkingHourMin');
+        const hiddenEl = document.getElementById('drawerWorkingHour');
+        if (!hrEl || !minEl || !hiddenEl) return;
+
+        if (val === null || val === undefined || val === '') {
+            hrEl.value = '';
+            minEl.value = '';
+            hiddenEl.value = '';
+            return;
+        }
+
+        const totalMin = Math.max(0, Math.round(parseFloat(val) * 60));
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        hrEl.value = h > 0 ? h : (m > 0 ? 0 : '');
+        minEl.value = m > 0 ? m : (h > 0 ? 0 : '');
+        hiddenEl.value = (h + (m / 60)).toFixed(2);
+    };
+
+    window.formatWorkingHourLabel = function (val) {
+        const totalMin = Math.max(0, Math.round(parseFloat(val) * 60));
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        const parts = [];
+        if (h > 0) parts.push(`${h}h`);
+        if (m > 0) parts.push(`${m}m`);
+        return parts.length ? parts.join(' ') : '0m';
+    };
+
     function openDrawer(mode = 'create') {
         if (drawer && backdrop) {
             const isEdit = (mode === 'edit');
@@ -2889,8 +2953,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (colWorkingHour) {
                 colWorkingHour.style.display = isSelf ? '' : 'none';
                 if (!isSelf && !isEdit) {
-                    const whInput = document.getElementById('drawerWorkingHour');
-                    if (whInput) whInput.value = '';
+                    setWorkingHourInputs('');
+                }
+                if (isSelf && !isEdit) {
+                    setWorkingHourInputs('');
                 }
             }
             const wrapSelfCompleted = document.getElementById('wrapSelfCompleted');
@@ -3046,8 +3112,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const prioritySelect = formCreateTask.querySelector('select[name="priority"]');
                 if (prioritySelect && t.priority) prioritySelect.value = t.priority;
 
-                const workingHourInput = document.getElementById('drawerWorkingHour');
-                if (workingHourInput) workingHourInput.value = (t.working_hour !== null && t.working_hour !== undefined) ? t.working_hour : '';
+                setWorkingHourInputs((t.working_hour !== null && t.working_hour !== undefined) ? t.working_hour : '');
                 const colWorkingHourEdit = document.getElementById('colWorkingHour');
                 if (colWorkingHourEdit) {
                     const isSelfEdit = (parseInt(t.assigned_to_id, 10) === <?= (int)$userId ?>) || (t.working_hour !== null && t.working_hour !== '');
@@ -3702,7 +3767,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="mw-td-pills">
                 <span class="mw-td-pill status" id="mwTdStatusPill">${tdEsc(t.status_label)}</span>
                 <span class="mw-td-pill">${tdEsc(t.priority)} priority</span>
-                ${t.working_hour !== null && t.working_hour > 0 ? `<span class="mw-td-pill"><i class="fa-regular fa-clock me-1"></i>${t.working_hour}h</span>` : ''}
+                ${t.working_hour !== null && t.working_hour > 0 ? `<span class="mw-td-pill"><i class="fa-regular fa-clock me-1"></i>${formatWorkingHourLabel(t.working_hour)}</span>` : ''}
                 ${t.overdue ? `<span class="mw-td-pill overdue">${tdEsc(t.overdue)}</span>` : ''}
             </div>
             <div class="mw-td-tabs">${tabsHtml}${remindBtnHtml}</div>
