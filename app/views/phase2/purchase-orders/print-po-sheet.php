@@ -388,13 +388,17 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
     </div>
 
     <!-- 3. Selected / Awarded Vendor Box -->
+    <?php
+    $pSelComp = trim($selectedVendor['company_name'] ?? ($po['vendor_company'] ?? ''));
+    $pSelName = trim($selectedVendor['name'] ?? ($po['vendor_name'] ?? ''));
+    ?>
     <div class="po-vendor-box">
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #a7f3d0;padding-bottom:4px;margin-bottom:6px">
             <div style="display:flex;align-items:center;gap:6px">
                 <span class="po-vendor-badge">Awarded / Selected Vendor</span>
-                <strong style="font-size:11.5px;color:#064e3b"><?= htmlspecialchars($selectedVendor['name'] ?? ($po['vendor_name'] ?? '—')) ?></strong>
-                <?php if (!empty($selectedVendor['company_name'])): ?>
-                    <span style="color:#047857;font-size:10.5px">(<?= htmlspecialchars($selectedVendor['company_name']) ?>)</span>
+                <strong style="font-size:11.5px;color:#064e3b"><?= htmlspecialchars(!empty($pSelComp) ? $pSelComp : ($pSelName ?: '—')) ?></strong>
+                <?php if (!empty($pSelComp) && !empty($pSelName) && strcasecmp($pSelComp, $pSelName) !== 0): ?>
+                    <span style="color:#047857;font-size:10.5px">(<?= htmlspecialchars($pSelName) ?>)</span>
                 <?php endif; ?>
             </div>
             <div style="font-size:9.5px;color:#047857;font-family:monospace;font-weight:700">
@@ -403,14 +407,18 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
         </div>
         <div class="po-vendor-grid">
             <div>
+                <div class="po-vg-label">Company Name</div>
+                <div class="po-vg-val"><?= !empty($pSelComp) ? htmlspecialchars($pSelComp) : '—' ?></div>
+            </div>
+            <div>
+                <div class="po-vg-label">Vendor / Contact Person</div>
+                <div class="po-vg-val"><?= !empty($pSelName) ? htmlspecialchars($pSelName) : '—' ?></div>
+            </div>
+            <div>
                 <div class="po-vg-label">Phone Contact</div>
                 <div class="po-vg-val"><?= !empty($selectedVendor['phone']) ? htmlspecialchars($selectedVendor['phone']) : '—' ?></div>
             </div>
             <div>
-                <div class="po-vg-label">Email Address</div>
-                <div class="po-vg-val"><?= !empty($selectedVendor['email']) ? htmlspecialchars($selectedVendor['email']) : '—' ?></div>
-            </div>
-            <div style="grid-column: span 2">
                 <div class="po-vg-label">Office / Billing Address</div>
                 <div class="po-vg-val"><?= !empty($selectedVendor['address']) ? htmlspecialchars($selectedVendor['address']) : '—' ?></div>
             </div>

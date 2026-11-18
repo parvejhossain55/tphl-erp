@@ -100,6 +100,7 @@ class Con_PurchaseOrder extends Model
                        u.full_name AS created_by_name,
                        u.role_id AS creator_role_id,
                        v.name AS vendor_name,
+                       v.company_name AS vendor_company_name,
                        (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount,
                        (SELECT COALESCE(SUM(quantity), 0) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_qty,
                        (SELECT COALESCE(SUM(mri.received_quantity), 0)
@@ -212,7 +213,7 @@ class Con_PurchaseOrder extends Model
     public function getItems($poId)
     {
         $stmt = $this->db->prepare(
-            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
+            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, v.company_name AS vendor_company_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     COALESCE(pri.current_stock, 0) AS current_stock,
                     COALESCE(pri.pr_quantity, 0) AS pr_quantity,
                     COALESCE(pri.next_3_months_requirement, 0) AS next_3_months_requirement,
@@ -381,7 +382,7 @@ class Con_PurchaseOrder extends Model
      */
     public function getPendingItems($poId)
     {
-        $sql = "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name,
+        $sql = "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, v.company_name AS vendor_company_name,
                        COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(recv.received_total, 0) AS received_total,
                        (poi.quantity - COALESCE(recv.received_total, 0)) AS pending_qty

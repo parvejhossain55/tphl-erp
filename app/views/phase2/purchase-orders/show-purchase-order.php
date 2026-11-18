@@ -418,6 +418,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               $lt = $item['quantity'] * $item['unit_price'];
               $grandTotal += $lt; 
               $isQtyDifferent = (abs((float)$item['quantity'] - (float)($item['pr_quantity'] ?? 0)) > 0.0001);
+              $itemComp = trim($item['vendor_company_name'] ?? '');
+              $itemVName = trim($item['vendor_name'] ?? '');
+              $itemVendorDisplay = (!empty($itemComp) && !empty($itemVName) && strcasecmp($itemComp, $itemVName) !== 0)
+                  ? ($itemComp . ' (' . $itemVName . ')')
+                  : (!empty($itemComp) ? $itemComp : $itemVName);
             ?>
               <tr>
                 <td><?= $i + 1 ?></td>
@@ -426,7 +431,10 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                   <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
                 </td>
                 <td>
-                  <span class="fw-semibold text-primary"><?= htmlspecialchars($item['vendor_name']) ?></span>
+                  <span class="fw-semibold text-primary"><?= htmlspecialchars(!empty($itemComp) ? $itemComp : $itemVName) ?></span>
+                  <?php if (!empty($itemComp) && !empty($itemVName) && strcasecmp($itemComp, $itemVName) !== 0): ?>
+                    <br><small class="text-muted">(<?= htmlspecialchars($itemVName) ?>)</small>
+                  <?php endif; ?>
                 </td>
                 <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($item['unit']) ?></span></td>
                 <td class="text-end">
@@ -467,7 +475,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                             data-item-id="<?= $item['id'] ?>"
                             data-material-name="<?= htmlspecialchars($item['material_name']) ?>"
                             data-unit="<?= htmlspecialchars($item['unit']) ?>"
-                            data-vendor-name="<?= htmlspecialchars($item['vendor_name']) ?>"
+                            data-vendor-name="<?= htmlspecialchars($itemVendorDisplay) ?>"
                             data-pr-qty="<?= (float)($item['pr_quantity'] ?? 0) ?>"
                             data-current-qty="<?= (float)$item['quantity'] ?>"
                             data-unit-price="<?= (float)$item['unit_price'] ?>">
@@ -573,13 +581,21 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             </tr>
           </thead>
           <tbody>
-            <?php foreach ($pendingItems as $pi): ?>
+            <?php foreach ($pendingItems as $pi): 
+              $piComp = trim($pi['vendor_company_name'] ?? '');
+              $piVName = trim($pi['vendor_name'] ?? '');
+            ?>
               <tr>
                 <td>
                   <span class="fw-bold"><?= htmlspecialchars($pi['material_name']) ?></span>
                   <br><small class="text-muted">[Category: <?= htmlspecialchars($pi['category_name'] ?? 'Uncategorized') ?>]</small>
                 </td>
-                <td><?= htmlspecialchars($pi['vendor_name']) ?></td>
+                <td>
+                  <span class="fw-semibold"><?= htmlspecialchars(!empty($piComp) ? $piComp : $piVName) ?></span>
+                  <?php if (!empty($piComp) && !empty($piVName) && strcasecmp($piComp, $piVName) !== 0): ?>
+                    <br><small class="text-muted">(<?= htmlspecialchars($piVName) ?>)</small>
+                  <?php endif; ?>
+                </td>
                 <td class="text-end"><?= number_format($pi['quantity'], 3) ?></td>
                 <td class="text-end text-success"><?= number_format($pi['received_total'], 3) ?></td>
                 <td class="text-end <?= ($pi['pending_qty'] > 0) ? 'text-danger fw-bold' : 'text-success' ?>">
@@ -769,15 +785,19 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       </div>
 
       <!-- 1. Selected Vendor Profile Box -->
+      <?php
+      $selComp = trim($selectedVendor['company_name'] ?? ($po['vendor_company'] ?? ''));
+      $selName = trim($selectedVendor['name'] ?? ($po['vendor_name'] ?? ''));
+      ?>
       <div style="background:linear-gradient(135deg, rgba(59,130,246,.04) 0%, rgba(16,185,129,.04) 100%); border:1px solid rgba(59,130,246,.2); border-radius:12px; padding:16px; margin-bottom:20px">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(59,130,246,.15); padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap; gap:8px">
           <div style="display:flex; align-items:center; gap:8px">
             <span class="badge bg-success" style="font-size:11px; padding:4px 8px"><i class="fal fa-check-circle me-1"></i> Selected / Awarded Vendor</span>
             <span style="font-weight:700; font-size:14px; color:var(--text-color, #1f2937)">
-              <?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : 'null' ?>
+              <?= htmlspecialchars(!empty($selComp) ? $selComp : ($selName ?: 'null')) ?>
             </span>
-            <?php if (!empty($selectedVendor['company_name'])): ?>
-              <span class="text-muted" style="font-size:12px">(<?= htmlspecialchars($selectedVendor['company_name']) ?>)</span>
+            <?php if (!empty($selComp) && !empty($selName) && strcasecmp($selComp, $selName) !== 0): ?>
+              <span class="text-muted" style="font-size:12px">(<?= htmlspecialchars($selName) ?>)</span>
             <?php endif; ?>
           </div>
           <?php if (!empty($cstInfo['prepared_by_name'])): ?>
@@ -791,12 +811,18 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <?php endif; ?>
         </div>
 
-        <!-- 6 Required Fields: [id], [name], [phone], [email], [address], [company_name] -->
+        <!-- 6 Required Fields: [id], [company_name], [name], [phone], [email], [address] -->
         <div class="row g-3">
           <div class="col-md-2 col-6">
             <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Vendor ID [id]</div>
             <div style="font-weight:700; font-size:13px; color:#1e293b; font-family:monospace; margin-top:3px">
               <?= isset($selectedVendor['id']) && $selectedVendor['id'] !== '' ? '#' . htmlspecialchars($selectedVendor['id']) : '<span style="color:#94a3b8;font-style:italic">null</span>' ?>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Company [company_name]</div>
+            <div style="font-weight:700; font-size:13px; color:#1e293b; margin-top:3px">
+              <?= !empty($selectedVendor['company_name']) ? htmlspecialchars($selectedVendor['company_name']) : '<span style="color:#94a3b8;font-style:italic">null</span>' ?>
             </div>
           </div>
           <div class="col-md-3 col-6">
@@ -827,12 +853,6 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               <?php else: ?>
                 <span style="color:#94a3b8;font-style:italic">null</span>
               <?php endif; ?>
-            </div>
-          </div>
-          <div class="col-md-3 col-12">
-            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Company [company_name]</div>
-            <div style="font-weight:600; font-size:13px; color:#1e293b; margin-top:3px">
-              <?= !empty($selectedVendor['company_name']) ? htmlspecialchars($selectedVendor['company_name']) : '<span style="color:#94a3b8;font-style:italic">null</span>' ?>
             </div>
           </div>
           <div class="col-12" style="border-top:1px solid rgba(0,0,0,0.06); padding-top:10px; margin-top:8px">
@@ -1017,8 +1037,15 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                         <i class="fal fa-cloud-upload text-info" style="font-size:3rem"></i>
                       <?php endif; ?>
                     </div>
-                    <div class="small fw-bold text-truncate" title="<?= htmlspecialchars($q['vendor_name'] ?? '') ?>">
-                      <?= htmlspecialchars($q['vendor_name'] ?? 'Vendor Quote') ?>
+                    <?php
+                    $qCardComp = trim($q['vendor_company_name'] ?? '');
+                    $qCardName = trim($q['vendor_name'] ?? '');
+                    $qCardLabel = (!empty($qCardComp) && !empty($qCardName) && strcasecmp($qCardComp, $qCardName) !== 0)
+                        ? ($qCardComp . ' (' . $qCardName . ')')
+                        : (!empty($qCardComp) ? $qCardComp : ($qCardName ?: 'Vendor Quote'));
+                    ?>
+                    <div class="small fw-bold text-truncate" title="<?= htmlspecialchars($qCardLabel) ?>">
+                      <?= htmlspecialchars($qCardLabel) ?>
                     </div>
                     <div class="text-muted small mb-2 font-monospace" style="font-size:10.5px">
                       <?= !empty($q['total_quoted_amount']) ? '৳ ' . number_format((float)$q['total_quoted_amount'], 2) : '' ?>
@@ -1134,12 +1161,12 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         <strong style="color:var(--text-color);font-family:monospace">#<?= isset($selectedVendor['id']) && $selectedVendor['id'] !== '' ? htmlspecialchars($selectedVendor['id']) : 'null' ?></strong>
       </div>
       <div style="font-size:12px;margin-bottom:6px">
-        <span style="color:var(--text-muted)">Name:</span>
-        <strong style="color:var(--text-color)"><?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : 'null' ?></strong>
+        <span style="color:var(--text-muted)">Company:</span>
+        <strong style="color:var(--text-color)"><?= !empty($selectedVendor['company_name']) ? htmlspecialchars($selectedVendor['company_name']) : (!empty($po['vendor_company']) ? htmlspecialchars($po['vendor_company']) : 'null') ?></strong>
       </div>
       <div style="font-size:12px;margin-bottom:6px">
-        <span style="color:var(--text-muted)">Company:</span>
-        <span style="color:var(--text-color);font-weight:600"><?= !empty($selectedVendor['company_name']) ? htmlspecialchars($selectedVendor['company_name']) : 'null' ?></span>
+        <span style="color:var(--text-muted)">Vendor Name:</span>
+        <strong style="color:var(--text-color)"><?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : (!empty($po['vendor_name']) ? htmlspecialchars($po['vendor_name']) : 'null') ?></strong>
       </div>
       <div style="font-size:12px;margin-bottom:6px">
         <span style="color:var(--text-muted)">Phone:</span>
@@ -1720,8 +1747,6 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       btn.style.background = 'rgba(var(--clr-theme-primary-rgb),.1)';
     }
   }
-</script>
-
 </script>
 
 
