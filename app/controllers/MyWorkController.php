@@ -1241,6 +1241,21 @@ class MyWorkController extends Controller
                 : ("Task created and assigned to " . ($ownerId === $userId ? "self" : "user #{$ownerId}"));
             $this->logTaskActivity($newTaskId, $userId, 'system', $actText);
 
+            // Queue creation emails & in-app notifications for all involved users (excluding creator)
+            $this->queueTaskCreationNotifications(
+                $newTaskId,
+                $userId,
+                (int)$ownerId,
+                $reviewerId ? (int)$reviewerId : 0,
+                $collaboratorIds,
+                $ccIds,
+                $title,
+                $deadline,
+                $priority,
+                $projectId,
+                $todoProjectId
+            );
+
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode([
@@ -3032,5 +3047,151 @@ class MyWorkController extends Controller
         }
         $stmt->close();
         return $newId;
+    }
+
+    /**
+     * Queue task creation emails (email_queue) and in-app notifications
+     * for all involved users (Assignee, Reviewer, Collaborators, CC), excluding creator.
+     */
+    private function queueTaskCreationNotifications(
+        int $taskId,
+        int $creatorId,
+        int $assigneeId,
+        int $reviewerId,
+        array $collaboratorIds,
+        array $ccIds,
+        string $title,
+        ?string $deadline,
+        string $priority,
+        ?int $projectId,
+        ?int $todoProjectId
+    ): void {
+        $recipientIds = array_values(array_unique(array_filter(
+            array_merge([$assigneeId, $reviewerId], $collaboratorIds, $ccIds),
+            static fn($uid) => (int)$uid > 0 && (int)$uid !== $creatorId
+        )));
+
+        if (empty($recipientIds)) {
+            return;
+        }
+
+        // Resolve project name
+        $projectName = 'General';
+        if (!empty($projectId)) {
+            $pRes = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$projectId . " LIMIT 1");
+            if ($pRes && $pRow = $pRes->fetch_assoc()) {
+                $projectName = $pRow['name'];
+            }
+        } elseif (!empty($todoProjectId)) {
+            $tpRes = $this->db->query("SELECT name FROM todo_projects WHERE id = " . (int)$todoProjectId . " LIMIT 1");
+            if ($tpRes && $tpRow = $tpRes->fetch_assoc()) {
+                $projectName = $tpRow['name'];
+            }
+        }
+
+        $creatorName = trim((string)($_SESSION['user']['full_name'] ?? 'A team member'));
+        if ($creatorName === '') {
+            $creatorName = 'A team member';
+        }
+
+        $taskCode = 'T-' . $taskId;
+        $deadlineFormatted = !empty($deadline) ? date('d M Y', strtotime($deadline)) : 'No Deadline';
+        $priorityLabel = ucfirst(strtolower($priority));
+        $baseUrl = rtrim((string)($GLOBALS['base_url'] ?? ''), '/');
+        $dashboardUrl = $baseUrl . '/my-work-dashboard';
+
+        // Fetch recipient user info & assignee name
+        $fetchIds = array_values(array_unique(array_merge($recipientIds, $assigneeId > 0 ? [$assigneeId] : [])));
+        $inClause = implode(',', array_map('intval', $fetchIds));
+        $usersMap = [];
+        $uRes = $this->db->query("SELECT id, full_name, email FROM users WHERE id IN ({$inClause})");
+        if ($uRes) {
+            while ($u = $uRes->fetch_assoc()) {
+                $usersMap[(int)$u['id']] = $u;
+            }
+        }
+        $assigneeName = $usersMap[$assigneeId]['full_name'] ?? ($assigneeId === $creatorId ? $creatorName : 'Assignee');
+
+        // Ensure email_queue table exists (matches process_email_queue.php schema)
+        $this->db->query("
+            CREATE TABLE IF NOT EXISTS email_queue (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                to_email VARCHAR(255) NOT NULL,
+                subject VARCHAR(255) NOT NULL,
+                body LONGTEXT NOT NULL,
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $stmtQueue = $this->db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, 'pending')");
+        $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+
+        foreach ($recipientIds as $rUid) {
+            $rUid = (int)$rUid;
+            if (!isset($usersMap[$rUid])) {
+                continue;
+            }
+            $rName = trim((string)($usersMap[$rUid]['full_name'] ?? 'Team Member')) ?: 'Team Member';
+            $rEmail = trim((string)($usersMap[$rUid]['email'] ?? ''));
+
+            $roles = [];
+            if ($rUid === $assigneeId) $roles[] = 'Assignee';
+            if ($rUid === $reviewerId) $roles[] = 'Reviewer';
+            if (in_array($rUid, $collaboratorIds, true)) $roles[] = 'Collaborator';
+            if (in_array($rUid, $ccIds, true)) $roles[] = 'CC';
+            $roleTag = !empty($roles) ? implode(', ', $roles) : 'Team Member';
+
+            if ($stmtQueue && $rEmail !== '' && filter_var($rEmail, FILTER_VALIDATE_EMAIL)) {
+                $subject = "[{$taskCode}] New Task ({$roleTag}): {$title}";
+                $emailBody = "
+                <div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 32px 15px;'>
+                    <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(20,45,38,0.08); border: 1px solid #e2eae5;'>
+                        <div style='background: #087F5B; padding: 20px 26px;'>
+                            <div style='font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.85); margin-bottom: 4px;'>TPHL ERP &middot; New Task Notification</div>
+                            <h2 style='margin: 0; color: #ffffff; font-size: 19px; font-weight: 700;'>New Task {$taskCode}: " . htmlspecialchars($title) . "</h2>
+                        </div>
+                        <div style='padding: 26px;'>
+                            <p style='color: #142D26; font-size: 15px; margin: 0 0 12px;'>Hello <strong>" . htmlspecialchars($rName) . "</strong>,</p>
+                            <p style='color: #4A5D55; font-size: 14px; line-height: 1.6; margin: 0 0 20px;'>
+                                <strong>" . htmlspecialchars($creatorName) . "</strong> created a new task and added you as <strong>" . htmlspecialchars($roleTag) . "</strong>:
+                            </p>
+                            <div style='background-color: #F8FAF9; border-left: 4px solid #087F5B; border-radius: 6px; padding: 16px 18px; margin-bottom: 22px;'>
+                                <div style='font-size: 12px; font-weight: 700; color: #087F5B; margin-bottom: 4px;'>" . htmlspecialchars($taskCode . ' · ' . $projectName) . "</div>
+                                <div style='font-size: 16px; font-weight: 700; color: #142D26; margin-bottom: 10px;'>" . htmlspecialchars($title) . "</div>
+                                <table style='width: 100%; font-size: 13px; color: #4A5D55; border-collapse: collapse;'>
+                                    <tr>
+                                        <td style='padding: 4px 0;'><strong>Assigned To:</strong> " . htmlspecialchars($assigneeName) . "</td>
+                                        <td style='padding: 4px 0;'><strong>Your Role:</strong> " . htmlspecialchars($roleTag) . "</td>
+                                    </tr>
+                                    <tr>
+                                        <td style='padding: 4px 0;'><strong>Deadline:</strong> <span style='color: #C92A2A; font-weight: 600;'>" . htmlspecialchars($deadlineFormatted) . "</span></td>
+                                        <td style='padding: 4px 0;'><strong>Priority:</strong> " . htmlspecialchars($priorityLabel) . "</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style='text-align: center; margin: 24px 0 8px;'>
+                                <a href='{$dashboardUrl}' style='background-color: #087F5B; color: #ffffff; padding: 11px 26px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;'>Open My Work Dashboard &rarr;</a>
+                            </div>
+                        </div>
+                        <div style='background-color: #F8FAF9; padding: 14px 26px; text-align: center; border-top: 1px solid #E2EAE5;'>
+                            <p style='margin: 0; font-size: 11.5px; color: #8A9992;'>Automated Task Notification &middot; TPHL ERP</p>
+                        </div>
+                    </div>
+                </div>";
+
+                $stmtQueue->bind_param("sss", $rEmail, $subject, $emailBody);
+                $stmtQueue->execute();
+            }
+
+            if ($stmtNotif) {
+                $notifMsg = "{$creatorName} added you as {$roleTag} on task {$taskCode}: \"{$title}\" (Deadline: {$deadlineFormatted}).";
+                $stmtNotif->bind_param("iiis", $rUid, $taskId, $creatorId, $notifMsg);
+                $stmtNotif->execute();
+            }
+        }
+
+        if ($stmtQueue) $stmtQueue->close();
+        if ($stmtNotif) $stmtNotif->close();
     }
 }
