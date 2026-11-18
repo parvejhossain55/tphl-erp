@@ -120,7 +120,15 @@ class LeadController extends Controller
             || strpos($userRoleName, 'chief') !== false
             || strpos($userRoleName, 'ceo') !== false;
         $isManagementOrSalesHead = ($isSalesTeamHead || $isManagementRole);
-        $bulkAssignUsers = $isManagementOrSalesHead ? $allRoleUsers : $assignedUsers;
+        if ($isManagementOrSalesHead) {
+            $bulkAssignUsers = $allRoleUsers;
+        } elseif ($isSalesManagerUser) {
+            $bulkAssignUsers = array_values(array_filter($allRoleUsers, function ($u) use ($managedTeamIds) {
+                return in_array((int)($u['team_id'] ?? 0), $managedTeamIds, true);
+            }));
+        } else {
+            $bulkAssignUsers = $assignedUsers;
+        }
 
         $owners = $this->userModel->getAll();
 
