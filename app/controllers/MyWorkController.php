@@ -1541,7 +1541,7 @@ class MyWorkController extends Controller
                 'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
-                'can_request_extension' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
+                'can_request_extension' => (!$isCompleted && (int)$t['assigned_by'] !== $userId && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
                 'can_check' => $canCheckChecklist,
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
@@ -2518,6 +2518,10 @@ class MyWorkController extends Controller
         $collabIds = $ids($task['collaborator_user_ids'] ?? '');
         $isAssignee = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
 
+        if ((int)$task['assigned_by'] === $userId) {
+            echo json_encode(['status' => 'error', 'message' => 'As the task owner, you can update the deadline directly.']);
+            exit;
+        }
         if (!$isAssignee) {
             echo json_encode(['status' => 'error', 'message' => 'Only the task assignee can request a deadline extension.']);
             exit;

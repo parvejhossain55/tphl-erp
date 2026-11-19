@@ -3836,9 +3836,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> ${disabledLabel}</button>`;
             }
 
+            const extBtnHtml = !t.is_owner
+                ? `<button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>`
+                : '';
+
             footActions.innerHTML = `
                 ${actionBtnHtml}
-                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
+                ${extBtnHtml}
             `;
 
             const btnStart = document.getElementById('btnDrawerStartTask');
