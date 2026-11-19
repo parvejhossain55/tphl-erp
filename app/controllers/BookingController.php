@@ -592,6 +592,7 @@ class BookingController extends Controller
             $clientBankRoutingNo   = trim($_POST['client_bank_routing_no'] ?? '');
             $preferredMethod       = trim($_POST['preferred_payment_method'] ?? 'bank');
             $expectedRefundDate    = !empty($_POST['expected_refund_date']) ? $_POST['expected_refund_date'] : null;
+            $isRegistrationCompleted = !empty($_POST['is_registration_completed']) ? 1 : 0;
 
             // Handle optional client refund attachment (PDF, Image: JPG, JPEG, PNG)
             $documentPath = null;
@@ -637,6 +638,7 @@ class BookingController extends Controller
                     retention_amount = ?, 
                     refund_amount = ?, 
                     reason = ?, 
+                    is_registration_completed = ?, 
                     expected_refund_date = ?, 
                     client_bank_name = ?, 
                     client_bank_branch = ?, 
@@ -648,11 +650,12 @@ class BookingController extends Controller
                     requested_by = ?, 
                     status = 'pending' 
                     WHERE id = ?");
-                $rfUpdate->bind_param("dddssssssssssii", 
+                $rfUpdate->bind_param("dddsissssssssii", 
                     $totalPaid, 
                     $retentionAmount, 
                     $refundAmount, 
                     $reason, 
+                    $isRegistrationCompleted, 
                     $expectedRefundDate, 
                     $clientBankName, 
                     $clientBankBranch, 
@@ -667,11 +670,11 @@ class BookingController extends Controller
                 $rfUpdate->execute();
             } else {
                 $rfInsert = $this->db->prepare("INSERT INTO client_refund_requests 
-                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, expected_refund_date, client_bank_name, client_bank_branch, client_bank_account_name, client_bank_account_no, client_bank_routing_no, preferred_payment_method, document, requested_by, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, is_registration_completed, expected_refund_date, client_bank_name, client_bank_branch, client_bank_account_name, client_bank_account_no, client_bank_routing_no, preferred_payment_method, document, requested_by, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
                 $flatId = (int)($booking['flat_id'] ?? 0);
                 $projId = (int)($booking['project_id'] ?? 0);
-                $rfInsert->bind_param("iiiidddsssssssssi", 
+                $rfInsert->bind_param("iiiidddsissssssssi", 
                     $bookingId, 
                     $leadId, 
                     $projId, 
@@ -680,6 +683,7 @@ class BookingController extends Controller
                     $retentionAmount, 
                     $refundAmount, 
                     $reason, 
+                    $isRegistrationCompleted, 
                     $expectedRefundDate, 
                     $clientBankName, 
                     $clientBankBranch, 

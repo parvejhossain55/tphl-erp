@@ -185,6 +185,17 @@ $payments  = $payments ?? [];
                                       placeholder="Enter the reason for refund and retention calculation..." required><?= htmlspecialchars($existing_refund['reason'] ?? '') ?></textarea>
                         </div>
 
+                        <!-- Registration Completed (Optional) -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_registration_completed" id="isRegistrationCompleted" value="1"
+                                       <?= !empty($existing_refund['is_registration_completed']) ? 'checked' : '' ?>>
+                                <label class="form-check-label fw-semibold" for="isRegistrationCompleted">
+                                    Registration Completed
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm"
                                     onclick="return confirm('Submit this refund request for Management and Role 20 approval?');">

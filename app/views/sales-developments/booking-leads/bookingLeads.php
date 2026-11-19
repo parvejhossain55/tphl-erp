@@ -463,6 +463,16 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <textarea name="reason" id="refund_reason" class="form-control form-control-sm" rows="2" required placeholder="State why the client is requesting this refund..."></textarea>
                     </div>
 
+                    <!-- Registration Completed (Optional) -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_registration_completed" id="refund_registration_completed" value="1">
+                            <label class="form-check-label fw-semibold small" for="refund_registration_completed">
+                                Registration Completed
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Client Payout Bank & Payment Information -->
                     <div class="card custom-card border mb-3 shadow-none">
                         <div class="card-header bg-light py-2 px-3 border-bottom d-flex align-items-center">
@@ -959,6 +969,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const paidInput = document.getElementById('refund_total_paid_display');
                 const paidHelper = document.getElementById('refund_paid_helper');
                 const expectedDateInput = document.getElementById('refund_expected_date');
+                const regCompletedInput = document.getElementById('refund_registration_completed');
                 const accNameInput = document.getElementById('refund_client_bank_acc_name');
                 const bankNameInput = document.getElementById('refund_client_bank_name');
                 const bankBranchInput = document.getElementById('refund_client_bank_branch');
@@ -973,6 +984,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 if (agreementSpan) agreementSpan.textContent = agreement;
                 if (reasonInput) reasonInput.value = '';
                 if (expectedDateInput) expectedDateInput.value = '';
+                if (regCompletedInput) regCompletedInput.checked = false;
 
                 // Set initial verified paid from dataset
                 if (paidInput) {
