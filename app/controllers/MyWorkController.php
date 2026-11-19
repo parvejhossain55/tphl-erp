@@ -2249,7 +2249,7 @@ class MyWorkController extends Controller
             $taskModel = new Task($this->db);
             if ($taskModel->updateProgress($id, 100, $task['remarks'] ?? null)) {
                 $this->logTaskActivity($id, $userId, 'system', "Marked task as completed.");
-                $this->spawnNextRecurringTask($task, $userId);
+                // Recurring occurrences are generated daily by public/cron_generate_recurring_tasks.php
 
                 // Notify task creator if creator is different
                 $creatorId = (int)$task['assigned_by'];
@@ -2415,7 +2415,7 @@ class MyWorkController extends Controller
             $remarks = !empty($task['remarks']) ? $task['remarks'] : 'Approved by reviewer.';
             if ($taskModel->updateProgress($id, 100, $remarks)) {
                 $this->logTaskActivity($id, $userId, 'system', "Approved task as completed (Done).");
-                $this->spawnNextRecurringTask($task, $userId);
+                // Recurring occurrences are generated daily by public/cron_generate_recurring_tasks.php
                 echo json_encode([
                     'status' => 'success',
                     'message' => 'Task reviewed and approved as completed.',
