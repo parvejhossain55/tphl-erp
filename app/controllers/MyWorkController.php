@@ -178,7 +178,7 @@ class MyWorkController extends Controller
 
         // Metric cards: counted inside the active tab's scope
         $metricCond = [
-            'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+            'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()",
             'due_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
             'next7'     => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
             'review'    => "t.status != 'completed' AND t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND t.mentioned_user_ids != '[]' AND {$submittedForReviewSql}",
@@ -230,7 +230,7 @@ class MyWorkController extends Controller
                 COALESCE(SUM(t.status = 'in_progress'), 0) AS in_progress,
                 COALESCE(SUM(t.status = 'completed'), 0) AS completed,
                 COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()), 0) AS deadline_today,
-                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()), 0) AS deadline_missed
+                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()), 0) AS deadline_missed
             FROM tasks t
             WHERE {$scopeSql}
         ");
@@ -268,7 +268,7 @@ class MyWorkController extends Controller
                 'all_in_progress'    => "t.status = 'in_progress'",
                 'all_completed'      => "t.status = 'completed'",
                 'all_deadline_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
-                'all_deadline_missed' => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+                'all_deadline_missed' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()",
             ];
             if (isset($metricSql[$metricFilter])) {
                 $where[] = $metricSql[$metricFilter];
@@ -306,7 +306,7 @@ class MyWorkController extends Controller
             if ($statusFilter === 'open') {
                 $where[] = "t.status != 'completed'";
             } elseif ($statusFilter === 'overdue') {
-                $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()";
+                $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()";
             } elseif (in_array($statusFilter, ['pending', 'in_progress', 'completed', 'expired'], true)) {
                 $where[] = "t.status = ?";
                 $params[] = $statusFilter;
@@ -355,7 +355,7 @@ class MyWorkController extends Controller
             ORDER BY 
                 CASE 
                     WHEN t.status = 'completed' THEN 99
-                    WHEN t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW() THEN 1
+                    WHEN t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE() THEN 1
                     WHEN t.status != 'completed' AND DATE(t.deadline) = CURDATE() THEN 2
                     WHEN t.status != 'completed' THEN 3
                     ELSE 4
@@ -454,7 +454,7 @@ class MyWorkController extends Controller
                   AND t.status != 'completed'
                 ORDER BY 
                     (CASE WHEN t.remarks LIKE '%block%' OR t.priority = 'urgent' THEN 1 ELSE 2 END),
-                    (CASE WHEN t.deadline < NOW() THEN 1 ELSE 2 END),
+                    (CASE WHEN DATE(t.deadline) < CURDATE() THEN 1 ELSE 2 END),
                     t.deadline ASC
                 LIMIT 1
             ");
@@ -845,16 +845,17 @@ class MyWorkController extends Controller
 
             if (!empty($t['deadline'])) {
                 $deadlineTime = strtotime($t['deadline']);
-                $now = time();
+                $deadlineDate = date('Y-m-d', $deadlineTime);
+                $todayDate = date('Y-m-d');
 
-                if (!$isCompleted && $deadlineTime < $now) {
+                if (!$isCompleted && $deadlineDate < $todayDate) {
                     $isOverdue = true;
-                    $diffDays = (int) ceil(($now - $deadlineTime) / 86400);
+                    $diffDays = (int) round((strtotime($todayDate) - strtotime($deadlineDate)) / 86400);
                     $duePrimary = date('j M', $deadlineTime);
                     $dueSub = ($diffDays <= 1) ? '1 day overdue' : "{$diffDays} days overdue";
-                } elseif (date('Y-m-d', $deadlineTime) === date('Y-m-d')) {
+                } elseif ($deadlineDate === $todayDate) {
                     $duePrimary = date('j M', $deadlineTime);
-                    $dueSub = 'Today · ' . date('g:i A', $deadlineTime);
+                    $dueSub = (date('H:i:s', $deadlineTime) === '00:00:00') ? 'Today' : ('Today · ' . date('g:i A', $deadlineTime));
                 } else {
                     $duePrimary = date('j M', $deadlineTime);
                     $dueSub = date('D · g:i A', $deadlineTime);
@@ -1388,13 +1389,14 @@ class MyWorkController extends Controller
         $dueBadge = null;
         if (!empty($t['deadline'])) {
             $dl = strtotime($t['deadline']);
+            $dlDate = date('Y-m-d', $dl);
+            $todayDate = date('Y-m-d');
             $deadlineText = date('j M Y', $dl);
-            $now = time();
-            if (!$isCompleted && $dl < $now) {
-                $days = (int) ceil(($now - $dl) / 86400);
+            if (!$isCompleted && $dlDate < $todayDate) {
+                $days = (int) round((strtotime($todayDate) - strtotime($dlDate)) / 86400);
                 $overdueText = $days <= 1 ? '1 day overdue' : "{$days} days overdue";
                 $dueBadge = $overdueText;
-            } elseif (date('Y-m-d', $dl) === date('Y-m-d')) {
+            } elseif ($dlDate === $todayDate) {
                 $dueBadge = 'Due today';
             } else {
                 $dueBadge = 'Due ' . date('j M', $dl);

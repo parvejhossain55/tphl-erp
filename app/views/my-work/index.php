@@ -1726,16 +1726,17 @@ $todayDateFormatted = date('j F');
                                 
                                 if (!empty($t['deadline'])) {
                                     $deadlineTime = strtotime($t['deadline']);
-                                    $now = time();
+                                    $deadlineDate = date('Y-m-d', $deadlineTime);
+                                    $todayDate = date('Y-m-d');
                                     
-                                    if (!$isCompleted && $deadlineTime < $now) {
+                                    if (!$isCompleted && $deadlineDate < $todayDate) {
                                         $isOverdue = true;
-                                        $diffDays = (int) ceil(($now - $deadlineTime) / 86400);
+                                        $diffDays = (int) round((strtotime($todayDate) - strtotime($deadlineDate)) / 86400);
                                         $duePrimary = date('j M', $deadlineTime);
                                         $dueSub = ($diffDays <= 1) ? '1 day overdue' : "{$diffDays} days overdue";
-                                    } elseif (date('Y-m-d', $deadlineTime) === date('Y-m-d')) {
+                                    } elseif ($deadlineDate === $todayDate) {
                                         $duePrimary = date('j M', $deadlineTime);
-                                        $dueSub = 'Today · ' . date('g:i A', $deadlineTime);
+                                        $dueSub = (date('H:i:s', $deadlineTime) === '00:00:00') ? 'Today' : ('Today · ' . date('g:i A', $deadlineTime));
                                     } else {
                                         $duePrimary = date('j M', $deadlineTime);
                                         $dueSub = date('D · g:i A', $deadlineTime);
