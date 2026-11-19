@@ -1885,6 +1885,58 @@ class HrmApiController extends Controller
     }
 
     /**
+     * GET/POST /api/hrm/tipsoi-late-alerts
+     * Dispatch late notification emails to all employees who punched late today
+     */
+    public function sendTipsoiLateAlerts()
+    {
+        header('Content-Type: application/json');
+
+        try {
+            require_once dirname(__DIR__) . '/services/TipsoiLateAlertService.php';
+            $service = new \TipsoiLateAlertService($this->db);
+
+            $isDryRun = isset($_GET['dry_run']) && ($_GET['dry_run'] == '1' || $_GET['dry_run'] == 'true');
+            $targetDate = isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date']) ? $_GET['date'] : null;
+            $testEmail = isset($_GET['email']) && filter_var($_GET['email'], FILTER_VALIDATE_EMAIL) ? trim($_GET['email']) : null;
+
+            $result = $service->processDailyLateAlerts($targetDate, $isDryRun, 'admin_manual', $testEmail);
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Late alerts processed: {$result['dispatched_count']} sent, {$result['skipped_count']} skipped.",
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * GET /api/hrm/tipsoi-late-email-logs
+     * Returns logs of sent late arrival email notifications
+     */
+    public function getTipsoiLateEmailLogs()
+    {
+        header('Content-Type: application/json');
+
+        $query = "SELECT * FROM tipsoi_late_email_logs ORDER BY sent_at DESC LIMIT 500";
+        $result = $this->db->query($query);
+        $logs = [];
+
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $logs[] = $row;
+            }
+        }
+
+        echo json_encode(['success' => true, 'logs' => $logs]);
+        exit;
+    }
+
+    /**
      * GET /api/hrm/joining-list-data
      */
     public function getJoiningListData()
