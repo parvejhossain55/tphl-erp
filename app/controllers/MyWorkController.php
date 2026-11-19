@@ -178,7 +178,7 @@ class MyWorkController extends Controller
 
         // Metric cards: counted inside the active tab's scope
         $metricCond = [
-            'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+            'overdue'   => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()",
             'due_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
             'next7'     => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) > CURDATE() AND DATE(t.deadline) <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
             'review'    => "t.status != 'completed' AND t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND t.mentioned_user_ids != '[]' AND {$submittedForReviewSql}",
@@ -230,7 +230,7 @@ class MyWorkController extends Controller
                 COALESCE(SUM(t.status = 'in_progress'), 0) AS in_progress,
                 COALESCE(SUM(t.status = 'completed'), 0) AS completed,
                 COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()), 0) AS deadline_today,
-                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()), 0) AS deadline_missed
+                COALESCE(SUM(t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()), 0) AS deadline_missed
             FROM tasks t
             WHERE {$scopeSql}
         ");
@@ -268,7 +268,7 @@ class MyWorkController extends Controller
                 'all_in_progress'    => "t.status = 'in_progress'",
                 'all_completed'      => "t.status = 'completed'",
                 'all_deadline_today' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) = CURDATE()",
-                'all_deadline_missed' => "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()",
+                'all_deadline_missed' => "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()",
             ];
             if (isset($metricSql[$metricFilter])) {
                 $where[] = $metricSql[$metricFilter];
@@ -306,7 +306,7 @@ class MyWorkController extends Controller
             if ($statusFilter === 'open') {
                 $where[] = "t.status != 'completed'";
             } elseif ($statusFilter === 'overdue') {
-                $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW()";
+                $where[] = "t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE()";
             } elseif (in_array($statusFilter, ['pending', 'in_progress', 'completed', 'expired'], true)) {
                 $where[] = "t.status = ?";
                 $params[] = $statusFilter;
@@ -328,6 +328,20 @@ class MyWorkController extends Controller
             $where[] = "t.created_at IS NOT NULL AND DATE(t.created_at) <= ?";
             $params[] = $periodTo;
             $types .= "s";
+        }
+
+        // Optional selected task IDs filter for Excel export
+        $isExcelExport = (($_GET['export'] ?? '') === 'excel');
+        if ($isExcelExport && !empty($_GET['task_ids'])) {
+            $selectedIds = array_values(array_unique(array_filter(array_map('intval', explode(',', (string)$_GET['task_ids'])))));
+            if (!empty($selectedIds)) {
+                $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
+                $where[] = "t.id IN ({$placeholders})";
+                foreach ($selectedIds as $sid) {
+                    $params[] = $sid;
+                    $types .= "i";
+                }
+            }
         }
 
         $whereSql = implode(" AND ", $where);
@@ -355,7 +369,7 @@ class MyWorkController extends Controller
             ORDER BY 
                 CASE 
                     WHEN t.status = 'completed' THEN 99
-                    WHEN t.status != 'completed' AND t.deadline IS NOT NULL AND t.deadline < NOW() THEN 1
+                    WHEN t.status != 'completed' AND t.deadline IS NOT NULL AND DATE(t.deadline) < CURDATE() THEN 1
                     WHEN t.status != 'completed' AND DATE(t.deadline) = CURDATE() THEN 2
                     WHEN t.status != 'completed' THEN 3
                     ELSE 4
@@ -363,7 +377,7 @@ class MyWorkController extends Controller
                 CASE WHEN t.status = 'completed' THEN COALESCE(t.updated_at, t.created_at) END DESC,
                 t.deadline ASC,
                 t.id DESC
-            " . ($viewAll ? "LIMIT 1000" : "LIMIT 50") . "
+            " . (($viewAll || $isExcelExport) ? "LIMIT 1000" : "LIMIT 50") . "
         ";
 
         $stmtTasks = $this->db->prepare($sql);
@@ -373,7 +387,27 @@ class MyWorkController extends Controller
         $stmtTasks->execute();
         $tasks = $stmtTasks->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        if ($isExcelExport) {
+            $this->exportTasksExcel($tasks);
+            exit;
+        }
+
         // 7. Focus Panel: Needs Review (Tasks where the logged-in user is a Reviewer and task is completed, latest completed first)
+        $reviewWhereSql = "
+            WHERE FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
+              AND (
+                  (t.status = 'completed' AND NOT EXISTS (
+                      SELECT 1 FROM task_activities a 
+                      WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
+                  ))
+                  OR (t.status != 'completed' AND {$submittedForReviewSql})
+              )
+        ";
+        $stmtReviewCount = $this->db->prepare("SELECT COUNT(*) AS cnt FROM tasks t {$reviewWhereSql}");
+        $stmtReviewCount->bind_param("i", $userId);
+        $stmtReviewCount->execute();
+        $reviewTasksCount = (int)($stmtReviewCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+
         $stmtReviewList = $this->db->prepare("
             SELECT 
                 t.*,
@@ -383,16 +417,9 @@ class MyWorkController extends Controller
             FROM tasks t
             JOIN users u ON t.user_id = u.id
             LEFT JOIN designations des ON u.designation_id = des.id
-            WHERE FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
-              AND (
-                  (t.status = 'completed' AND NOT EXISTS (
-                      SELECT 1 FROM task_activities a 
-                      WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
-                  ))
-                  OR (t.status != 'completed' AND {$submittedForReviewSql})
-              )
+            {$reviewWhereSql}
             ORDER BY COALESCE(t.updated_at, t.created_at) DESC
-            LIMIT 2
+            LIMIT 1
         ");
         $stmtReviewList->bind_param("i", $userId);
         $stmtReviewList->execute();
@@ -454,7 +481,7 @@ class MyWorkController extends Controller
                   AND t.status != 'completed'
                 ORDER BY 
                     (CASE WHEN t.remarks LIKE '%block%' OR t.priority = 'urgent' THEN 1 ELSE 2 END),
-                    (CASE WHEN t.deadline < NOW() THEN 1 ELSE 2 END),
+                    (CASE WHEN DATE(t.deadline) < CURDATE() THEN 1 ELSE 2 END),
                     t.deadline ASC
                 LIMIT 1
             ");
@@ -483,7 +510,7 @@ class MyWorkController extends Controller
                 $totalInTab = $openTasksCount + $completedTasksCount;
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
             }
-            $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks);
+            $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks, $reviewTasksCount);
             $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
             echo json_encode([
                 'status' => 'success',
@@ -574,6 +601,7 @@ class MyWorkController extends Controller
             "myReviewedCompletedCount" => $myReviewedCompletedCount,
             "tasks"                  => $tasks,
             "reviewTasks"            => $reviewTasks,
+            "reviewTasksCount"       => $reviewTasksCount,
             "blockedTask"            => $blockedTask,
             "usersList"              => $usersList,
             "todoProjectsList"       => $todoProjectsList,
@@ -729,9 +757,9 @@ class MyWorkController extends Controller
     /**
      * Helper to render task rows HTML for seamless AJAX
      */
-    private function renderReviewCardHtml($reviewTasks)
+    private function renderReviewCardHtml($reviewTasks, $totalCount = null)
     {
-        $count = count($reviewTasks);
+        $count = ($totalCount !== null) ? (int)$totalCount : count($reviewTasks);
         $s = $count === 1 ? '' : 's';
         $out = '<h4 class="mw-focus-title">Needs your review</h4>';
         $out .= '<div class="mw-focus-subtitle">' . $count . ' completed task' . $s . ' waiting for your review</div>';
@@ -823,7 +851,7 @@ class MyWorkController extends Controller
     {
         if (empty($tasks)) {
             return '<tr>
-                <td colspan="6">
+                <td colspan="7">
                     <div class="mw-empty-state">
                         <i class="fa-regular fa-clipboard d-block"></i>
                         <div>No tasks found for this view.</div>
@@ -845,16 +873,17 @@ class MyWorkController extends Controller
 
             if (!empty($t['deadline'])) {
                 $deadlineTime = strtotime($t['deadline']);
-                $now = time();
+                $deadlineDate = date('Y-m-d', $deadlineTime);
+                $todayDate = date('Y-m-d');
 
-                if (!$isCompleted && $deadlineTime < $now) {
+                if (!$isCompleted && $deadlineDate < $todayDate) {
                     $isOverdue = true;
-                    $diffDays = (int) ceil(($now - $deadlineTime) / 86400);
+                    $diffDays = (int) round((strtotime($todayDate) - strtotime($deadlineDate)) / 86400);
                     $duePrimary = date('j M', $deadlineTime);
                     $dueSub = ($diffDays <= 1) ? '1 day overdue' : "{$diffDays} days overdue";
-                } elseif (date('Y-m-d', $deadlineTime) === date('Y-m-d')) {
+                } elseif ($deadlineDate === $todayDate) {
                     $duePrimary = date('j M', $deadlineTime);
-                    $dueSub = 'Today · ' . date('g:i A', $deadlineTime);
+                    $dueSub = (date('H:i:s', $deadlineTime) === '00:00:00') ? 'Today' : ('Today · ' . date('g:i A', $deadlineTime));
                 } else {
                     $duePrimary = date('j M', $deadlineTime);
                     $dueSub = date('D · g:i A', $deadlineTime);
@@ -934,6 +963,9 @@ class MyWorkController extends Controller
                 }
 
                 $html .= "<tr class=\"{$rowClass}\" data-task-id=\"{$taskId}\">
+                <td style=\"width: 42px; text-align: center;\" onclick=\"event.stopPropagation();\">
+                    <input type=\"checkbox\" class=\"mw-task-check mw-row-select\" value=\"{$taskId}\" style=\"margin-right: 0;\" aria-label=\"Select task T-{$taskId}\">
+                </td>
                 <td>
                     <div class=\"d-flex align-items-start\">
                         <div>
@@ -978,6 +1010,197 @@ class MyWorkController extends Controller
         }
 
         return $html;
+    }
+
+    /**
+     * Export tasks list to Excel (.xlsx) with all fields and bullet-list checklist
+     */
+    private function exportTasksExcel(array $tasks)
+    {
+        if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+            if (defined('BASE_PATH') && file_exists(BASE_PATH . '/vendor/autoload.php')) {
+                require_once BASE_PATH . '/vendor/autoload.php';
+            } elseif (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
+                require_once __DIR__ . '/../../vendor/autoload.php';
+            }
+        }
+
+        // Bulk-resolve user IDs for Reviewer, Collaborators, CC
+        $parseIds = fn($v) => array_values(array_unique(array_filter(array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []))));
+        $allPersonIds = [];
+        foreach ($tasks as $t) {
+            foreach (['mentioned_user_ids', 'collaborator_user_ids', 'cc_user_ids'] as $col) {
+                foreach ($parseIds($t[$col] ?? '') as $pid) {
+                    $allPersonIds[$pid] = $pid;
+                }
+            }
+        }
+        $userNamesMap = [];
+        if (!empty($allPersonIds)) {
+            $idCsv = implode(',', $allPersonIds);
+            $resU = $this->db->query("SELECT id, full_name FROM users WHERE id IN ({$idCsv})");
+            if ($resU) {
+                while ($u = $resU->fetch_assoc()) {
+                    $userNamesMap[(int)$u['id']] = $u['full_name'];
+                }
+            }
+        }
+        $resolveNames = function ($raw) use ($parseIds, $userNamesMap) {
+            $names = [];
+            foreach ($parseIds($raw) as $pid) {
+                if (!empty($userNamesMap[$pid])) {
+                    $names[] = $userNamesMap[$pid];
+                }
+            }
+            return implode(', ', $names);
+        };
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('My Work Tasks');
+
+        $headers = [
+            'Task ID',
+            'Title',
+            'Project',
+            'Priority',
+            'Status',
+            'Progress (%)',
+            'Working Hours',
+            'Start Date',
+            'Deadline',
+            'Assigned To',
+            'Owner (Assigned By)',
+            'Reviewer',
+            'Collaborators',
+            'CC',
+            'Expected Output',
+            'Checklist',
+            'Remarks',
+            'Rating',
+            'Created At',
+            'Updated At',
+        ];
+
+        $colWidths = [
+            'A' => 11, 'B' => 32, 'C' => 22, 'D' => 12, 'E' => 14,
+            'F' => 13, 'G' => 14, 'H' => 14, 'I' => 18, 'J' => 22,
+            'K' => 22, 'L' => 22, 'M' => 25, 'N' => 22, 'O' => 30,
+            'P' => 42, 'Q' => 28, 'R' => 10, 'S' => 18, 'T' => 18,
+        ];
+        foreach ($colWidths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        $colIdx = 1;
+        foreach ($headers as $h) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx) . '1';
+            $sheet->setCellValue($cell, $h);
+            $colIdx++;
+        }
+
+        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '087F5B']],
+            'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(24);
+        $sheet->freezePane('A2');
+
+        $rowNum = 2;
+        foreach ($tasks as $t) {
+            $statusLabel = ucwords(str_replace('_', ' ', (string)($t['status'] ?? 'pending')));
+            if ($t['status'] !== 'completed' && !empty($t['is_submitted_for_review']) && !empty($parseIds($t['mentioned_user_ids'] ?? ''))) {
+                $statusLabel = 'In Review';
+            }
+
+            // Build bullet-list checklist in a single cell
+            $checklistBullets = [];
+            $rawCL = $t['checklist_data'] ?? '';
+            if ($rawCL) {
+                $decoded = json_decode($rawCL, true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $item) {
+                        $txt = trim((string)($item['text'] ?? ''));
+                        if ($txt !== '') {
+                            $checklistBullets[] = '• ' . $txt;
+                        }
+                    }
+                }
+            }
+            if (empty($checklistBullets)) {
+                $descRaw = (string)($t['description'] ?? '');
+                if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                    foreach ($matches[1] as $m) {
+                        $txt = trim(html_entity_decode(strip_tags($m)));
+                        if ($txt !== '') {
+                            $checklistBullets[] = '• ' . $txt;
+                        }
+                    }
+                } elseif (trim(strip_tags($descRaw)) !== '') {
+                    $checklistBullets[] = '• ' . trim(html_entity_decode(strip_tags($descRaw)));
+                }
+            }
+            $checklistCell = implode("\n", $checklistBullets);
+
+            $workingHourLabel = '';
+            if ($t['working_hour'] !== null && $t['working_hour'] !== '' && (float)$t['working_hour'] > 0) {
+                $totalMins = (int)round((float)$t['working_hour'] * 60);
+                $whH = intdiv($totalMins, 60);
+                $whM = $totalMins % 60;
+                $whParts = [];
+                if ($whH > 0) $whParts[] = $whH . 'h';
+                if ($whM > 0) $whParts[] = $whM . 'm';
+                $workingHourLabel = implode(' ', $whParts);
+            }
+
+            $rowValues = [
+                'T-' . (int)$t['id'],
+                (string)($t['title'] ?? ''),
+                (string)($t['project_name'] ?? 'General'),
+                ucfirst((string)($t['priority'] ?? 'medium')),
+                $statusLabel,
+                isset($t['progress']) ? (int)$t['progress'] : 0,
+                $workingHourLabel,
+                !empty($t['start_date']) ? date('d M Y', strtotime($t['start_date'])) : '',
+                !empty($t['deadline']) ? date('d M Y h:i A', strtotime($t['deadline'])) : '',
+                (string)($t['assignee_name'] ?? ''),
+                (string)($t['assigned_by_name'] ?? ''),
+                $resolveNames($t['mentioned_user_ids'] ?? ''),
+                $resolveNames($t['collaborator_user_ids'] ?? ''),
+                $resolveNames($t['cc_user_ids'] ?? ''),
+                (string)($t['expected_output'] ?? ''),
+                $checklistCell,
+                (string)($t['remarks'] ?? ''),
+                !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : '',
+                !empty($t['created_at']) ? date('d M Y h:i A', strtotime($t['created_at'])) : '',
+                !empty($t['updated_at']) ? date('d M Y h:i A', strtotime($t['updated_at'])) : '',
+            ];
+
+            $c = 1;
+            foreach ($rowValues as $val) {
+                $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $rowNum;
+                $sheet->setCellValue($cell, $val);
+                $c++;
+            }
+
+            // Wrap text for Checklist, Expected Output, Remarks and align top
+            $sheet->getStyle("A{$rowNum}:{$lastCol}{$rowNum}")->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+            $sheet->getStyle("O{$rowNum}:Q{$rowNum}")->getAlignment()->setWrapText(true);
+            $rowNum++;
+        }
+
+        $filename = 'my_work_tasks_' . date('Y-m-d_H-i') . '.xlsx';
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
     }
 
     /**
@@ -1388,13 +1611,14 @@ class MyWorkController extends Controller
         $dueBadge = null;
         if (!empty($t['deadline'])) {
             $dl = strtotime($t['deadline']);
+            $dlDate = date('Y-m-d', $dl);
+            $todayDate = date('Y-m-d');
             $deadlineText = date('j M Y', $dl);
-            $now = time();
-            if (!$isCompleted && $dl < $now) {
-                $days = (int) ceil(($now - $dl) / 86400);
+            if (!$isCompleted && $dlDate < $todayDate) {
+                $days = (int) round((strtotime($todayDate) - strtotime($dlDate)) / 86400);
                 $overdueText = $days <= 1 ? '1 day overdue' : "{$days} days overdue";
                 $dueBadge = $overdueText;
-            } elseif (date('Y-m-d', $dl) === date('Y-m-d')) {
+            } elseif ($dlDate === $todayDate) {
                 $dueBadge = 'Due today';
             } else {
                 $dueBadge = 'Due ' . date('j M', $dl);
@@ -1526,10 +1750,11 @@ class MyWorkController extends Controller
                 'is_completed' => $isCompleted,
                 'is_review_approved' => $isReviewApproved,
                 'is_owner' => ((int)$t['assigned_by'] === $userId),
+                'is_self_task' => ((int)$t['assigned_by'] === (int)$t['user_id']),
                 'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
-                'can_request_extension' => (!$isCompleted && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
+                'can_request_extension' => (!$isCompleted && (int)$t['assigned_by'] !== $userId && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
                 'can_check' => $canCheckChecklist,
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
@@ -2506,6 +2731,10 @@ class MyWorkController extends Controller
         $collabIds = $ids($task['collaborator_user_ids'] ?? '');
         $isAssignee = ((int)$task['user_id'] === $userId || in_array($userId, $collabIds, true));
 
+        if ((int)$task['assigned_by'] === $userId) {
+            echo json_encode(['status' => 'error', 'message' => 'As the task owner, you can update the deadline directly.']);
+            exit;
+        }
         if (!$isAssignee) {
             echo json_encode(['status' => 'error', 'message' => 'Only the task assignee can request a deadline extension.']);
             exit;
@@ -2598,6 +2827,12 @@ class MyWorkController extends Controller
         $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
         if (!$isOwner) {
             echo json_encode(['status' => 'error', 'message' => 'Only the task owner can submit feedback and rating.']);
+            exit;
+        }
+
+        // Prevent giving feedback/rating on own task or self-task
+        if ((int)$task['user_id'] === $userId || (int)$task['assigned_by'] === (int)$task['user_id']) {
+            echo json_encode(['status' => 'error', 'message' => 'You cannot submit feedback or rating on your own task.']);
             exit;
         }
 
