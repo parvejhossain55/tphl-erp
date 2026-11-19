@@ -1713,7 +1713,9 @@ $todayDateFormatted = date('j F');
                         </tr>
                     </thead>
                     <tbody id="mwTasksTbody">
-                        <?php if (empty($tasks)): ?>
+                        <?php if ($tab === 'recurring'): ?>
+                            <?= $recurringTemplatesHtml ?? '' ?>
+                        <?php elseif (empty($tasks)): ?>
                             <tr>
                                 <td colspan="7">
                                     <div class="mw-empty-state">
@@ -2061,15 +2063,19 @@ $todayDateFormatted = date('j F');
                 </div>
             </div>
 
-            <!-- Row 2: Start Date & Deadline -->
+            <!-- Row 2: Start Date & Deadline / Repeat Until -->
             <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Start Date</label>
-                    <input type="date" name="start_date" class="mw-form-input">
+                    <label class="mw-form-label" id="drawerStartDateLabel">Start Date</label>
+                    <input type="date" name="start_date" id="drawerStartDate" class="mw-form-input">
                 </div>
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <label class="mw-form-label" id="drawerDeadlineLabel">Deadline <span class="req" id="drawerDeadlineReq">*</span></label>
                     <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" required>
+                    <input type="hidden" id="drawerEditTemplateId" value="">
+                    <div id="drawerDeadlineHint" style="display:none; font-size:11px; color:#65776F; margin-top:4px;">
+                        Leave blank for unlimited (runs until paused/deleted). Each task is due same day.
+                    </div>
                 </div>
             </div>
 
@@ -2094,24 +2100,27 @@ $todayDateFormatted = date('j F');
             </div>
 
             <div class="mw-form-group" id="rowRecurrenceEnd" style="display:none;">
-                <label class="mw-form-label">Repeat</label>
+                <style>
+                    .mw-day-pill input:checked + span {
+                        background: #087F5B !important;
+                        border-color: #087F5B !important;
+                        color: #FFFFFF !important;
+                    }
+                </style>
+                <label class="mw-form-label">Repeat <span class="req">*</span></label>
                 <select name="recurrence_type" id="taskRecurrenceType" class="mw-form-select">
                     <option value="">Select...</option>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
-                    <option value="custom">Custom</option>
                 </select>
+                <div id="dailyRecurringHint" style="display:none; margin-top:10px; padding:10px 12px; background:#F0FAF6; border:1px solid #C6EAE0; border-radius:8px; font-size:12px; color:#0F5132;">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Creates a same-day task every day from Start Date until Repeat Until (or unlimited if left blank).
+                </div>
                 <div id="customRecurringDatesWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
-                    <style>
-                        .mw-day-pill input:checked + span {
-                            background: #087F5B !important;
-                            border-color: #087F5B !important;
-                            color: #FFFFFF !important;
-                        }
-                    </style>
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Days <span class="req">*</span></span>
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Weekdays <span class="req">*</span></span>
                         <button type="button" id="btnClearCustomDates" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
                     </div>
                     <div id="customRecurringDaysGroup" style="display:flex; flex-wrap:wrap; gap:8px;">
@@ -2121,6 +2130,23 @@ $todayDateFormatted = date('j F');
                                 <span style="display:inline-flex; align-items:center; justify-content:center; min-width:44px; padding:6px 10px; border-radius:6px; border:1px solid #D1DDD6; background:#FFFFFF; color:#142D26; font-size:12.5px; font-weight:600; transition:all .15s ease; user-select:none;"><?= $dayLabel ?></span>
                             </label>
                         <?php endforeach; ?>
+                    </div>
+                </div>
+                <div id="monthlyRecurringDaysWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Dates of Month <span class="req">*</span></span>
+                        <button type="button" id="btnClearMonthDays" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
+                    </div>
+                    <div id="monthlyRecurringDaysGroup" style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:6px;">
+                        <?php for ($dNum = 1; $dNum <= 31; $dNum++): ?>
+                            <label class="mw-day-pill" style="margin:0; cursor:pointer;">
+                                <input type="checkbox" name="recurrence_month_days[]" value="<?= $dNum ?>" class="mw-month-day-chk" style="display:none;">
+                                <span style="display:flex; align-items:center; justify-content:center; padding:6px 0; border-radius:6px; border:1px solid #D1DDD6; background:#FFFFFF; color:#142D26; font-size:12px; font-weight:600; transition:all .15s ease; user-select:none;"><?= $dNum ?></span>
+                            </label>
+                        <?php endfor; ?>
+                    </div>
+                    <div style="font-size:11px; color:#65776F; margin-top:8px;">
+                        For shorter months (e.g. Feb), dates 29–31 automatically run on the last day of the month.
                     </div>
                 </div>
             </div>
@@ -3093,14 +3119,24 @@ document.addEventListener('DOMContentLoaded', function () {
         formCreateTask.reset();
         const editIdInput = document.getElementById('drawerEditTaskId');
         if (editIdInput) editIdInput.value = '';
+        const editTplInput = document.getElementById('drawerEditTemplateId');
+        if (editTplInput) editTplInput.value = '';
+        const chkRecEl = document.getElementById('chkIsRecurring');
+        if (chkRecEl) {
+            chkRecEl.checked = false;
+            chkRecEl.disabled = false;
+        }
         if (expectedList) {
             expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
         }
-        if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
-        const selRec = document.getElementById('taskRecurrenceType');
-        if (selRec) selRec.required = false;
         if (typeof window.setCustomRecurringDates === 'function') {
             window.setCustomRecurringDates([]);
+        }
+        if (typeof window.setMonthlyRecurringDays === 'function') {
+            window.setMonthlyRecurringDays([]);
+        }
+        if (typeof window.syncRecurringUi === 'function') {
+            window.syncRecurringUi();
         }
         document.querySelectorAll('.mw-multi').forEach(b => {
             const s = b.querySelector('.mw-multi-search');
@@ -4796,46 +4832,213 @@ document.addEventListener('DOMContentLoaded', function () {
     if (taskReviewerSelect) taskReviewerSelect.addEventListener('change', updateNoticeBox);
     updateNoticeBox();
 
-    // Show Repeat options only when "Is Recurring" is ticked + Custom 7-day selector
+    // Show Repeat options only when "Is Recurring" is ticked (Daily / Weekly weekdays / Monthly dates)
     const chkIsRecurring = document.getElementById('chkIsRecurring');
     const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
     const selRecType = document.getElementById('taskRecurrenceType');
     const customDatesWrap = document.getElementById('customRecurringDatesWrap');
+    const monthlyDaysWrap = document.getElementById('monthlyRecurringDaysWrap');
+    const dailyHintWrap = document.getElementById('dailyRecurringHint');
     const btnClearCustomDates = document.getElementById('btnClearCustomDates');
+    const btnClearMonthDays = document.getElementById('btnClearMonthDays');
+    const drawerDeadlineInput = document.getElementById('drawerDeadline');
+    const drawerDeadlineLabel = document.getElementById('drawerDeadlineLabel');
+    const drawerDeadlineHint = document.getElementById('drawerDeadlineHint');
+
+    window.syncRecurringUi = function () {
+        const isRec = !!(chkIsRecurring && chkIsRecurring.checked);
+        const freq = selRecType ? selRecType.value : '';
+        if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = isRec ? 'block' : 'none';
+        if (selRecType) selRecType.required = isRec;
+        if (dailyHintWrap) dailyHintWrap.style.display = (isRec && freq === 'daily') ? 'block' : 'none';
+        if (customDatesWrap) customDatesWrap.style.display = (isRec && freq === 'weekly') ? 'block' : 'none';
+        if (monthlyDaysWrap) monthlyDaysWrap.style.display = (isRec && freq === 'monthly') ? 'block' : 'none';
+
+        // For recurring tasks, Deadline becomes optional "Repeat Until" (blank = unlimited)
+        if (drawerDeadlineInput) drawerDeadlineInput.required = !isRec;
+        if (drawerDeadlineLabel) {
+            drawerDeadlineLabel.innerHTML = isRec
+                ? 'Repeat Until <span style="font-weight:400; color:#65776F;">(Optional)</span>'
+                : 'Deadline <span class="req" id="drawerDeadlineReq">*</span>';
+        }
+        if (drawerDeadlineHint) drawerDeadlineHint.style.display = isRec ? 'block' : 'none';
+    };
 
     window.setCustomRecurringDates = function (datesArr) {
         const picked = new Set(Array.isArray(datesArr) ? datesArr.map(d => String(d).trim().toLowerCase()) : []);
         document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
             chk.checked = picked.has(chk.value);
         });
-        if (customDatesWrap) {
-            customDatesWrap.style.display = (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') ? 'block' : 'none';
-        }
+        window.syncRecurringUi();
+    };
+
+    window.setMonthlyRecurringDays = function (daysArr) {
+        const picked = new Set(Array.isArray(daysArr) ? daysArr.map(d => String(parseInt(d, 10))) : []);
+        document.querySelectorAll('#monthlyRecurringDaysGroup .mw-month-day-chk').forEach(chk => {
+            chk.checked = picked.has(chk.value);
+        });
+        window.syncRecurringUi();
     };
 
     if (btnClearCustomDates) {
         btnClearCustomDates.addEventListener('click', () => {
-            document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
-                chk.checked = false;
-            });
+            document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => { chk.checked = false; });
+        });
+    }
+
+    if (btnClearMonthDays) {
+        btnClearMonthDays.addEventListener('click', () => {
+            document.querySelectorAll('#monthlyRecurringDaysGroup .mw-month-day-chk').forEach(chk => { chk.checked = false; });
         });
     }
 
     if (selRecType) {
-        selRecType.addEventListener('change', () => {
-            const isCust = (selRecType.value === 'custom');
-            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
-        });
+        selRecType.addEventListener('change', window.syncRecurringUi);
     }
 
-    if (chkIsRecurring && rowRecurrenceEnd) {
-        chkIsRecurring.addEventListener('change', () => {
-            rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
-            if (selRecType) selRecType.required = chkIsRecurring.checked;
-            const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
-            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
-        });
+    if (chkIsRecurring) {
+        chkIsRecurring.addEventListener('change', window.syncRecurringUi);
     }
+
+    // Recurring Schedule Tab Actions: Pause/Resume, Edit, Delete
+    window.toggleRecurringTemplate = function (templateId, btnEl) {
+        if (btnEl) btnEl.disabled = true;
+        fetch(`${baseUrl}/my-work/toggle-recurring-template/${encodeURIComponent(templateId)}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showMwToast(data.message || 'Updated schedule status.');
+                if (typeof fetchMyWork === 'function') fetchMyWork();
+                else window.location.reload();
+            } else {
+                showMwToast(data.message || 'Failed to update schedule.', 'error');
+            }
+        })
+        .catch(() => showMwToast('Network error updating schedule.', 'error'))
+        .finally(() => { if (btnEl) btnEl.disabled = false; });
+    };
+
+    window.deleteRecurringTemplate = function (templateId, btnEl) {
+        if (!confirm('Delete this recurring schedule? Previously generated tasks will remain in history.')) {
+            return;
+        }
+        if (btnEl) btnEl.disabled = true;
+        fetch(`${baseUrl}/my-work/delete-recurring-template/${encodeURIComponent(templateId)}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showMwToast(data.message || 'Recurring schedule deleted.');
+                if (typeof fetchMyWork === 'function') fetchMyWork();
+                else window.location.reload();
+            } else {
+                showMwToast(data.message || 'Failed to delete schedule.', 'error');
+            }
+        })
+        .catch(() => showMwToast('Network error deleting schedule.', 'error'))
+        .finally(() => { if (btnEl) btnEl.disabled = false; });
+    };
+
+    window.openEditRecurringTemplateDrawer = function (templateId, event) {
+        if (event) event.stopPropagation();
+        resetDrawerForm();
+        const drawerTitle = document.getElementById('mwDrawerTitle');
+        if (drawerTitle) drawerTitle.innerText = 'Edit recurring schedule';
+        if (btnSubmitDrawer) btnSubmitDrawer.innerHTML = '<i class="fa-solid fa-check me-1"></i> Update schedule';
+
+        fetch(`${baseUrl}/my-work/recurring-template-data/${encodeURIComponent(templateId)}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status !== 'success' || !data.template) {
+                showMwToast(data.message || 'Failed to load recurring schedule.', 'error');
+                return;
+            }
+            const t = data.template;
+            const editTplInput = document.getElementById('drawerEditTemplateId');
+            if (editTplInput) editTplInput.value = String(t.id);
+
+            const titleInput = formCreateTask.querySelector('input[name="title"]');
+            if (titleInput) titleInput.value = t.title || '';
+
+            const prioritySel = formCreateTask.querySelector('select[name="priority"]');
+            if (prioritySel) prioritySel.value = t.priority || 'medium';
+
+            if (typeof setWorkingHourHm === 'function') {
+                setWorkingHourHm(t.working_hour);
+            }
+
+            const startInput = formCreateTask.querySelector('input[name="start_date"]');
+            if (startInput) startInput.value = t.start_date || '';
+
+            const deadlineInput = formCreateTask.querySelector('input[name="deadline"]');
+            if (deadlineInput) deadlineInput.value = t.recurrence_end_date || '';
+
+            const projectSelect = formCreateTask.querySelector('select[name="project_id"]');
+            if (projectSelect) projectSelect.value = t.project_id || '';
+
+            // Roles (Assignee, Reviewer, Collaborators, CC)
+            if (typeof mwSetPicked === 'function') {
+                mwSetPicked('taskAssignedToSelect', t.assigned_to_id ? [t.assigned_to_id] : []);
+                mwSetPicked('taskReviewerSelect', t.reviewer_id ? [t.reviewer_id] : []);
+                mwSetPicked('taskCollaboratorsSelect', Array.isArray(t.collaborator_ids) ? t.collaborator_ids : []);
+                mwSetPicked('taskCcSelect', Array.isArray(t.cc_ids) ? t.cc_ids : []);
+            } else {
+                const setMulti = (id, vals) => {
+                    const box = document.getElementById(id);
+                    if (!box) return;
+                    const set = new Set((vals || []).map(v => String(v)));
+                    box.querySelectorAll('input[type=checkbox], input[type=radio]').forEach(i => {
+                        i.checked = set.has(String(i.value));
+                    });
+                    if (box._refresh) box._refresh();
+                };
+                setMulti('taskAssignedToSelect', t.assigned_to_id ? [t.assigned_to_id] : []);
+                setMulti('taskReviewerSelect', t.reviewer_id ? [t.reviewer_id] : []);
+                setMulti('taskCollaboratorsSelect', t.collaborator_ids || []);
+                setMulti('taskCcSelect', t.cc_ids || []);
+            }
+
+            const txtExpected = document.getElementById('drawerExpectedOutput');
+            if (txtExpected) txtExpected.value = t.expected_output || '';
+
+            if (expectedList) {
+                expectedList.querySelectorAll('.mw-expected-row').forEach((r, idx) => { if (idx > 0) r.remove(); });
+                const firstTextarea = expectedList.querySelector('textarea');
+                const descs = Array.isArray(t.description_items) && t.description_items.length ? t.description_items : [''];
+                if (firstTextarea) firstTextarea.value = descs[0] || '';
+                for (let i = 1; i < descs.length; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
+                    row.innerHTML = `<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another checklist item"></textarea>
+                        <button type="button" class="mw-btn-create" title="Remove" style="white-space:nowrap;background:#C92A2A;"><i class="fa-solid fa-xmark"></i></button>`;
+                    row.querySelector('textarea').value = descs[i];
+                    row.querySelector('button').addEventListener('click', () => row.remove());
+                    expectedList.appendChild(row);
+                }
+            }
+
+            if (chkIsRecurring) chkIsRecurring.checked = true;
+            if (selRecType) selRecType.value = t.recurrence_type || 'daily';
+            window.setCustomRecurringDates(Array.isArray(t.recurrence_custom_dates) ? t.recurrence_custom_dates : []);
+            window.setMonthlyRecurringDays(Array.isArray(t.recurrence_month_days) ? t.recurrence_month_days : []);
+            window.syncRecurringUi();
+
+            if (drawer && backdrop) {
+                drawer.classList.add('show');
+                backdrop.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+            updateNoticeBox();
+        })
+        .catch(() => showMwToast('Network error loading recurring schedule.', 'error'));
+    };
 
     // Multi-select dropdowns (CC, Collaborators)
     document.querySelectorAll('.mw-multi').forEach(box => {
@@ -4923,11 +5126,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (formCreateTask) {
         formCreateTask.addEventListener('submit', function(e) {
             e.preventDefault();
-            if (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') {
-                const pickedDays = document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk:checked').length;
-                if (pickedDays === 0) {
-                    showMwToast('Please select at least one day for the custom recurring schedule.', 'error');
-                    return;
+            if (chkIsRecurring && chkIsRecurring.checked && selRecType) {
+                if (selRecType.value === 'weekly') {
+                    const pickedDays = document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk:checked').length;
+                    if (pickedDays === 0) {
+                        showMwToast('Please select at least one weekday for the Weekly recurring schedule.', 'error');
+                        return;
+                    }
+                } else if (selRecType.value === 'monthly') {
+                    const pickedDates = document.querySelectorAll('#monthlyRecurringDaysGroup .mw-month-day-chk:checked').length;
+                    if (pickedDates === 0) {
+                        showMwToast('Please select at least one date of the month for the Monthly recurring schedule.', 'error');
+                        return;
+                    }
                 }
             }
             const ownerVal = mwPicked('taskAssignedToSelect').value || '<?= (int)$userId ?>';
@@ -4937,19 +5148,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             const editTaskId = document.getElementById('drawerEditTaskId')?.value;
+            const editTplId = document.getElementById('drawerEditTemplateId')?.value;
+            const isEditingTpl = !!(editTplId && editTplId.trim() !== '');
             const isEditing = !!(editTaskId && editTaskId.trim() !== '');
 
             if (btnSubmitDrawer) {
                 btnSubmitDrawer.disabled = true;
-                btnSubmitDrawer.innerHTML = isEditing
+                btnSubmitDrawer.innerHTML = (isEditing || isEditingTpl)
                     ? '<i class="fa-solid fa-spinner fa-spin me-1"></i> Updating...'
                     : '<i class="fa-solid fa-spinner fa-spin me-1"></i> Creating...';
             }
 
             const formData = new FormData(formCreateTask);
-            const targetUrl = isEditing
-                ? `${baseUrl}/my-work/update-task/${encodeURIComponent(editTaskId)}?ajax=1`
-                : `${baseUrl}/my-work/store-task?ajax=1`;
+            const targetUrl = isEditingTpl
+                ? `${baseUrl}/my-work/update-recurring-template/${encodeURIComponent(editTplId)}?ajax=1`
+                : (isEditing
+                    ? `${baseUrl}/my-work/update-task/${encodeURIComponent(editTaskId)}?ajax=1`
+                    : `${baseUrl}/my-work/store-task?ajax=1`);
 
             fetch(targetUrl, {
                 method: 'POST',

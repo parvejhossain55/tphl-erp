@@ -782,15 +782,18 @@ $monthNames = [
                 </div>
             </div>
 
-            <!-- Row 2: Start Date & Deadline -->
+            <!-- Row 2: Start Date & Deadline / Repeat Until -->
             <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Start Date</label>
                     <input type="date" name="start_date" class="mw-form-input">
                 </div>
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <label class="mw-form-label" id="drawerDeadlineLabel">Deadline <span class="req" id="drawerDeadlineReq">*</span></label>
                     <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" required>
+                    <div id="drawerDeadlineHint" style="display:none; font-size:11px; color:#65776F; margin-top:4px;">
+                        Leave blank for unlimited (runs until paused/deleted). Each task is due same day.
+                    </div>
                 </div>
             </div>
 
@@ -815,24 +818,27 @@ $monthNames = [
             </div>
 
             <div class="mw-form-group" id="rowRecurrenceEnd" style="display:none;">
-                <label class="mw-form-label">Repeat</label>
+                <style>
+                    .mw-day-pill input:checked + span {
+                        background: #087F5B !important;
+                        border-color: #087F5B !important;
+                        color: #FFFFFF !important;
+                    }
+                </style>
+                <label class="mw-form-label">Repeat <span class="req">*</span></label>
                 <select name="recurrence_type" id="taskRecurrenceType" class="mw-form-select">
                     <option value="">Select...</option>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
-                    <option value="custom">Custom</option>
                 </select>
+                <div id="dailyRecurringHint" style="display:none; margin-top:10px; padding:10px 12px; background:#F0FAF6; border:1px solid #C6EAE0; border-radius:8px; font-size:12px; color:#0F5132;">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Creates a same-day task every day from Start Date until Repeat Until (or unlimited if left blank).
+                </div>
                 <div id="customRecurringDatesWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
-                    <style>
-                        .mw-day-pill input:checked + span {
-                            background: #087F5B !important;
-                            border-color: #087F5B !important;
-                            color: #FFFFFF !important;
-                        }
-                    </style>
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Days <span class="req">*</span></span>
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Weekdays <span class="req">*</span></span>
                         <button type="button" id="btnClearCustomDates" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
                     </div>
                     <div id="customRecurringDaysGroup" style="display:flex; flex-wrap:wrap; gap:8px;">
@@ -842,6 +848,23 @@ $monthNames = [
                                 <span style="display:inline-flex; align-items:center; justify-content:center; min-width:44px; padding:6px 10px; border-radius:6px; border:1px solid #D1DDD6; background:#FFFFFF; color:#142D26; font-size:12.5px; font-weight:600; transition:all .15s ease; user-select:none;"><?= $dayLabel ?></span>
                             </label>
                         <?php endforeach; ?>
+                    </div>
+                </div>
+                <div id="monthlyRecurringDaysWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Dates of Month <span class="req">*</span></span>
+                        <button type="button" id="btnClearMonthDays" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
+                    </div>
+                    <div id="monthlyRecurringDaysGroup" style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:6px;">
+                        <?php for ($dNum = 1; $dNum <= 31; $dNum++): ?>
+                            <label class="mw-day-pill" style="margin:0; cursor:pointer;">
+                                <input type="checkbox" name="recurrence_month_days[]" value="<?= $dNum ?>" class="mw-month-day-chk" style="display:none;">
+                                <span style="display:flex; align-items:center; justify-content:center; padding:6px 0; border-radius:6px; border:1px solid #D1DDD6; background:#FFFFFF; color:#142D26; font-size:12px; font-weight:600; transition:all .15s ease; user-select:none;"><?= $dNum ?></span>
+                            </label>
+                        <?php endfor; ?>
+                    </div>
+                    <div style="font-size:11px; color:#65776F; margin-top:8px;">
+                        For shorter months (e.g. Feb), dates 29–31 automatically run on the last day of the month.
                     </div>
                 </div>
             </div>
@@ -1069,29 +1092,50 @@ $monthNames = [
             }
         };
 
+        const monthlyDaysWrap = document.getElementById('monthlyRecurringDaysWrap');
+        const dailyHintWrap = document.getElementById('dailyRecurringHint');
+        const btnClearMonthDays = document.getElementById('btnClearMonthDays');
+        const drawerDeadlineInput = document.getElementById('drawerDeadline');
+        const drawerDeadlineLabel = document.getElementById('drawerDeadlineLabel');
+        const drawerDeadlineHint = document.getElementById('drawerDeadlineHint');
+
+        function syncRecurringUi() {
+            const isRec = !!(chkIsRecurring && chkIsRecurring.checked);
+            const freq = selRecType ? selRecType.value : '';
+            if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = isRec ? 'block' : 'none';
+            if (selRecType) selRecType.required = isRec;
+            if (dailyHintWrap) dailyHintWrap.style.display = (isRec && freq === 'daily') ? 'block' : 'none';
+            if (customDatesWrap) customDatesWrap.style.display = (isRec && freq === 'weekly') ? 'block' : 'none';
+            if (monthlyDaysWrap) monthlyDaysWrap.style.display = (isRec && freq === 'monthly') ? 'block' : 'none';
+            if (drawerDeadlineInput) {
+                drawerDeadlineInput.required = !isRec;
+                if (isRec && drawerDeadlineInput.dataset.defaultVal === undefined) {
+                    drawerDeadlineInput.dataset.defaultVal = drawerDeadlineInput.value;
+                    drawerDeadlineInput.value = '';
+                } else if (!isRec && drawerDeadlineInput.value === '' && drawerDeadlineInput.dataset.defaultVal) {
+                    drawerDeadlineInput.value = drawerDeadlineInput.dataset.defaultVal;
+                }
+            }
+            if (drawerDeadlineLabel) {
+                drawerDeadlineLabel.innerHTML = isRec
+                    ? 'Repeat Until <span style="font-weight:400; color:#65776F;">(Optional)</span>'
+                    : 'Deadline <span class="req" id="drawerDeadlineReq">*</span>';
+            }
+            if (drawerDeadlineHint) drawerDeadlineHint.style.display = isRec ? 'block' : 'none';
+        }
+
         if (btnClearCustomDates) {
             btnClearCustomDates.addEventListener('click', () => {
-                document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
-                    chk.checked = false;
-                });
+                document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => { chk.checked = false; });
             });
         }
-
-        if (selRecType) {
-            selRecType.addEventListener('change', () => {
-                const isCust = (selRecType.value === 'custom');
-                if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
+        if (btnClearMonthDays) {
+            btnClearMonthDays.addEventListener('click', () => {
+                document.querySelectorAll('#monthlyRecurringDaysGroup .mw-month-day-chk').forEach(chk => { chk.checked = false; });
             });
         }
-
-        if (chkIsRecurring && rowRecurrenceEnd) {
-            chkIsRecurring.addEventListener('change', () => {
-                rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
-                if (selRecType) selRecType.required = chkIsRecurring.checked;
-                const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
-                if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
-            });
-        }
+        if (selRecType) selRecType.addEventListener('change', syncRecurringUi);
+        if (chkIsRecurring) chkIsRecurring.addEventListener('change', syncRecurringUi);
 
         document.querySelectorAll('.mw-multi').forEach(box => {
             const txt = box.querySelector('.mw-multi-text');
@@ -1157,11 +1201,19 @@ $monthNames = [
         if (formCreateTask) {
             formCreateTask.addEventListener('submit', function(e) {
                 e.preventDefault();
-                if (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') {
-                    const pickedDays = document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk:checked').length;
-                    if (pickedDays === 0) {
-                        showMwToast('Please select at least one day for the custom recurring schedule.', 'error');
-                        return;
+                if (chkIsRecurring && chkIsRecurring.checked && selRecType) {
+                    if (selRecType.value === 'weekly') {
+                        const pickedDays = document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk:checked').length;
+                        if (pickedDays === 0) {
+                            showMwToast('Please select at least one weekday for the Weekly recurring schedule.', 'error');
+                            return;
+                        }
+                    } else if (selRecType.value === 'monthly') {
+                        const pickedDates = document.querySelectorAll('#monthlyRecurringDaysGroup .mw-month-day-chk:checked').length;
+                        if (pickedDates === 0) {
+                            showMwToast('Please select at least one date of the month for the Monthly recurring schedule.', 'error');
+                            return;
+                        }
                     }
                 }
                 const ownerVal = mwPicked('taskAssignedToSelect').value || mwCurrentUserId;

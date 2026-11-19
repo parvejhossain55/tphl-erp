@@ -32,6 +32,10 @@ class MyWorkController extends Controller
         $user = $_SESSION['user'] ?? [];
         $baseUrl = $GLOBALS['base_url'] ?? '';
 
+        // Lazy fallback: ensure any active recurring templates scheduled for today are generated
+        require_once __DIR__ . '/../models/RecurringTaskTemplate.php';
+        (new RecurringTaskTemplate($this->db))->generateDueForDate(null, 50);
+
         // Active Scope Tab
         $validTabs = ['all', 'assigned_to_me', 'assigned_by_me', 'following', 'reviewer', 'realestate_project', 'self_initiated', 'recurring', 'previous_task_sheet'];
         $tab = $_GET['tab'] ?? 'all';
@@ -163,6 +167,12 @@ class MyWorkController extends Controller
             ? $prevSheetModel->getTasksByEmployee($prevSheetEmpIds, ['year' => 'all', 'month' => 'all'])
             : [];
         $tabCounts['previous_task_sheet'] = count($prevSheetAllRows);
+
+        // Recurring tab badge count = number of recurring templates involving this user
+        $tabCounts['recurring'] = $this->countRecurringTemplatesForUser($userId);
+        $recurringTemplates = ($tab === 'recurring')
+            ? $this->fetchRecurringTemplatesForUser($userId, $search, $priorityFilter)
+            : [];
 
         $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
         if ($tab === 'previous_task_sheet' && $isAjax) {
@@ -497,18 +507,24 @@ class MyWorkController extends Controller
         $isAjax = !empty($_GET['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
         if ($isAjax) {
             header('Content-Type: application/json');
-            $tableHtml = $this->renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl);
-            if ($viewAll) {
-                $footerInfoText = 'Showing all ' . count($tasks) . ' tasks · Sorted by deadline';
-            } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
-                $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
-            } elseif ($statusFilter === 'open') {
-                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
-            } elseif ($statusFilter === 'completed') {
-                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $completedTasksCount . ' completed tasks · Sorted by deadline';
+            if ($tab === 'recurring') {
+                $tableHtml = $this->renderRecurringTemplatesRowsHtml($recurringTemplates, $userId);
+                $tplCount = count($recurringTemplates);
+                $footerInfoText = 'Showing ' . $tplCount . ' recurring schedule' . ($tplCount === 1 ? '' : 's') . ' · Auto-generated daily';
             } else {
-                $totalInTab = $openTasksCount + $completedTasksCount;
-                $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
+                $tableHtml = $this->renderTaskRowsHtml($tasks, $tab, $userId, $baseUrl);
+                if ($viewAll) {
+                    $footerInfoText = 'Showing all ' . count($tasks) . ' tasks · Sorted by deadline';
+                } elseif ($metricFilter === 'review_submission' || $metricFilter === 'review_attention') {
+                    $footerInfoText = 'Showing ' . count($tasks) . ' task' . (count($tasks) === 1 ? '' : 's') . ' with review feedback · Sorted by latest review';
+                } elseif ($statusFilter === 'open') {
+                    $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $openTasksCount . ' open tasks · Sorted by deadline';
+                } elseif ($statusFilter === 'completed') {
+                    $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $completedTasksCount . ' completed tasks · Sorted by deadline';
+                } else {
+                    $totalInTab = $openTasksCount + $completedTasksCount;
+                    $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
+                }
             }
             $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks, $reviewTasksCount);
             $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
@@ -600,6 +616,8 @@ class MyWorkController extends Controller
             "completedTasksCount"    => $completedTasksCount,
             "myReviewedCompletedCount" => $myReviewedCompletedCount,
             "tasks"                  => $tasks,
+            "recurringTemplates"     => $recurringTemplates,
+            "recurringTemplatesHtml" => ($tab === 'recurring') ? $this->renderRecurringTemplatesRowsHtml($recurringTemplates, $userId) : '',
             "reviewTasks"            => $reviewTasks,
             "reviewTasksCount"       => $reviewTasksCount,
             "blockedTask"            => $blockedTask,
@@ -1415,6 +1433,136 @@ class MyWorkController extends Controller
                 ];
             }
             $checklistData = json_encode($clArr, JSON_UNESCAPED_UNICODE);
+        }
+
+        // Recurring Task: store as a schedule template and immediately generate today's occurrence if due
+        if ($isRecurring === 1) {
+            require_once __DIR__ . '/../models/RecurringTaskTemplate.php';
+            $tplStartDate = !empty($startDate) ? substr((string)$startDate, 0, 10) : date('Y-m-d');
+            $tplEndDate = !empty($recurrenceEnd) ? substr((string)$recurrenceEnd, 0, 10) : null;
+
+            if ($tplEndDate !== null && $tplEndDate < $tplStartDate) {
+                $errMsg = "Repeat Until date cannot be earlier than Start Date.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => $errMsg]);
+                    exit;
+                }
+                if (function_exists('setError')) setError($errMsg);
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
+
+            // Reset checklist completed flag on template
+            $tplChecklistData = null;
+            if (!empty($descItems)) {
+                $tplCl = [];
+                foreach ($descItems as $idx => $item) {
+                    $tplCl[] = ['id' => $idx + 1, 'text' => $item, 'completed' => false];
+                }
+                $tplChecklistData = json_encode($tplCl, JSON_UNESCAPED_UNICODE);
+            }
+
+            $stTpl = $this->db->prepare("
+                INSERT INTO recurring_task_templates (
+                    title, expected_output, user_id, assigned_by, todo_project_id, project_id,
+                    description, checklist_data, priority, working_hour,
+                    mentioned_user_ids, cc_user_ids, collaborator_user_ids, attachment_image,
+                    frequency, repeat_days, start_date, end_date, is_active, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NOW())
+            ");
+            if (!$stTpl) {
+                $err = $this->db->error;
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to prepare recurring schedule: ' . $err]);
+                    exit;
+                }
+                if (function_exists('setError')) setError("Failed to create recurring schedule.");
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
+
+            $stTpl->bind_param(
+                "ssiiiisssdssssssss",
+                $title,
+                $expectedOutput,
+                $ownerId,
+                $assignedById,
+                $todoProjectId,
+                $projectId,
+                $description,
+                $tplChecklistData,
+                $priority,
+                $workingHour,
+                $mentionedJson,
+                $ccJson,
+                $collaboratorJson,
+                $attachmentImage,
+                $recurrenceType,
+                $recurrenceCustomDatesJson,
+                $tplStartDate,
+                $tplEndDate
+            );
+
+            if ($stTpl->execute()) {
+                $tplId = (int)$stTpl->insert_id;
+                $stTpl->close();
+
+                $tplRow = [
+                    'id' => $tplId,
+                    'title' => $title,
+                    'expected_output' => $expectedOutput,
+                    'user_id' => $ownerId,
+                    'assigned_by' => $assignedById,
+                    'todo_project_id' => $todoProjectId,
+                    'project_id' => $projectId,
+                    'description' => $description,
+                    'checklist_data' => $tplChecklistData,
+                    'priority' => $priority,
+                    'working_hour' => $workingHour,
+                    'mentioned_user_ids' => $mentionedJson,
+                    'cc_user_ids' => $ccJson,
+                    'collaborator_user_ids' => $collaboratorJson,
+                    'attachment_image' => $attachmentImage,
+                    'frequency' => $recurrenceType,
+                    'repeat_days' => $recurrenceCustomDatesJson,
+                    'start_date' => $tplStartDate,
+                    'end_date' => $tplEndDate,
+                    'is_active' => 1,
+                ];
+
+                $gen = new RecurringTaskTemplate($this->db);
+                $todayTaskId = $gen->generateForTemplate($tplRow, date('Y-m-d'));
+                $msg = $todayTaskId
+                    ? "Recurring schedule created and today's task (T-{$todayTaskId}) generated."
+                    : "Recurring schedule created. Tasks will be auto-generated on scheduled dates.";
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => $msg,
+                        'template_id' => $tplId,
+                        'task_id' => $todayTaskId
+                    ]);
+                    exit;
+                }
+                if (function_exists('setSuccess')) setSuccess($msg);
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard?tab=recurring");
+                exit;
+            } else {
+                $err = $stTpl->error;
+                $stTpl->close();
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to create recurring schedule: ' . $err]);
+                    exit;
+                }
+                if (function_exists('setError')) setError("Failed to create recurring schedule.");
+                header("Location: " . ($GLOBALS['base_url'] ?? '') . "/my-work-dashboard");
+                exit;
+            }
         }
 
         $stmt = $this->db->prepare("
@@ -3087,13 +3235,20 @@ class MyWorkController extends Controller
 
     /**
      * Parse and validate recurring task fields from POST payload.
+     * Supports:
+     *   - daily: repeats every day until end_date (or unlimited if blank)
+     *   - weekly: repeats on selected weekdays ["sun".."sat"]
+     *   - monthly: repeats on selected month days [1..31]
      */
     private function parseRecurrencePayload(bool $isAjax): array
     {
         $isRecurring = !empty($_POST['is_recurring']) ? 1 : 0;
-        $recurrenceType = in_array($_POST['recurrence_type'] ?? '', ['daily', 'weekly', 'monthly', 'custom'], true)
-            ? $_POST['recurrence_type']
-            : null;
+        $rawType = strtolower(trim((string)($_POST['recurrence_type'] ?? '')));
+        // Legacy 'custom' maps cleanly to 'weekly'
+        if ($rawType === 'custom') {
+            $rawType = 'weekly';
+        }
+        $recurrenceType = in_array($rawType, ['daily', 'weekly', 'monthly'], true) ? $rawType : null;
 
         $abort = function (string $msg) use ($isAjax) {
             if ($isAjax) {
@@ -3107,51 +3262,69 @@ class MyWorkController extends Controller
         };
 
         if ($isRecurring && $recurrenceType === null) {
-            $abort("Please select a repeat type for the recurring task.");
+            $abort("Please select a repeat type (Daily, Weekly, or Monthly) for the recurring task.");
         }
 
         if (!$isRecurring) {
             return [0, null, null, null];
         }
 
-        $recurrenceEnd = !empty($_POST['recurrence_end_date']) ? $_POST['recurrence_end_date'] : null;
-        $customDatesJson = null;
+        // Repeat Until: accept explicit recurrence_end_date or the form's deadline input; blank = unlimited (NULL)
+        $rawEnd = !empty($_POST['recurrence_end_date'])
+            ? trim((string)$_POST['recurrence_end_date'])
+            : (!empty($_POST['deadline']) ? trim((string)$_POST['deadline']) : '');
+        $recurrenceEnd = ($rawEnd !== '' && preg_match('/^\d{4}-\d{2}-\d{2}/', $rawEnd))
+            ? substr($rawEnd, 0, 10)
+            : null;
 
-        if ($recurrenceType === 'custom') {
+        $repeatDaysJson = null;
+
+        if ($recurrenceType === 'weekly') {
             $weekdayOrder = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
             $rawItems = (array)($_POST['recurrence_custom_dates'] ?? []);
             $selectedDays = [];
-            $validDates = [];
-
             foreach ($rawItems as $item) {
                 $val = strtolower(trim((string)$item));
                 if (in_array($val, $weekdayOrder, true)) {
                     $selectedDays[] = $val;
-                } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
-                    $validDates[] = $val;
                 }
             }
-
-            if (!empty($selectedDays)) {
-                $selectedDays = array_values(array_intersect($weekdayOrder, array_unique($selectedDays)));
-                $customDatesJson = json_encode($selectedDays);
-            } elseif (!empty($validDates)) {
-                $validDates = array_values(array_unique($validDates));
-                sort($validDates);
-                $customDatesJson = json_encode($validDates);
-            } else {
-                $abort("Please select at least one day for the custom recurring schedule.");
+            $selectedDays = array_values(array_intersect($weekdayOrder, array_unique($selectedDays)));
+            if (empty($selectedDays)) {
+                $abort("Please select at least one day of the week for the Weekly recurring schedule.");
             }
+            $repeatDaysJson = json_encode($selectedDays);
+        } elseif ($recurrenceType === 'monthly') {
+            $rawMonthDays = !empty($_POST['recurrence_month_days'])
+                ? (array)$_POST['recurrence_month_days']
+                : (array)($_POST['recurrence_custom_dates'] ?? []);
+            $selectedNums = [];
+            foreach ($rawMonthDays as $item) {
+                $num = (int)$item;
+                if ($num >= 1 && $num <= 31) {
+                    $selectedNums[] = $num;
+                }
+            }
+            $selectedNums = array_values(array_unique($selectedNums));
+            sort($selectedNums);
+            if (empty($selectedNums)) {
+                $abort("Please select at least one date of the month for the Monthly recurring schedule.");
+            }
+            $repeatDaysJson = json_encode($selectedNums);
         }
 
-        return [1, $recurrenceType, $recurrenceEnd, $customDatesJson];
+        return [1, $recurrenceType, $recurrenceEnd, $repeatDaysJson];
     }
 
     /**
-     * Spawn the next recurring occurrence when a recurring task is completed.
+     * Spawn the next recurring occurrence when a legacy (non-template) recurring task is completed.
+     * Template-managed tasks (recurring_template_id > 0) are generated by RecurringTaskTemplate scheduler.
      */
     private function spawnNextRecurringTask(array $task, int $actorUserId): ?int
     {
+        if (!empty($task['recurring_template_id'])) {
+            return null;
+        }
         if (empty($task['is_recurring']) || empty($task['recurrence_type'])) {
             return null;
         }
@@ -3267,5 +3440,515 @@ class MyWorkController extends Controller
         }
         $stmt->close();
         return $newId;
+    }
+
+    /**
+     * Count recurring templates involving the user (creator, assignee, collaborator, reviewer, CC).
+     */
+    private function countRecurringTemplatesForUser(int $userId): int
+    {
+        $sql = "
+            SELECT COUNT(*) AS cnt
+            FROM recurring_task_templates r
+            WHERE (
+                r.user_id = ?
+                OR r.assigned_by = ?
+                OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(r.collaborator_user_ids,'[',''),']',''),' ',''))
+                OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(r.mentioned_user_ids,'[',''),']',''),' ',''))
+                OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(r.cc_user_ids,'[',''),']',''),' ',''))
+            )
+        ";
+        $st = $this->db->prepare($sql);
+        if (!$st) {
+            return 0;
+        }
+        $st->bind_param("iiiii", $userId, $userId, $userId, $userId, $userId);
+        $st->execute();
+        $row = $st->get_result()->fetch_assoc();
+        $st->close();
+        return (int)($row['cnt'] ?? 0);
+    }
+
+    /**
+     * Fetch recurring templates involving the user along with aggregated occurrence stats.
+     */
+    private function fetchRecurringTemplatesForUser(int $userId, string $search = '', string $priorityFilter = ''): array
+    {
+        $where = ["(
+            r.user_id = ?
+            OR r.assigned_by = ?
+            OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(r.collaborator_user_ids,'[',''),']',''),' ',''))
+            OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(r.mentioned_user_ids,'[',''),']',''),' ',''))
+            OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(r.cc_user_ids,'[',''),']',''),' ',''))
+        )"];
+        $params = [$userId, $userId, $userId, $userId, $userId];
+        $types = "iiiii";
+
+        if ($search !== '') {
+            $where[] = "(r.title LIKE ? OR r.expected_output LIKE ?)";
+            $like = "%{$search}%";
+            $params[] = $like;
+            $params[] = $like;
+            $types .= "ss";
+        }
+
+        if ($priorityFilter !== '' && in_array(strtolower($priorityFilter), ['low', 'medium', 'high', 'urgent'], true)) {
+            $where[] = "r.priority = ?";
+            $params[] = strtolower($priorityFilter);
+            $types .= "s";
+        }
+
+        $whereSql = implode(' AND ', $where);
+        $sql = "
+            SELECT
+                r.*,
+                u_assign.full_name AS assignee_name,
+                u_by.full_name AS assigned_by_name,
+                COALESCE(rp.name, tp.name, 'General') AS project_name,
+                COALESCE(st.total_generated, 0) AS total_generated,
+                COALESCE(st.total_completed, 0) AS total_completed,
+                COALESCE(st.total_overdue, 0) AS total_overdue
+            FROM recurring_task_templates r
+            LEFT JOIN users u_assign ON u_assign.id = r.user_id
+            LEFT JOIN users u_by ON u_by.id = r.assigned_by
+            LEFT JOIN projects rp ON rp.id = r.project_id
+            LEFT JOIN todo_projects tp ON tp.id = r.todo_project_id
+            LEFT JOIN (
+                SELECT
+                    recurring_template_id,
+                    COUNT(*) AS total_generated,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS total_completed,
+                    SUM(CASE WHEN status != 'completed' AND deadline IS NOT NULL AND DATE(deadline) < CURDATE() THEN 1 ELSE 0 END) AS total_overdue
+                FROM tasks
+                WHERE recurring_template_id IS NOT NULL
+                GROUP BY recurring_template_id
+            ) st ON st.recurring_template_id = r.id
+            WHERE {$whereSql}
+            ORDER BY r.is_active DESC, r.id DESC
+        ";
+
+        $st = $this->db->prepare($sql);
+        if (!$st) {
+            return [];
+        }
+        $st->bind_param($types, ...$params);
+        $st->execute();
+        $rows = $st->get_result()->fetch_all(MYSQLI_ASSOC);
+        $st->close();
+        return $rows;
+    }
+
+    /**
+     * Render Recurring Schedules table rows matching the 7-column My Work table layout.
+     */
+    private function renderRecurringTemplatesRowsHtml(array $templates, int $userId): string
+    {
+        if (empty($templates)) {
+            return '<tr>
+                <td colspan="7">
+                    <div class="mw-empty-state">
+                        <i class="fa-solid fa-repeat d-block"></i>
+                        <div>No recurring schedules found. Click <strong>+ New task</strong> and check <strong>Is Recurring</strong> to create one.</div>
+                    </div>
+                </td>
+            </tr>';
+        }
+
+        require_once __DIR__ . '/../models/RecurringTaskTemplate.php';
+        $today = date('Y-m-d');
+        $html = '';
+
+        foreach ($templates as $tpl) {
+            $tplId = (int)$tpl['id'];
+            $isActive = !empty($tpl['is_active']);
+            $isEnded = (!empty($tpl['end_date']) && $tpl['end_date'] < $today);
+            $nextRun = $isActive ? RecurringTaskTemplate::computeNextRunDate($tpl, $today) : null;
+            $scheduleLabel = htmlspecialchars(RecurringTaskTemplate::formatScheduleLabel($tpl));
+            $titleSafe = htmlspecialchars((string)$tpl['title']);
+            $projectSafe = htmlspecialchars((string)($tpl['project_name'] ?? 'General'));
+            $prioritySafe = htmlspecialchars(ucfirst((string)($tpl['priority'] ?? 'Medium')));
+            $priorityClass = ($tpl['priority'] === 'urgent') ? 'urgent' : '';
+
+            if ($isEnded || ($isActive && $nextRun === null)) {
+                $statusClass = 'completed';
+                $statusLabel = 'Ended';
+            } elseif ($isActive) {
+                $statusClass = 'in-progress';
+                $statusLabel = 'Active';
+            } else {
+                $statusClass = 'todo';
+                $statusLabel = 'Paused';
+            }
+
+            $totalGen = (int)($tpl['total_generated'] ?? 0);
+            $totalDone = (int)($tpl['total_completed'] ?? 0);
+            $totalOverdue = (int)($tpl['total_overdue'] ?? 0);
+            $statsSub = "{$totalDone}/{$totalGen} done" . ($totalOverdue > 0 ? " · <span style=\"color:#C92A2A;font-weight:600;\">{$totalOverdue} overdue</span>" : '');
+
+            if ($nextRun === $today) {
+                $duePrimary = 'Today';
+                $dueSub = date('j M Y', strtotime($nextRun));
+            } elseif ($nextRun !== null) {
+                $duePrimary = date('j M', strtotime($nextRun));
+                $dueSub = 'Next: ' . date('D, j M', strtotime($nextRun));
+            } else {
+                $duePrimary = $isEnded ? 'Ended' : 'Paused';
+                $dueSub = !empty($tpl['end_date']) ? 'Ended ' . date('j M Y', strtotime($tpl['end_date'])) : 'Paused by creator';
+            }
+
+            $startSub = !empty($tpl['start_date']) ? 'From ' . date('j M Y', strtotime($tpl['start_date'])) : '';
+            $assigneeSafe = htmlspecialchars((string)($tpl['assignee_name'] ?? 'Assignee'));
+            $creatorSafe = ((int)$tpl['assigned_by'] === $userId) ? 'You' : htmlspecialchars((string)($tpl['assigned_by_name'] ?? 'Creator'));
+
+            $whBadge = '';
+            if (!empty($tpl['working_hour']) && (float)$tpl['working_hour'] > 0) {
+                $totalMins = (int)round((float)$tpl['working_hour'] * 60);
+                $whH = intdiv($totalMins, 60);
+                $whM = $totalMins % 60;
+                $whParts = [];
+                if ($whH > 0) $whParts[] = $whH . 'h';
+                if ($whM > 0) $whParts[] = $whM . 'm';
+                if (!empty($whParts)) $whBadge = ' · ' . implode(' ', $whParts);
+            }
+
+            $isOwner = ((int)$tpl['assigned_by'] === $userId);
+            $actionsHtml = '';
+            if ($isOwner) {
+                $toggleIcon = $isActive ? 'fa-pause' : 'fa-play';
+                $toggleTitle = $isActive ? 'Pause recurring schedule' : 'Resume recurring schedule';
+                $actionsHtml = "
+                    <button type=\"button\" class=\"mw-action-btn\" onclick=\"toggleRecurringTemplate({$tplId}, this)\" title=\"{$toggleTitle}\" style=\"color:" . ($isActive ? '#D97706' : '#087F5B') . ";\">
+                        <i class=\"fa-solid {$toggleIcon}\"></i>
+                    </button>
+                    <button type=\"button\" class=\"mw-action-btn edit\" onclick=\"openEditRecurringTemplateDrawer({$tplId}, event)\" title=\"Edit recurring schedule\">
+                        <i class=\"fa-solid fa-pen\"></i>
+                    </button>
+                    <button type=\"button\" class=\"mw-action-btn delete\" onclick=\"deleteRecurringTemplate({$tplId}, this)\" title=\"Delete recurring schedule\">
+                        <i class=\"fa-solid fa-trash-can\"></i>
+                    </button>
+                ";
+            } else {
+                $actionsHtml = '<span style="font-size:11px; color:#8A9B93;">View only</span>';
+            }
+
+            $html .= "<tr data-template-id=\"{$tplId}\">
+                <td style=\"width:42px; text-align:center;\">
+                    <span title=\"Recurring Schedule #R-{$tplId}\" style=\"display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:#EBF6F1;color:#087F5B;font-size:11px;\">
+                        <i class=\"fa-solid fa-repeat\"></i>
+                    </span>
+                </td>
+                <td>
+                    <div class=\"mw-task-title\" style=\"font-weight:600;\">{$titleSafe}</div>
+                    <div class=\"mw-task-meta\" style=\"margin-top:3px;\">
+                        <span style=\"display:inline-block;padding:1px 7px;border-radius:10px;background:#EBF6F1;color:#087F5B;font-size:11px;font-weight:600;margin-right:6px;\"><i class=\"fa-solid fa-calendar-days me-1\"></i>{$scheduleLabel}</span>
+                        <span>#R-{$tplId} · {$projectSafe}{$whBadge} · {$startSub}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class=\"mw-priority-pill {$priorityClass}\">{$prioritySafe}</span>
+                </td>
+                <td>
+                    <span class=\"mw-status-pill {$statusClass}\">{$statusLabel}</span>
+                    <div style=\"font-size:11px;color:#65776F;margin-top:3px;\">{$statsSub}</div>
+                </td>
+                <td>
+                    <div class=\"mw-due-primary\">{$duePrimary}</div>
+                    <div class=\"mw-due-sub\">{$dueSub}</div>
+                </td>
+                <td>
+                    <div style=\"font-size:12.5px;font-weight:600;color:#142D26;\">{$assigneeSafe}</div>
+                    <div style=\"font-size:11px;color:#65776F;\">By {$creatorSafe}</div>
+                </td>
+                <td class=\"text-end\" onclick=\"event.stopPropagation();\">
+                    <div class=\"d-inline-flex align-items-center gap-1\">{$actionsHtml}</div>
+                </td>
+            </tr>";
+        }
+
+        return $html;
+    }
+
+    /**
+     * GET JSON data for editing a recurring task template.
+     */
+    public function recurringTemplateData($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM recurring_task_templates WHERE id = ? LIMIT 1");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $tpl = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        if (!$tpl) {
+            echo json_encode(['status' => 'error', 'message' => 'Recurring schedule not found.']);
+            exit;
+        }
+        if ((int)$tpl['assigned_by'] !== $userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the creator can edit this recurring schedule.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($tpl['mentioned_user_ids'] ?? '');
+        $ccIds = $ids($tpl['cc_user_ids'] ?? '');
+        $collabIds = $ids($tpl['collaborator_user_ids'] ?? '');
+
+        $descItems = [];
+        if (!empty($tpl['checklist_data'])) {
+            $cl = json_decode((string)$tpl['checklist_data'], true);
+            if (is_array($cl)) {
+                foreach ($cl as $item) {
+                    if (isset($item['text']) && trim($item['text']) !== '') {
+                        $descItems[] = trim($item['text']);
+                    }
+                }
+            }
+        }
+        if (empty($descItems) && !empty($tpl['description'])) {
+            $descItems = [strip_tags((string)$tpl['description'])];
+        }
+
+        $repeatDaysDecoded = !empty($tpl['repeat_days']) ? json_decode((string)$tpl['repeat_days'], true) : [];
+        if (!is_array($repeatDaysDecoded)) {
+            $repeatDaysDecoded = [];
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'template' => [
+                'id' => (int)$tpl['id'],
+                'title' => $tpl['title'] ?? '',
+                'expected_output' => $tpl['expected_output'] ?? '',
+                'assigned_to_id' => (int)$tpl['user_id'],
+                'reviewer_id' => !empty($reviewerIds) ? $reviewerIds[0] : '',
+                'cc_ids' => $ccIds,
+                'collaborator_ids' => $collabIds,
+                'todo_project_id' => !empty($tpl['todo_project_id']) ? (int)$tpl['todo_project_id'] : '',
+                'project_id' => !empty($tpl['project_id']) ? (int)$tpl['project_id'] : '',
+                'priority' => $tpl['priority'] ?? 'medium',
+                'working_hour' => ($tpl['working_hour'] !== null && $tpl['working_hour'] !== '') ? (float)$tpl['working_hour'] : '',
+                'start_date' => !empty($tpl['start_date']) ? substr((string)$tpl['start_date'], 0, 10) : '',
+                'deadline' => !empty($tpl['end_date']) ? substr((string)$tpl['end_date'], 0, 10) : '',
+                'is_recurring' => 1,
+                'recurrence_type' => $tpl['frequency'] ?? 'daily',
+                'recurrence_end_date' => !empty($tpl['end_date']) ? substr((string)$tpl['end_date'], 0, 10) : '',
+                'recurrence_custom_dates' => ($tpl['frequency'] === 'weekly') ? array_values($repeatDaysDecoded) : [],
+                'recurrence_month_days' => ($tpl['frequency'] === 'monthly') ? array_values(array_map('intval', $repeatDaysDecoded)) : [],
+                'description_items' => $descItems,
+                'is_active' => (int)$tpl['is_active'],
+            ]
+        ]);
+        exit;
+    }
+
+    /**
+     * POST update a recurring task template (affects future generated occurrences only).
+     */
+    public function updateRecurringTemplate($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $isAjax = !empty($_POST['ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM recurring_task_templates WHERE id = ? LIMIT 1");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $existing = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        if (!$existing || (int)$existing['assigned_by'] !== $userId) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Recurring schedule not found or permission denied.']);
+            exit;
+        }
+
+        $title = trim($_POST['title'] ?? '');
+        if ($title === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Task title is required.']);
+            exit;
+        }
+
+        // Force is_recurring = 1 for template updates
+        $_POST['is_recurring'] = '1';
+        [, $frequency, $endDate, $repeatDaysJson] = $this->parseRecurrencePayload($isAjax);
+
+        $ownerId = (int)($_POST['assigned_to_id'] ?? 0) ?: (int)$existing['user_id'];
+        $priority = in_array($_POST['priority'] ?? '', ['low', 'medium', 'high', 'urgent'], true) ? $_POST['priority'] : 'medium';
+        $expectedOutput = trim($_POST['expected_output'] ?? '');
+        $descItems = array_values(array_filter(array_map('trim', (array)($_POST['description'] ?? [])), 'strlen'));
+        $description = count($descItems) > 1
+            ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $descItems)) . '</ul>'
+            : ($descItems[0] ?? '');
+        $checklistData = null;
+        if (!empty($descItems)) {
+            $cl = [];
+            foreach ($descItems as $idx => $item) {
+                $cl[] = ['id' => $idx + 1, 'text' => $item, 'completed' => false];
+            }
+            $checklistData = json_encode($cl, JSON_UNESCAPED_UNICODE);
+        }
+
+        $todoProjectId = !empty($_POST['todo_project_id']) ? (int)$_POST['todo_project_id'] : null;
+        $projectId = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $workingHour = (isset($_POST['working_hour']) && $_POST['working_hour'] !== '') ? round(max(0, (float)$_POST['working_hour']), 2) : null;
+        $startDate = !empty($_POST['start_date']) ? substr((string)$_POST['start_date'], 0, 10) : substr((string)$existing['start_date'], 0, 10);
+
+        if ($endDate !== null && $endDate < $startDate) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Repeat Until date cannot be earlier than Start Date.']);
+            exit;
+        }
+
+        $reviewerId = !empty($_POST['reviewer_id']) ? (int)$_POST['reviewer_id'] : null;
+        $toIdList = fn($v) => array_values(array_unique(array_filter(array_map('intval', (array)$v))));
+        $ccIds = $toIdList($_POST['cc_ids'] ?? []);
+        $collaboratorIds = $toIdList($_POST['collaborator_ids'] ?? []);
+        $mentionedJson = $reviewerId ? json_encode([$reviewerId]) : null;
+        $ccJson = !empty($ccIds) ? json_encode($ccIds) : null;
+        $collaboratorJson = !empty($collaboratorIds) ? json_encode($collaboratorIds) : null;
+
+        $attachmentImage = $existing['attachment_image'] ?? null;
+        if (!empty($_FILES['attachment']['name'])) {
+            $uploadDir = __DIR__ . '/../../public/uploads/tasks/';
+            if (!is_dir($uploadDir)) @mkdir($uploadDir, 0777, true);
+            $ext = pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
+            $fileName = time() . '_' . uniqid() . '.' . $ext;
+            if (@move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $fileName)) {
+                $attachmentImage = $fileName;
+            }
+        }
+
+        $upd = $this->db->prepare("
+            UPDATE recurring_task_templates
+            SET title = ?, expected_output = ?, user_id = ?, todo_project_id = ?, project_id = ?,
+                description = ?, checklist_data = ?, priority = ?, working_hour = ?,
+                mentioned_user_ids = ?, cc_user_ids = ?, collaborator_user_ids = ?, attachment_image = ?,
+                frequency = ?, repeat_days = ?, start_date = ?, end_date = ?, updated_at = NOW()
+            WHERE id = ? AND assigned_by = ?
+        ");
+        $upd->bind_param(
+            "ssiiisssdssssssssii",
+            $title,
+            $expectedOutput,
+            $ownerId,
+            $todoProjectId,
+            $projectId,
+            $description,
+            $checklistData,
+            $priority,
+            $workingHour,
+            $mentionedJson,
+            $ccJson,
+            $collaboratorJson,
+            $attachmentImage,
+            $frequency,
+            $repeatDaysJson,
+            $startDate,
+            $endDate,
+            $id,
+            $userId
+        );
+        $ok = $upd->execute();
+        $upd->close();
+
+        header('Content-Type: application/json');
+        if ($ok) {
+            echo json_encode(['status' => 'success', 'message' => 'Recurring schedule updated. Changes apply to future generated tasks.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update recurring schedule.']);
+        }
+        exit;
+    }
+
+    /**
+     * POST Pause / Resume a recurring task template.
+     */
+    public function toggleRecurringTemplate($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, is_active, assigned_by FROM recurring_task_templates WHERE id = ? LIMIT 1");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $tpl = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        if (!$tpl || (int)$tpl['assigned_by'] !== $userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Schedule not found or permission denied.']);
+            exit;
+        }
+
+        $newState = empty($tpl['is_active']) ? 1 : 0;
+        $upd = $this->db->prepare("UPDATE recurring_task_templates SET is_active = ?, updated_at = NOW() WHERE id = ? AND assigned_by = ?");
+        $upd->bind_param("iii", $newState, $id, $userId);
+        $upd->execute();
+        $upd->close();
+
+        echo json_encode([
+            'status' => 'success',
+            'is_active' => $newState,
+            'message' => $newState ? 'Recurring schedule resumed.' : 'Recurring schedule paused.'
+        ]);
+        exit;
+    }
+
+    /**
+     * POST Delete a recurring task template (existing generated tasks stay intact as history).
+     */
+    public function deleteRecurringTemplate($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $del = $this->db->prepare("DELETE FROM recurring_task_templates WHERE id = ? AND assigned_by = ?");
+        $del->bind_param("ii", $id, $userId);
+        $del->execute();
+        $affected = $del->affected_rows;
+        $del->close();
+
+        if ($affected > 0) {
+            echo json_encode(['status' => 'success', 'message' => 'Recurring schedule deleted. Previous tasks remain in history.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Schedule not found or permission denied.']);
+        }
+        exit;
     }
 }

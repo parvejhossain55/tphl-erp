@@ -60,6 +60,10 @@ return [
     'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
     'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
     'my-work/send-reminder/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'sendReminder'],
+    'my-work/recurring-template-data/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'recurringTemplateData'],
+    'my-work/update-recurring-template/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'updateRecurringTemplate'],
+    'my-work/toggle-recurring-template/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'toggleRecurringTemplate'],
+    'my-work/delete-recurring-template/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'deleteRecurringTemplate'],
 
     // =========================================================================
     // Controller: EmployeeController
