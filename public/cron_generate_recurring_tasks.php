@@ -2,9 +2,12 @@
 /**
  * TPHL ERP Daily Recurring Task Generator Cron
  * -------------------------------------------------------------
- * Runs once daily (e.g. 00:05) and generates today's scheduled
+ * Runs daily at 10:00 AM (Sat-Thu; Friday off) and generates today's scheduled
  * occurrences from root recurring tasks (`is_recurring = 1` AND
  * `parent_recurring_task_id IS NULL`) in the `tasks` table.
+ *
+ * Crontab Schedule (10:00 AM daily, Friday off):
+ *   0 10 * * 0-4,6 php /path/to/TPHL-ERP/public/cron_generate_recurring_tasks.php TphlSecretCron2026 >> /path/to/TPHL-ERP/storage/logs/recurring_cron.log 2>&1
  *
  * Trigger Options:
  * - CLI (Linux Crontab / Windows Task Scheduler):
@@ -28,6 +31,11 @@ function shouldRecurringTaskRunOnDate(array $task, string $targetDate): bool
 
     $targetTs = strtotime($targetDate);
     if ($targetTs === false) {
+        return false;
+    }
+
+    // Friday is weekly off (5 = Friday)
+    if ((int)date('w', $targetTs) === 5) {
         return false;
     }
 
@@ -170,6 +178,21 @@ if ($isCli) {
         $targetDate = $_GET['date'];
     }
     $dryRun = !empty($_GET['dry_run']);
+}
+
+// Friday is weekly off (5 = Friday) — skip before touching DB
+if ((int)date('w', strtotime($targetDate)) === 5) {
+    if (!$isCli) {
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    echo json_encode([
+        'status' => 'skipped',
+        'date' => $targetDate,
+        'dry_run' => $dryRun,
+        'reason' => 'Friday is off (weekly holiday).',
+        'tasks_created' => 0,
+    ], JSON_UNESCAPED_UNICODE) . PHP_EOL;
+    exit(0);
 }
 
 $config = require __DIR__ . '/../app/config/config.php';
