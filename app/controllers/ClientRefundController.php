@@ -61,10 +61,12 @@ class ClientRefundController extends Controller
         $salesSt = strtolower($arRow['sales_head_status'] ?? 'pending');
         $qcSt    = strtolower($arRow['qc_status'] ?? 'pending');
         $opSt    = strtolower($arRow['op_head_status'] ?? 'pending');
+        $ahSt    = strtolower($arRow['accounts_head_status'] ?? 'pending');
 
         if ($salesSt !== 'approved') return 'sales_manager';
         if ($qcSt !== 'approved')    return 'qc';
         if ($opSt !== 'approved')    return 'op_head';
+        if ($ahSt !== 'approved')    return 'accounts_head';
         return 'management';
     }
 
@@ -98,10 +100,13 @@ class ClientRefundController extends Controller
         if ($stage === 'op_head') {
             return count(array_intersect($roles, [20, 32])) > 0 || strpos($roleName, 'operation head') !== false;
         }
+        if ($stage === 'accounts_head') {
+            return in_array(30, $roles, true) || strpos($roleName, 'accounts head') !== false;
+        }
         return false;
     }
 
-    /** Roles participating in the 4-stage refund approval pipeline */
+    /** Roles participating in the 5-stage refund approval pipeline */
     private function canApprove()
     {
         if ($this->isBlockedCeoOrDceo()) {
@@ -110,10 +115,10 @@ class ClientRefundController extends Controller
         $allUserRoles    = $this->getAllUserRoles();
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        if (count(array_intersect($allUserRoles, [3, 9, 13, 20, 24, 25, 32, 38])) > 0) {
+        if (count(array_intersect($allUserRoles, [3, 9, 13, 20, 24, 25, 30, 32, 38])) > 0) {
             return true;
         }
-        if (strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'qc') !== false) {
+        if (strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'qc') !== false || strpos($sessionRoleName, 'accounts head') !== false) {
             return true;
         }
         return false;
@@ -337,6 +342,7 @@ class ClientRefundController extends Controller
         $paymentMethod   = trim($_POST['payment_method'] ?? 'cash');
         $chequeNo        = trim($_POST['cheque_no'] ?? '');
         $accountId       = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
+        $isRegistrationCompleted = !empty($_POST['is_registration_completed']) ? 1 : 0;
 
         $booking = $this->model->getBookingDetails($bookingId);
         if (!$booking || !in_array($booking['booking_status'], ['booked', 'completed', 'refunded'])) {
@@ -414,19 +420,19 @@ class ClientRefundController extends Controller
                 $refundId = (int)$existingRefund['id'];
 
                 $upStmt = $this->db->prepare("UPDATE client_refund_requests 
-                    SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, document = IFNULL(?, document), 
+                    SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, is_registration_completed = ?, document = IFNULL(?, document), 
                         status = 'pending', approved_by = NULL, approved_at = NULL, refunded_at = NULL, account_id = ? 
                     WHERE id = ?");
-                $upStmt->bind_param("dddssii", $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $accountId, $refundId);
+                $upStmt->bind_param("dddsisii", $totalPaid, $retentionAmount, $refundAmount, $reason, $isRegistrationCompleted, $documentPath, $accountId, $refundId);
                 $upStmt->execute();
             } else {
                 $inStmt = $this->db->prepare("INSERT INTO client_refund_requests 
-                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, document, requested_by, status, account_id) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, is_registration_completed, document, requested_by, status, account_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
                 $leadId = (int)$booking['lead_id'];
                 $projId = (int)$booking['project_id'];
                 $flatId = (int)$booking['flat_id'];
-                $inStmt->bind_param("iiiidddssii", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $this->userId, $accountId);
+                $inStmt->bind_param("iiiidddsisii", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $isRegistrationCompleted, $documentPath, $this->userId, $accountId);
                 $inStmt->execute();
                 $refundId = $inStmt->insert_id;
             }
@@ -455,7 +461,7 @@ class ClientRefundController extends Controller
             $existingAr = $arCheck->get_result()->fetch_assoc();
 
             if ($existingAr) {
-                $arUpdate = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, status = 'pending', approve_role = 'sales_manager', sales_head_status = 'pending', sales_head_by = NULL, sales_head_at = NULL, qc_status = 'pending', qc_by = NULL, qc_at = NULL, op_head_status = 'pending', op_head_by = NULL, op_head_at = NULL, approved_by = NULL, approved_at = NULL WHERE id = ?");
+                $arUpdate = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, status = 'pending', approve_role = 'sales_manager', sales_head_status = 'pending', sales_head_by = NULL, sales_head_at = NULL, qc_status = 'pending', qc_by = NULL, qc_at = NULL, op_head_status = 'pending', op_head_by = NULL, op_head_at = NULL, accounts_head_status = 'pending', accounts_head_by = NULL, accounts_head_at = NULL, approved_by = NULL, approved_at = NULL WHERE id = ?");
                 $arUpdate->bind_param("di", $refundAmount, $existingAr['id']);
                 $arUpdate->execute();
             } else {
@@ -542,11 +548,13 @@ class ClientRefundController extends Controller
                     u_sh.full_name AS sales_head_name,
                     u_qc.full_name AS qc_name,
                     u_oh.full_name AS op_head_name,
+                    u_ah.full_name AS accounts_head_name,
                     u_mg.full_name AS mgmt_name
              FROM approval_requests ar
              LEFT JOIN users u_sh ON u_sh.id = ar.sales_head_by
              LEFT JOIN users u_qc ON u_qc.id = ar.qc_by
              LEFT JOIN users u_oh ON u_oh.id = ar.op_head_by
+             LEFT JOIN users u_ah ON u_ah.id = ar.accounts_head_by
              LEFT JOIN users u_mg ON u_mg.id = ar.approved_by
              WHERE ar.source_table = 'client_refund_requests' AND ar.source_id = ?
              ORDER BY ar.id DESC LIMIT 1"
@@ -648,6 +656,7 @@ class ClientRefundController extends Controller
                 'sales_manager' => 'Related Sales Manager',
                 'qc'            => 'QC Team',
                 'op_head'       => 'Operation Head',
+                'accounts_head' => 'Accounts Head',
                 'management'    => 'Super Admin',
             ];
             $respond(false, 'You are not authorized for the current stage (' . ($stageNames[$stage] ?? $stage) . ').');
@@ -668,17 +677,23 @@ class ClientRefundController extends Controller
             $respond(true, 'QC approval completed. Forwarded to Operation Head.');
         }
 
-        // Stage 3: Operation Head -> forwards to Management (Super Admin)
+        // Stage 3: Operation Head -> forwards to Accounts Head
         if ($stage === 'op_head') {
             if ($arId > 0 && method_exists($this->approvalModel, 'approveOperationHead')) {
                 $this->approvalModel->approveOperationHead($arId, $this->userId, $noteEsc);
             } else {
-                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$noteEsc}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$noteEsc}', approve_role = 'accounts_head' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
             }
-            $respond(true, 'Operation Head approval completed. Forwarded to Super Admin for final management approval.');
+            $respond(true, 'Operation Head approval completed. Forwarded to Accounts Head.');
         }
 
-        // Stage 4: Management Final Approval (Strictly Super Admin — Role 3)
+        // Stage 4: Accounts Head -> forwards to Management (Super Admin)
+        if ($stage === 'accounts_head') {
+            $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$this->userId}, accounts_head_at = NOW(), accounts_head_note = '{$noteEsc}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+            $respond(true, 'Accounts Head approval completed. Forwarded to Super Admin for final management approval.');
+        }
+
+        // Stage 5: Management Final Approval (Strictly Super Admin — Role 3)
         // Step 1: Approve refund (cancels booking, releases flat, cancels EMIs)
         if (!$this->model->approve($id, $this->userId, $approvedAmount)) {
             $respond(false, 'Failed to approve refund request.');

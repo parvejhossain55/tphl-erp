@@ -632,7 +632,7 @@ class TaskV2Controller extends Controller
             $userId = (int)($_SESSION['user']['id'] ?? 0);
             
             // Allow rating if rating is valid
-            if ($taskId > 0 && $rating >= 1 && $rating <= 10) {
+            if ($taskId > 0 && $rating >= 1 && $rating <= 5) {
                 // To be fully secure, we should verify that this user assigned the task or is an admin
                 // But for now, just update the rating directly
                 $stmt = $this->db->prepare("UPDATE tasks SET satisfaction_rating = ? WHERE id = ?");

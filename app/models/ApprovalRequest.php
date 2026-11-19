@@ -528,10 +528,11 @@ class ApprovalRequest extends Model
         $isOver10k = ($reqAmount > 10000.01);
         $isPayslipReq = (($req['source_table'] ?? '') === 'payslips');
         $isIncentiveReq = (($req['source_table'] ?? '') === 'project_incentive_claims');
+        $isClientRefundReq = (($req['source_table'] ?? '') === 'client_refund_requests');
         $isAlreadyPaid = in_array(strtolower($req['status'] ?? ''), ['paid', 'partially_paid']);
         $isAlreadyMgmtApproved = (strtolower($req['status'] ?? '') === 'approved' && !empty($req['approved_by']));
 
-        if (($isOver10k || $isPayslipReq || $isIncentiveReq) && !$isAlreadyPaid && !$isAlreadyMgmtApproved) {
+        if (($isOver10k || $isPayslipReq || $isIncentiveReq || $isClientRefundReq) && !$isAlreadyPaid && !$isAlreadyMgmtApproved) {
             // For > 10,000, Payslips, or Incentive Claims (when Management hasn't approved yet): Accounts Head verification complete (Step 2).
             // ALWAYS forward to Management (Role 1/3) for final executive sign-off!
             $nextRole = 'management';
@@ -2439,8 +2440,8 @@ class ApprovalRequest extends Model
                         (LOWER({$prefix}approve_role) = 'accounts_head' AND ({$prefix}source_table != 'project_incentive_claims' OR {$prefix}sales_head_status = 'approved'))
                         OR {$prefix}source_table = 'payslips'
                         OR ({$prefix}request_amount > 10000.01 AND {$prefix}op_head_status = 'approved')
-                        OR ({$prefix}source_table IN ('vendor_payment_requests', 'contractor_bill_requests') AND {$prefix}op_head_status = 'approved')
-                        OR ({$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests', 'project_incentive_claims') AND {$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
+                        OR ({$prefix}source_table IN ('vendor_payment_requests', 'contractor_bill_requests', 'client_refund_requests') AND {$prefix}op_head_status = 'approved')
+                        OR ({$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests', 'project_incentive_claims', 'client_refund_requests') AND {$prefix}request_amount <= 10000.01 AND ({$prefix}op_head_status = 'approved' OR {$prefix}status = 'approved' OR LOWER({$prefix}approve_role) IN ('management', 'operations', 'accounts_head', '')))
                     ))
                     OR ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
                     OR ({$prefix}status = 'partially_approved' AND {$prefix}source_table = 'fund_requisitions' AND ({$prefix}accounts_head_status != 'approved' OR {$prefix}accounts_head_status IS NULL))
@@ -2480,7 +2481,7 @@ class ApprovalRequest extends Model
             $mgmtCond = "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '' OR {$prefix}source_table = 'payslips')
                     AND ({$prefix}source_table = 'payslips' 
-                         OR ({$prefix}source_table = 'client_refund_requests' AND {$prefix}op_head_status = 'approved')
+                         OR ({$prefix}source_table = 'client_refund_requests' AND {$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')
                          OR ({$prefix}source_table = 'project_incentive_claims' AND {$prefix}sales_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')
                          OR ({$prefix}request_amount <= 10000.01 AND {$prefix}source_table NOT IN ('vendor_payment_requests', 'contractor_bill_requests', 'project_incentive_claims', 'client_refund_requests')) 
                          OR ({$prefix}op_head_status = 'approved' AND {$prefix}accounts_head_status = 'approved')))";
@@ -3402,6 +3403,10 @@ class ApprovalRequest extends Model
                     $row['approve_role'] = 'op_head';
                     $pendingStageLabel   = 'Pending Operation Head';
                     $pendingForText      = 'Admin & Operation Head';
+                } elseif ($rowAhStatus !== 'approved') {
+                    $row['approve_role'] = 'accounts_head';
+                    $pendingStageLabel   = 'Pending Accounts Head';
+                    $pendingForText      = 'Accounts Head';
                 } else {
                     $row['approve_role'] = 'management';
                     $pendingStageLabel   = 'Pending Super Admin';

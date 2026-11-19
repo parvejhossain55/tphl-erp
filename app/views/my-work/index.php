@@ -17,6 +17,7 @@ $openTasksCount = $openTasksCount ?? 0;
 $completedTasksCount = $completedTasksCount ?? 0;
 $tasks = $tasks ?? [];
 $reviewTasks = $reviewTasks ?? [];
+$reviewTasksCount = $reviewTasksCount ?? count($reviewTasks);
 $blockedTask = $blockedTask ?? null;
 
 // Date range for "Next 7 days" card
@@ -1688,6 +1689,11 @@ $todayDateFormatted = date('j F');
                         </div>
                     </div>
                 </div>
+                <!-- Export Sheet Pill Button -->
+                <button type="button" class="mw-pill-btn" id="btnExportSheet" title="Export tasks to Excel">
+                    <i class="fa-regular fa-file-excel" style="color: #087F5B;"></i>
+                    <span id="exportSheetBtnText">Export Sheet</span>
+                </button>
             </div>
 
             <!-- Table -->
@@ -1695,6 +1701,9 @@ $todayDateFormatted = date('j F');
                 <table class="mw-table">
                     <thead>
                         <tr>
+                            <th style="width: 42px; text-align: center;">
+                                <input type="checkbox" class="mw-task-check" id="mwSelectAllTasks" style="margin-right: 0;" title="Select all tasks">
+                            </th>
                             <th style="min-width: 280px;">TASK / PROJECT</th>
                             <th style="width: 110px;">PRIORITY</th>
                             <th style="width: 120px;">STATUS</th>
@@ -1706,7 +1715,7 @@ $todayDateFormatted = date('j F');
                     <tbody id="mwTasksTbody">
                         <?php if (empty($tasks)): ?>
                             <tr>
-                                <td colspan="6">
+                                <td colspan="7">
                                     <div class="mw-empty-state">
                                         <i class="fa-regular fa-clipboard d-block"></i>
                                         <div>No tasks found for this view.</div>
@@ -1726,16 +1735,17 @@ $todayDateFormatted = date('j F');
                                 
                                 if (!empty($t['deadline'])) {
                                     $deadlineTime = strtotime($t['deadline']);
-                                    $now = time();
+                                    $deadlineDate = date('Y-m-d', $deadlineTime);
+                                    $todayDate = date('Y-m-d');
                                     
-                                    if (!$isCompleted && $deadlineTime < $now) {
+                                    if (!$isCompleted && $deadlineDate < $todayDate) {
                                         $isOverdue = true;
-                                        $diffDays = (int) ceil(($now - $deadlineTime) / 86400);
+                                        $diffDays = (int) round((strtotime($todayDate) - strtotime($deadlineDate)) / 86400);
                                         $duePrimary = date('j M', $deadlineTime);
                                         $dueSub = ($diffDays <= 1) ? '1 day overdue' : "{$diffDays} days overdue";
-                                    } elseif (date('Y-m-d', $deadlineTime) === date('Y-m-d')) {
+                                    } elseif ($deadlineDate === $todayDate) {
                                         $duePrimary = date('j M', $deadlineTime);
-                                        $dueSub = 'Today · ' . date('g:i A', $deadlineTime);
+                                        $dueSub = (date('H:i:s', $deadlineTime) === '00:00:00') ? 'Today' : ('Today · ' . date('g:i A', $deadlineTime));
                                     } else {
                                         $duePrimary = date('j M', $deadlineTime);
                                         $dueSub = date('D · g:i A', $deadlineTime);
@@ -1776,6 +1786,9 @@ $todayDateFormatted = date('j F');
                                 $isHighlighted = ($index === 1 && $isBlocked) || ($index === 0 && $isOverdue);
                                 ?>
                                 <tr class="<?= $isHighlighted ? 'row-selected' : '' ?>" data-task-id="<?= $taskId ?>">
+                                    <td style="width: 42px; text-align: center;" onclick="event.stopPropagation();">
+                                        <input type="checkbox" class="mw-task-check mw-row-select" value="<?= $taskId ?>" style="margin-right: 0;" aria-label="Select task T-<?= $taskId ?>">
+                                    </td>
                                     <td>
                                         <div class="d-flex align-items-start">
                                             <div>
@@ -1855,7 +1868,7 @@ $todayDateFormatted = date('j F');
             <div class="mw-focus-card" id="mwCardNeedsReview">
                 <h4 class="mw-focus-title">Needs your review</h4>
                 <div class="mw-focus-subtitle">
-                    <?= count($reviewTasks) ?> completed task<?= count($reviewTasks) === 1 ? '' : 's' ?> waiting for your review
+                    <?= $reviewTasksCount ?> completed task<?= $reviewTasksCount === 1 ? '' : 's' ?> waiting for your review
                 </div>
 
                 <?php if (!empty($reviewTasks)): ?>
@@ -2391,6 +2404,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             if (data.status === 'success') {
                 tbody.innerHTML = data.table_html;
+                if (typeof syncTaskSelectionUi === 'function') syncTaskSelectionUi();
                 if (footerInfo && data.footer_info) {
                     footerInfo.innerText = data.footer_info;
                 }
@@ -2718,12 +2732,96 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Close popups on click outside
-    document.addEventListener('click', function () {
+    // Close popups on click outside (capture phase so stopPropagation elsewhere can't block it) or Escape
+    function closeFilterPopups() {
         if (menuDueDate) menuDueDate.classList.remove('show');
         if (menuFilters) menuFilters.classList.remove('show');
         if (menuPeriod) menuPeriod.classList.remove('show');
+    }
+
+    document.addEventListener('click', function (e) {
+        if (menuDueDate && !menuDueDate.contains(e.target) && (!btnDueDate || !btnDueDate.contains(e.target))) {
+            menuDueDate.classList.remove('show');
+        }
+        if (menuFilters && !menuFilters.contains(e.target) && (!btnFilters || !btnFilters.contains(e.target))) {
+            menuFilters.classList.remove('show');
+        }
+        if (menuPeriod && !menuPeriod.contains(e.target) && (!btnPeriod || !btnPeriod.contains(e.target))) {
+            menuPeriod.classList.remove('show');
+        }
+    }, true);
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeFilterPopups();
     });
+
+    // Table Row Selection Checkboxes (Select / Unselect & Select All)
+    const selectAllTasksChk = document.getElementById('mwSelectAllTasks');
+    const exportSheetBtnText = document.getElementById('exportSheetBtnText');
+    const btnExportSheet = document.getElementById('btnExportSheet');
+
+    function syncTaskSelectionUi() {
+        const rowCheckboxes = Array.from(document.querySelectorAll('#mwTasksTbody .mw-row-select'));
+        const checkedCount = rowCheckboxes.filter(cb => cb.checked).length;
+
+        if (selectAllTasksChk) {
+            selectAllTasksChk.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
+            selectAllTasksChk.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+        }
+        if (exportSheetBtnText) {
+            exportSheetBtnText.textContent = checkedCount > 0 ? `Export Sheet (${checkedCount})` : 'Export Sheet';
+        }
+        if (btnExportSheet) {
+            btnExportSheet.classList.toggle('active', checkedCount > 0);
+        }
+    }
+
+    if (selectAllTasksChk) {
+        selectAllTasksChk.addEventListener('change', function () {
+            const isChecked = this.checked;
+            document.querySelectorAll('#mwTasksTbody .mw-row-select').forEach(cb => {
+                cb.checked = isChecked;
+                const tr = cb.closest('tr');
+                if (tr) tr.classList.toggle('row-selected', isChecked);
+            });
+            syncTaskSelectionUi();
+        });
+    }
+
+    const tasksTbodyEl = document.getElementById('mwTasksTbody');
+    if (tasksTbodyEl) {
+        tasksTbodyEl.addEventListener('change', function (e) {
+            const cb = e.target.closest('.mw-row-select');
+            if (!cb) return;
+            const tr = cb.closest('tr');
+            if (tr) tr.classList.toggle('row-selected', cb.checked);
+            syncTaskSelectionUi();
+        });
+    }
+
+    if (btnExportSheet) {
+        btnExportSheet.addEventListener('click', function () {
+            const selectedIds = Array.from(document.querySelectorAll('#mwTasksTbody .mw-row-select:checked'))
+                .map(cb => cb.value)
+                .filter(Boolean);
+
+            const params = new URLSearchParams({
+                tab: currentTab,
+                status: currentStatus,
+                priority: currentPriority,
+                metric: currentMetric,
+                period_from: currentPeriodFrom,
+                period_to: currentPeriodTo,
+                search: searchInput ? searchInput.value.trim() : '',
+                view_all: currentViewAll ? '1' : '0',
+                export: 'excel'
+            });
+            if (selectedIds.length > 0) {
+                params.set('task_ids', selectedIds.join(','));
+            }
+            window.location.href = `${baseUrl}/my-work-dashboard?${params.toString()}`;
+        });
+    }
 
     // Due Date Popup Items
     if (menuDueDate) {
@@ -3691,9 +3789,9 @@ document.addEventListener('DOMContentLoaded', function () {
                </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
 
-        // Owner Feedback & Satisfaction Rating section (Only when task is completed)
+        // Owner Feedback & Satisfaction Rating section (Only when task is completed and not a self-task)
         let ownerFeedbackHtml = '';
-        if (t.is_completed) {
+        if (t.is_completed && !t.is_self_task) {
             const currentRating = parseInt(t.satisfaction_rating, 10) || 0;
             if (t.is_owner) {
                 if (currentRating > 0) {
@@ -3834,9 +3932,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> ${disabledLabel}</button>`;
             }
 
+            const extBtnHtml = !t.is_owner
+                ? `<button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>`
+                : '';
+
             footActions.innerHTML = `
                 ${actionBtnHtml}
-                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
+                ${extBtnHtml}
             `;
 
             const btnStart = document.getElementById('btnDrawerStartTask');
@@ -4488,24 +4590,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (extNewDeadlineInput) {
-            // Set default date picker based on task's actual deadline + 2 days, or today + 2 days (Date only)
-            let baseDate = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const toYmd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let parsedDl = null;
             if (task.raw_deadline) {
-                const parsedDl = new Date(task.raw_deadline.replace(' ', 'T'));
-                if (!isNaN(parsedDl.getTime())) {
-                    baseDate = parsedDl;
+                const m = String(task.raw_deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (m) {
+                    parsedDl = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
                 }
             }
-            baseDate.setDate(baseDate.getDate() + 2);
 
-            const pad = n => String(n).padStart(2, '0');
-            const defaultDateStr = `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}`;
-            extNewDeadlineInput.value = defaultDateStr;
+            // Allow today when current deadline is already missed (in the past);
+            // otherwise require at least currentDeadline + 1 day
+            let minDate = new Date(today.getTime());
+            if (parsedDl) {
+                const dayAfterDl = new Date(parsedDl.getFullYear(), parsedDl.getMonth(), parsedDl.getDate() + 1);
+                if (dayAfterDl > minDate) {
+                    minDate = dayAfterDl;
+                }
+            }
 
-            // Set minimum date to tomorrow
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            extNewDeadlineInput.min = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+            // Default to current deadline + 2 days (or today + 2 days), clamped to >= minDate
+            const defaultDate = new Date((parsedDl || today).getTime());
+            defaultDate.setDate(defaultDate.getDate() + 2);
+            if (defaultDate < minDate) {
+                defaultDate.setTime(minDate.getTime());
+            }
+
+            extNewDeadlineInput.min = toYmd(minDate);
+            extNewDeadlineInput.value = toYmd(defaultDate);
         }
         if (extReasonInput) extReasonInput.value = '';
         extModal.classList.add('show');

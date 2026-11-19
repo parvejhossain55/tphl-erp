@@ -375,6 +375,8 @@ return [
     'api/hrm/tipsoi-connect' => ['controller' => 'HrmApiController', 'method' => 'connectTipsoiAccount'],
     'tipsoi-email-logs' => ['controller' => 'LeaveController', 'method' => 'tipsoiEmailLogsView'],
     'api/hrm/tipsoi-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiEmailLogs'],
+    'api/hrm/tipsoi-late-alerts' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiLateAlerts'],
+    'api/hrm/tipsoi-late-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateEmailLogs'],
     'api/hrm/send-tipsoi-reminders' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiReminders'],
     'api/tipsoi/trigger-login-reminder' => ['controller' => 'HrmApiController', 'method' => 'triggerLoginReminder'],
     'api/tipsoi/send-reminders-test' => ['controller' => 'HrmApiController', 'method' => 'testTipsoiReminders'],

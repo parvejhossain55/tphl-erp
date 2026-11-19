@@ -226,26 +226,30 @@
             $stmt->close();
         }
 
-        $stmtMw = $db->prepare("
-            SELECT COUNT(*) AS total
-            FROM tasks t
-            WHERE t.status != 'completed'
-              AND (
-                  t.user_id = ?
-                  OR t.assigned_by = ?
-                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))
-                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))
-                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))
-              )
-        ");
-        if ($stmtMw) {
-            $stmtMw->bind_param("iiiii", $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId);
-            $stmtMw->execute();
-            $resMw = $stmtMw->get_result();
-            if ($resMw) {
-                $myWorkPendingCount = (int) ($resMw->fetch_assoc()['total'] ?? 0);
+        try {
+            $stmtMw = $db->prepare("
+                SELECT COUNT(*) AS total
+                FROM tasks t
+                WHERE t.status != 'completed'
+                  AND (
+                      t.user_id = ?
+                      OR t.assigned_by = ?
+                      OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))
+                      OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))
+                      OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))
+                  )
+            ");
+            if ($stmtMw) {
+                $stmtMw->bind_param("iiiii", $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId);
+                $stmtMw->execute();
+                $resMw = $stmtMw->get_result();
+                if ($resMw) {
+                    $myWorkPendingCount = (int) ($resMw->fetch_assoc()['total'] ?? 0);
+                }
+                $stmtMw->close();
             }
-            $stmtMw->close();
+        } catch (Throwable $e) {
+            $myWorkPendingCount = 0;
         }
 
         // Determine whether logged-in user is Department Head or has reporting team members / reporting boss
@@ -288,12 +292,14 @@
             || ((int)($_SESSION['user']['id'] ?? 0) === 94);
 
         $isHodOrTeamLeaderV2 = !empty($isDeptHead)
-            || !empty($hasReportees)
+            || !empty($hasReportees);
+
+        $canViewTeamPerfV2 = $canViewMgmtOverviewV2 || $isHodOrTeamLeaderV2;
+
+        $canViewTaskManageV2 = $canViewTeamPerfV2
             || !empty($_SESSION['user']['is_team_leader'])
             || !empty($_SESSION['user']['is_sales_co_leader'])
             || in_array((int)($_SESSION['user']['role_id'] ?? 0), [5, 9, 17, 20, 22, 24, 30, 32, 39], true);
-
-        $canViewTeamPerfV2 = $canViewMgmtOverviewV2 || $isHodOrTeamLeaderV2;
 
         // Calculate pending Fund Requisition action counts — role-specific
         $pendingFundReqTotalCount = 0;
@@ -671,8 +677,8 @@
                             <span class="sidebar__menu-label">My Approval History</span>
                         </a>
                     </li>
-                    <?php if (!empty($canViewTeamPerfV2) || !empty($canViewMgmtOverviewV2)): ?>
-                    <!-- Task Manage Module (Management & HODs) -->
+                    <?php if (!empty($canViewTaskManageV2)): ?>
+                    <!-- Task Manage Module (Management, HODs & Team Leads) -->
                     <li
                         class="slide has-sub <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets', 'team-performance-v2', 'management-task-overview-v2'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
@@ -2249,12 +2255,12 @@
                             <?php endif; ?>
                         </ul>
                     </li>
-                <?php elseif ($hasMealAccess || (empty($canViewTeamPerfV2) && empty($canViewMgmtOverviewV2))): ?>
+                <?php elseif ($hasMealAccess || empty($canViewTaskManageV2)): ?>
                     <!-- Dedicated menu for employee -->
                     <li class="sidebar__menu-category ">
                         <span class="category-name">My Workspace</span>
                     </li>
-                    <?php if (empty($canViewTeamPerfV2) && empty($canViewMgmtOverviewV2)): ?>
+                    <?php if (empty($canViewTaskManageV2)): ?>
                     <li class="slide <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ? 'active' : '' ?>">
                         <a href="<?= $base_url ?>/my-work-dashboard"
                             class="sidebar__menu-item <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets'], $current_route) ?>">
@@ -4487,8 +4493,8 @@
                         </ul>
                     </li>
 
-                    <?php if (empty($inTopMgmtBlock) && (!empty($canViewTeamPerfV2) || !empty($canViewMgmtOverviewV2))): ?>
-                    <!-- Task Manage Module (HODs outside top management block) -->
+                    <?php if (empty($inTopMgmtBlock) && !empty($canViewTaskManageV2)): ?>
+                    <!-- Task Manage Module (HODs & Team Leads outside top management block) -->
                     <li
                         class="slide has-sub <?= isActive(['my-work-dashboard', 'my-work-add', 'my-work-list', 'my-work-created', 'my-work-sheets', 'team-performance-v2', 'management-task-overview-v2'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
