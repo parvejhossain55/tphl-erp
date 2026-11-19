@@ -226,26 +226,30 @@
             $stmt->close();
         }
 
-        $stmtMw = $db->prepare("
-            SELECT COUNT(*) AS total
-            FROM tasks t
-            WHERE t.status != 'completed'
-              AND (
-                  t.user_id = ?
-                  OR t.assigned_by = ?
-                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))
-                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))
-                  OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))
-              )
-        ");
-        if ($stmtMw) {
-            $stmtMw->bind_param("iiiii", $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId);
-            $stmtMw->execute();
-            $resMw = $stmtMw->get_result();
-            if ($resMw) {
-                $myWorkPendingCount = (int) ($resMw->fetch_assoc()['total'] ?? 0);
+        try {
+            $stmtMw = $db->prepare("
+                SELECT COUNT(*) AS total
+                FROM tasks t
+                WHERE t.status != 'completed'
+                  AND (
+                      t.user_id = ?
+                      OR t.assigned_by = ?
+                      OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ',''))
+                      OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ',''))
+                      OR FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ',''))
+                  )
+            ");
+            if ($stmtMw) {
+                $stmtMw->bind_param("iiiii", $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId, $loggedUserId);
+                $stmtMw->execute();
+                $resMw = $stmtMw->get_result();
+                if ($resMw) {
+                    $myWorkPendingCount = (int) ($resMw->fetch_assoc()['total'] ?? 0);
+                }
+                $stmtMw->close();
             }
-            $stmtMw->close();
+        } catch (Throwable $e) {
+            $myWorkPendingCount = 0;
         }
 
         // Determine whether logged-in user is Department Head or has reporting team members / reporting boss

@@ -626,26 +626,30 @@ class Lead extends Model
                 $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif (in_array(strtolower($lastAction), ['no_response', 'no response'])) {
                 $sql .= " AND (
-                    l.lead_type = 'No Response'
-                    OR l.call_status = 'not_received'
-                    OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
-                    OR EXISTS (
-                        SELECT 1 FROM lead_follow_ups lf_sub
-                        WHERE lf_sub.lead_id = l.id
-                          AND lf_sub.deleted_at IS NULL
-                          AND (
-                              lf_sub.lead_status = 'No Response'
-                              OR lf_sub.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%invalid%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%number off%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%not received%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%invalid%'
-                          )
-                    )
+                    CASE 
+                        WHEN EXISTS (SELECT 1 FROM lead_follow_ups lf_chk WHERE lf_chk.lead_id = l.id AND lf_chk.deleted_at IS NULL) THEN
+                            EXISTS (
+                                SELECT 1 FROM lead_follow_ups lf_last
+                                WHERE lf_last.id = (
+                                    SELECT MAX(lf_max.id) FROM lead_follow_ups lf_max 
+                                    WHERE lf_max.lead_id = l.id AND lf_max.deleted_at IS NULL
+                                )
+                                AND (
+                                    lf_last.lead_status = 'No Response'
+                                    OR lf_last.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%number off%'
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%no response%'
+                                    OR LOWER(COALESCE(lf_last.lead_status, '')) LIKE '%no response%'
+                                    OR (COALESCE(lf_last.lead_status, '') = '' AND l.lead_type = 'No Response')
+                                )
+                            )
+                        ELSE
+                            (
+                                l.lead_type = 'No Response'
+                                OR l.call_status = 'not_received'
+                                OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
+                            )
+                    END
                 )";
             } elseif (strtolower($lastAction) === 'visited') {
                 $sql .= " AND (LOWER(l.last_lead_action) = 'visited' OR l.lead_type IN ('Visit Completed', 'Visited') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_v WHERE lf_v.lead_id = l.id AND lf_v.deleted_at IS NULL AND (lf_v.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf_v.follow_up_type) = 'visit')))";
@@ -869,26 +873,30 @@ class Lead extends Model
                 $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif ($filter_card === 'no_response' || $filter_card === 'no_response_leads') {
                 $sql .= " AND (
-                    l.lead_type = 'No Response'
-                    OR l.call_status = 'not_received'
-                    OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
-                    OR EXISTS (
-                        SELECT 1 FROM lead_follow_ups lf_sub
-                        WHERE lf_sub.lead_id = l.id
-                          AND lf_sub.deleted_at IS NULL
-                          AND (
-                              lf_sub.lead_status = 'No Response'
-                              OR lf_sub.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%invalid%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%number off%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%not received%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%invalid%'
-                          )
-                    )
+                    CASE 
+                        WHEN EXISTS (SELECT 1 FROM lead_follow_ups lf_chk WHERE lf_chk.lead_id = l.id AND lf_chk.deleted_at IS NULL) THEN
+                            EXISTS (
+                                SELECT 1 FROM lead_follow_ups lf_last
+                                WHERE lf_last.id = (
+                                    SELECT MAX(lf_max.id) FROM lead_follow_ups lf_max 
+                                    WHERE lf_max.lead_id = l.id AND lf_max.deleted_at IS NULL
+                                )
+                                AND (
+                                    lf_last.lead_status = 'No Response'
+                                    OR lf_last.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%number off%'
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%no response%'
+                                    OR LOWER(COALESCE(lf_last.lead_status, '')) LIKE '%no response%'
+                                    OR (COALESCE(lf_last.lead_status, '') = '' AND l.lead_type = 'No Response')
+                                )
+                            )
+                        ELSE
+                            (
+                                l.lead_type = 'No Response'
+                                OR l.call_status = 'not_received'
+                                OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
+                            )
+                    END
                 )";
             } elseif ($filter_card === 'delete_requests' || $filter_card === 'delete_request') {
                 $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
@@ -1270,26 +1278,30 @@ class Lead extends Model
                 $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif (in_array(strtolower($lastAction), ['no_response', 'no response'])) {
                 $sql .= " AND (
-                    l.lead_type = 'No Response'
-                    OR l.call_status = 'not_received'
-                    OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
-                    OR EXISTS (
-                        SELECT 1 FROM lead_follow_ups lf_sub
-                        WHERE lf_sub.lead_id = l.id
-                          AND lf_sub.deleted_at IS NULL
-                          AND (
-                              lf_sub.lead_status = 'No Response'
-                              OR lf_sub.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%invalid%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%number off%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%not received%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%invalid%'
-                          )
-                    )
+                    CASE 
+                        WHEN EXISTS (SELECT 1 FROM lead_follow_ups lf_chk WHERE lf_chk.lead_id = l.id AND lf_chk.deleted_at IS NULL) THEN
+                            EXISTS (
+                                SELECT 1 FROM lead_follow_ups lf_last
+                                WHERE lf_last.id = (
+                                    SELECT MAX(lf_max.id) FROM lead_follow_ups lf_max 
+                                    WHERE lf_max.lead_id = l.id AND lf_max.deleted_at IS NULL
+                                )
+                                AND (
+                                    lf_last.lead_status = 'No Response'
+                                    OR lf_last.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%number off%'
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%no response%'
+                                    OR LOWER(COALESCE(lf_last.lead_status, '')) LIKE '%no response%'
+                                    OR (COALESCE(lf_last.lead_status, '') = '' AND l.lead_type = 'No Response')
+                                )
+                            )
+                        ELSE
+                            (
+                                l.lead_type = 'No Response'
+                                OR l.call_status = 'not_received'
+                                OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
+                            )
+                    END
                 )";
             } elseif (strtolower($lastAction) === 'visited') {
                 $sql .= " AND (LOWER(l.last_lead_action) = 'visited' OR l.lead_type IN ('Visit Completed', 'Visited') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_v WHERE lf_v.lead_id = l.id AND lf_v.deleted_at IS NULL AND (lf_v.lead_status IN ('Visit Completed', 'Visited') OR LOWER(lf_v.follow_up_type) = 'visit')))";
@@ -1512,26 +1524,30 @@ class Lead extends Model
                 $sql .= " AND (l.lead_type IN ('Invalid Lead', 'Irrelevant') OR EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.lead_status IN ('Invalid Lead', 'Irrelevant') AND lf_sub.deleted_at IS NULL))";
             } elseif ($filter_card === 'no_response' || $filter_card === 'no_response_leads') {
                 $sql .= " AND (
-                    l.lead_type = 'No Response'
-                    OR l.call_status = 'not_received'
-                    OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
-                    OR EXISTS (
-                        SELECT 1 FROM lead_follow_ups lf_sub
-                        WHERE lf_sub.lead_id = l.id
-                          AND lf_sub.deleted_at IS NULL
-                          AND (
-                              lf_sub.lead_status = 'No Response'
-                              OR lf_sub.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%invalid%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%number off%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.follow_up_type, '')) LIKE '%not received%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%no response%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%wrong%'
-                              OR LOWER(COALESCE(lf_sub.lead_status, '')) LIKE '%invalid%'
-                          )
-                    )
+                    CASE 
+                        WHEN EXISTS (SELECT 1 FROM lead_follow_ups lf_chk WHERE lf_chk.lead_id = l.id AND lf_chk.deleted_at IS NULL) THEN
+                            EXISTS (
+                                SELECT 1 FROM lead_follow_ups lf_last
+                                WHERE lf_last.id = (
+                                    SELECT MAX(lf_max.id) FROM lead_follow_ups lf_max 
+                                    WHERE lf_max.lead_id = l.id AND lf_max.deleted_at IS NULL
+                                )
+                                AND (
+                                    lf_last.lead_status = 'No Response'
+                                    OR lf_last.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%number off%'
+                                    OR LOWER(COALESCE(lf_last.follow_up_type, '')) LIKE '%no response%'
+                                    OR LOWER(COALESCE(lf_last.lead_status, '')) LIKE '%no response%'
+                                    OR (COALESCE(lf_last.lead_status, '') = '' AND l.lead_type = 'No Response')
+                                )
+                            )
+                        ELSE
+                            (
+                                l.lead_type = 'No Response'
+                                OR l.call_status = 'not_received'
+                                OR LOWER(COALESCE(l.last_lead_action, '')) IN ('no response', 'not received')
+                            )
+                    END
                 )";
             } elseif ($filter_card === 'delete_requests' || $filter_card === 'delete_request') {
                 $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
@@ -2217,19 +2233,23 @@ class Lead extends Model
                 $sql .= " AND (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant'))";
             } elseif ($filter_card === 'no_response' || $filter_card === 'no_response_leads') {
                 $sql .= " AND (
-                    leads.lead_type = 'No Response'
-                    OR leads.call_status = 'not_received'
-                    OR LOWER(COALESCE(leads.last_lead_action, '')) IN ('no response', 'not received')
-                    OR lf.lead_status = 'No Response'
-                    OR lf.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%wrong%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%invalid%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%number off%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%no response%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%not received%'
-                    OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%no response%'
-                    OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%wrong%'
-                    OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%invalid%'
+                    CASE 
+                        WHEN lf.lead_id IS NOT NULL THEN
+                            (
+                                lf.lead_status = 'No Response'
+                                OR lf.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
+                                OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%number off%'
+                                OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%no response%'
+                                OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%no response%'
+                                OR (COALESCE(lf.lead_status, '') = '' AND leads.lead_type = 'No Response')
+                            )
+                        ELSE
+                            (
+                                leads.lead_type = 'No Response'
+                                OR leads.call_status = 'not_received'
+                                OR LOWER(COALESCE(leads.last_lead_action, '')) IN ('no response', 'not received')
+                            )
+                    END
                 )";
             } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
                 $sql .= " AND (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location')";
@@ -2537,19 +2557,23 @@ class Lead extends Model
                 $sql .= " AND (leads.lead_type IN ('Invalid Lead', 'Irrelevant') OR lf.lead_status IN ('Invalid Lead', 'Irrelevant'))";
             } elseif ($filter_card === 'no_response' || $filter_card === 'no_response_leads') {
                 $sql .= " AND (
-                    leads.lead_type = 'No Response'
-                    OR leads.call_status = 'not_received'
-                    OR LOWER(COALESCE(leads.last_lead_action, '')) IN ('no response', 'not received')
-                    OR lf.lead_status = 'No Response'
-                    OR lf.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%wrong%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%invalid%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%number off%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%no response%'
-                    OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%not received%'
-                    OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%no response%'
-                    OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%wrong%'
-                    OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%invalid%'
+                    CASE 
+                        WHEN lf.lead_id IS NOT NULL THEN
+                            (
+                                lf.lead_status = 'No Response'
+                                OR lf.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
+                                OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%number off%'
+                                OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%no response%'
+                                OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%no response%'
+                                OR (COALESCE(lf.lead_status, '') = '' AND leads.lead_type = 'No Response')
+                            )
+                        ELSE
+                            (
+                                leads.lead_type = 'No Response'
+                                OR leads.call_status = 'not_received'
+                                OR LOWER(COALESCE(leads.last_lead_action, '')) IN ('no response', 'not received')
+                            )
+                    END
                 )";
             } elseif (in_array($filter_card, ['interested_other_location', 'interested_in_other_location', 'other_location'])) {
                 $sql .= " AND (leads.lead_type = 'Interested in Other Location' OR lf.lead_status = 'Interested in Other Location')";
@@ -2586,19 +2610,23 @@ class Lead extends Model
         $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL))";
 
         $noResponseCond = "(
-            leads.lead_type = 'No Response'
-            OR leads.call_status = 'not_received'
-            OR LOWER(COALESCE(leads.last_lead_action, '')) IN ('no response', 'not received')
-            OR lf.lead_status = 'No Response'
-            OR lf.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
-            OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%wrong%'
-            OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%invalid%'
-            OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%number off%'
-            OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%no response%'
-            OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%not received%'
-            OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%no response%'
-            OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%wrong%'
-            OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%invalid%'
+            CASE 
+                WHEN lf.lead_id IS NOT NULL THEN
+                    (
+                        lf.lead_status = 'No Response'
+                        OR lf.follow_up_type IN ('Number Off', 'Wrong Number', 'Invalid Number')
+                        OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%number off%'
+                        OR LOWER(COALESCE(lf.follow_up_type, '')) LIKE '%no response%'
+                        OR LOWER(COALESCE(lf.lead_status, '')) LIKE '%no response%'
+                        OR (COALESCE(lf.lead_status, '') = '' AND leads.lead_type = 'No Response')
+                    )
+                ELSE
+                    (
+                        leads.lead_type = 'No Response'
+                        OR leads.call_status = 'not_received'
+                        OR LOWER(COALESCE(leads.last_lead_action, '')) IN ('no response', 'not received')
+                    )
+            END
         )";
 
         $sql = "SELECT 

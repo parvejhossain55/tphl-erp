@@ -292,6 +292,16 @@ public function store()
             $touchStmt->close();
         }
 
+        // If follow-up status is updated to an active status (not No Response), clear any stale not_received call_status
+        if (!empty($followUpData['lead_status']) && !in_array($followUpData['lead_status'], ['No Response', 'Invalid Lead'])) {
+            $callUpd = $this->db->prepare("UPDATE leads SET call_status = 'received' WHERE id = ? AND call_status = 'not_received'");
+            if ($callUpd) {
+                $callUpd->bind_param("i", $leadId);
+                $callUpd->execute();
+                $callUpd->close();
+            }
+        }
+
         setSuccess("Follow-up created successfully!");
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -453,6 +463,16 @@ public function store()
         $updated = $this->followUpModel->update($followUpData);
 
         if ($updated) {
+            // If follow-up status is updated to an active status (not No Response), clear any stale not_received call_status
+            if (!empty($followUpData['lead_status']) && !in_array($followUpData['lead_status'], ['No Response', 'Invalid Lead'])) {
+                $callUpd = $this->db->prepare("UPDATE leads SET call_status = 'received' WHERE id = ? AND call_status = 'not_received'");
+                if ($callUpd) {
+                    $callUpd->bind_param("i", $leadId);
+                    $callUpd->execute();
+                    $callUpd->close();
+                }
+            }
+
             setSuccess("Follow-up updated successfully!");
             if ($isAjax) {
                 header('Content-Type: application/json');
