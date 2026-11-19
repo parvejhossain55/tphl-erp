@@ -4590,24 +4590,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (extNewDeadlineInput) {
-            // Set default date picker based on task's actual deadline + 2 days, or today + 2 days (Date only)
-            let baseDate = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const toYmd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let parsedDl = null;
             if (task.raw_deadline) {
-                const parsedDl = new Date(task.raw_deadline.replace(' ', 'T'));
-                if (!isNaN(parsedDl.getTime())) {
-                    baseDate = parsedDl;
+                const m = String(task.raw_deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (m) {
+                    parsedDl = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
                 }
             }
-            baseDate.setDate(baseDate.getDate() + 2);
 
-            const pad = n => String(n).padStart(2, '0');
-            const defaultDateStr = `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}`;
-            extNewDeadlineInput.value = defaultDateStr;
+            // Allow today when current deadline is already missed (in the past);
+            // otherwise require at least currentDeadline + 1 day
+            let minDate = new Date(today.getTime());
+            if (parsedDl) {
+                const dayAfterDl = new Date(parsedDl.getFullYear(), parsedDl.getMonth(), parsedDl.getDate() + 1);
+                if (dayAfterDl > minDate) {
+                    minDate = dayAfterDl;
+                }
+            }
 
-            // Set minimum date to tomorrow
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            extNewDeadlineInput.min = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+            // Default to current deadline + 2 days (or today + 2 days), clamped to >= minDate
+            const defaultDate = new Date((parsedDl || today).getTime());
+            defaultDate.setDate(defaultDate.getDate() + 2);
+            if (defaultDate < minDate) {
+                defaultDate.setTime(minDate.getTime());
+            }
+
+            extNewDeadlineInput.min = toYmd(minDate);
+            extNewDeadlineInput.value = toYmd(defaultDate);
         }
         if (extReasonInput) extReasonInput.value = '';
         extModal.classList.add('show');

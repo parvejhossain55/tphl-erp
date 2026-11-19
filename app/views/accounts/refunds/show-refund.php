@@ -112,6 +112,16 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <span class="badge bg-<?= $bColor ?>"><?= ucfirst($bStatus) ?></span>
                             </div>
                         </div>
+                        <div class="col-md-4 mt-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Registration</div>
+                            <div class="info-value">
+                                <?php if (!empty($refund['is_registration_completed'])): ?>
+                                    <span class="badge bg-success">Completed</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Not Completed</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
 
                         <!-- Financial & Request Summary -->
                         <div class="col-md-12 mt-3">
@@ -370,7 +380,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     [
                         'num'    => 2,
                         'key'    => 'qc',
-                        'title'  => 'QC Verification',
+                        'title'  => 'Internal Audit',
                         'role'   => 'Quality Control / Audit',
                         'done'   => $isMgmtDone || (strtolower($arData['qc_status'] ?? 'pending') === 'approved'),
                         'by'     => $arData['qc_name'] ?? null,
@@ -389,6 +399,16 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     ],
                     [
                         'num'    => 4,
+                        'key'    => 'accounts_head',
+                        'title'  => 'Accounts Head Approval',
+                        'role'   => 'Head of Accounts',
+                        'done'   => $isMgmtDone || (strtolower($arData['accounts_head_status'] ?? 'pending') === 'approved'),
+                        'by'     => $arData['accounts_head_name'] ?? null,
+                        'at'     => $arData['accounts_head_at'] ?? null,
+                        'note'   => $arData['accounts_head_note'] ?? null,
+                    ],
+                    [
+                        'num'    => 5,
                         'key'    => 'management',
                         'title'  => 'Management Final Approval',
                         'role'   => 'Super Admin Only',
@@ -398,7 +418,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         'note'   => $arData['approval_note'] ?? null,
                     ],
                     [
-                        'num'    => 5,
+                        'num'    => 6,
                         'key'    => 'accounts',
                         'title'  => 'Accounts Disbursement',
                         'role'   => 'Accounts Department',
@@ -412,7 +432,8 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     'sales_manager' => 'Stage 1: Sales Manager Approval',
                     'qc'            => 'Stage 2: QC Verification',
                     'op_head'       => 'Stage 3: Operation Head Approval',
-                    'management'    => 'Stage 4: Super Admin Approval',
+                    'accounts_head' => 'Stage 4: Accounts Head Approval',
+                    'management'    => 'Stage 5: Super Admin Approval',
                 ];
             ?>
             <div class="card custom-card border-0 shadow-sm mb-3">
