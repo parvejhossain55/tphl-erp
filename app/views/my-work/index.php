@@ -17,6 +17,7 @@ $openTasksCount = $openTasksCount ?? 0;
 $completedTasksCount = $completedTasksCount ?? 0;
 $tasks = $tasks ?? [];
 $reviewTasks = $reviewTasks ?? [];
+$reviewTasksCount = $reviewTasksCount ?? count($reviewTasks);
 $blockedTask = $blockedTask ?? null;
 
 // Date range for "Next 7 days" card
@@ -1856,7 +1857,7 @@ $todayDateFormatted = date('j F');
             <div class="mw-focus-card" id="mwCardNeedsReview">
                 <h4 class="mw-focus-title">Needs your review</h4>
                 <div class="mw-focus-subtitle">
-                    <?= count($reviewTasks) ?> completed task<?= count($reviewTasks) === 1 ? '' : 's' ?> waiting for your review
+                    <?= $reviewTasksCount ?> completed task<?= $reviewTasksCount === 1 ? '' : 's' ?> waiting for your review
                 </div>
 
                 <?php if (!empty($reviewTasks)): ?>
@@ -3692,9 +3693,9 @@ document.addEventListener('DOMContentLoaded', function () {
                </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
 
-        // Owner Feedback & Satisfaction Rating section (Only when task is completed)
+        // Owner Feedback & Satisfaction Rating section (Only when task is completed and not a self-task)
         let ownerFeedbackHtml = '';
-        if (t.is_completed) {
+        if (t.is_completed && !t.is_self_task) {
             const currentRating = parseInt(t.satisfaction_rating, 10) || 0;
             if (t.is_owner) {
                 if (currentRating > 0) {

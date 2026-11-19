@@ -374,6 +374,21 @@ class MyWorkController extends Controller
         $tasks = $stmtTasks->get_result()->fetch_all(MYSQLI_ASSOC);
 
         // 7. Focus Panel: Needs Review (Tasks where the logged-in user is a Reviewer and task is completed, latest completed first)
+        $reviewWhereSql = "
+            WHERE FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
+              AND (
+                  (t.status = 'completed' AND NOT EXISTS (
+                      SELECT 1 FROM task_activities a 
+                      WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
+                  ))
+                  OR (t.status != 'completed' AND {$submittedForReviewSql})
+              )
+        ";
+        $stmtReviewCount = $this->db->prepare("SELECT COUNT(*) AS cnt FROM tasks t {$reviewWhereSql}");
+        $stmtReviewCount->bind_param("i", $userId);
+        $stmtReviewCount->execute();
+        $reviewTasksCount = (int)($stmtReviewCount->get_result()->fetch_assoc()['cnt'] ?? 0);
+
         $stmtReviewList = $this->db->prepare("
             SELECT 
                 t.*,
@@ -383,16 +398,9 @@ class MyWorkController extends Controller
             FROM tasks t
             JOIN users u ON t.user_id = u.id
             LEFT JOIN designations des ON u.designation_id = des.id
-            WHERE FIND_IN_SET(?, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids, '[', ''), ']', ''), ' ', ''))
-              AND (
-                  (t.status = 'completed' AND NOT EXISTS (
-                      SELECT 1 FROM task_activities a 
-                      WHERE a.task_id = t.id AND a.activity LIKE 'Approved task as completed%'
-                  ))
-                  OR (t.status != 'completed' AND {$submittedForReviewSql})
-              )
+            {$reviewWhereSql}
             ORDER BY COALESCE(t.updated_at, t.created_at) DESC
-            LIMIT 2
+            LIMIT 1
         ");
         $stmtReviewList->bind_param("i", $userId);
         $stmtReviewList->execute();
@@ -483,7 +491,7 @@ class MyWorkController extends Controller
                 $totalInTab = $openTasksCount + $completedTasksCount;
                 $footerInfoText = 'Showing ' . count($tasks) . ' of ' . $totalInTab . ' tasks · Sorted by deadline';
             }
-            $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks);
+            $reviewCardHtml = $this->renderReviewCardHtml($reviewTasks, $reviewTasksCount);
             $attentionCardHtml = $this->renderAttentionCardHtml($blockedTask);
             echo json_encode([
                 'status' => 'success',
@@ -574,6 +582,7 @@ class MyWorkController extends Controller
             "myReviewedCompletedCount" => $myReviewedCompletedCount,
             "tasks"                  => $tasks,
             "reviewTasks"            => $reviewTasks,
+            "reviewTasksCount"       => $reviewTasksCount,
             "blockedTask"            => $blockedTask,
             "usersList"              => $usersList,
             "todoProjectsList"       => $todoProjectsList,
@@ -729,9 +738,9 @@ class MyWorkController extends Controller
     /**
      * Helper to render task rows HTML for seamless AJAX
      */
-    private function renderReviewCardHtml($reviewTasks)
+    private function renderReviewCardHtml($reviewTasks, $totalCount = null)
     {
-        $count = count($reviewTasks);
+        $count = ($totalCount !== null) ? (int)$totalCount : count($reviewTasks);
         $s = $count === 1 ? '' : 's';
         $out = '<h4 class="mw-focus-title">Needs your review</h4>';
         $out .= '<div class="mw-focus-subtitle">' . $count . ' completed task' . $s . ' waiting for your review</div>';
@@ -1528,6 +1537,7 @@ class MyWorkController extends Controller
                 'is_completed' => $isCompleted,
                 'is_review_approved' => $isReviewApproved,
                 'is_owner' => ((int)$t['assigned_by'] === $userId),
+                'is_self_task' => ((int)$t['assigned_by'] === (int)$t['user_id']),
                 'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
@@ -2600,6 +2610,12 @@ class MyWorkController extends Controller
         $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
         if (!$isOwner) {
             echo json_encode(['status' => 'error', 'message' => 'Only the task owner can submit feedback and rating.']);
+            exit;
+        }
+
+        // Prevent giving feedback/rating on own task or self-task
+        if ((int)$task['user_id'] === $userId || (int)$task['assigned_by'] === (int)$task['user_id']) {
+            echo json_encode(['status' => 'error', 'message' => 'You cannot submit feedback or rating on your own task.']);
             exit;
         }
 
