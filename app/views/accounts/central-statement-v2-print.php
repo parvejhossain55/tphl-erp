@@ -22,18 +22,22 @@ $s = $overview['summary'];
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Central Accounts V2 - <?= htmlspecialchars($period_label) ?></title>
+    <title>The Premium Homes Ltd. — Central Financial Statement</title>
     <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #0f172a; margin: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #14532d; padding-bottom: 10px; margin-bottom: 16px; }
-        .title { font-size: 20px; font-weight: 700; color: #14532d; }
-        .meta { color: #475569; font-size: 11px; margin-top: 4px; }
-        .chips { margin-bottom: 14px; }
+        @page { size: A4; margin: 0; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #0f172a; margin: 0; padding: 20px 26px 56px 26px; }
+        .company-pad { text-align: center; border-bottom: 2px solid #14532d; padding-bottom: 10px; margin-bottom: 12px; position: relative; }
+        .company-name { font-size: 19px; font-weight: 800; letter-spacing: 1.5px; color: #0f172a; margin: 0; }
+        .company-addr { font-size: 10.5px; color: #475569; margin-top: 3px; line-height: 1.4; }
+        .report-heading { font-size: 14px; font-weight: 800; letter-spacing: 1.2px; color: #14532d; margin-top: 8px; text-transform: uppercase; }
+        .meta-bar { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: #475569; margin-bottom: 10px; }
+        .chips { margin-bottom: 12px; }
         .chip { display: inline-block; background: #ecfdf5; border: 1px solid #bbf7d0; color: #14532d; padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-right: 6px; }
-        .kpi-row { display: table; width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 16px; }
+        .kpi-row { display: table; width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 14px; }
         .kpi-box { display: table-cell; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; width: 20%; }
         .kpi-label { font-size: 10px; color: #64748b; font-weight: 700; }
-        .kpi-val { font-size: 14px; font-weight: 700; margin-top: 4px; }
+        .kpi-val { font-size: 13.5px; font-weight: 700; margin-top: 4px; }
         table.rep { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 18px; }
         table.rep th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; font-size: 11px; }
         table.rep td { border: 1px solid #e2e8f0; padding: 5px 8px; font-size: 11px; }
@@ -41,17 +45,42 @@ $s = $overview['summary'];
         .pos { color: #166534; }
         .neg { color: #b91c1c; }
         .tot td { background: #f0fdf4; font-weight: 700; border-top: 2px solid #14532d; }
-        @media print { .no-print { display: none; } body { margin: 8mm; } }
+        .print-footer {
+            border-top: 1px solid #cbd5e1;
+            padding-top: 6px;
+            font-size: 9.5px;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 24px;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 12mm 13mm 18mm 13mm; }
+            .print-footer {
+                position: fixed;
+                bottom: 7mm;
+                left: 13mm;
+                right: 13mm;
+                background: #fff;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div>
-            <div class="title">Central Accounts Statement (V2)</div>
-            <div class="meta">Period: <?= htmlspecialchars($period_label) ?> (<?= htmlspecialchars($start_date) ?> to <?= htmlspecialchars($end_date) ?>)</div>
-            <div class="meta">Generated: <?= date('d M Y, H:i') ?> | Tab: <?= htmlspecialchars(strtoupper($activeTab)) ?></div>
+    <div class="company-pad">
+        <button class="no-print" onclick="window.print()" style="position:absolute; right:0; top:0; padding:7px 14px; background:#14532d; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Print / Save PDF</button>
+        <div class="company-name">THE PREMIUM HOMES LTD.</div>
+        <div class="company-addr">
+            Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka<br>
+            Phone: +8801958253300 | Email: info@thepremiumhomes.com
         </div>
-        <button class="no-print" onclick="window.print()" style="padding:7px 14px; background:#14532d; color:#fff; border:none; border-radius:6px; cursor:pointer;">Print / Save PDF</button>
+        <div class="report-heading">CENTRAL FINANCIAL STATEMENT</div>
+    </div>
+    <div class="meta-bar">
+        <span><strong>Period:</strong> <?= htmlspecialchars($period_label) ?> (<?= htmlspecialchars($start_date) ?> to <?= htmlspecialchars($end_date) ?>)</span>
+        <span><strong>Section:</strong> <?= htmlspecialchars(strtoupper($activeTab)) ?> &nbsp;|&nbsp; <strong>Generated:</strong> <?= date('d M Y, H:i') ?></span>
     </div>
 
     <div class="chips">
@@ -149,5 +178,10 @@ $s = $overview['summary'];
             </tbody>
         </table>
     <?php endif; ?>
+
+    <div class="print-footer">
+        <span><strong>CONFIDENTIAL</strong> — Internal Financial Statement | The Premium Homes Ltd.</span>
+        <span>System Generated Report · Do not distribute externally</span>
+    </div>
 </body>
 </html>

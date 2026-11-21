@@ -1,6 +1,13 @@
 <?php
 require_once __DIR__ . '/../models/CentralStatementV2.php';
 
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+
 class CentralStatementV2Controller extends Controller
 {
     protected $db;
@@ -266,76 +273,350 @@ class CentralStatementV2Controller extends Controller
     }
 
     /**
-     * Export CSV (Excel-compatible UTF-8 BOM)
+     * Export styled multi-sheet Excel (.xlsx) workbook using PhpSpreadsheet
      */
     public function exportExcel()
     {
         [$period, $startDate, $endDate, $periodLabel] = $this->resolvePeriod($_GET);
         $filters = $this->parseFilters($_GET);
-        $tab = $_GET['tab'] ?? 'overview';
+        $activeTab = $_GET['tab'] ?? 'overview';
+        $emiScope = ($_GET['emi_scope'] ?? 'emi') === 'all_project' ? 'all_project' : 'emi';
 
-        $filename = 'central_accounts_v2_' . $tab . '_' . date('Ymd_His') . '.csv';
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        $overview = $this->model->getOverviewData($startDate, $endDate, $filters, $_GET['interval'] ?? 'auto');
+        $branchData = $this->model->getBranchPerformance($startDate, $endDate, $filters);
+        $projectData = $this->model->getProjectCategoryBreakdown($startDate, $endDate, $filters);
+        $emiCostData = $this->model->getEmiVsProjectCost($startDate, $endDate, $filters, $emiScope);
+        $alerts = $this->model->getExecutiveAlerts();
 
-        $out = fopen('php://output', 'w');
-        fwrite($out, "\xEF\xBB\xBF");
+        $branches = $this->model->getBranches();
+        $projects = $this->model->getProjects();
+        $categoriesMeta = $this->model->getCategoriesMeta();
+        $appliedChips = $this->buildAppliedChips($periodLabel, $filters, $branches, $projects, $categoriesMeta);
+        $filterSummary = implode(' | ', array_map(fn($c) => $c['label'] . ': ' . $c['value'], $appliedChips));
 
-        fputcsv($out, ['Central Accounts V2 Report', $periodLabel]);
-        fputcsv($out, ['Date Range', "$startDate to $endDate"]);
-        fputcsv($out, []);
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getProperties()
+            ->setCreator('TPHL-ERP')
+            ->setTitle('Central Accounts V2 Statement - ' . $periodLabel);
 
-        if ($tab === 'branch') {
-            $data = $this->model->getBranchPerformance($startDate, $endDate, $filters);
-            fputcsv($out, ['Branch / Office', 'Collections Received (BDT)', 'Direct Branch Cost (BDT)', 'Net Movement (BDT)', 'Transactions']);
-            foreach ($data['rows'] as $r) {
-                fputcsv($out, [$r['branch_name'], number_format($r['collections'], 2, '.', ''), number_format($r['direct_cost'], 2, '.', ''), number_format($r['net'], 2, '.', ''), $r['txn_count']]);
-            }
-            fputcsv($out, ['Total', number_format($data['totals']['collections'], 2, '.', ''), number_format($data['totals']['direct_cost'], 2, '.', ''), number_format($data['totals']['net'], 2, '.', ''), $data['totals']['txn_count']]);
-        } elseif ($tab === 'project') {
-            $data = $this->model->getProjectCategoryBreakdown($startDate, $endDate, $filters);
-            fputcsv($out, ['Project', 'Category', 'Flow Type', 'Count', 'Cash In (BDT)', 'Cash Out (BDT)', 'Net Movement (BDT)']);
-            foreach ($data['projects'] as $p) {
-                fputcsv($out, [$p['project_name'], 'ALL CATEGORIES', 'summary', $p['txn_count'], number_format($p['cash_in'], 2, '.', ''), number_format($p['cash_out'], 2, '.', ''), number_format($p['net'], 2, '.', '')]);
-                foreach ($p['categories'] as $c) {
-                    fputcsv($out, [$p['project_name'], $c['category_label'], $c['flow_type'], $c['txn_count'], number_format($c['cash_in'], 2, '.', ''), number_format($c['cash_out'], 2, '.', ''), number_format($c['net'], 2, '.', '')]);
-                }
-            }
-        } elseif ($tab === 'emi_cost') {
-            $scope = ($_GET['emi_scope'] ?? 'emi') === 'all_project' ? 'all_project' : 'emi';
-            $data = $this->model->getEmiVsProjectCost($startDate, $endDate, $filters, $scope);
-            fputcsv($out, ['Project', $scope === 'all_project' ? 'All Collections (BDT)' : 'EMI Collected (BDT)', 'Project Cost Paid (BDT)', 'Coverage %', 'Surplus / Shortfall (BDT)', 'Overdue EMI (BDT)', 'Unpaid Approved Bills (BDT)']);
-            foreach ($data['rows'] as $r) {
-                fputcsv($out, [
-                    $r['project_name'],
-                    number_format($r['collected'], 2, '.', ''),
-                    number_format($r['cost_paid'], 2, '.', ''),
-                    $r['coverage_pct'] !== null ? $r['coverage_pct'] . '%' : '-',
-                    number_format($r['surplus'], 2, '.', ''),
-                    number_format($r['overdue_emi'], 2, '.', ''),
-                    number_format($r['unpaid_bills'], 2, '.', ''),
-                ]);
-            }
-        } else {
-            $data = $this->model->getOverviewData($startDate, $endDate, $filters, $_GET['interval'] ?? 'auto');
-            fputcsv($out, ['Period', 'Opening Balance (BDT)', 'Cash In (BDT)', 'Cash Out (BDT)', 'Net Movement (BDT)', 'Closing Balance (BDT)', 'Transactions']);
-            foreach ($data['intervals'] as $r) {
-                fputcsv($out, [
-                    $r['label'],
-                    number_format($r['opening'], 2, '.', ''),
-                    number_format($r['cash_in'], 2, '.', ''),
-                    number_format($r['cash_out'], 2, '.', ''),
-                    number_format($r['net'], 2, '.', ''),
-                    number_format($r['closing'], 2, '.', ''),
-                    $r['txn_count'],
-                ]);
-            }
-            $s = $data['summary'];
-            fputcsv($out, ['TOTAL', number_format($s['opening_balance'], 2, '.', ''), number_format($s['cash_in'], 2, '.', ''), number_format($s['cash_out'], 2, '.', ''), number_format($s['net_movement'], 2, '.', ''), number_format($s['closing_balance'], 2, '.', ''), $s['txn_count']]);
+        // Sheet 1: Overview
+        $sheet1 = $spreadsheet->getActiveSheet();
+        $sheet1->setTitle('Overview');
+        $row = $this->initExcelBanner($sheet1, 'Central Accounts V2 — Executive Overview', $periodLabel, $startDate, $endDate, $filterSummary, 7);
+
+        // Executive KPI Summary Block
+        $s = $overview['summary'];
+        $sheet1->setCellValue("A{$row}", 'EXECUTIVE SUMMARY');
+        $sheet1->getStyle("A{$row}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FF14532D');
+        $row++;
+
+        $kpis = [
+            ['Opening Balance (BDT)', $s['opening_balance'], 'Closing Balance (BDT)', $s['closing_balance']],
+            ['Total Cash In - Verified (BDT)', $s['cash_in'], 'Closing Bank Balance (BDT)', $s['closing_bank']],
+            ['Total Cash Out - Paid (BDT)', $s['cash_out'], 'Closing Cash in Hand (BDT)', $s['closing_cash']],
+            ['Net Cash Movement (BDT)', $s['net_movement'], 'Pending Verification (BDT)', $alerts['pending_verification']['amount']],
+            ['Overdue EMI (BDT)', $alerts['overdue_emi']['amount'], 'Unpaid Approved Bills (BDT)', $alerts['unpaid_payables']['amount']],
+        ];
+        foreach ($kpis as $k) {
+            $sheet1->setCellValue("A{$row}", $k[0]);
+            $sheet1->setCellValue("B{$row}", (float)$k[1]);
+            $sheet1->setCellValue("D{$row}", $k[2]);
+            $sheet1->setCellValue("E{$row}", (float)$k[3]);
+            $sheet1->getStyle("A{$row}")->getFont()->setBold(true)->setSize(9);
+            $sheet1->getStyle("D{$row}")->getFont()->setBold(true)->setSize(9);
+            $sheet1->getStyle("B{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet1->getStyle("E{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet1->getStyle("A{$row}:B{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF8FAFC');
+            $sheet1->getStyle("D{$row}:E{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF8FAFC');
+            $sheet1->getStyle("A{$row}:B{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('FFE2E8F0');
+            $sheet1->getStyle("D{$row}:E{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('FFE2E8F0');
+            $row++;
         }
+        $row++;
 
-        fclose($out);
+        $headers1 = ['Date / Month', 'Opening Balance', 'Cash In', 'Cash Out', 'Net Movement', 'Closing Balance', 'Transactions'];
+        $row = $this->writeExcelTableHeader($sheet1, $row, $headers1);
+        $dataStart = $row;
+        foreach ($overview['intervals'] as $idx => $r) {
+            $sheet1->setCellValue("A{$row}", $r['label']);
+            $sheet1->setCellValue("B{$row}", (float)$r['opening']);
+            $sheet1->setCellValue("C{$row}", (float)$r['cash_in']);
+            $sheet1->setCellValue("D{$row}", (float)$r['cash_out']);
+            $sheet1->setCellValue("E{$row}", (float)$r['net']);
+            $sheet1->setCellValue("F{$row}", (float)$r['closing']);
+            $sheet1->setCellValue("G{$row}", (int)$r['txn_count']);
+            $this->styleExcelDataRow($sheet1, $row, 7, [2, 3, 4, 5, 6], [7], $idx % 2 === 1, $r['net'] >= 0 ? 5 : -5);
+            $row++;
+        }
+        $sheet1->setCellValue("A{$row}", 'TOTAL FOR APPLIED SCOPE');
+        $sheet1->setCellValue("B{$row}", (float)$s['opening_balance']);
+        $sheet1->setCellValue("C{$row}", (float)$s['cash_in']);
+        $sheet1->setCellValue("D{$row}", (float)$s['cash_out']);
+        $sheet1->setCellValue("E{$row}", (float)$s['net_movement']);
+        $sheet1->setCellValue("F{$row}", (float)$s['closing_balance']);
+        $sheet1->setCellValue("G{$row}", (int)$s['txn_count']);
+        $this->styleExcelTotalRow($sheet1, $row, 7, [2, 3, 4, 5, 6], [7]);
+        $this->addExcelFooter($sheet1, $row + 2, 7);
+        $this->autoSizeExcelColumns($sheet1, 7);
+
+        // Sheet 2: Branch Performance
+        $sheet2 = $spreadsheet->createSheet();
+        $sheet2->setTitle('Branch Performance');
+        $r2 = $this->initExcelBanner($sheet2, 'Central Accounts V2 — Branch Performance', $periodLabel, $startDate, $endDate, $filterSummary, 5);
+        $r2 = $this->writeExcelTableHeader($sheet2, $r2, ['Branch / Office', 'Transactions', 'Collections Received', 'Direct Branch Cost', 'Net Movement']);
+        foreach ($branchData['rows'] as $idx => $br) {
+            $sheet2->setCellValue("A{$r2}", $br['branch_name']);
+            $sheet2->setCellValue("B{$r2}", (int)$br['txn_count']);
+            $sheet2->setCellValue("C{$r2}", (float)$br['collections']);
+            $sheet2->setCellValue("D{$r2}", (float)$br['direct_cost']);
+            $sheet2->setCellValue("E{$r2}", (float)$br['net']);
+            $this->styleExcelDataRow($sheet2, $r2, 5, [3, 4, 5], [2], $idx % 2 === 1, $br['net'] >= 0 ? 5 : -5);
+            $r2++;
+        }
+        $bt = $branchData['totals'];
+        $sheet2->setCellValue("A{$r2}", 'TOTAL FOR APPLIED SCOPE');
+        $sheet2->setCellValue("B{$r2}", (int)$bt['txn_count']);
+        $sheet2->setCellValue("C{$r2}", (float)$bt['collections']);
+        $sheet2->setCellValue("D{$r2}", (float)$bt['direct_cost']);
+        $sheet2->setCellValue("E{$r2}", (float)$bt['net']);
+        $this->styleExcelTotalRow($sheet2, $r2, 5, [3, 4, 5], [2]);
+        $this->addExcelFooter($sheet2, $r2 + 2, 5);
+        $this->autoSizeExcelColumns($sheet2, 5);
+
+        // Sheet 3: Project & Category
+        $sheet3 = $spreadsheet->createSheet();
+        $sheet3->setTitle('Project & Category');
+        $r3 = $this->initExcelBanner($sheet3, 'Central Accounts V2 — Project & Category Breakdown', $periodLabel, $startDate, $endDate, $filterSummary, 6);
+        $r3 = $this->writeExcelTableHeader($sheet3, $r3, ['Project / Category', 'Flow Type', 'Count', 'Cash In', 'Cash Out', 'Net Movement']);
+        foreach ($projectData['projects'] as $p) {
+            $sheet3->setCellValue("A{$r3}", $p['project_name']);
+            $sheet3->setCellValue("B{$r3}", 'Project Summary');
+            $sheet3->setCellValue("C{$r3}", (int)$p['txn_count']);
+            $sheet3->setCellValue("D{$r3}", (float)$p['cash_in']);
+            $sheet3->setCellValue("E{$r3}", (float)$p['cash_out']);
+            $sheet3->setCellValue("F{$r3}", (float)$p['net']);
+            $this->styleExcelDataRow($sheet3, $r3, 6, [4, 5, 6], [3], false, $p['net'] >= 0 ? 6 : -6);
+            $sheet3->getStyle("A{$r3}:F{$r3}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFECFDF5');
+            $sheet3->getStyle("A{$r3}:F{$r3}")->getFont()->setBold(true);
+            $r3++;
+            foreach ($p['categories'] as $c) {
+                $sheet3->setCellValue("A{$r3}", '   • ' . $c['category_label']);
+                $sheet3->setCellValue("B{$r3}", $c['flow_type'] === 'cash_in' ? 'Cash In' : 'Cash Out');
+                $sheet3->setCellValue("C{$r3}", (int)$c['txn_count']);
+                $sheet3->setCellValue("D{$r3}", (float)$c['cash_in']);
+                $sheet3->setCellValue("E{$r3}", (float)$c['cash_out']);
+                $sheet3->setCellValue("F{$r3}", (float)$c['net']);
+                $this->styleExcelDataRow($sheet3, $r3, 6, [4, 5, 6], [3], false, $c['net'] >= 0 ? 6 : -6);
+                $r3++;
+            }
+        }
+        $pt = $projectData['totals'];
+        $sheet3->setCellValue("A{$r3}", 'TOTAL FOR APPLIED SCOPE');
+        $sheet3->setCellValue("B{$r3}", 'All');
+        $sheet3->setCellValue("C{$r3}", (int)$pt['txn_count']);
+        $sheet3->setCellValue("D{$r3}", (float)$pt['cash_in']);
+        $sheet3->setCellValue("E{$r3}", (float)$pt['cash_out']);
+        $sheet3->setCellValue("F{$r3}", (float)$pt['net']);
+        $this->styleExcelTotalRow($sheet3, $r3, 6, [4, 5, 6], [3]);
+        $this->addExcelFooter($sheet3, $r3 + 2, 6);
+        $this->autoSizeExcelColumns($sheet3, 6);
+
+        // Sheet 4: EMI vs Project Cost & Dues
+        $sheet4 = $spreadsheet->createSheet();
+        $sheet4->setTitle('EMI vs Project Cost');
+        $r4 = $this->initExcelBanner($sheet4, 'Central Accounts V2 — EMI vs Project Cost & Pending Dues', $periodLabel, $startDate, $endDate, $filterSummary, 7);
+        $colHeader = $emiScope === 'all_project' ? 'All Project Collections' : 'EMI Collected';
+        $r4 = $this->writeExcelTableHeader($sheet4, $r4, ['Project', $colHeader, 'Project Cost Paid', 'Coverage %', 'Surplus / Shortfall', 'Overdue EMI (Due)', 'Unpaid Approved Bills']);
+        foreach ($emiCostData['rows'] as $idx => $er) {
+            $sheet4->setCellValue("A{$r4}", $er['project_name']);
+            $sheet4->setCellValue("B{$r4}", (float)$er['collected']);
+            $sheet4->setCellValue("C{$r4}", (float)$er['cost_paid']);
+            $sheet4->setCellValue("D{$r4}", $er['coverage_pct'] !== null ? ($er['coverage_pct'] . '%') : '—');
+            $sheet4->setCellValue("E{$r4}", (float)$er['surplus']);
+            $sheet4->setCellValue("F{$r4}", (float)$er['overdue_emi']);
+            $sheet4->setCellValue("G{$r4}", (float)$er['unpaid_bills']);
+            $this->styleExcelDataRow($sheet4, $r4, 7, [2, 3, 5, 6, 7], [], $idx % 2 === 1, $er['surplus'] >= 0 ? 5 : -5);
+            $sheet4->getStyle("D{$r4}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $r4++;
+        }
+        $et = $emiCostData['totals'];
+        $sheet4->setCellValue("A{$r4}", 'TOTAL FOR APPLIED SCOPE');
+        $sheet4->setCellValue("B{$r4}", (float)$et['collected']);
+        $sheet4->setCellValue("C{$r4}", (float)$et['cost_paid']);
+        $sheet4->setCellValue("D{$r4}", $et['coverage_pct'] !== null ? ($et['coverage_pct'] . '%') : '—');
+        $sheet4->setCellValue("E{$r4}", (float)$et['surplus']);
+        $sheet4->setCellValue("F{$r4}", (float)$et['overdue_emi']);
+        $sheet4->setCellValue("G{$r4}", (float)$et['unpaid_bills']);
+        $this->styleExcelTotalRow($sheet4, $r4, 7, [2, 3, 5, 6, 7], []);
+        $sheet4->getStyle("D{$r4}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $this->addExcelFooter($sheet4, $r4 + 2, 7);
+        $this->autoSizeExcelColumns($sheet4, 7);
+
+        // Focus active sheet based on user's current tab
+        $tabSheetIndex = ['overview' => 0, 'branch' => 1, 'project' => 2, 'emi_cost' => 3][$activeTab] ?? 0;
+        $spreadsheet->setActiveSheetIndex($tabSheetIndex);
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        $filename = 'Central_Accounts_V2_' . date('Ymd_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save('php://output');
         exit;
+    }
+
+    private function initExcelBanner($sheet, string $title, string $periodLabel, string $startDate, string $endDate, string $filterSummary, int $colCount): int
+    {
+        $lastCol = Coordinate::stringFromColumnIndex($colCount);
+
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $sheet->setCellValue('A1', 'THE PREMIUM HOMES LTD.');
+        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF14532D']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(26);
+
+        $sheet->mergeCells("A2:{$lastCol}2");
+        $sheet->setCellValue('A2', 'Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka | Phone: +8801958253300 | Email: info@thepremiumhomes.com');
+        $sheet->getStyle("A2:{$lastCol}2")->applyFromArray([
+            'font' => ['size' => 8.5, 'color' => ['argb' => 'FF475569']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF0FDF4']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension(2)->setRowHeight(18);
+
+        $sheet->mergeCells("A3:{$lastCol}3");
+        $sheet->setCellValue('A3', 'CENTRAL FINANCIAL STATEMENT — ' . strtoupper(str_replace('Central Accounts V2 — ', '', $title)));
+        $sheet->getStyle("A3:{$lastCol}3")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FF14532D']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFECFDF5']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => 'FF14532D']]],
+        ]);
+        $sheet->getRowDimension(3)->setRowHeight(22);
+
+        $sheet->mergeCells("A4:{$lastCol}4");
+        $sheet->setCellValue('A4', "Period: {$periodLabel} ({$startDate} to {$endDate})  |  Generated: " . date('d M Y, H:i'));
+        $sheet->getStyle("A4:{$lastCol}4")->getFont()->setSize(9.5)->setBold(true)->getColor()->setARGB('FF334155');
+        $sheet->getRowDimension(4)->setRowHeight(18);
+
+        $sheet->mergeCells("A5:{$lastCol}5");
+        $sheet->setCellValue('A5', 'Applied Filters: ' . $filterSummary);
+        $sheet->getStyle("A5:{$lastCol}5")->getFont()->setSize(9)->setItalic(true)->getColor()->setARGB('FF64748B');
+        $sheet->getRowDimension(5)->setRowHeight(17);
+
+        // Clean Landscape Print Setup
+        $sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE);
+        $sheet->getPageSetup()->setFitToWidth(1);
+        $sheet->getPageSetup()->setFitToHeight(0);
+
+        return 7;
+    }
+
+    private function addExcelFooter($sheet, int $row, int $colCount): void
+    {
+        $lastCol = Coordinate::stringFromColumnIndex($colCount);
+        $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+        $sheet->setCellValue("A{$row}", 'CONFIDENTIAL — Internal Financial Statement | The Premium Homes Ltd. | Do not distribute externally');
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+            'font' => ['italic' => true, 'size' => 8.5, 'color' => ['argb' => 'FF64748B']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['top' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCBD5E1']]],
+        ]);
+        $sheet->getRowDimension($row)->setRowHeight(18);
+    }
+
+    private function writeExcelTableHeader($sheet, int $row, array $headers): int
+    {
+        $colCount = count($headers);
+        $lastCol = Coordinate::stringFromColumnIndex($colCount);
+        foreach ($headers as $i => $h) {
+            $colLetter = Coordinate::stringFromColumnIndex($i + 1);
+            $sheet->setCellValue("{$colLetter}{$row}", $h);
+            if ($i > 0) {
+                $sheet->getStyle("{$colLetter}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            }
+        }
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF166534']],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension($row)->setRowHeight(22);
+        return $row + 1;
+    }
+
+    private function styleExcelDataRow($sheet, int $row, int $colCount, array $moneyCols, array $intCols, bool $zebra, int $netColIndicator = 0): void
+    {
+        $lastCol = Coordinate::stringFromColumnIndex($colCount);
+        if ($zebra) {
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF8FAFC');
+        }
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('FFE2E8F0');
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->getFont()->setSize(9.5);
+
+        foreach ($moneyCols as $cIdx) {
+            $col = Coordinate::stringFromColumnIndex($cIdx);
+            $sheet->getStyle("{$col}{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("{$col}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+        foreach ($intCols as $cIdx) {
+            $col = Coordinate::stringFromColumnIndex($cIdx);
+            $sheet->getStyle("{$col}{$row}")->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle("{$col}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+        if ($netColIndicator !== 0) {
+            $col = Coordinate::stringFromColumnIndex(abs($netColIndicator));
+            $argb = $netColIndicator > 0 ? 'FF166534' : 'FFB91C1C';
+            $sheet->getStyle("{$col}{$row}")->getFont()->setBold(true)->getColor()->setARGB($argb);
+        }
+    }
+
+    private function styleExcelTotalRow($sheet, int $row, int $colCount, array $moneyCols, array $intCols): void
+    {
+        $lastCol = Coordinate::stringFromColumnIndex($colCount);
+        $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FF0F172A']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFDCFCE7']],
+            'borders' => [
+                'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => 'FF14532D']],
+                'bottom' => ['borderStyle' => Border::BORDER_DOUBLE, 'color' => ['argb' => 'FF14532D']],
+            ],
+        ]);
+        foreach ($moneyCols as $cIdx) {
+            $col = Coordinate::stringFromColumnIndex($cIdx);
+            $sheet->getStyle("{$col}{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("{$col}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+        foreach ($intCols as $cIdx) {
+            $col = Coordinate::stringFromColumnIndex($cIdx);
+            $sheet->getStyle("{$col}{$row}")->getNumberFormat()->setFormatCode('#,##0');
+            $sheet->getStyle("{$col}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        }
+        $sheet->getRowDimension($row)->setRowHeight(22);
+    }
+
+    private function autoSizeExcelColumns($sheet, int $colCount): void
+    {
+        for ($i = 1; $i <= $colCount; $i++) {
+            $col = Coordinate::stringFromColumnIndex($i);
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        $sheet->calculateColumnWidths();
+        for ($i = 1; $i <= $colCount; $i++) {
+            $col = Coordinate::stringFromColumnIndex($i);
+            $w = $sheet->getColumnDimension($col)->getWidth();
+            if ($w > 0) {
+                $sheet->getColumnDimension($col)->setAutoSize(false);
+                $sheet->getColumnDimension($col)->setWidth(max(16, $w + 4));
+            }
+        }
     }
 
     /**
