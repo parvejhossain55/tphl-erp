@@ -105,6 +105,7 @@ $statusBadgeMap = [
                                 <th class="text-end">Total Paid</th>
                                 <th class="text-end">Retention</th>
                                 <th class="text-end">Net Refund</th>
+                                <th>Requested By</th>
                                 <th class="text-center">Stage / Status</th>
                                 <th class="text-center pe-3">Action</th>
                             </tr>
@@ -112,7 +113,7 @@ $statusBadgeMap = [
                         <tbody>
                             <?php if (empty($teamRefunds)): ?>
                                 <tr>
-                                    <td colspan="8" class="text-center py-5 text-muted">
+                                    <td colspan="9" class="text-center py-5 text-muted">
                                         <i class="fa-light fa-inbox fs-2 d-block mb-2 opacity-50"></i>
                                         No refund requests found for your team.
                                     </td>
@@ -139,6 +140,12 @@ $statusBadgeMap = [
                                     <td class="text-end font-monospace fs-13">৳ <?= number_format($r['total_paid'], 2) ?></td>
                                     <td class="text-end font-monospace fs-13 text-danger">৳ <?= number_format($r['retention_amount'], 2) ?></td>
                                     <td class="text-end font-monospace fs-13 fw-bold text-success">৳ <?= number_format($r['refund_amount'], 2) ?></td>
+                                    <td class="fs-12">
+                                        <div class="fw-medium text-dark"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></div>
+                                        <span class="text-muted fs-11 d-block">
+                                            <?= !empty($r['created_at']) ? date('d M Y, h:i A', strtotime($r['created_at'])) : '—' ?>
+                                        </span>
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge rounded-pill px-2 py-1 fs-11" style="background: <?= $st['bg'] ?>; color: <?= $st['color'] ?>;">
                                             <?= $st['label'] ?>
@@ -210,10 +217,19 @@ $statusBadgeMap = [
                                             <a href="<?= $base_url ?>/client-refund/<?= (int)$b['active_refund_id'] ?>" class="btn btn-xs btn-outline-info py-1 px-2">
                                                 Refund <?= ucfirst($b['active_refund_status']) ?>
                                             </a>
-                                        <?php elseif ($isTeamLeader): ?>
-                                            <a href="<?= $base_url ?>/client-refund-create/<?= (int)$b['booking_id'] ?>" class="btn btn-xs btn-danger py-1 px-2">
+                                        <?php elseif ($isTeamLeader || in_array((int)($userRole ?? 0), [1, 3, 9, 20, 38], true)): ?>
+                                            <button type="button"
+                                                class="btn btn-xs btn-danger py-1 px-2 quickRefundBtn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#quickRefundModal"
+                                                data-id="<?= (int)$b['booking_id'] ?>"
+                                                data-paid="<?= (float)($b['total_paid'] ?? 0) ?>"
+                                                data-flat="<?= htmlspecialchars(($b['flat_name'] ?? '') . (!empty($b['floor_no']) ? ' (Floor ' . $b['floor_no'] . ')' : '')) ?>"
+                                                data-project="<?= htmlspecialchars($b['project_name'] ?? '') ?>"
+                                                data-agreement="<?= number_format((float)($b['agreement_value'] ?? 0), 2) ?>"
+                                                data-client="<?= htmlspecialchars($b['client_name'] ?? '') ?>">
                                                 <i class="fa-light fa-rotate-left me-1"></i> Request Refund
-                                            </a>
+                                            </button>
                                         <?php else: ?>
                                             <button type="button" class="btn btn-xs btn-outline-danger py-1 px-2"
                                                     onclick="if(typeof Swal !== 'undefined'){ Swal.fire({ icon: 'info', title: 'Restricted', text: 'Only your sales leaders can create refund request.' }); } else { alert('Only your sales leaders can create refund request.'); }">
@@ -231,3 +247,5 @@ $statusBadgeMap = [
         </div>
     </div>
 </div>
+
+<?php include __DIR__ . '/../../components/quick-refund-modal.php'; ?>

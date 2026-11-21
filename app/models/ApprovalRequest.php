@@ -73,6 +73,10 @@ class ApprovalRequest extends Model
                     'op_head_by'           => "INT UNSIGNED NULL DEFAULT NULL",
                     'op_head_at'           => "DATETIME NULL DEFAULT NULL",
                     'op_head_note'         => "TEXT NULL DEFAULT NULL",
+                    'qc_status'            => "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+                    'qc_by'                => "INT UNSIGNED NULL DEFAULT NULL",
+                    'qc_at'                => "DATETIME NULL DEFAULT NULL",
+                    'qc_note'              => "TEXT NULL DEFAULT NULL",
                 ];
                 foreach ($requiredCols as $colName => $colDef) {
                     if (!isset($existingCols[$colName])) {
