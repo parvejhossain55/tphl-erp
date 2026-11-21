@@ -4243,14 +4243,105 @@ public function downloadPublicReceiptPdf($paymentId = null)
         }
     }
 
-    $companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
-    $companyPhone = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
-    $companyEmail = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
-    $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+    $currentProjectId = (int)($clientDetails['project_id'] ?? ($payment['project_id'] ?? 0));
+    $currentProjectName = trim($clientDetails['project_name'] ?? ($payment['project_name'] ?? ''));
+    $currentCategoryId = (int)($clientDetails['category_id'] ?? ($payment['category_id'] ?? 0));
+    $currentCategoryName = trim($clientDetails['category_name'] ?? ($payment['category_name'] ?? ''));
 
-    $whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
-    $logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
-    $logoFilePath = dirname(dirname(__DIR__)) . '/public/uploads/settings/' . $logoFileName;
+    if ($db && $currentProjectId > 0 && ($currentCategoryId <= 0 || empty($currentCategoryName) || empty($currentProjectName))) {
+        try {
+            $catStmt = $db->prepare("
+                SELECT p.name AS project_name, p.category_id, pc.name AS category_name
+                FROM projects p
+                LEFT JOIN project_categories pc ON p.category_id = pc.id
+                WHERE p.id = ? LIMIT 1
+            ");
+            if ($catStmt) {
+                $catStmt->bind_param("i", $currentProjectId);
+                $catStmt->execute();
+                $catRes = $catStmt->get_result();
+                if ($catRow = $catRes->fetch_assoc()) {
+                    if (empty($currentProjectName)) $currentProjectName = trim($catRow['project_name'] ?? '');
+                    if ($currentCategoryId <= 0) $currentCategoryId = (int)($catRow['category_id'] ?? 0);
+                    if (empty($currentCategoryName)) $currentCategoryName = trim($catRow['category_name'] ?? '');
+                }
+                $catStmt->close();
+            }
+        } catch (Exception $e) {}
+    }
+
+    $isNatureProject = ($currentProjectId === 74) 
+        || ($currentCategoryId === 9) 
+        || (stripos($currentProjectName, 'The Nature') !== false) 
+        || (stripos($currentProjectName, 'Nature') !== false);
+
+    $isOlympusProject = ($currentCategoryId === 10) 
+        || (stripos($currentCategoryName, 'Olympus') !== false) 
+        || (stripos($currentProjectName, 'Olympus') !== false);
+
+    if ($isOlympusProject) {
+        $categoryBrandName = !empty($currentCategoryName) ? $currentCategoryName : "The Olympus Real Estate";
+        $companyTitle   = $categoryBrandName;
+        $brandDomain    = $categoryBrandName;
+        $brandSlogan    = "REAL ESTATE";
+        $companyAddress = "Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+        $companyPhone   = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
+        $companyEmail   = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
+        $uploadsDir     = dirname(dirname(__DIR__)) . '/public/uploads/';
+        $logoFilePath   = $uploadsDir . 'Olympus-logo.png';
+        foreach (['Olympus-logo.png', 'Olympus-logo.jpeg', 'olympus-logo.png', 'olympus-logo.jpeg'] as $cand) {
+            if (file_exists($uploadsDir . $cand)) {
+                $logoFilePath = $uploadsDir . $cand;
+                break;
+            }
+        }
+
+        $themePrimary   = "#c58b42";
+        $themeDark      = "#3e3b42";
+        $themeDeep      = "#2c2930";
+        $themeLight     = "#d49b56";
+        $themeBgLight   = "#fdfbf7";
+        $themeBadgeBg   = "#f7efe4";
+        $themeBorder    = "#ebd8c1";
+        $themeRgb       = [197, 139, 66];
+    } elseif ($isNatureProject) {
+        $companyTitle   = "The Nature";
+        $brandDomain    = "The Nature";
+        $brandSlogan    = "A LUXURY RESORT COMMUNITY";
+        $companyAddress = "Marine Drive, Cox's Bazar | Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+        $companyPhone   = "+8801958253303";
+        $companyEmail   = "accounts@dpremiumhomes.com";
+        $logoFilePath   = dirname(dirname(__DIR__)) . '/public/uploads/nature-logo.png';
+
+        $themePrimary   = "#0284c7";
+        $themeDark      = "#0369a1";
+        $themeDeep      = "#075985";
+        $themeLight     = "#38bdf8";
+        $themeBgLight   = "#f0f9ff";
+        $themeBadgeBg   = "#e0f2fe";
+        $themeBorder    = "#bae6fd";
+        $themeRgb       = [2, 132, 199];
+    } else {
+        $companyTitle   = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
+        $brandDomain    = "Real Estate & Property Management";
+        $brandSlogan    = "YOUR DREAM HOME AWAITS";
+        $companyPhone   = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
+        $companyEmail   = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
+        $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+
+        $whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
+        $logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
+        $logoFilePath = dirname(dirname(__DIR__)) . '/public/uploads/settings/' . $logoFileName;
+
+        $themePrimary   = "#0b6638";
+        $themeDark      = "#0b4022";
+        $themeDeep      = "#0f3b25";
+        $themeLight     = "#10b981";
+        $themeBgLight   = "#f0fdf4";
+        $themeBadgeBg   = "#ecfdf5";
+        $themeBorder    = "#bbf7d0";
+        $themeRgb       = [11, 102, 56];
+    }
 
     // QR Code
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
@@ -4264,7 +4355,7 @@ public function downloadPublicReceiptPdf($paymentId = null)
     if (class_exists('TCPDF2DBarcode')) {
         try {
             $barcode = new TCPDF2DBarcode($verificationUrl, 'QRCODE,M');
-            $qrPng = $barcode->getBarcodePngData(3, 3, [11, 102, 56]);
+            $qrPng = $barcode->getBarcodePngData(3, 3, $themeRgb);
             if ($qrPng && strlen($qrPng) > 50) {
                 $qrImageSrc = 'data:image/png;base64,' . base64_encode($qrPng);
             }
@@ -4302,10 +4393,10 @@ public function downloadPublicReceiptPdf($paymentId = null)
     $badgeText = $isVerified ? ($isCash ? 'Cash Verified' : 'Verified') : 'Subject to Verification';
 
     $statusHtml = $isVerified ? '
-        <div style="background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 6px; padding: 4px 10px; display: inline-block; text-align: left;">
-            <span style="font-size: 8px; font-weight: bold; color: #15803d; text-transform: uppercase;">PAYMENT STATUS</span><br>
-            <b style="font-size: 11px; color: #15803d;">Verified &amp; Confirmed</b><br>
-            <span style="font-size: 8px; color: #166534;">Payment verified officially.</span>
+        <div style="background: ' . $themeBgLight . '; border: 1.5px solid ' . $themeBorder . '; border-radius: 6px; padding: 4px 10px; display: inline-block; text-align: left;">
+            <span style="font-size: 8px; font-weight: bold; color: ' . $themeDark . '; text-transform: uppercase;">PAYMENT STATUS</span><br>
+            <b style="font-size: 11px; color: ' . $themePrimary . ';">Verified &amp; Confirmed</b><br>
+            <span style="font-size: 8px; color: ' . $themeDark . ';">Payment verified officially.</span>
         </div>' : '
         <div style="background: #fffbeb; border: 1.5px solid #fef3c7; border-radius: 6px; padding: 4px 10px; display: inline-block; text-align: left;">
             <span style="font-size: 8px; font-weight: bold; color: #b45309; text-transform: uppercase;">PAYMENT STATUS</span><br>
@@ -4313,20 +4404,23 @@ public function downloadPublicReceiptPdf($paymentId = null)
             <span style="font-size: 8px; color: #92400e;">Confirmation issued after verification.</span>
         </div>';
 
+    $stampColor = $isOlympusProject ? $themePrimary : ($isNatureProject ? '#0284c7' : '#2563eb');
+    $stampText = $isOlympusProject ? 'OLYMPUS' : ($isNatureProject ? 'NATURE' : 'TPHL');
+
     $html = '
     <style>
         body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #0f172a; font-size: 10.5px; line-height: 1.4; margin: 0; padding: 0; }
         .header-tbl { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .company-name { font-size: 16px; font-weight: 900; color: #0b4022; text-transform: uppercase; letter-spacing: 0.5px; }
-        .company-slogan { font-size: 7.5px; color: #15803d; font-weight: bold; letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; }
-        .company-tag { font-size: 11px; color: #0b6638; font-weight: bold; margin-top: 4px; }
+        .company-name { font-size: 16px; font-weight: 900; color: ' . $themeDark . '; text-transform: uppercase; letter-spacing: 0.5px; }
+        .company-slogan { font-size: 7.5px; color: ' . $themePrimary . '; font-weight: bold; letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; }
+        .company-tag { font-size: 11px; color: ' . $themePrimary . '; font-weight: bold; margin-top: 4px; }
         .company-desc { font-size: 9px; color: #475569; line-height: 1.35; margin-top: 2px; }
         .doc-title { font-size: 18px; font-weight: 900; color: #0f172a; text-align: right; }
-        .copy-pill { background: #0f3b25; color: #ffffff; padding: 3px 10px; font-size: 9px; font-weight: bold; border-radius: 4px; text-transform: uppercase; }
+        .copy-pill { background: ' . $themeDeep . '; color: #ffffff; padding: 3px 10px; font-size: 9px; font-weight: bold; border-radius: 4px; text-transform: uppercase; }
         .doc-rec { font-size: 14px; font-weight: 800; color: #0f172a; text-align: right; margin-top: 3px; }
         .doc-date { font-size: 11px; color: #475569; text-align: right; margin-top: 1px; }
         
-        .green-divider { height: 3px; background-color: #0b6638; width: 100%; margin: 8px 0 14px 0; }
+        .green-divider { height: 3px; background-color: ' . $themePrimary . '; width: 100%; margin: 8px 0 14px 0; }
 
         .info-tbl { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
         .info-card { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 10px; }
@@ -4335,10 +4429,10 @@ public function downloadPublicReceiptPdf($paymentId = null)
         .lbl { color: #64748b; font-size: 9.5px; width: 85px; display: inline-block; font-weight: 600; }
         .val { font-weight: 800; color: #0f172a; }
 
-        .amount-banner { background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
+        .amount-banner { background: ' . $themeBgLight . '; border: 1.5px solid ' . $themeBorder . '; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
         .amt-title { font-size: 10.5px; font-weight: 800; color: #0f172a; }
-        .method-pill { background: #0f3b25; color: #ffffff; padding: 2px 7px; font-size: 9px; font-weight: bold; border-radius: 3px; margin-left: 4px; }
-        .words-pill { background: #dcfce7; color: #15803d; font-size: 8px; font-weight: bold; padding: 1px 6px; border-radius: 3px; }
+        .method-pill { background: ' . $themeDeep . '; color: #ffffff; padding: 2px 7px; font-size: 9px; font-weight: bold; border-radius: 3px; margin-left: 4px; }
+        .words-pill { background: ' . $themeBadgeBg . '; color: ' . $themePrimary . '; font-size: 8px; font-weight: bold; padding: 1px 6px; border-radius: 3px; }
         .amt-num { font-size: 24px; font-weight: 900; color: #0f172a; text-align: right; }
 
         .proc-box { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 9.5px; }
@@ -4346,17 +4440,17 @@ public function downloadPublicReceiptPdf($paymentId = null)
         .proc-lbl { color: #64748b; font-size: 8.5px; font-weight: 600; margin-bottom: 2px; }
         .proc-val { font-weight: 800; color: #0f172a; font-size: 10px; }
 
-        .verify-box { border: 1.5px solid #a7f3d0; background: #f0fdf4; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
+        .verify-box { border: 1.5px solid ' . $themeBorder . '; background: ' . $themeBgLight . '; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
     </style>
 
     <table class="header-tbl">
         <tr>
             <td style="width: 55%; vertical-align: top;">
-                ' . (file_exists($logoFilePath) ? '<img src="' . $logoFilePath . '" style="height: 38px; margin-bottom: 4px;" /><br>' : '<div class="company-name">' . htmlspecialchars($companyTitle) . '</div><div class="company-slogan">YOUR DREAM HOME AWAITS</div>') . '
-                <div class="company-tag">Real Estate &amp; Property Management</div>
+                ' . (file_exists($logoFilePath) ? '<img src="' . $logoFilePath . '" style="height: 38px; margin-bottom: 4px; border-radius: 4px;" /><br>' : '<div class="company-name">' . htmlspecialchars($companyTitle) . '</div><div class="company-slogan">' . htmlspecialchars($brandSlogan) . '</div>') . '
+                <div class="company-tag">' . htmlspecialchars($brandDomain) . '</div>
                 <div class="company-desc">
                     ' . htmlspecialchars($companyAddress) . '<br>
-                    <b>+8801958253303</b> &bull; accounts@dpremiumhomes.com
+                    <b>' . htmlspecialchars($companyPhone) . '</b> &bull; ' . htmlspecialchars($companyEmail) . '
                 </div>
             </td>
             <td style="width: 45%; vertical-align: top; text-align: right;">
@@ -4449,17 +4543,17 @@ public function downloadPublicReceiptPdf($paymentId = null)
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
                 <td style="vertical-align: middle;">
-                    <div style="font-size: 10.5px; font-weight: 800; color: #0b6638; text-transform: uppercase; margin-bottom: 3px;">
+                    <div style="font-size: 10.5px; font-weight: 800; color: ' . $themeDark . '; text-transform: uppercase; margin-bottom: 3px;">
                         &#10004; ' . ($isCash ? 'CASH-VERIFIED' : 'OFFICIAL-VERIFIED') . ' PAYMENT RECEIPT
                     </div>
                     <div style="font-size: 9px; color: #64748b; margin-bottom: 6px;">
                         This payment has been reviewed and confirmed through the official ERP system.
                     </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 9px; border-top: 1px solid #d1fae5; padding-top: 4px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 9px; border-top: 1px solid ' . $themeBorder . '; padding-top: 4px;">
                         <tr>
                             <td style="width: 32%;"><b>Receipt ID:</b> ' . htmlspecialchars($receiptNo) . '</td>
-                            <td style="width: 34%;"><b>Verified By:</b> <span style="color: ' . ($isVerified ? '#15803d' : '#d97706') . '; font-weight: bold;">' . htmlspecialchars($verifiedByName) . '</span></td>
-                            <td style="width: 34%;"><b>Verified On:</b> <span style="color: ' . ($isVerified ? '#15803d' : '#d97706') . '; font-weight: bold;">' . htmlspecialchars($verifiedDateFormatted) . '</span></td>
+                            <td style="width: 34%;"><b>Verified By:</b> <span style="color: ' . ($isVerified ? $themeDark : '#d97706') . '; font-weight: bold;">' . htmlspecialchars($verifiedByName) . '</span></td>
+                            <td style="width: 34%;"><b>Verified On:</b> <span style="color: ' . ($isVerified ? $themeDark : '#d97706') . '; font-weight: bold;">' . htmlspecialchars($verifiedDateFormatted) . '</span></td>
                         </tr>
                     </table>
                     <div style="font-size: 8px; color: #64748b; font-style: italic; margin-top: 4px;">
@@ -4471,14 +4565,14 @@ public function downloadPublicReceiptPdf($paymentId = null)
                         <tr>
                             ' . (!empty($qrImageSrc) ? '
                             <td style="text-align: center; vertical-align: middle; padding-right: 10px;">
-                                <img src="' . $qrImageSrc . '" style="width: 52px; height: 52px; border: 1px solid #bbf7d0; padding: 2px; border-radius: 4px; background: #ffffff;" />
-                                <div style="font-size: 7px; font-weight: bold; color: #0b6638; text-align: center; margin-top: 2px;">SCAN TO VERIFY</div>
+                                <img src="' . $qrImageSrc . '" style="width: 52px; height: 52px; border: 1px solid ' . $themeBorder . '; padding: 2px; border-radius: 4px; background: #ffffff;" />
+                                <div style="font-size: 7px; font-weight: bold; color: ' . $themeDark . '; text-align: center; margin-top: 2px;">SCAN TO VERIFY</div>
                             </td>' : '') . '
                             <td style="text-align: center; vertical-align: middle;">
-                                <div style="border: 2px solid #2563eb; border-radius: 50%; width: 52px; height: 52px; text-align: center; padding-top: 10px;">
-                                    <div style="font-size: 7.5px; font-weight: 900; color: #2563eb;">TPHL</div>
-                                    <div style="height: 1px; background: #2563eb; width: 30px; margin: 1px auto;"></div>
-                                    <div style="font-size: 6.5px; font-weight: bold; color: #2563eb;">OFFICIAL</div>
+                                <div style="border: 2px solid ' . $stampColor . '; border-radius: 50%; width: 52px; height: 52px; text-align: center; padding-top: 10px;">
+                                    <div style="font-size: 7.5px; font-weight: 900; color: ' . $stampColor . ';">' . $stampText . '</div>
+                                    <div style="height: 1px; background: ' . $stampColor . '; width: 30px; margin: 1px auto;"></div>
+                                    <div style="font-size: 6.5px; font-weight: bold; color: ' . $stampColor . ';">OFFICIAL</div>
                                 </div>
                             </td>
                         </tr>
@@ -4489,7 +4583,7 @@ public function downloadPublicReceiptPdf($paymentId = null)
     </div>
 
     <div style="border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 6px; text-align: center;">
-        <span style="font-size: 9.5px; font-weight: 700; color: #475569; letter-spacing: 2px; text-transform: uppercase;">Your Dream Home Awaits</span>
+        <span style="font-size: 9.5px; font-weight: 700; color: #475569; letter-spacing: 2px; text-transform: uppercase;">' . htmlspecialchars($brandSlogan) . '</span>
     </div>
     ';
 

@@ -12,6 +12,7 @@ $themeBgLight   = !empty($themeBgLight) ? $themeBgLight : "#f0fdf4";
 $themeBadgeBg   = !empty($themeBadgeBg) ? $themeBadgeBg : "#ecfdf5";
 $themeBorder    = !empty($themeBorder) ? $themeBorder : "#bbf7d0";
 $brandDomain    = !empty($brandDomain) ? $brandDomain : "Real Estate & Property Management";
+$brandSlogan    = !empty($brandSlogan) ? $brandSlogan : "YOUR DREAM HOME AWAITS";
 $companyAddress = !empty($companyAddress) ? $companyAddress : "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
 $companyPhone   = !empty($companyPhone) ? $companyPhone : "+8801958253303";
 $companyEmail   = !empty($companyEmail) ? $companyEmail : "accounts@dpremiumhomes.com";
@@ -228,6 +229,7 @@ if (empty($logoSrc)) {
             height: 44px;
             width: auto;
             max-width: 250px;
+            border-radius: 4px;
             object-fit: contain;
             display: block;
         }
@@ -915,6 +917,7 @@ if (empty($logoSrc)) {
         #pdf-render-container .brand-logo-img {
             height: 44px !important;
             max-width: 250px !important;
+            border-radius: 4px !important;
         }
 
         #pdf-render-container .brand-address {
@@ -1393,7 +1396,7 @@ if (empty($logoSrc)) {
                                 <?php else: ?>
                                     <div class="brand-text-col">
                                         <div class="brand-name"><?= htmlspecialchars(strtoupper($companyTitle ?? 'THE PREMIUM HOMES LTD')) ?></div>
-                                        <div class="brand-slogan">YOUR DREAM HOME AWAITS</div>
+                                        <div class="brand-slogan"><?= htmlspecialchars(strtoupper($brandSlogan ?? 'YOUR DREAM HOME AWAITS')) ?></div>
                                     </div>
                                 <?php endif; ?>
                             </div>

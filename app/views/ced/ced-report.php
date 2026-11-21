@@ -271,29 +271,31 @@
         <?php endif; ?>
 
         <!-- Summary Section -->
-        <div class="card report-card print-summary-card mb-3" style="background: #0e5013; border: none;">
-            <div class="card-body p-3">
-                <div class="row align-items-center">
-                    <div class="col-6 border-end border-light border-opacity-25">
-                        <div class="d-flex align-items-center justify-content-between pe-2">
-                            <div>
-                                <h6 class="mb-1 -50 text-uppercase fw-bold" style="letter-spacing: 1px; font-size: 11px;">Total Clients Followed Up</h6>
-                                <h2 class="mb-0 fw-bold " style="font-size: 2rem;"><?= $summary['total_clients'] ?></h2>
-                            </div>
-                            <div class="summary-icon  opacity-50 fs-2" style="width: 40px; height: 40px;">
-                                <i class="bi bi-people"></i>
-                            </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card report-card print-summary-card h-100 mb-0" style="border-left: 4px solid #0e5013;">
+                    <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="mb-1 text-muted text-uppercase fw-bold" style="letter-spacing: 0.8px; font-size: 11px;">Total Clients Followed Up</h6>
+                            <h2 class="mb-0 fw-bold text-dark" style="font-size: 2rem;"><?= number_format((int)($summary['total_clients'] ?? 0)) ?></h2>
+                            <small class="text-muted" style="font-size: 11px;">Unique clients contacted in selected range</small>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 52px; height: 52px; background: rgba(14, 80, 19, 0.1); color: #0e5013; font-size: 24px;">
+                            <i class="bi bi-people"></i>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-center justify-content-between ps-2">
-                            <div>
-                                <h6 class="mb-1 -50 text-uppercase fw-bold" style="letter-spacing: 1px; font-size: 11px;">Total Follow-up Notes</h6>
-                                <h2 class="mb-0 fw-bold " style="font-size: 2rem;"><?= $summary['total_notes'] ?></h2>
-                            </div>
-                            <div class="summary-icon  opacity-50 fs-2" style="width: 40px; height: 40px;">
-                                <i class="bi bi-journal-check"></i>
-                            </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card report-card print-summary-card h-100 mb-0" style="border-left: 4px solid #1d4ed8;">
+                    <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="mb-1 text-muted text-uppercase fw-bold" style="letter-spacing: 0.8px; font-size: 11px;">Total Follow-up Notes</h6>
+                            <h2 class="mb-0 fw-bold text-dark" style="font-size: 2rem;"><?= number_format((int)($summary['total_notes'] ?? 0)) ?></h2>
+                            <small class="text-muted" style="font-size: 11px;">Total follow-up entries (Lead + EMI)</small>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 52px; height: 52px; background: rgba(29, 78, 216, 0.1); color: #1d4ed8; font-size: 24px;">
+                            <i class="bi bi-journal-check"></i>
                         </div>
                     </div>
                 </div>
