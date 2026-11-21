@@ -3236,7 +3236,7 @@
                 <?php if (($_SESSION['user']['role_id'] ?? 0) != 9 && ($_SESSION['user']['role_id'] ?? 0) != 33): // Hide Construction module for role 9 and 33 ?>
                     <?php
                     $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [20, 32]) || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 30, 34, 35]);
-                    if ($hasConPerms):
+                    if ($hasConPerms && (int)($_SESSION['user']['role_id'] ?? 0) !== 14):
                         ?>
                         <li class="sidebar__menu-category">
                             <span class="category-name">Construction </span>
@@ -3565,7 +3565,7 @@
                                 <div class="side-menu__icon">
                                     <i class="bi bi-building"></i>
                                 </div>
-                                <span class="sidebar__menu-label">Engineering Department</span>
+                                <span class="sidebar__menu-label"><?= ((int)($_SESSION['user']['role_id'] ?? 0) === 14) ? 'Land & Legal' : 'Engineering Department' ?></span>
                             </a>
 
                             <ul class="sidebar-menu child1" style="display:block;">
