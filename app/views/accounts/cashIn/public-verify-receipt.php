@@ -135,6 +135,7 @@ $isOlympusProject = ($currentCategoryId === 10)
 
 if ($isOlympusProject) {
     $companyTitle = !empty($currentCategoryName) ? $currentCategoryName : "The Olympus Real Estate";
+    $companyAddress = "23/2, SEL HUQ Skypark, 4th floor, Opposite of Wonderland (Shyamoli), Dhaka";
     $companyPhone = "01958-253302";
     $companyEmail = "info@theolympusrealestate.com";
     $companyWebsite = "www.theolympusrealestate.com";
@@ -889,7 +890,7 @@ if ($paymentMethod === 'CASH') {
             <div class="security-badge">
                 <i class="fa-solid fa-shield-check"></i> Genuine Digital Verification
             </div>
-            <div><?= htmlspecialchars($companyTitle) ?> &bull; Gulshan Circle-2, Dhaka<?= !empty($companyWebsite) ? ' &bull; ' . htmlspecialchars($companyWebsite) : '' ?></div>
+            <div><?= htmlspecialchars($companyTitle) ?> &bull; <?= $isOlympusProject ? htmlspecialchars($companyAddress) : 'Gulshan Circle-2, Dhaka' ?><?= !empty($companyWebsite) ? ' &bull; ' . htmlspecialchars($companyWebsite) : '' ?></div>
             <div style="margin-top: 2px;">This electronic verification was generated directly by the secure ERP ledger.</div>
         </div>
 
