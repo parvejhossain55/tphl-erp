@@ -2822,6 +2822,14 @@
                             <span class="sidebar__menu-label">Central Statement</span>
                         </a>
                     </li>
+                    <li class="slide <?= isActive('central-statement-v2', $current_route) ?>">
+                        <a href="<?= $base_url ?>/central-statement-v2"
+                            class="sidebar__menu-item <?= isActive('central-statement-v2', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line text-success"></i></div>
+                            <span class="sidebar__menu-label">Central Accounts V2</span>
+                            <span class="badge bg-success-subtle text-success rounded-pill ms-auto me-2" style="font-size: 10px;">V2</span>
+                        </a>
+                    </li>
                     <li class="slide <?= isActive('incentive-management', $current_route) ?>">
                         <a href="<?= $base_url ?>/incentive-management"
                             class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
