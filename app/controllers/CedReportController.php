@@ -64,40 +64,43 @@ class CedReportController extends Controller
             $endDate = !empty($_GET['end_date']) ? $_GET['end_date'] : $defaultEndDate;
         }
 
-        // Fetch Data
+        // Pagination
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = max(10, min(200, (int)($_GET['per_page'] ?? 50)));
+
+        // Fetch Data (paginated + SQL aggregated summary/breakdown)
         $cedEmployees = $this->userModel->getCedEmployees();
-        $reportData = $this->followUpModel->getCedActivityReport($agentId, $startDate, $endDate);
+        $reportData = $this->followUpModel->getCedActivityReport($agentId, $startDate, $endDate, $page, $perPage, $reportMode);
 
         $summary = $reportData['summary'];
         $details = $reportData['details'];
+        $breakdownCounts = $reportData['breakdown_counts'] ?? [];
+        $pagination = $reportData['pagination'] ?? [
+            'page' => $page,
+            'per_page' => $perPage,
+            'total_records' => count($details),
+            'total_pages' => 1
+        ];
 
-        // Generate Breakdown
+        // Generate Breakdown from lightweight SQL counts
         $breakdownData = [];
         if ($reportMode === 'monthly') {
-            // Daily breakdown for the month
             $daysInMonth = date('t', strtotime($startDate));
             for ($i = 1; $i <= $daysInMonth; $i++) {
                 $dayStr = sprintf("%02d", $i);
-                $breakdownData[$dayStr] = ['label' => "$dayStr " . date('M', strtotime($startDate)), 'count' => 0];
-            }
-            foreach ($details as $row) {
-                $day = date('d', strtotime($row['follow_up_date']));
-                if (isset($breakdownData[$day])) {
-                    $breakdownData[$day]['count']++;
-                }
+                $breakdownData[$dayStr] = [
+                    'label' => "$dayStr " . date('M', strtotime($startDate)),
+                    'count' => (int)($breakdownCounts[$dayStr] ?? 0)
+                ];
             }
         } elseif ($reportMode === 'yearly') {
-            // Monthly breakdown for the year
             for ($i = 1; $i <= 12; $i++) {
                 $monthNum = sprintf("%02d", $i);
                 $monthName = date('F', mktime(0, 0, 0, $i, 10));
-                $breakdownData[$monthNum] = ['label' => $monthName, 'count' => 0];
-            }
-            foreach ($details as $row) {
-                $month = date('m', strtotime($row['follow_up_date']));
-                if (isset($breakdownData[$month])) {
-                    $breakdownData[$month]['count']++;
-                }
+                $breakdownData[$monthNum] = [
+                    'label' => $monthName,
+                    'count' => (int)($breakdownCounts[$monthNum] ?? 0)
+                ];
             }
         }
 
@@ -131,7 +134,8 @@ class CedReportController extends Controller
             "reportMode" => $reportMode,
             "reportMonth" => $reportMonth,
             "reportYear" => $reportYear,
-            "breakdownData" => $breakdownData
+            "breakdownData" => $breakdownData,
+            "pagination" => $pagination
         ]);
     }
 

@@ -301,11 +301,31 @@
         </div>
 
         <!-- Details Table -->
+        <?php
+            $pgPage = (int)($pagination['page'] ?? 1);
+            $pgPerPage = (int)($pagination['per_page'] ?? 50);
+            $pgTotal = (int)($pagination['total_records'] ?? count($details));
+            $pgTotalPages = (int)($pagination['total_pages'] ?? 1);
+            $pgStart = $pgTotal > 0 ? (($pgPage - 1) * $pgPerPage) + 1 : 0;
+            $pgEnd = min($pgTotal, $pgPage * $pgPerPage);
+            $baseQueryParams = array_filter([
+                'agent_id' => $agentId ?: null,
+                'report_mode' => $reportMode ?? null,
+                'report_month' => $reportMonth ?? null,
+                'report_year' => $reportYear ?? null,
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'per_page' => $pgPerPage,
+            ], static fn($v) => $v !== null && $v !== '');
+        ?>
         <div class="card report-card">
-            <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
+            <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div class="card-title fw-bold text-dark fs-16">
                     <i class="bi bi-list-columns-reverse text-primary me-2"></i> 
                     Activity Footprints (<?= htmlspecialchars($startDate ?? '') ?> to <?= htmlspecialchars($endDate ?? '') ?>)
+                </div>
+                <div class="text-muted fs-13">
+                    Showing <strong><?= number_format($pgStart) ?>–<?= number_format($pgEnd) ?></strong> of <strong><?= number_format($pgTotal) ?></strong> records
                 </div>
             </div>
             <div class="card-body">
@@ -332,7 +352,7 @@
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php $i = 1; foreach ($details as $row): ?>
+                                <?php $i = $pgStart; foreach ($details as $row): ?>
                                     <tr>
                                         <td class="fw-bold text-muted align-middle"><?= $i++ ?></td>
                                         <td class="align-middle">
@@ -381,6 +401,42 @@
                         </tbody>
                     </table>
                 </div>
+
+                <?php if ($pgTotalPages > 1): ?>
+                    <nav class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-3 border-top no-print gap-2" aria-label="CED report pagination">
+                        <div class="text-muted fs-13">
+                            Page <strong><?= $pgPage ?></strong> of <strong><?= $pgTotalPages ?></strong>
+                        </div>
+                        <ul class="pagination pagination-sm mb-0">
+                            <?php
+                                $buildPageUrl = static function ($targetPage) use ($baseQueryParams) {
+                                    return '?' . http_build_query(array_merge($baseQueryParams, ['page' => $targetPage]));
+                                };
+                                $winStart = max(1, $pgPage - 2);
+                                $winEnd = min($pgTotalPages, $pgPage + 2);
+                            ?>
+                            <li class="page-item <?= ($pgPage <= 1) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= ($pgPage > 1) ? htmlspecialchars($buildPageUrl($pgPage - 1)) : '#' ?>">Prev</a>
+                            </li>
+                            <?php if ($winStart > 1): ?>
+                                <li class="page-item"><a class="page-link" href="<?= htmlspecialchars($buildPageUrl(1)) ?>">1</a></li>
+                                <?php if ($winStart > 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                            <?php endif; ?>
+                            <?php for ($p = $winStart; $p <= $winEnd; $p++): ?>
+                                <li class="page-item <?= ($p === $pgPage) ? 'active' : '' ?>">
+                                    <a class="page-link" href="<?= htmlspecialchars($buildPageUrl($p)) ?>"><?= $p ?></a>
+                                </li>
+                            <?php endfor; ?>
+                            <?php if ($winEnd < $pgTotalPages): ?>
+                                <?php if ($winEnd < $pgTotalPages - 1): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                                <li class="page-item"><a class="page-link" href="<?= htmlspecialchars($buildPageUrl($pgTotalPages)) ?>"><?= $pgTotalPages ?></a></li>
+                            <?php endif; ?>
+                            <li class="page-item <?= ($pgPage >= $pgTotalPages) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= ($pgPage < $pgTotalPages) ? htmlspecialchars($buildPageUrl($pgPage + 1)) : '#' ?>">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                <?php endif; ?>
             </div>
         </div>
 
