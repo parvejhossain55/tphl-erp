@@ -91,7 +91,7 @@ if ($isOlympusProject) {
     $companyTitle   = $categoryBrandName;
     $brandDomain    = $categoryBrandName;
     $brandSlogan    = "REAL ESTATE";
-    $companyAddress = "Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+    $companyAddress = "23/2, SEL HUQ Skypark, 4th floor, Opposite of Wonderland (Shyamoli), Dhaka";
     $companyPhone   = "01958-253302";
     $companyEmail   = "info@theolympusrealestate.com";
     $companyWebsite = "www.theolympusrealestate.com";
