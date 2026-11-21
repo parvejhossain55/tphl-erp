@@ -92,8 +92,9 @@ if ($isOlympusProject) {
     $brandDomain    = $categoryBrandName;
     $brandSlogan    = "REAL ESTATE";
     $companyAddress = "Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
-    $companyPhone   = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
-    $companyEmail   = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
+    $companyPhone   = "01958-253302";
+    $companyEmail   = "info@theolympusrealestate.com";
+    $companyWebsite = "www.theolympusrealestate.com";
 
     // The Olympus Brand Palette (Exact Gold #d49b56 & Charcoal #3e3b42 from Olympus-logo.png)
     $themePrimary   = "#c58b42"; // Rich amber gold (accessible contrast)

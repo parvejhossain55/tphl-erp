@@ -281,7 +281,8 @@ if (empty($logoSrc)) {
         .brand-contact-row {
             display: flex;
             align-items: center;
-            gap: 14px;
+            flex-wrap: wrap;
+            gap: 3px 12px;
             margin-top: 3px;
             font-size: 9.5px;
             color: #1e293b;
@@ -1405,6 +1406,9 @@ if (empty($logoSrc)) {
                             <div class="brand-contact-row">
                                 <span><i class="fa-solid fa-phone"></i> <?= htmlspecialchars($companyPhone ?? '+8801958253303') ?></span>
                                 <span><i class="fa-solid fa-envelope"></i> <?= htmlspecialchars($companyEmail ?? 'accounts@dpremiumhomes.com') ?></span>
+                                <?php if (!empty($companyWebsite)): ?>
+                                    <span><i class="fa-solid fa-globe"></i> <?= htmlspecialchars($companyWebsite) ?></span>
+                                <?php endif; ?>
                             </div>
                         </div>
 

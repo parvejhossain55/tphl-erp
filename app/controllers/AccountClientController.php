@@ -4285,8 +4285,9 @@ public function downloadPublicReceiptPdf($paymentId = null)
         $brandDomain    = $categoryBrandName;
         $brandSlogan    = "REAL ESTATE";
         $companyAddress = "Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
-        $companyPhone   = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
-        $companyEmail   = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
+        $companyPhone   = "01958-253302";
+        $companyEmail   = "info@theolympusrealestate.com";
+        $companyWebsite = "www.theolympusrealestate.com";
         $uploadsDir     = dirname(dirname(__DIR__)) . '/public/uploads/';
         $logoFilePath   = $uploadsDir . 'Olympus-logo.png';
         foreach (['Olympus-logo.png', 'Olympus-logo.jpeg', 'olympus-logo.png', 'olympus-logo.jpeg'] as $cand) {
@@ -4450,7 +4451,7 @@ public function downloadPublicReceiptPdf($paymentId = null)
                 <div class="company-tag">' . htmlspecialchars($brandDomain) . '</div>
                 <div class="company-desc">
                     ' . htmlspecialchars($companyAddress) . '<br>
-                    <b>' . htmlspecialchars($companyPhone) . '</b> &bull; ' . htmlspecialchars($companyEmail) . '
+                    <b>' . htmlspecialchars($companyPhone) . '</b> &bull; ' . htmlspecialchars($companyEmail) . (!empty($companyWebsite) ? ' &bull; ' . htmlspecialchars($companyWebsite) : '') . '
                 </div>
             </td>
             <td style="width: 45%; vertical-align: top; text-align: right;">
