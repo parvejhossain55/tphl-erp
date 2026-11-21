@@ -676,7 +676,7 @@ class FollowUp extends Model
         return (int)($result['total'] ?? 0);
     }
 
-    public function getCedActivityReport($agentId, $startDate, $endDate)
+    public function getCedActivityReport($agentId, $startDate, $endDate, $page = null, $perPage = 50, $reportMode = 'custom')
     {
         $agentCond1 = ""; $agentCond2 = "";
         $dateCond1 = ""; $dateCond2 = "";
@@ -692,6 +692,77 @@ class FollowUp extends Model
             $ed = $this->db->real_escape_string($endDate);
             $dateCond1 = " AND DATE(fu.follow_up_date) BETWEEN '$sd' AND '$ed' ";
             $dateCond2 = " AND DATE(ef.created_at) BETWEEN '$sd' AND '$ed' ";
+        }
+
+        // 1. Lightweight SQL summary (avoids loading all rows into memory)
+        $summarySql = "
+            SELECT
+                COUNT(*) AS total_notes,
+                COUNT(DISTINCT NULLIF(lead_id, 0)) AS total_clients
+            FROM (
+                SELECT fu.lead_id
+                FROM lead_follow_ups fu
+                WHERE fu.deleted_at IS NULL
+                $agentCond1
+                $dateCond1
+
+                UNION ALL
+
+                SELECT lb.lead_id
+                FROM emi_followups ef
+                INNER JOIN lead_bookings lb ON ef.booking_id = lb.id
+                WHERE 1=1
+                $agentCond2
+                $dateCond2
+            ) summary_tbl
+        ";
+        $summaryRes = $this->db->query($summarySql);
+        $summaryRow = $summaryRes ? $summaryRes->fetch_assoc() : [];
+        $totalNotes = (int)($summaryRow['total_notes'] ?? 0);
+        $totalClients = (int)($summaryRow['total_clients'] ?? 0);
+
+        // 2. Lightweight SQL breakdown for monthly / yearly modes
+        $breakdownCounts = [];
+        if ($reportMode === 'monthly' || $reportMode === 'yearly') {
+            $groupExpr = ($reportMode === 'monthly') ? "DAY(follow_up_date)" : "MONTH(follow_up_date)";
+            $breakdownSql = "
+                SELECT LPAD($groupExpr, 2, '0') AS k, COUNT(*) AS cnt
+                FROM (
+                    SELECT DATE(fu.follow_up_date) AS follow_up_date
+                    FROM lead_follow_ups fu
+                    WHERE fu.deleted_at IS NULL
+                    $agentCond1
+                    $dateCond1
+
+                    UNION ALL
+
+                    SELECT DATE(ef.created_at) AS follow_up_date
+                    FROM emi_followups ef
+                    INNER JOIN lead_bookings lb ON ef.booking_id = lb.id
+                    WHERE 1=1
+                    $agentCond2
+                    $dateCond2
+                ) bd_tbl
+                GROUP BY $groupExpr
+            ";
+            $bdRes = $this->db->query($breakdownSql);
+            if ($bdRes) {
+                while ($r = $bdRes->fetch_assoc()) {
+                    $breakdownCounts[$r['k']] = (int)$r['cnt'];
+                }
+            }
+        }
+
+        // 3. Paginated details query
+        $limitSql = "";
+        $currentPage = 1;
+        $totalPages = 1;
+        if ($page !== null) {
+            $perPage = max(10, min(200, (int)$perPage));
+            $totalPages = max(1, (int)ceil($totalNotes / $perPage));
+            $currentPage = max(1, min($totalPages, (int)$page));
+            $offset = ($currentPage - 1) * $perPage;
+            $limitSql = " LIMIT $perPage OFFSET $offset ";
         }
 
         $sql = "
@@ -757,26 +828,25 @@ class FollowUp extends Model
             $dateCond2
 
             ORDER BY follow_up_date DESC, follow_up_time DESC
+            $limitSql
         ";
 
-        $result = $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
-
-        // Summarize
-        $totalNotes = count($result);
-        $uniqueClients = [];
-        foreach ($result as $row) {
-            if (!empty($row['lead_id'])) {
-                $uniqueClients[$row['lead_id']] = true;
-            }
-        }
-        $totalClients = count($uniqueClients);
+        $res = $this->db->query($sql);
+        $result = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 
         return [
             'summary' => [
                 'total_notes' => $totalNotes,
                 'total_clients' => $totalClients
             ],
-            'details' => $result
+            'details' => $result,
+            'breakdown_counts' => $breakdownCounts,
+            'pagination' => [
+                'page' => $currentPage,
+                'per_page' => $perPage,
+                'total_records' => $totalNotes,
+                'total_pages' => $totalPages,
+            ]
         ];
     }
 }
