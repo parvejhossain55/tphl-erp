@@ -432,48 +432,7 @@ $isAssignedSalesPerson = (
 <?php endif ?>
 
 <!-- Payment Table -->
-<?php
-// Find transaction refs that have more than 1 payment
-$multi_refs = [];
-$ref_counts = [];
-foreach ($payments as $p) {
-    if (!empty($p['transaction_ref']) && empty($p['batch_id'])) {
-        $ref_counts[$p['transaction_ref']] = ($ref_counts[$p['transaction_ref']] ?? 0) + 1;
-    }
-}
-foreach ($ref_counts as $ref => $count) {
-    if ($count > 1) {
-        $multi_refs[] = $ref;
-    }
-}
-?>
-
-<?php if (!empty($multi_refs)): ?>
-<div class="mb-3 d-flex align-items-center gap-2 bg-light p-2 rounded border">
-    <label class="mb-0 fw-bold">Combine Old Receipts:</label>
-    <select id="combine_ref_select" class="form-select form-select-sm w-auto">
-        <option value="">Select Reference No.</option>
-        <?php foreach ($multi_refs as $ref): ?>
-            <option value="<?= htmlspecialchars($ref) ?>"><?= htmlspecialchars($ref) ?></option>
-        <?php endforeach; ?>
-    </select>
-    <button type="button" class="btn btn-warning btn-sm" onclick="generateCombinedReceipt()">
-        <i class="fa-solid fa-object-group me-1"></i> Generate Combined Receipt
-    </button>
-</div>
-<script>
-function generateCombinedReceipt() {
-    const ref = document.getElementById('combine_ref_select').value;
-    if (!ref) {
-        alert('Please select a reference number first.');
-        return;
-    }
-    if (confirm('Are you sure you want to combine the receipts for reference: ' + ref + '?')) {
-        window.location.href = '<?= $GLOBALS["base_url"] ?>/payment-booking-combine?booking_id=<?= $booking["id"] ?>&ref=' + encodeURIComponent(ref);
-    }
-}
-</script>
-<?php endif; ?>
+<?php /* Combine Old Receipts bar hidden on payments-booking page */ ?>
 
 <div class="row">
     <div class="col-xxl-12">
@@ -595,26 +554,7 @@ function generateCombinedReceipt() {
 
                                     <td style="white-space: nowrap;">
                                         <div class="d-flex align-items-center gap-1">
-                                            <?php 
-                                                $isBatched = !empty($p['batch_id']) && isset($batch_payment_ids[$p['batch_id']]) && count($batch_payment_ids[$p['batch_id']]) > 1;
-                                            ?>
-                                            
-                                            <?php if ($isBatched): ?>
-                                                <a target="_blank"
-                                                    href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= implode(',', $batch_payment_ids[$p['batch_id']]) ?>"
-                                                    class="btn btn-warning btn-sm"
-                                                    title="Print Combined Money Receipt">
-                                                    <i class="fa-solid fa-object-group me-1"></i> Combined Invoice
-                                                </a>
-                                            <?php endif; ?>
-
-                                            <!-- Individual Invoice -->
-                                            <a target="_blank"
-                                                href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $p['id'] ?>"
-                                                class="d-none btn btn-success btn-sm"
-                                                title="Print Individual Money Receipt">
-                                                <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : ($p['payment_type'] === 'land_share' ? 'Land Share Invoice' : 'Booking Invoice') ?>
-                                            </a>
+                                            <?php /* Combined Money Receipt & Individual Money Receipt hidden on payments-booking page */ ?>
                                             
                                             <?php if (strtolower($p['payment_type']) === 'booking_money'): ?>
                                                 <a target="_blank"

@@ -135,6 +135,9 @@ $isOlympusProject = ($currentCategoryId === 10)
 
 if ($isOlympusProject) {
     $companyTitle = !empty($currentCategoryName) ? $currentCategoryName : "The Olympus Real Estate";
+    $companyPhone = "01958-253302";
+    $companyEmail = "info@theolympusrealestate.com";
+    $companyWebsite = "www.theolympusrealestate.com";
     $uploadsDir = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/';
     $olympusRel = 'Olympus-logo.png';
     foreach (['Olympus-logo.png', 'Olympus-logo.jpeg', 'olympus-logo.png', 'olympus-logo.jpeg'] as $cand) {
@@ -858,7 +861,7 @@ if ($paymentMethod === 'CASH') {
                             <i class="fa-solid fa-print"></i> View &amp; Print Full Receipt
                         </a>
                         <a href="tel:<?= preg_replace('/[^0-9+]/', '', $companyPhone) ?>" class="btn-full btn-secondary-action">
-                            <i class="fa-solid fa-headset"></i> Contact TPHL Support (<?= htmlspecialchars($companyPhone) ?>)
+                            <i class="fa-solid fa-headset"></i> Contact <?= $isOlympusProject ? 'Support' : ($isNatureProject ? 'The Nature Support' : 'TPHL Support') ?> (<?= htmlspecialchars($companyPhone) ?>)
                         </a>
                     </div>
 
@@ -886,7 +889,7 @@ if ($paymentMethod === 'CASH') {
             <div class="security-badge">
                 <i class="fa-solid fa-shield-check"></i> Genuine Digital Verification
             </div>
-            <div><?= htmlspecialchars($companyTitle) ?> &bull; Gulshan Circle-2, Dhaka</div>
+            <div><?= htmlspecialchars($companyTitle) ?> &bull; Gulshan Circle-2, Dhaka<?= !empty($companyWebsite) ? ' &bull; ' . htmlspecialchars($companyWebsite) : '' ?></div>
             <div style="margin-top: 2px;">This electronic verification was generated directly by the secure ERP ledger.</div>
         </div>
 
