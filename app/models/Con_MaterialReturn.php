@@ -6,7 +6,7 @@ class Con_MaterialReturn extends Model
 
     public function getAll()
     {
-        $sql = "SELECT mr.*, v.name AS vendor_name, p.name AS project_name,
+        $sql = "SELECT mr.*, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, p.name AS project_name,
                        u.full_name AS created_by_name, rec.received_status,
                        rep.id AS replacement_receiving_id
                 FROM {$this->table} mr
@@ -23,7 +23,7 @@ class Con_MaterialReturn extends Model
     public function find($id)
     {
         $stmt = $this->db->prepare(
-            "SELECT mr.*, v.name AS vendor_name, p.name AS project_name,
+            "SELECT mr.*, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, p.name AS project_name,
                     u.full_name AS created_by_name, rec.received_status
              FROM {$this->table} mr
              LEFT JOIN vendors v ON v.id = mr.vendor_id
@@ -116,7 +116,7 @@ class Con_MaterialReturn extends Model
     public function getByPurchaseOrder($poId)
     {
         $stmt = $this->db->prepare(
-            "SELECT mr.*, v.name AS vendor_name, u.full_name AS created_by_name,
+            "SELECT mr.*, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, u.full_name AS created_by_name,
                     su.full_name AS sent_by_name,
                     rep.id AS replacement_receiving_id,
                     rep.overall_status AS replacement_qc_status
@@ -146,7 +146,7 @@ class Con_MaterialReturn extends Model
                     0 AS received_total,
                     m.name AS material_name, m.unit,
                     COALESCE(cat.name, 'Uncategorized') AS category_name,
-                    v.name AS vendor_name
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name
              FROM {$this->itemTable} mri
              JOIN {$this->table} mr ON mr.id = mri.return_id
              JOIN material_receiving rec ON rec.id = mr.receiving_id
@@ -155,7 +155,7 @@ class Con_MaterialReturn extends Model
              LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              LEFT JOIN vendors v ON v.id = COALESCE(mr.vendor_id, poi.selected_vendor_id)
              WHERE mri.return_id = ?
-             GROUP BY poi.id, poi.quantity, mri.return_qty, m.name, m.unit, cat.name, v.name
+             GROUP BY poi.id, poi.quantity, mri.return_qty, m.name, m.unit, cat.name, v.company_name, v.name
              ORDER BY mri.id ASC"
         );
         if (!$stmt) return [];

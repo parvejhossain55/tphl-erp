@@ -12,8 +12,9 @@
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-vendors">Vendors</a></li>
                 <?php if (!empty($selectedVendor)): ?>
+                    <?php $selVendorDisplay = !empty(trim($selectedVendor['company_name'] ?? '')) ? trim($selectedVendor['company_name']) : $selectedVendor['name']; ?>
                     <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-vendor-ledger">Vendor Ledger</a></li>
-                    <li class="breadcrumb-item active"><?= htmlspecialchars($selectedVendor['name']) ?></li>
+                    <li class="breadcrumb-item active"><?= htmlspecialchars($selVendorDisplay) ?></li>
                 <?php else: ?>
                     <li class="breadcrumb-item active">Vendor Ledger &amp; Dashboard</li>
                 <?php endif; ?>
@@ -257,16 +258,19 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold shadow-sm"
                              style="width: 60px; height: 60px; font-size: 24px;">
-                            <?= strtoupper(substr($selectedVendor['name'], 0, 1)) ?>
+                            <?= strtoupper(substr($selVendorDisplay, 0, 1)) ?>
                         </div>
                         <div>
                             <div class="d-flex align-items-center gap-2">
-                                <h4 class="fw-bold mb-0 text-dark"><?= htmlspecialchars($selectedVendor['name']) ?></h4>
+                                <h4 class="fw-bold mb-0 text-dark"><?= htmlspecialchars($selVendorDisplay) ?></h4>
                                 <span class="badge <?= $selectedVendor['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?> rounded-pill px-2">
                                     <?= ucfirst($selectedVendor['status']) ?>
                                 </span>
                             </div>
                             <div class="d-flex align-items-center gap-3 text-muted mt-1 flex-wrap" style="font-size: 13px;">
+                                <?php if (!empty(trim($selectedVendor['company_name'] ?? '')) && !empty($selectedVendor['name'])): ?>
+                                    <span><i class="fa-solid fa-user me-1 text-primary"></i><?= htmlspecialchars($selectedVendor['name']) ?></span>
+                                <?php endif; ?>
                                 <span><i class="fa-solid fa-phone me-1 text-primary"></i><?= htmlspecialchars($selectedVendor['phone'] ?: 'N/A') ?></span>
                                 <span><i class="fa-solid fa-envelope me-1 text-primary"></i><?= htmlspecialchars($selectedVendor['email'] ?: 'N/A') ?></span>
                                 <span><i class="fa-solid fa-location-dot me-1 text-primary"></i><?= htmlspecialchars($selectedVendor['address'] ?: 'N/A') ?></span>
@@ -556,16 +560,20 @@
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
+                                                <?php $vsDisplay = !empty(trim($vs['company_name'] ?? '')) ? trim($vs['company_name']) : $vs['name']; ?>
                                                 <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" 
                                                      style="width: 34px; height: 34px; font-size: 14px;">
-                                                    <?= strtoupper(substr($vs['name'], 0, 1)) ?>
+                                                    <?= strtoupper(substr($vsDisplay, 0, 1)) ?>
                                                 </div>
                                                 <div>
                                                     <a href="<?= $base_url ?>/con-vendor-ledger/<?= $vs['id'] ?>?<?= http_build_query(array_filter(['project_id' => $selectedProjectId, 'period' => $period, 'start_date' => $startDate, 'end_date' => $endDate])) ?>" 
                                                        class="fw-bold text-dark text-decoration-none">
-                                                        <?= htmlspecialchars($vs['name']) ?>
+                                                        <?= htmlspecialchars($vsDisplay) ?>
                                                     </a>
                                                     <div class="text-muted small" style="font-size: 11px;">
+                                                        <?php if (!empty(trim($vs['company_name'] ?? '')) && !empty($vs['name'])): ?>
+                                                            <i class="fa-solid fa-user me-1"></i><?= htmlspecialchars($vs['name']) ?> &bull;
+                                                        <?php endif; ?>
                                                         <i class="fa-solid fa-phone me-1"></i><?= htmlspecialchars($vs['phone'] ?: 'No Phone') ?>
                                                     </div>
                                                 </div>

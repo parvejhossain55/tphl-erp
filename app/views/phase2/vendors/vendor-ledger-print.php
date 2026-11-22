@@ -1,9 +1,12 @@
+<?php
+$vendorDisplayName = $vendor ? (!empty(trim($vendor['company_name'] ?? '')) ? trim($vendor['company_name']) : $vendor['name']) : '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $vendor ? 'Vendor Statement - ' . htmlspecialchars($vendor['name']) : 'Vendor Ledger Summary Statement' ?> | TPHL ERP</title>
+    <title><?= $vendor ? 'Vendor Statement - ' . htmlspecialchars($vendorDisplayName) : 'Vendor Ledger Summary Statement' ?> | TPHL ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -280,7 +283,10 @@
             <div class="info-block">
                 <h4>Vendor Information</h4>
                 <?php if ($vendor): ?>
-                    <p><strong>Name:</strong> <?= htmlspecialchars($vendor['name']) ?></p>
+                    <p><strong>Business Name:</strong> <?= htmlspecialchars($vendorDisplayName) ?></p>
+                    <?php if (!empty(trim($vendor['company_name'] ?? '')) && !empty($vendor['name'])): ?>
+                        <p><strong>Contact Person:</strong> <?= htmlspecialchars($vendor['name']) ?></p>
+                    <?php endif; ?>
                     <p><strong>Phone:</strong> <?= htmlspecialchars($vendor['phone'] ?: 'N/A') ?></p>
                     <p><strong>Email:</strong> <?= htmlspecialchars($vendor['email'] ?: 'N/A') ?></p>
                     <p><strong>Address:</strong> <?= htmlspecialchars($vendor['address'] ?: 'N/A') ?></p>
@@ -449,7 +455,7 @@
                             ?>
                             <tr>
                                 <td class="text-muted"><?= $i + 1 ?></td>
-                                <td class="fw-bold"><?= htmlspecialchars($vs['name']) ?></td>
+                                <td class="fw-bold"><?= htmlspecialchars(!empty(trim($vs['company_name'] ?? '')) ? trim($vs['company_name']) : $vs['name']) ?></td>
                                 <td><?= htmlspecialchars($vs['phone'] ?: 'N/A') ?></td>
                                 <td class="text-center"><?= $vs['total_pos'] ?></td>
                                 <td class="text-end">৳ <?= number_format($vs['total_po_amount'], 2) ?></td>

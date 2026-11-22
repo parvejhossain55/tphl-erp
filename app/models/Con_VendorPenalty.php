@@ -16,7 +16,7 @@ class Con_VendorPenalty extends Model
 
     public function getAll()
     {
-        $sql = "SELECT vp.*, v.name AS vendor_name, v.phone AS vendor_phone,
+        $sql = "SELECT vp.*, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, v.phone AS vendor_phone,
                        u.full_name AS created_by_name
                 FROM {$this->table} vp
                 JOIN vendors v ON v.id = vp.vendor_id
@@ -29,7 +29,7 @@ class Con_VendorPenalty extends Model
     public function find($id)
     {
         $stmt = $this->db->prepare(
-            "SELECT vp.*, v.name AS vendor_name
+            "SELECT vp.*, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name
              FROM {$this->table} vp
              JOIN vendors v ON v.id = vp.vendor_id
              WHERE vp.id = ?"

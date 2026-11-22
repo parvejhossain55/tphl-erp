@@ -1682,7 +1682,7 @@ LIMIT ?
                 vp.id,
                 COALESCE(vp.updated_at, vp.created_at) as date,
                 'Vendor' as role_name,
-                v.name as person_name,
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as person_name,
                 'Vendor Payment' as paid_to,
                 vp.net_payable as amount,
                 vp.approved_amount as approved_amount,
