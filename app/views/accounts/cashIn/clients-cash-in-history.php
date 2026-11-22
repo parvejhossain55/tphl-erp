@@ -1294,11 +1294,26 @@ window.openEditPaymentDateModal = function(target) {
                             </small>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
+                    <?php
+                    $dwTotalPaidDisplay = (float)($datewiseSummary['total_paid'] ?? 0) + (float)($datewiseSummary['total_discount'] ?? 0);
+                    $currentDueBreakdown = sprintf(
+                        'Asked: ৳%s (Land Share: ৳%s + DC: ৳%s + %d Active EMI: ৳%s) − Paid: ৳%s',
+                        number_format((float)($datewiseSummary['asked_amount'] ?? 0), 2),
+                        number_format((float)($datewiseSummary['land_share_ask'] ?? 0), 2),
+                        number_format((float)($datewiseSummary['dev_charge_ask'] ?? 0), 2),
+                        (int)($datewiseSummary['active_emi_count'] ?? 0),
+                        number_format((float)($datewiseSummary['active_emi_asked'] ?? 0), 2),
+                        number_format($dwTotalPaidDisplay, 2)
+                    );
+                    ?>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
                             <i class="fa-solid fa-sack-dollar me-1"></i> Total Paid: ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
                         </span>
                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> Total Due: ৳<?= number_format($datewiseSummary['total_due'] ?? 0, 2) ?>
+                        </span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fw-bold" style="font-size: 12px;" title="<?= htmlspecialchars($currentDueBreakdown) ?>">
                             <i class="fa-solid fa-clock-rotate-left me-1"></i> Current Due: ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
                         </span>
                         <a href="<?= $GLOBALS['base_url'] ?>/client-datewise-statement/<?= (int)$clientDetails['booking_id'] ?>" target="_blank" class="btn btn-sm btn-primary shadow-sm" style="font-weight: 600;">
@@ -1434,7 +1449,7 @@ window.openEditPaymentDateModal = function(target) {
                                     ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
                                 </td>
                                 <td class="text-end text-nowrap font-monospace text-danger fs-14">
-                                    ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
+                                    ৳<?= number_format($datewiseSummary['total_due'] ?? 0, 2) ?>
                                 </td>
                                 <td colspan="2"></td>
                             </tr>
