@@ -64,6 +64,8 @@ class SalesDashboardController extends Controller
         [$teamsList, $projectsList, $salesUsers, $scope] = filterSalesDropdowns($this->db, $rawTeamsList, $rawProjectsList, $rawSalesUsers);
 
         $managedTeamIds = $scope['team_ids'] ?? [];
+        $filterManagerId = (!empty($scope['is_global']) && !empty($_GET['sales_manager_id'])) ? (int) $_GET['sales_manager_id'] : null;
+        $selectedManagerTeamIds = $filterManagerId ? getManagedTeamIds($this->db, $filterManagerId) : [];
         if ($scope['is_global']) {
             $effectiveTeamId = $filterTeamId;
         } elseif ($scope['is_manager']) {
@@ -127,16 +129,24 @@ class SalesDashboardController extends Controller
 
         // Core aggregated data from SalesPerformanceService
         $filters = [
-            'project_id'   => $filterProjectId,
-            'team_id'      => $effectiveTeamId,
-            'executive_id' => $filterExecutiveId,
+            'project_id'       => $filterProjectId,
+            'sales_manager_id' => $filterManagerId,
+            'team_id'          => $effectiveTeamId,
+            'executive_id'     => $filterExecutiveId,
         ];
         $serviceData = $this->performanceService->build($period, $filters);
         $overall = $serviceData['overall'];
 
         // Scope SQL conditions for secondary queries
         if ($effectiveTeamId) {
-            $teamB = " AND COALESCE(lb.team_id, l.team_id) = {$effectiveTeamId}";
+            if ($filterManagerId && !in_array($effectiveTeamId, $selectedManagerTeamIds, true)) {
+                $teamB = " AND COALESCE(lb.team_id, l.team_id) IN (-1)";
+            } else {
+                $teamB = " AND COALESCE(lb.team_id, l.team_id) = {$effectiveTeamId}";
+            }
+        } elseif ($filterManagerId) {
+            $inTeams = !empty($selectedManagerTeamIds) ? implode(',', array_map('intval', $selectedManagerTeamIds)) : '-1';
+            $teamB = " AND COALESCE(lb.team_id, l.team_id) IN ({$inTeams})";
         } elseif ($scope['is_manager']) {
             $inTeams = !empty($managedTeamIds) ? implode(',', array_map('intval', $managedTeamIds)) : '-1';
             $teamB = " AND COALESCE(lb.team_id, l.team_id) IN ({$inTeams})";
@@ -298,7 +308,18 @@ class SalesDashboardController extends Controller
             $shortLabel = date('M', mktime(0, 0, 0, $m, 1, $y));
 
             $projCond = $filterProjectId ? " AND lb.project_id = {$filterProjectId}" : "";
-            $teamCond = $effectiveTeamId ? " AND (l.team_id = {$effectiveTeamId} OR l.assigned_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}))" : "";
+            if ($effectiveTeamId) {
+                if ($filterManagerId && !in_array($effectiveTeamId, $selectedManagerTeamIds, true)) {
+                    $teamCond = " AND 1=0";
+                } else {
+                    $teamCond = " AND (l.team_id = {$effectiveTeamId} OR l.assigned_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}))";
+                }
+            } elseif ($filterManagerId) {
+                $inTeams = !empty($selectedManagerTeamIds) ? implode(',', array_map('intval', $selectedManagerTeamIds)) : '-1';
+                $teamCond = " AND (l.team_id IN ({$inTeams}) OR l.assigned_id IN (SELECT id FROM users WHERE team_id IN ({$inTeams})) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id IN ({$inTeams})))";
+            } else {
+                $teamCond = "";
+            }
             $execCond = $filterExecutiveId ? " AND (lb.sales_by_id = {$filterExecutiveId} OR (COALESCE(lb.sales_by_id, 0) = 0 AND l.assigned_id = {$filterExecutiveId}))" : "";
 
             $trendRes = $this->db->query("
@@ -974,8 +995,9 @@ class SalesDashboardController extends Controller
                 "preset"       => $period['preset'] ?? 'cycle',
                 "from"         => $startD,
                 "to"           => $endD,
-                "project_id"   => $filterProjectId,
-                "team_id"      => $effectiveTeamId,
+                "project_id"       => $filterProjectId,
+                "sales_manager_id" => $filterManagerId,
+                "team_id"          => $effectiveTeamId,
                 "executive_id" => $filterExecutiveId,
                 "product_type" => $productType,
                 "trend_horizon"=> $trendHorizon,
@@ -1054,6 +1076,8 @@ class SalesDashboardController extends Controller
             "teamsList"              => $teamsList,
             "projectsList"           => $projectsList,
             "salesUsers"             => $salesUsers,
+            "isGlobalViewer"         => !empty($scope['is_global']),
+            "salesManagers"          => !empty($scope['is_global']) ? getSalesManagersWithTeams($this->db) : [],
         ]);
     }
 

@@ -241,12 +241,30 @@ if (!function_exists('buildTeamUrl')) {
             <!-- Left: Team & Member Selectors -->
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <?php if (!empty($showAllTeamsBtn)): ?>
-                    <a href="<?= buildTeamUrl(['team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>"
-                       class="btn btn-sm <?= !empty($isAllTeamsMode) ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-primary' ?> text-nowrap d-inline-flex align-items-center gap-1"
+                    <a href="<?= buildTeamUrl(['team_id' => 'all', 'sales_manager_id' => null, 'member_id' => null, 'assigned_user' => null]) ?>"
+                       class="btn btn-sm <?= (!empty($isAllTeamsMode) && empty($selectedSalesManagerId)) ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-primary' ?> text-nowrap d-inline-flex align-items-center gap-1"
                        style="height: 34px; border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 0 12px;">
                         <i class="fa-solid fa-layer-group"></i>
                         <span>All Teams</span>
                     </a>
+                <?php endif; ?>
+
+                <?php if (!empty($isGlobalTeamViewer) && !empty($salesManagers)): ?>
+                    <div class="input-group input-group-sm flex-nowrap" style="width: auto;">
+                        <span class="input-group-text bg-white text-muted fw-semibold text-nowrap" style="height: 34px; border-radius: 8px 0 0 8px; font-size: 12px; border-color: #cbd5e1;">
+                            <i class="fa-solid fa-user-tie text-primary me-1"></i> Sales Manager
+                        </span>
+                        <select id="managerSelect" class="form-select form-select-sm fw-semibold" style="height: 34px; min-width: 170px; max-width: 230px; border-radius: 0 8px 8px 0; font-size: 12.5px; border-color: #cbd5e1;" onchange="window.location.href=this.value;">
+                            <option value="<?= buildTeamUrl(['sales_manager_id' => null, 'team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>" <?= empty($selectedSalesManagerId) ? 'selected' : '' ?>>
+                                All Sales Managers
+                            </option>
+                            <?php foreach ($salesManagers as $sm): ?>
+                                <option value="<?= buildTeamUrl(['sales_manager_id' => $sm['id'], 'team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>" <?= (!empty($selectedSalesManagerId) && (int)$selectedSalesManagerId === (int)$sm['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($sm['name']) ?> (<?= count($sm['team_ids']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 <?php endif; ?>
 
                 <?php if (!empty($allTeams)): ?>
@@ -337,6 +355,9 @@ if (!function_exists('buildTeamUrl')) {
             <form action="<?= $base ?>/team-dashboard" method="GET" class="row g-2 align-items-end">
                 <?php if (!empty($canSwitchTeam)): ?>
                     <input type="hidden" name="team_id" value="<?= !empty($isAllTeamsMode) ? 'all' : (int)$teamId ?>">
+                <?php endif; ?>
+                <?php if (!empty($selectedSalesManagerId)): ?>
+                    <input type="hidden" name="sales_manager_id" value="<?= (int)$selectedSalesManagerId ?>">
                 <?php endif; ?>
                 <?php if (!empty($selectedMemberId)): ?>
                     <input type="hidden" name="member_id" value="<?= (int)$selectedMemberId ?>">
