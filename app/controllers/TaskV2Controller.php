@@ -1399,6 +1399,11 @@ class TaskV2Controller extends Controller
             exit;
         }
 
+        if (!hasPermission(['Team Performance', 'Management Task Overview'])) {
+            echo json_encode(['success' => false, 'message' => 'Access restricted: Team Performance permission required.']);
+            exit;
+        }
+
         $projectName = trim($_POST['name'] ?? '');
         if (empty($projectName)) {
             echo json_encode(['success' => false, 'message' => 'Project name is required']);
@@ -1506,17 +1511,12 @@ class TaskV2Controller extends Controller
             $isUserCoLeader = true;
         }
 
-        // Strict Permission check: Only Department Head (HOD / reportees), Team Leader, Co-Leader, or Admin/Management
-        $secRole = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $priRole = (int)($_SESSION['user']['primary_role_id'] ?? 0);
-        $isManagementRole = in_array($userRole, [1, 3, 33, 34, 35, 38], true)
-            || in_array($secRole, [1, 3, 33, 34, 35, 38], true)
-            || in_array($priRole, [1, 3, 33, 34, 35, 38], true)
-            || $userId === 94;
+        // Strict Permission check: Role Permission 'Team Performance' (or 'Management Task Overview' for drill-down)
+        $isManagementRole = hasPermission('Management Task Overview');
 
-        $canAccess = $isDeptHead || $hasReportees || $isUserTeamLeader || $isUserCoLeader || $isManagementRole;
+        $canAccess = hasPermission(['Team Performance', 'Management Task Overview']);
         if (!$canAccess) {
-            setError("Access restricted: Team Performance is only accessible by Department Heads, Team Leaders, and Co-Leaders.");
+            setError("Access restricted: Team Performance permission is required.");
             header("Location: " . $GLOBALS['base_url'] . "/my-work-dashboard");
             exit;
         }
@@ -2208,6 +2208,11 @@ class TaskV2Controller extends Controller
             exit;
         }
 
+        if (!hasPermission(['Team Performance', 'Management Task Overview'])) {
+            echo json_encode(['success' => false, 'message' => 'Access restricted: Team Performance permission required.']);
+            exit;
+        }
+
         $empId = (int)$memberId;
         $empRes = $this->db->query("
             SELECT e.id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id, e.full_name, des.name as designation_name
@@ -2327,6 +2332,12 @@ class TaskV2Controller extends Controller
             exit;
         }
 
+        if (!hasPermission(['Team Performance', 'Management Task Overview'])) {
+            setError("Access restricted: Team Performance permission is required.");
+            header("Location: " . $GLOBALS['base_url'] . "/my-work-dashboard");
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignedUserId = (int)($_POST['assigned_user_id'] ?? 0);
             $title = trim($_POST['title'] ?? '');
@@ -2394,17 +2405,9 @@ class TaskV2Controller extends Controller
             exit;
         }
 
-        // Authorization: Admin, Super Admin, Chief Officer, Management Viewer, SEAL CEO, or User 94
-        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
-        $isMgmt = in_array($roleId, [1, 3, 33, 34, 35, 38], true)
-            || in_array($secRoleId, [1, 3, 33, 34, 35, 38], true)
-            || in_array($priRoleId, [1, 3, 33, 34, 35, 38], true)
-            || $userId === 94;
-
-        if (!$isMgmt) {
-            setError("Access restricted to Management users only.");
+        // Authorization via Role Permission
+        if (!hasPermission('Management Task Overview')) {
+            setError("Access restricted: Management Task Overview permission is required.");
             header("Location: " . $GLOBALS['base_url']);
             exit;
         }

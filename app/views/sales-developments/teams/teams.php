@@ -1417,6 +1417,9 @@ $show_breadcrumb = true;
         background: #dc2626;
         color: #ffffff;
     }
+    #assignManagerModal .am-chip-remove i {
+        pointer-events: none;
+    }
     #assignManagerModal .am-teams-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));

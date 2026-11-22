@@ -28,6 +28,17 @@ class MyWorkController extends Controller
             exit;
         }
 
+        if (!hasPermission('Task Manage')) {
+            if (!empty($_GET['ajax'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Access restricted: Task Manage permission required.']);
+                exit;
+            }
+            setError("Access restricted: You do not have Task Manage permission.");
+            header("Location: " . ($GLOBALS['base_url'] ?? ''));
+            exit;
+        }
+
         $userId = (int) $_SESSION['user']['id'];
         $user = $_SESSION['user'] ?? [];
         $baseUrl = $GLOBALS['base_url'] ?? '';
