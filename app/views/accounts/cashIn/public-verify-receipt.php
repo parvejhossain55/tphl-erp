@@ -8,13 +8,6 @@ if (!$db && isset($this) && isset($this->db)) {
 }
 
 // Site Settings
-$whiteLogo = function_exists('getSetting') ? getSetting('white_logo') : null;
-$logoUrl = ($whiteLogo && function_exists('getImage')) ? getImage('settings', $whiteLogo) : '';
-if (empty($logoUrl) || strpos($logoUrl, 'avatar.png') !== false) {
-    $logoUrl = $GLOBALS['base_url'] . '/public/uploads/settings/' . ($whiteLogo ?: '6948f14a9fb8c_1766388042.png');
-}
-
-$companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
 $companyPhone = function_exists('getSetting') ? getSetting('phone', '+8801958253300') : '+8801958253300';
 $companyEmail = function_exists('getSetting') ? getSetting('email', 'info@thepremiumhomes.com') : 'info@thepremiumhomes.com';
 $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
@@ -102,6 +95,82 @@ if ($clientPhone !== 'N/A' && strlen($clientPhone) === 10 && substr($clientPhone
 $projectName = !empty($clientDetails['project_name']) ? $clientDetails['project_name'] : ($payment['project_name'] ?? 'N/A');
 $unitName = !empty($clientDetails['unit_name']) ? trim(preg_replace('/^unit\s+/i', '', $clientDetails['unit_name'])) : (!empty($payment['unit_name']) ? trim(preg_replace('/^unit\s+/i', '', $payment['unit_name'])) : 'N/A');
 $floorNo = !empty($clientDetails['flat_no']) ? trim(preg_replace('/^floor\s+/i', '', $clientDetails['flat_no'])) : (!empty($payment['flat_no']) ? trim(preg_replace('/^floor\s+/i', '', $payment['flat_no'])) : 'N/A');
+
+// Project & Category Branding Resolution
+$currentProjectId = (int)($clientDetails['project_id'] ?? ($payment['project_id'] ?? 0));
+$currentProjectName = trim($clientDetails['project_name'] ?? ($payment['project_name'] ?? ''));
+$currentCategoryId = (int)($clientDetails['category_id'] ?? ($payment['category_id'] ?? 0));
+$currentCategoryName = trim($clientDetails['category_name'] ?? ($payment['category_name'] ?? ''));
+
+if ($db && $currentProjectId > 0 && ($currentCategoryId <= 0 || empty($currentCategoryName) || empty($currentProjectName))) {
+    try {
+        $catStmt = $db->prepare("
+            SELECT p.name AS project_name, p.category_id, pc.name AS category_name
+            FROM projects p
+            LEFT JOIN project_categories pc ON p.category_id = pc.id
+            WHERE p.id = ? LIMIT 1
+        ");
+        if ($catStmt) {
+            $catStmt->bind_param("i", $currentProjectId);
+            $catStmt->execute();
+            $catRes = $catStmt->get_result();
+            if ($catRow = $catRes->fetch_assoc()) {
+                if (empty($currentProjectName)) $currentProjectName = trim($catRow['project_name'] ?? '');
+                if ($currentCategoryId <= 0) $currentCategoryId = (int)($catRow['category_id'] ?? 0);
+                if (empty($currentCategoryName)) $currentCategoryName = trim($catRow['category_name'] ?? '');
+            }
+            $catStmt->close();
+        }
+    } catch (Exception $e) {}
+}
+
+$isNatureProject = ($currentProjectId === 74) 
+    || ($currentCategoryId === 9) 
+    || (stripos($currentProjectName, 'The Nature') !== false) 
+    || (stripos($currentProjectName, 'Nature') !== false);
+
+$isOlympusProject = ($currentCategoryId === 10) 
+    || (stripos($currentCategoryName, 'Olympus') !== false) 
+    || (stripos($currentProjectName, 'Olympus') !== false);
+
+if ($isOlympusProject) {
+    $companyTitle = !empty($currentCategoryName) ? $currentCategoryName : "The Olympus Real Estate";
+    $companyAddress = "23/2, SEL HUQ Skypark, 4th floor, Opposite of Wonderland (Shyamoli), Dhaka";
+    $companyPhone = "01958-253302";
+    $companyEmail = "info@theolympusrealestate.com";
+    $companyWebsite = "www.theolympusrealestate.com";
+    $uploadsDir = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/';
+    $olympusRel = 'Olympus-logo.png';
+    foreach (['Olympus-logo.png', 'Olympus-logo.jpeg', 'olympus-logo.png', 'olympus-logo.jpeg'] as $cand) {
+        if (file_exists($uploadsDir . $cand)) {
+            $olympusRel = $cand;
+            break;
+        }
+    }
+    $logoUrl = $GLOBALS['base_url'] . '/public/uploads/' . $olympusRel;
+    $themePrimary = "#c58b42";
+    $themePrimaryDark = "#3e3b42";
+    $themePrimaryLight = "#fdfbf7";
+    $themePrimaryBorder = "#ebd8c1";
+} elseif ($isNatureProject) {
+    $companyTitle = "The Nature";
+    $logoUrl = $GLOBALS['base_url'] . '/public/uploads/nature-logo.png';
+    $themePrimary = "#0284c7";
+    $themePrimaryDark = "#0369a1";
+    $themePrimaryLight = "#f0f9ff";
+    $themePrimaryBorder = "#bae6fd";
+} else {
+    $whiteLogo = function_exists('getSetting') ? getSetting('white_logo') : null;
+    $logoUrl = ($whiteLogo && function_exists('getImage')) ? getImage('settings', $whiteLogo) : '';
+    if (empty($logoUrl) || strpos($logoUrl, 'avatar.png') !== false) {
+        $logoUrl = $GLOBALS['base_url'] . '/public/uploads/settings/' . ($whiteLogo ?: '6948f14a9fb8c_1766388042.png');
+    }
+    $companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
+    $themePrimary = "#0b6638";
+    $themePrimaryDark = "#064c2a";
+    $themePrimaryLight = "#ecfdf5";
+    $themePrimaryBorder = "#a7f3d0";
+}
 
 // Verification Details
 $vRoleId = (int)($payment['verified_by_role_id'] ?? 0);
@@ -207,10 +276,10 @@ if ($paymentMethod === 'CASH') {
         }
 
         :root {
-            --primary: #0b6638;
-            --primary-dark: #064c2a;
-            --primary-light: #ecfdf5;
-            --primary-border: #a7f3d0;
+            --primary: <?= $themePrimary ?>;
+            --primary-dark: <?= $themePrimaryDark ?>;
+            --primary-light: <?= $themePrimaryLight ?>;
+            --primary-border: <?= $themePrimaryBorder ?>;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
@@ -252,6 +321,7 @@ if ($paymentMethod === 'CASH') {
         .brand-logo-img {
             max-height: 48px;
             max-width: 220px;
+            border-radius: 4px;
             object-fit: contain;
             margin-bottom: 6px;
         }
@@ -792,7 +862,7 @@ if ($paymentMethod === 'CASH') {
                             <i class="fa-solid fa-print"></i> View &amp; Print Full Receipt
                         </a>
                         <a href="tel:<?= preg_replace('/[^0-9+]/', '', $companyPhone) ?>" class="btn-full btn-secondary-action">
-                            <i class="fa-solid fa-headset"></i> Contact TPHL Support (<?= htmlspecialchars($companyPhone) ?>)
+                            <i class="fa-solid fa-headset"></i> Contact <?= $isOlympusProject ? 'Support' : ($isNatureProject ? 'The Nature Support' : 'TPHL Support') ?> (<?= htmlspecialchars($companyPhone) ?>)
                         </a>
                     </div>
 
@@ -820,7 +890,7 @@ if ($paymentMethod === 'CASH') {
             <div class="security-badge">
                 <i class="fa-solid fa-shield-check"></i> Genuine Digital Verification
             </div>
-            <div><?= htmlspecialchars($companyTitle) ?> &bull; Gulshan Circle-2, Dhaka</div>
+            <div><?= htmlspecialchars($companyTitle) ?> &bull; <?= $isOlympusProject ? htmlspecialchars($companyAddress) : 'Gulshan Circle-2, Dhaka' ?><?= !empty($companyWebsite) ? ' &bull; ' . htmlspecialchars($companyWebsite) : '' ?></div>
             <div style="margin-top: 2px;">This electronic verification was generated directly by the secure ERP ledger.</div>
         </div>
 

@@ -249,6 +249,14 @@ return [
     'central-statement-get' => ['controller' => 'CentralStatementController', 'method' => 'getStatement'],
 
     // =========================================================================
+    // Controller: CentralStatementV2Controller
+    // =========================================================================
+    'central-statement-v2' => ['controller' => 'CentralStatementV2Controller', 'method' => 'index'],
+    'central-statement-v2-drilldown' => ['controller' => 'CentralStatementV2Controller', 'method' => 'drilldown'],
+    'central-statement-v2-export' => ['controller' => 'CentralStatementV2Controller', 'method' => 'exportExcel'],
+    'central-statement-v2-print' => ['controller' => 'CentralStatementV2Controller', 'method' => 'printView'],
+
+    // =========================================================================
     // Controller: CashoutRequestController
     // =========================================================================
     'cashout-requests' => ['controller' => 'CashoutRequestController', 'method' => 'index'],

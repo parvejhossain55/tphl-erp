@@ -362,7 +362,7 @@ class DashboardController extends Controller
                 vpr.id,
                 'vendor_payment_requests' AS source_table,
                 'Vendor Payment' AS request_type,
-                CONCAT(v.name, ' — ', COALESCE(vpr.invoice_number, 'No Invoice')) AS purpose,
+                CONCAT(COALESCE(NULLIF(TRIM(v.company_name), ''), v.name), ' — ', COALESCE(vpr.invoice_number, 'No Invoice')) AS purpose,
                 u.full_name AS requested_by_name,
                 vpr.net_payable AS amount,
                 vpr.approved_amount,

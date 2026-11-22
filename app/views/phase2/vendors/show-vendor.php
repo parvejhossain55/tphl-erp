@@ -1,3 +1,7 @@
+<?php
+$hasCompany = !empty(trim($vendor['company_name'] ?? ''));
+$displayVendorName = $hasCompany ? trim($vendor['company_name']) : $vendor['name'];
+?>
 <div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="mb-4">
         <h4><?= htmlspecialchars($page_title) ?></h4>
@@ -5,7 +9,7 @@
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-vendors">Vendors</a></li>
-                <li class="breadcrumb-item active"><?= htmlspecialchars($vendor['name']) ?></li>
+                <li class="breadcrumb-item active"><?= htmlspecialchars($displayVendorName) ?></li>
             </ol>
         </nav>
     </div>
@@ -32,19 +36,38 @@
                             <div class="d-flex align-items-center mb-3">
                                 <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3"
                                      style="width:56px;height:56px;font-size:1.5rem;font-weight:700;">
-                                    <?= strtoupper(substr($vendor['name'], 0, 1)) ?>
+                                    <?= strtoupper(substr($displayVendorName, 0, 1)) ?>
                                 </div>
                                 <div>
-                                    <h5 class="mb-0"><?= htmlspecialchars($vendor['name']) ?></h5>
+                                    <h5 class="mb-0"><?= htmlspecialchars($displayVendorName) ?></h5>
                                     <span class="badge <?= ($vendor['status'] === 'active') ? 'bg-success' : (($vendor['status'] === 'blacklisted') ? 'bg-danger' : 'bg-secondary') ?> mt-1">
                                         <?= ucfirst($vendor['status']) ?>
                                     </span>
                                 </div>
                             </div>
                             <ul class="list-unstyled mt-3">
+                                <li class="mb-2"><i class="bi bi-person me-2 text-muted"></i><strong>Contact Person:</strong> <?= htmlspecialchars($vendor['name'] ?? '—') ?></li>
                                 <li class="mb-2"><i class="bi bi-telephone me-2 text-muted"></i><?= htmlspecialchars($vendor['phone'] ?? '—') ?></li>
                                 <li class="mb-2"><i class="bi bi-envelope me-2 text-muted"></i><?= htmlspecialchars($vendor['email'] ?? '—') ?></li>
                                 <li class="mb-2"><i class="bi bi-geo-alt me-2 text-muted"></i><?= htmlspecialchars($vendor['address'] ?? '—') ?></li>
+                                <li class="mb-2">
+                                    <i class="bi bi-person-vcard me-2 text-muted"></i><strong>NID:</strong>
+                                    <?= htmlspecialchars($vendor['nid_number'] ?: '—') ?>
+                                    <?php if (!empty($vendor['nid_file'])): ?>
+                                        <a href="<?= $base_url ?>/<?= htmlspecialchars($vendor['nid_file']) ?>" target="_blank" class="btn btn-xs btn-outline-primary ms-2 py-0 px-2" style="font-size: 11px;">
+                                            <i class="bi bi-file-earmark-text me-1"></i>View Doc
+                                        </a>
+                                    <?php endif; ?>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-file-earmark-check me-2 text-muted"></i><strong>Trade License:</strong>
+                                    <?= htmlspecialchars($vendor['trade_license_number'] ?: '—') ?>
+                                    <?php if (!empty($vendor['trade_license_file'])): ?>
+                                        <a href="<?= $base_url ?>/<?= htmlspecialchars($vendor['trade_license_file']) ?>" target="_blank" class="btn btn-xs btn-outline-primary ms-2 py-0 px-2" style="font-size: 11px;">
+                                            <i class="bi bi-file-earmark-text me-1"></i>View Doc
+                                        </a>
+                                    <?php endif; ?>
+                                </li>
                             </ul>
                             <div class="mt-2">
                                 <?php

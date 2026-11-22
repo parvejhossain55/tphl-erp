@@ -825,9 +825,9 @@ class ExpenseAnalytics
                     p.name as project_name,
                     NULL as branch_id,
                     NULL as branch_name,
-                    IFNULL(v.name, 'Vendor') as payee_name,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, 'Vendor') as payee_name,
                     'Vendor' as payee_type,
-                    CONCAT('Vendor Payment — ', IFNULL(v.name, 'Vendor'), ' (Inv: ', IFNULL(vpr.invoice_number, '-'), ')') as purpose_title,
+                    CONCAT('Vendor Payment — ', COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, 'Vendor'), ' (Inv: ', IFNULL(vpr.invoice_number, '-'), ')') as purpose_title,
                     COALESCE(vpr.approved_amount, vpr.invoice_amount) as req_amount,
                     IFNULL(vpr.approved_amount, vpr.invoice_amount) as approved_amount,
                     CASE 

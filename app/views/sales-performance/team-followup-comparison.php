@@ -1031,6 +1031,20 @@ $baseUrl = $GLOBALS['base_url'];
                     <input type="date" name="to" value="<?= tfu_h($filters['to']) ?>" class="form-control form-control-sm" style="width:130px; border-radius:8px;" placeholder="To date">
                 </div>
 
+                <?php if (!empty($isGlobalViewer)): ?>
+                <!-- Sales Manager (Cluster Head) Select -->
+                <div style="min-width: 190px; max-width: 230px;">
+                    <select name="sales_manager_id" id="filterManagerSelect" class="form-select form-select-sm select2" data-placeholder="All Sales Managers">
+                        <option value="">All Sales Managers</option>
+                        <?php foreach (($salesManagers ?? []) as $sm): ?>
+                            <option value="<?= (int)$sm['id'] ?>" data-teams="<?= tfu_h(implode(',', $sm['team_ids'])) ?>" <?= ((int)($filters['sales_manager_id'] ?? 0) === (int)$sm['id']) ? 'selected' : '' ?>>
+                                <?= tfu_h($sm['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+
                 <!-- Team Select (Searchable Select2) -->
                 <div style="min-width: 190px; max-width: 230px;">
                     <select name="team_id" id="filterTeamSelect" class="form-select form-select-sm select2" data-placeholder="All Teams (<?= count($teams) ?>)">
@@ -1674,6 +1688,11 @@ function filterByTeam(teamId) {
 $(function() {
     function initFilterSelects() {
         if (typeof $.fn.select2 === 'function') {
+            $('#filterManagerSelect').select2({
+                width: '100%',
+                placeholder: 'All Sales Managers',
+                allowClear: true
+            });
             $('#filterTeamSelect').select2({
                 width: '100%',
                 placeholder: 'All Teams (<?= count($teams) ?>)',
@@ -1688,6 +1707,30 @@ $(function() {
     }
     initFilterSelects();
     window.addEventListener('load', initFilterSelects);
+
+    // Cascade Team options when Sales Manager is selected
+    const $mgrSel = $('#filterManagerSelect');
+    const $teamSel = $('#filterTeamSelect');
+    if ($mgrSel.length && $teamSel.length) {
+        const syncTfuTeams = () => {
+            const mgrVal = $mgrSel.val();
+            const rawTeams = mgrVal ? ($mgrSel.find('option:selected').attr('data-teams') || '') : '';
+            const allowed = mgrVal ? rawTeams.split(',').filter(Boolean) : null;
+            const curTeam = $teamSel.val();
+            let valid = false;
+            $teamSel.find('option').each(function() {
+                const v = $(this).val();
+                if (!v) { $(this).prop('disabled', false).prop('hidden', false); return; }
+                const ok = allowed === null || allowed.includes(v);
+                $(this).prop('disabled', !ok).prop('hidden', !ok);
+                if (v === curTeam && ok) valid = true;
+            });
+            if (curTeam && !valid) $teamSel.val('').trigger('change.select2');
+            else $teamSel.trigger('change.select2');
+        };
+        $mgrSel.on('change', syncTfuTeams);
+        if ($mgrSel.val()) syncTfuTeams();
+    }
 });
 
 // Open Lead Drilldown Modal
@@ -1769,6 +1812,7 @@ function loadDrilldownData() {
         from: '<?= tfu_h($filters['from']) ?>',
         to: '<?= tfu_h($filters['to']) ?>',
         project_id: '<?= tfu_h($filters['project_id']) ?>',
+        sales_manager_id: '<?= tfu_h($filters['sales_manager_id'] ?? '') ?>',
         team_id: currentDrillTeamId,
         executive_id: currentDrillExecId,
         step: currentDrillStep,

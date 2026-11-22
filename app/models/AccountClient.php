@@ -645,6 +645,7 @@ class AccountClient extends Model
                     AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
                     AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
                 LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN (
                     SELECT 
@@ -864,6 +865,7 @@ class AccountClient extends Model
             INNER JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             $whereClause
             GROUP BY lb.id
@@ -1500,6 +1502,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
             WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
@@ -1593,6 +1596,8 @@ class AccountClient extends Model
                 l.designation,
                 p.id as project_id,
                 p.name as project_name,
+                p.category_id,
+                pc.name as category_name,
                 p.types as project_type,
                 COALESCE(p.service_charge_per_emi, 0) as service_charge_per_emi,
                 f.id as flat_id,
@@ -1810,6 +1815,7 @@ class AccountClient extends Model
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
             LEFT JOIN employees e1 ON e1.user_id = u.id
@@ -3584,6 +3590,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
@@ -3750,6 +3757,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
@@ -4152,6 +4160,8 @@ class AccountClient extends Model
             SELECT lp.*,
                    l.full_name as client_name,
                    p.name as project_name,
+                   p.category_id,
+                   pc.name as category_name,
                    f.floor_no as flat_no,
                    f.flat_name as unit_name,
                    es.emi_no,
@@ -4253,6 +4263,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN emi_schedules parent_es ON parent_es.lead_payment_id = lp.parent_payment_id
@@ -7200,6 +7211,7 @@ class AccountClient extends Model
             JOIN lead_bookings lb ON lp.booking_id = lb.id
             JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON lp.trashed_by = u.id
             LEFT JOIN roles r ON u.role_id = r.id
@@ -7870,6 +7882,7 @@ class AccountClient extends Model
                 FROM lead_bookings lb
                 INNER JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
                 LEFT JOIN (
@@ -8104,6 +8117,7 @@ class AccountClient extends Model
                 FROM lead_bookings lb
                 INNER JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
                 LEFT JOIN (
@@ -8652,6 +8666,7 @@ class AccountClient extends Model
             INNER JOIN lead_bookings lb ON c.booking_id = lb.id
             INNER JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
             LEFT JOIN (

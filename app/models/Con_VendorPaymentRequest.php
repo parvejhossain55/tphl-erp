@@ -112,7 +112,7 @@ class Con_VendorPaymentRequest extends Model
     public function getAll($userId = null, $assignedProjectIds = [], $filters = [])
     {
         $sql = "SELECT pr.*,
-                       v.name       AS vendor_name,
+                       COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
                        p.name       AS project_name,
                        po.id        AS po_number,
                        u.full_name  AS created_by_name,
@@ -349,7 +349,7 @@ class Con_VendorPaymentRequest extends Model
     {
         $stmt = $this->db->prepare(
             "SELECT pr.*,
-                    v.name        AS vendor_name,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
                     p.name        AS project_name,
                     po.id         AS po_number,
                     u.full_name   AS created_by_name,
@@ -385,7 +385,7 @@ class Con_VendorPaymentRequest extends Model
     {
         $stmt = $this->db->prepare(
             "SELECT pr.*,
-                    v.name AS vendor_name,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
                     u.full_name AS created_by_name,
                     COALESCE(paid.total_paid, 0) AS total_paid
              FROM {$this->table} pr

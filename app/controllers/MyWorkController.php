@@ -28,6 +28,17 @@ class MyWorkController extends Controller
             exit;
         }
 
+        if (!hasPermission('Task Manage')) {
+            if (!empty($_GET['ajax'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Access restricted: Task Manage permission required.']);
+                exit;
+            }
+            setError("Access restricted: You do not have Task Manage permission.");
+            header("Location: " . ($GLOBALS['base_url'] ?? ''));
+            exit;
+        }
+
         $userId = (int) $_SESSION['user']['id'];
         $user = $_SESSION['user'] ?? [];
         $baseUrl = $GLOBALS['base_url'] ?? '';
@@ -644,6 +655,83 @@ class MyWorkController extends Controller
         if ($empCode !== '') $ids[] = $empCode;
 
         return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Save a manual note entry directly into employee_tasks (Previous Task Sheet only; never touches `tasks` table).
+     */
+    public function addPreviousTaskSheetNote()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+
+        if (!isset($_SESSION['user']['id'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+        if (!hasPermission('Task Manage')) {
+            echo json_encode(['status' => 'error', 'message' => 'Access restricted: Task Manage permission required.']);
+            exit;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        $userId = (int) $_SESSION['user']['id'];
+        $empIds = $this->getEmployeeIdsForTaskSheet($userId);
+        $employeeId = 0;
+        foreach ($empIds as $eid) {
+            if (is_numeric($eid) && (int) $eid > 0) {
+                $employeeId = (int) $eid;
+                break;
+            }
+        }
+        if ($employeeId <= 0) {
+            $employeeId = $userId;
+        }
+
+        $workDate = trim((string) ($_POST['work_date'] ?? date('Y-m-d')));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $workDate)) {
+            $workDate = date('Y-m-d');
+        }
+        $taskDesc = trim((string) ($_POST['task_description'] ?? ''));
+        $hours = (float) ($_POST['hours_spent'] ?? 0);
+        if ($hours < 0) $hours = 0;
+        $status = trim((string) ($_POST['status'] ?? 'Done'));
+        if (!in_array($status, ['Done', 'In Progress', 'Pending'], true)) {
+            $status = 'Done';
+        }
+        $remarks = trim((string) ($_POST['remarks'] ?? ''));
+
+        if ($taskDesc === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Task description is required.']);
+            exit;
+        }
+
+        $model = class_exists('EmployeeTask') ? new EmployeeTask($this->db) : null;
+        if (!$model) {
+            echo json_encode(['status' => 'error', 'message' => 'EmployeeTask model unavailable.']);
+            exit;
+        }
+
+        $ok = $model->createTask([
+            'employee_id'      => $employeeId,
+            'work_date'        => $workDate,
+            'task_description' => $taskDesc,
+            'hours_spent'      => $hours,
+            'status'           => $status,
+            'remarks'          => $remarks,
+        ]);
+
+        if ($ok) {
+            echo json_encode(['status' => 'success', 'message' => 'Note added to Previous Task Sheet.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to save note.']);
+        }
+        exit;
     }
 
     /**

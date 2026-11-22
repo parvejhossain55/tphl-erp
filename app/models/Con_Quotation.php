@@ -42,7 +42,7 @@ class Con_Quotation extends Model
     public function getByRequest($requestId)
     {
         $stmt = $this->db->prepare(
-            "SELECT q.*, v.name AS vendor_name, v.company_name AS vendor_company_name, v.phone AS vendor_phone,
+            "SELECT q.*, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, v.company_name AS vendor_company_name, v.phone AS vendor_phone,
                     (SELECT SUM(qi.quantity * qi.unit_price) FROM {$this->itemTable} qi WHERE qi.quotation_id = q.id) AS total_amount
              FROM {$this->table} q
              JOIN vendors v ON v.id = q.vendor_id
@@ -68,7 +68,7 @@ class Con_Quotation extends Model
     public function find($id)
     {
         $stmt = $this->db->prepare(
-            "SELECT q.*, v.name AS vendor_name, v.company_name AS vendor_company_name
+            "SELECT q.*, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, v.company_name AS vendor_company_name
              FROM {$this->table} q
              JOIN vendors v ON v.id = q.vendor_id
              WHERE q.id = ?"
@@ -278,7 +278,7 @@ class Con_Quotation extends Model
         $sql = "SELECT ci.material_id, ci.vendor_id, MAX(ci.unit_price) AS unit_price, 
                        m.name AS material_name, m.unit, 
                        COALESCE(cat.name, 'Uncategorized') AS category_name, 
-                       v.name AS vendor_name, 
+                       COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, 
                        (SELECT SUM(quantity) FROM purchase_request_items WHERE request_id = qc.request_id AND material_id = ci.material_id) AS pr_quantity
                 FROM comparison_items ci
                 JOIN quotation_comparisons qc ON qc.id = ci.comparison_id
@@ -286,7 +286,7 @@ class Con_Quotation extends Model
                 LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 JOIN vendors v ON v.id = ci.vendor_id
                 WHERE qc.request_id = ? AND ci.is_selected = 1
-                GROUP BY ci.material_id, ci.vendor_id, m.name, m.unit, category_name, v.name, qc.request_id
+                GROUP BY ci.material_id, ci.vendor_id, m.name, m.unit, category_name, v.company_name, v.name, qc.request_id
                 ORDER BY MIN(ci.id) ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $requestId);

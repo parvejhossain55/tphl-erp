@@ -664,6 +664,21 @@
                 </select>
             </div>
 
+            <?php if (!empty($isGlobalViewer)): ?>
+            <!-- Sales Manager (Cluster Head) Filter -->
+            <div class="tp-form-group">
+                <label for="fManager"><i class="fa-solid fa-user-tie me-1"></i> Sales Manager</label>
+                <select name="sales_manager_id" id="fManager" class="tp-input" style="min-width: 175px;">
+                    <option value="">All Sales Managers</option>
+                    <?php foreach (($salesManagers ?? []) as $sm): ?>
+                        <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= (!empty($selectedSalesManagerId) && (int)$selectedSalesManagerId === (int)$sm['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($sm['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
+
             <!-- Team Filter -->
             <div class="tp-form-group">
                 <label for="fTeam"><i class="fa-solid fa-users me-1"></i> Team</label>
@@ -703,6 +718,33 @@
                 <button type="button" class="btn-tp btn-tp-reset" onclick="window.print()" title="Print Summary">
                     <i class="fa-solid fa-print"></i> Print
                 </button>
+                <?php if (!empty($isGlobalViewer)): ?>
+                <script>
+                (function () {
+                    var mgr = document.getElementById('fManager');
+                    var team = document.getElementById('fTeam');
+                    if (!mgr || !team) return;
+                    function sync() {
+                        var opt = mgr.options[mgr.selectedIndex];
+                        var raw = mgr.value && opt ? (opt.getAttribute('data-teams') || '') : '';
+                        var allowed = mgr.value ? raw.split(',').filter(Boolean) : null;
+                        var cur = team.value;
+                        var valid = false;
+                        for (var i = 0; i < team.options.length; i++) {
+                            var o = team.options[i];
+                            if (!o.value) { o.disabled = false; o.hidden = false; continue; }
+                            var ok = allowed === null || allowed.indexOf(o.value) !== -1;
+                            o.disabled = !ok;
+                            o.hidden = !ok;
+                            if (o.value === cur && ok) valid = true;
+                        }
+                        if (cur && !valid) team.value = '';
+                    }
+                    mgr.addEventListener('change', sync);
+                    if (mgr.value) sync();
+                })();
+                </script>
+                <?php endif; ?>
             </div>
         </form>
 

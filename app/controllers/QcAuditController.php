@@ -121,7 +121,7 @@ class QcAuditController extends Controller
         ")->fetch_all(MYSQLI_ASSOC);
 
         $vendorPayments = $this->db->query("
-            SELECT vpr.*, p.name as project_name, v.name as vendor_name, u.full_name as requested_by_name 
+            SELECT vpr.*, p.name as project_name, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as vendor_name, u.full_name as requested_by_name 
             FROM vendor_payment_requests vpr 
             LEFT JOIN projects p ON p.id = vpr.project_id 
             LEFT JOIN vendors v ON v.id = vpr.vendor_id 
@@ -141,7 +141,7 @@ class QcAuditController extends Controller
         ")->fetch_all(MYSQLI_ASSOC);
 
         $purchaseOrders = $this->db->query("
-            SELECT po.*, p.name as project_name, v.name as vendor_name 
+            SELECT po.*, p.name as project_name, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as vendor_name 
             FROM purchase_orders po 
             LEFT JOIN purchase_requests pr ON pr.id = po.request_id 
             LEFT JOIN projects p ON p.id = pr.project_id 
@@ -188,7 +188,7 @@ class QcAuditController extends Controller
         }
 
         $vendors = [];
-        $vRes = $this->db->query("SELECT id, name, company_name, phone FROM vendors WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
+        $vRes = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name, company_name, phone FROM vendors WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
         if ($vRes) {
             while ($vRow = $vRes->fetch_assoc()) {
                 $vendors[] = $vRow;
@@ -232,7 +232,7 @@ class QcAuditController extends Controller
         }
         if ($search) {
             $safeSearch = $this->db->real_escape_string($search);
-            $where[] = "(v.name LIKE '%$safeSearch%' OR p.name LIKE '%$safeSearch%' OR po.id = '$safeSearch' OR poi_agg.materials_summary LIKE '%$safeSearch%')";
+            $where[] = "(v.company_name LIKE '%$safeSearch%' OR v.name LIKE '%$safeSearch%' OR p.name LIKE '%$safeSearch%' OR po.id = '$safeSearch' OR poi_agg.materials_summary LIKE '%$safeSearch%')";
         }
 
         $whereSql = implode(' AND ', $where);
@@ -243,7 +243,7 @@ class QcAuditController extends Controller
             po.created_at,
             po.status as po_status,
             v.id as vendor_id,
-            v.name as vendor_name,
+            COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as vendor_name,
             v.phone as vendor_phone,
             p.id as project_id,
             p.name as project_name,
@@ -694,7 +694,7 @@ class QcAuditController extends Controller
                                     require_once __DIR__ . '/../models/ApprovalRequest.php';
                                     $approvalModel = new \ApprovalRequest($this->db);
                                     $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$reqData['project_id'])->fetch_assoc();
-                                    $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$reqData['vendor_id'])->fetch_assoc();
+                                    $vendor  = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)$reqData['vendor_id'])->fetch_assoc();
 
                                     $approvalModel->create([
                                         'department'     => 'construction',

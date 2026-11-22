@@ -177,7 +177,7 @@ class VoucherController extends Controller
 
             case 'vendor_payment':
             case 'vendor_payment_requests':
-                $stmt = $this->db->prepare("SELECT vpr.*, p.name as project_name, v.name as vendor_name, po.id as po_number, po.remarks as po_remarks FROM vendor_payment_requests vpr LEFT JOIN projects p ON vpr.project_id = p.id LEFT JOIN vendors v ON v.id = vpr.vendor_id LEFT JOIN purchase_orders po ON po.id = vpr.purchase_order_id WHERE vpr.id = ?");
+                $stmt = $this->db->prepare("SELECT vpr.*, p.name as project_name, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as vendor_name, po.id as po_number, po.remarks as po_remarks FROM vendor_payment_requests vpr LEFT JOIN projects p ON vpr.project_id = p.id LEFT JOIN vendors v ON v.id = vpr.vendor_id LEFT JOIN purchase_orders po ON po.id = vpr.purchase_order_id WHERE vpr.id = ?");
                 if (!$stmt) die("Error preparing query: " . $this->db->error);
                 $stmt->bind_param("i", $id);
                 $stmt->execute();

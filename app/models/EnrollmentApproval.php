@@ -138,9 +138,10 @@ class EnrollmentApproval extends Model
             $stmt->close();
         }
 
-        // Fetch name for title
+        // Fetch name for title (Business Name preferred, fallback to Contact Person Name)
         $recordName = "ID #{$sourceId}";
-        $nr = $this->db->query("SELECT name FROM {$table} WHERE id = {$sourceId} LIMIT 1");
+        $nameCol = ($type === 'contractor') ? 'name' : "COALESCE(NULLIF(TRIM(company_name), ''), name) AS name";
+        $nr = $this->db->query("SELECT {$nameCol} FROM {$table} WHERE id = {$sourceId} LIMIT 1");
         if ($nr && $nrow = $nr->fetch_assoc()) {
             $recordName = $nrow['name'];
         }
@@ -499,7 +500,7 @@ class EnrollmentApproval extends Model
             if ($type === 'contractor') {
                 $where[] = "(r.name LIKE '%{$escSearch}%' OR r.phone LIKE '%{$escSearch}%' OR r.trade LIKE '%{$escSearch}%' OR r.nid_number LIKE '%{$escSearch}%' OR u_cr.full_name LIKE '%{$escSearch}%')";
             } else {
-                $where[] = "(r.name LIKE '%{$escSearch}%' OR r.phone LIKE '%{$escSearch}%' OR r.email LIKE '%{$escSearch}%' OR r.company_name LIKE '%{$escSearch}%' OR u_cr.full_name LIKE '%{$escSearch}%')";
+                $where[] = "(r.company_name LIKE '%{$escSearch}%' OR r.name LIKE '%{$escSearch}%' OR r.phone LIKE '%{$escSearch}%' OR r.email LIKE '%{$escSearch}%' OR r.nid_number LIKE '%{$escSearch}%' OR r.trade_license_number LIKE '%{$escSearch}%' OR u_cr.full_name LIKE '%{$escSearch}%')";
             }
         }
 
@@ -567,7 +568,7 @@ class EnrollmentApproval extends Model
             if ($type === 'contractor') {
                 $where[] = "(r.name LIKE '%{$escSearch}%' OR r.phone LIKE '%{$escSearch}%' OR r.trade LIKE '%{$escSearch}%' OR r.nid_number LIKE '%{$escSearch}%' OR u_cr.full_name LIKE '%{$escSearch}%')";
             } else {
-                $where[] = "(r.name LIKE '%{$escSearch}%' OR r.phone LIKE '%{$escSearch}%' OR r.email LIKE '%{$escSearch}%' OR r.company_name LIKE '%{$escSearch}%' OR u_cr.full_name LIKE '%{$escSearch}%')";
+                $where[] = "(r.company_name LIKE '%{$escSearch}%' OR r.name LIKE '%{$escSearch}%' OR r.phone LIKE '%{$escSearch}%' OR r.email LIKE '%{$escSearch}%' OR r.nid_number LIKE '%{$escSearch}%' OR r.trade_license_number LIKE '%{$escSearch}%' OR u_cr.full_name LIKE '%{$escSearch}%')";
             }
         }
 

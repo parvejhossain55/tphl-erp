@@ -693,9 +693,19 @@ window.openEditPaymentDateModal = function(target) {
                             <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#applyPreviousDiscountModal">
                                 <i class="fa-solid fa-tags me-1"></i> Apply Previous Discount
                             </button>
-                            <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger">
+                            <?php $accFlatLabel = trim('UNIT ' . ($clientDetails['unit_name'] ?? '') . (!empty($clientDetails['flat_no']) ? ' - FLOOR ' . $clientDetails['flat_no'] : '')); ?>
+                            <button type="button"
+                                class="btn btn-danger quickRefundBtn"
+                                data-bs-toggle="modal"
+                                data-bs-target="#quickRefundModal"
+                                data-id="<?= (int)$clientDetails['booking_id'] ?>"
+                                data-paid="<?= (float)($paymentSummary['total_paid'] ?? 0) ?>"
+                                data-flat="<?= htmlspecialchars($accFlatLabel) ?>"
+                                data-project="<?= htmlspecialchars($clientDetails['project_name'] ?? '') ?>"
+                                data-agreement="<?= number_format((float)($paymentSummary['total_price'] ?? ($clientDetails['agreement_value'] ?? 0)), 2) ?>"
+                                data-client="<?= htmlspecialchars(trim($clientDetails['client_name'] ?? '')) ?>">
                                 <i class="fa-light fa-undo me-2"></i> Refund
-                            </a>
+                            </button>
                         <?php endif; ?>
                     <?php endif; ?>
                     <?php if (!function_exists('isAccountsExecutive') || !isAccountsExecutive()): ?>
@@ -3207,3 +3217,5 @@ window.openEditPaymentDateModal = function(target) {
         </div>
     </div>
 </div>
+
+<?php include __DIR__ . '/../../components/quick-refund-modal.php'; ?>

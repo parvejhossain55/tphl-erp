@@ -73,6 +73,8 @@ class TeamDashboardController extends Controller
 
         // Fetch all active teams (filtered to managed teams for Sales Manager)
         $allTeams = $this->teamModel->getAll();
+        $requestedManagerId = ($isGlobalTeamViewer && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : 0;
+        $salesManagers = $isGlobalTeamViewer ? getSalesManagersWithTeams($this->db) : [];
         if ($isSalesManagerUser && !$isGlobalTeamViewer) {
             $allTeams = array_values(array_filter($allTeams, function ($t) use ($managedTeamIds) {
                 return in_array((int)($t['id'] ?? 0), $managedTeamIds, true);
@@ -86,7 +88,20 @@ class TeamDashboardController extends Controller
         $activeTeamIds    = [];
 
         if ($isGlobalTeamViewer) {
-            if ($requestedTeamId > 0) {
+            if ($requestedManagerId > 0) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $requestedManagerId);
+                $allTeams = array_values(array_filter($allTeams, function ($t) use ($mgrTeamIds) {
+                    return in_array((int)($t['id'] ?? 0), $mgrTeamIds, true);
+                }));
+                if ($requestedTeamId > 0 && in_array($requestedTeamId, $mgrTeamIds, true)) {
+                    $teamId = $requestedTeamId;
+                    $activeTeamIds = [$teamId];
+                } else {
+                    $isAllTeamsMode = true;
+                    $teamId = 0;
+                    $activeTeamIds = !empty($mgrTeamIds) ? $mgrTeamIds : [-1];
+                }
+            } elseif ($requestedTeamId > 0) {
                 $teamId = $requestedTeamId;
                 $activeTeamIds = [$teamId];
             } else {
@@ -358,6 +373,9 @@ class TeamDashboardController extends Controller
         $viewData = array_merge([
             "current_route"             => "team-dashboard",
             "page_title"                => "Team Overview Dashboard",
+            "isGlobalTeamViewer"        => $isGlobalTeamViewer,
+            "salesManagers"             => $salesManagers,
+            "selectedSalesManagerId"    => $requestedManagerId,
             "teamId"                    => $teamId,
             "team"                      => $team,
             "teamName"                  => $teamName,

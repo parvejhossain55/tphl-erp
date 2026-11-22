@@ -73,6 +73,10 @@ class ApprovalRequest extends Model
                     'op_head_by'           => "INT UNSIGNED NULL DEFAULT NULL",
                     'op_head_at'           => "DATETIME NULL DEFAULT NULL",
                     'op_head_note'         => "TEXT NULL DEFAULT NULL",
+                    'qc_status'            => "VARCHAR(20) NOT NULL DEFAULT 'pending'",
+                    'qc_by'                => "INT UNSIGNED NULL DEFAULT NULL",
+                    'qc_at'                => "DATETIME NULL DEFAULT NULL",
+                    'qc_note'              => "TEXT NULL DEFAULT NULL",
                 ];
                 foreach ($requiredCols as $colName => $colDef) {
                     if (!isset($existingCols[$colName])) {
@@ -5322,7 +5326,7 @@ class ApprovalRequest extends Model
         }
         // 1. Insert missing vendor_payment_requests into approval_requests
         $sql = "
-            SELECT vpr.*, p.name AS project_name, v.name AS vendor_name
+            SELECT vpr.*, p.name AS project_name, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name
             FROM vendor_payment_requests vpr
             LEFT JOIN projects p ON vpr.project_id = p.id
             LEFT JOIN vendors v ON vpr.vendor_id = v.id
@@ -6175,7 +6179,7 @@ class ApprovalRequest extends Model
                 COALESCE(cft.notes, 'Construction Disbursement') as title,
                 COALESCE(p.name, 'Corporate / Construction') as project_name,
                 CASE 
-                    WHEN cft.ref_type = 'vendor_payment' THEN COALESCE(v.name, 'Vendor')
+                    WHEN cft.ref_type = 'vendor_payment' THEN COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, 'Vendor')
                     WHEN cft.ref_type = 'contractor_bill' THEN COALESCE(c.name, 'Contractor')
                     ELSE 'Recipient'
                 END as payee_name,

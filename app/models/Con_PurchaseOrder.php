@@ -99,7 +99,7 @@ class Con_PurchaseOrder extends Model
         $sql = "SELECT po.*, COALESCE(pr.project_id, vpr.project_id) AS project_id, pr.is_urgent AS pr_is_urgent, pr.urgent_reason AS pr_urgent_reason, pr.required_date AS pr_required_date, p.name AS project_name,
                        u.full_name AS created_by_name,
                        u.role_id AS creator_role_id,
-                       v.name AS vendor_name,
+                       COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
                        v.company_name AS vendor_company_name,
                        (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount,
                        (SELECT COALESCE(SUM(quantity), 0) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_qty,
@@ -170,7 +170,7 @@ class Con_PurchaseOrder extends Model
                     pr.urgent_reason AS pr_urgent_reason,
                     u.full_name AS created_by_name,
                     u.role_id AS creator_role_id,
-                    v.name AS vendor_name,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
                     v.company_name AS vendor_company,
                     apv.full_name AS pm_approver_name,
                     apv_r.name    AS pm_approver_role,
@@ -213,7 +213,7 @@ class Con_PurchaseOrder extends Model
     public function getItems($poId)
     {
         $stmt = $this->db->prepare(
-            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, v.company_name AS vendor_company_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
+            "SELECT poi.*, m.name AS material_name, m.unit, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, v.company_name AS vendor_company_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     COALESCE(pri.current_stock, 0) AS current_stock,
                     COALESCE(pri.pr_quantity, 0) AS pr_quantity,
                     COALESCE(pri.next_3_months_requirement, 0) AS next_3_months_requirement,
@@ -382,7 +382,7 @@ class Con_PurchaseOrder extends Model
      */
     public function getPendingItems($poId)
     {
-        $sql = "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, v.company_name AS vendor_company_name,
+        $sql = "SELECT poi.*, m.name AS material_name, m.unit, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, v.company_name AS vendor_company_name,
                        COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(recv.received_total, 0) AS received_total,
                        (poi.quantity - COALESCE(recv.received_total, 0)) AS pending_qty

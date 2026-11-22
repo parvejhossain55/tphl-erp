@@ -577,10 +577,25 @@ body.dark-mode {
                         </select>
                     </div>
 
+                    <?php if (!empty($isGlobalViewer)): ?>
+                    <!-- Sales Manager (Cluster Head) -->
+                    <div class="col-12 col-sm-6 col-lg-2">
+                        <label class="form-label text-muted mb-1" style="font-size: 10.5px; font-weight: 600;">Sales manager (Cluster)</label>
+                        <select name="sales_manager_id" id="sdManagerSelect" class="form-select sd-form-select">
+                            <option value="">All sales managers</option>
+                            <?php foreach (($salesManagers ?? []) as $sm): ?>
+                                <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= ((int)($f['sales_manager_id'] ?? 0) === (int)$sm['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($sm['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Sales Team -->
                     <div class="col-12 col-sm-6 col-lg-2">
                         <label class="form-label text-muted mb-1" style="font-size: 10.5px; font-weight: 600;">Sales team</label>
-                        <select name="team_id" class="form-select sd-form-select">
+                        <select name="team_id" id="sdTeamSelect" class="form-select sd-form-select">
                             <option value="">All teams</option>
                             <?php foreach ($teamsList as $team): ?>
                                 <option value="<?= $team['id'] ?>" <?= ($f['team_id'] == $team['id']) ? 'selected' : '' ?>>
@@ -589,6 +604,34 @@ body.dark-mode {
                             <?php endforeach; ?>
                         </select>
                     </div>
+
+                    <?php if (!empty($isGlobalViewer)): ?>
+                    <script>
+                    (function () {
+                        var mgrSel = document.getElementById('sdManagerSelect');
+                        var teamSel = document.getElementById('sdTeamSelect');
+                        if (!mgrSel || !teamSel) return;
+                        function syncSdTeams() {
+                            var opt = mgrSel.options[mgrSel.selectedIndex];
+                            var raw = mgrSel.value && opt ? (opt.getAttribute('data-teams') || '') : '';
+                            var allowed = mgrSel.value ? raw.split(',').filter(Boolean) : null;
+                            var cur = teamSel.value;
+                            var valid = false;
+                            for (var i = 0; i < teamSel.options.length; i++) {
+                                var o = teamSel.options[i];
+                                if (!o.value) { o.disabled = false; o.hidden = false; continue; }
+                                var ok = allowed === null || allowed.indexOf(o.value) !== -1;
+                                o.disabled = !ok;
+                                o.hidden = !ok;
+                                if (o.value === cur && ok) valid = true;
+                            }
+                            if (cur && !valid) teamSel.value = '';
+                        }
+                        mgrSel.addEventListener('change', syncSdTeams);
+                        if (mgrSel.value) syncSdTeams();
+                    })();
+                    </script>
+                    <?php endif; ?>
 
                     <!-- Executive -->
                     <div class="col-12 col-sm-6 col-lg-2">

@@ -60,6 +60,7 @@ return [
     'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
     'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
     'my-work/send-reminder/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'sendReminder'],
+    'my-work/previous-task-sheet/add-note' => ['controller' => 'MyWorkController', 'method' => 'addPreviousTaskSheetNote'],
 
     // =========================================================================
     // Controller: EmployeeController
