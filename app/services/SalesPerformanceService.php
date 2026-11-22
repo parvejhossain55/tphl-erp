@@ -43,6 +43,7 @@ class SalesPerformanceService
 
     protected array $users = [];
     protected array $teams = [];
+    protected array $salesManagers = [];
 
     public function __construct($db)
     {
@@ -459,6 +460,61 @@ class SalesPerformanceService
                 'photo' => $r['photo'],
             ];
         }
+
+        $managers = [];
+        $chkSmt = @$this->db->query("SHOW TABLES LIKE 'sales_manager_teams'");
+        if ($chkSmt && $chkSmt->num_rows > 0) {
+            $smtRes = @$this->db->query(
+                "SELECT smt.manager_user_id, smt.team_id, u.full_name
+                 FROM sales_manager_teams smt
+                 INNER JOIN users u ON u.id = smt.manager_user_id
+                 WHERE smt.is_active = 1
+                 ORDER BY u.full_name, smt.team_id"
+            );
+            while ($smtRes && $mr = $smtRes->fetch_assoc()) {
+                $mid = (int) $mr['manager_user_id'];
+                $tid = (int) $mr['team_id'];
+                if ($mid <= 0 || $tid <= 0) {
+                    continue;
+                }
+                if (!isset($managers[$mid])) {
+                    $managers[$mid] = [
+                        'id' => $mid,
+                        'name' => trim((string) $mr['full_name']) ?: ('Manager #' . $mid),
+                        'team_ids' => [],
+                    ];
+                }
+                if (!in_array($tid, $managers[$mid]['team_ids'], true)) {
+                    $managers[$mid]['team_ids'][] = $tid;
+                }
+            }
+        }
+        $this->salesManagers = $managers;
+    }
+
+    public function getSalesManagers(): array
+    {
+        $this->loadReference();
+        return $this->salesManagers;
+    }
+
+    /**
+     * Resolve effective allowed team IDs from team_id and sales_manager_id filters.
+     * Returns null when all teams are in scope, or an array of team IDs (possibly empty).
+     */
+    protected function resolveAllowedTeamIds(?int $teamFilter, ?int $managerFilter): ?array
+    {
+        if ($managerFilter) {
+            $mgrTeamIds = $this->salesManagers[$managerFilter]['team_ids'] ?? [];
+            if ($teamFilter) {
+                return in_array($teamFilter, $mgrTeamIds, true) ? [$teamFilter] : [];
+            }
+            return $mgrTeamIds;
+        }
+        if ($teamFilter) {
+            return [$teamFilter];
+        }
+        return null;
     }
 
     public function getTeams(): array
@@ -536,7 +592,9 @@ class SalesPerformanceService
 
         $projectId = !empty($filters['project_id']) ? (int) $filters['project_id'] : null;
         $teamFilter = !empty($filters['team_id']) ? (int) $filters['team_id'] : null;
+        $managerFilter = !empty($filters['sales_manager_id']) ? (int) $filters['sales_manager_id'] : null;
         $execFilter = !empty($filters['executive_id']) ? (int) $filters['executive_id'] : null;
+        $allowedTeamIds = $this->resolveAllowedTeamIds($teamFilter, $managerFilter);
 
         $start = $period['start'];
         $end = $period['end'];
@@ -545,16 +603,16 @@ class SalesPerformanceService
         $isAllTime = !empty($period['is_all_time']);
         $today = date('Y-m-d');
 
-        // Bucket filter: does this owner pass team/executive filters?
-        $passes = function (?int $uid, ?int $bTeamId = null) use ($teamFilter, $execFilter): bool {
+        // Bucket filter: does this owner pass team/cluster/executive filters?
+        $passes = function (?int $uid, ?int $bTeamId = null) use ($allowedTeamIds, $execFilter): bool {
             if ($execFilter) {
                 return $uid === $execFilter;
             }
-            if ($teamFilter) {
+            if ($allowedTeamIds !== null) {
                 if ($bTeamId !== null && $bTeamId > 0) {
-                    return $bTeamId === $teamFilter;
+                    return in_array($bTeamId, $allowedTeamIds, true);
                 }
-                return $uid && isset($this->users[$uid]) && $this->users[$uid]['team_id'] === $teamFilter && $this->users[$uid]['is_sales'];
+                return $uid && isset($this->users[$uid]) && in_array($this->users[$uid]['team_id'], $allowedTeamIds, true) && $this->users[$uid]['is_sales'];
             }
             return true;
         };
@@ -1511,21 +1569,25 @@ class SalesPerformanceService
         $projF     = $projectId ? " AND l.project_id = " . $projectId : "";
         $projO     = $projectId ? " AND COALESCE(o.project_id, l.project_id) = " . $projectId : "";
 
-        // Resolve user scope (Executive / Team / Team Key)
+        // Resolve user scope (Executive / Cluster Head / Team / Team Key)
         $execFilter = !empty($filters['executive_id']) ? (int) $filters['executive_id'] : null;
         $teamFilter = !empty($filters['team_id']) ? (int) $filters['team_id'] : null;
+        $managerFilter = !empty($filters['sales_manager_id']) ? (int) $filters['sales_manager_id'] : null;
         $teamKey    = !empty($filters['team_key']) ? (string) $filters['team_key'] : null;
+        $allowedTeamIds = $this->resolveAllowedTeamIds($teamFilter, $managerFilter);
 
         $targetUids = null;
         $isUnassignedOnly = false;
 
         if ($execFilter) {
             $targetUids = [$execFilter];
-        } elseif ($teamFilter) {
+        } elseif ($allowedTeamIds !== null) {
             $uids = [];
-            foreach ($this->users as $uid => $u) {
-                if ($u['team_id'] === $teamFilter) {
-                    $uids[] = (int) $uid;
+            if (!empty($allowedTeamIds)) {
+                foreach ($this->users as $uid => $u) {
+                    if (in_array($u['team_id'], $allowedTeamIds, true)) {
+                        $uids[] = (int) $uid;
+                    }
                 }
             }
             $targetUids = $uids ?: [-999];

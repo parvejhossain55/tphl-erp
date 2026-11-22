@@ -381,6 +381,21 @@ $activeCard = $_GET['filter_card'] ?? '';
                         </select>
                     </div>
 
+                    <?php if (!empty($canFilterBySalesManager) && !empty($salesManagers)): ?>
+                    <!-- Sales Manager (Cluster Head) Filter (Super Admin & Head of Sales only) -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Sales Manager</label>
+                        <select class="form-select form-select-sm filter-select select2" name="sales_manager_id" id="leadListManagerSelect" data-placeholder="Sales Manager: All">
+                            <option value=""></option>
+                            <?php foreach ($salesManagers as $sm): ?>
+                                <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= ((int)($selectedSalesManagerId ?? 0) === (int)$sm['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($sm['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Team Filter -->
                     <?php 
                     $sessionUserRoleId = $_SESSION['user']['role_id'] ?? null;
@@ -390,7 +405,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>
-                        <select class="form-select form-select-sm filter-select select2" name="team_id" data-placeholder="Team: All">
+                        <select class="form-select form-select-sm filter-select select2" name="team_id" id="leadListTeamSelect" data-placeholder="Team: All">
                             <option value=""></option>
                             <?php foreach ($teams as $t): ?>
                                 <option value="<?= $t['id'] ?>" <?= ($selectedTeam ?? '') == $t['id'] ? 'selected' : '' ?>>
@@ -399,6 +414,33 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php if (!empty($canFilterBySalesManager) && !empty($salesManagers)): ?>
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        var $mgr = window.jQuery ? jQuery('#leadListManagerSelect') : null;
+                        var $team = window.jQuery ? jQuery('#leadListTeamSelect') : null;
+                        if (!$mgr || !$mgr.length || !$team || !$team.length) return;
+                        function syncLeadListTeams() {
+                            var val = $mgr.val();
+                            var raw = val ? ($mgr.find('option:selected').attr('data-teams') || '') : '';
+                            var allowed = val ? raw.split(',').filter(Boolean) : null;
+                            var cur = $team.val();
+                            var valid = false;
+                            $team.find('option').each(function () {
+                                var v = jQuery(this).val();
+                                if (!v) { jQuery(this).prop('disabled', false).prop('hidden', false); return; }
+                                var ok = allowed === null || allowed.indexOf(v) !== -1;
+                                jQuery(this).prop('disabled', !ok).prop('hidden', !ok);
+                                if (v === cur && ok) valid = true;
+                            });
+                            if (cur && !valid) $team.val('').trigger('change.select2');
+                            else $team.trigger('change.select2');
+                        }
+                        $mgr.on('change', syncLeadListTeams);
+                        if ($mgr.val()) syncLeadListTeams();
+                    });
+                    </script>
+                    <?php endif; ?>
                     <?php endif; ?>
 
                     <!-- Project Filter -->

@@ -201,6 +201,10 @@ class TrackerCalculationService
         );
 
         if ($isGlobalAdmin || $isSalesHead) {
+            if (is_array($filterTeamId)) {
+                $ids = array_values(array_unique(array_filter(array_map('intval', $filterTeamId), fn($id) => $id > 0)));
+                return ['type' => 'TEAMS', 'team_ids' => !empty($ids) ? $ids : [-1]];
+            }
             if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
                 return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
             }
@@ -209,6 +213,10 @@ class TrackerCalculationService
 
         // 3. Fallback: If user has no employee record or is not in sales department, show ALL
         if (empty($empId) || ($empDeptId !== null && $empDeptId !== 1)) {
+            if (is_array($filterTeamId)) {
+                $ids = array_values(array_unique(array_filter(array_map('intval', $filterTeamId), fn($id) => $id > 0)));
+                return ['type' => 'TEAMS', 'team_ids' => !empty($ids) ? $ids : [-1]];
+            }
             if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
                 return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
             }

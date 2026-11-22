@@ -833,6 +833,57 @@ function getManagedTeamIds($db = null, ?int $userId = null): array
 }
 
 /**
+ * Return active Sales Managers (Cluster Heads) and their assigned team IDs
+ * from sales_manager_teams. Safe if the table does not exist yet (returns []).
+ */
+function getSalesManagersWithTeams($db = null): array
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $conn = $db ?? ($GLOBALS['db'] ?? ($GLOBALS['conn'] ?? null));
+    if (!$conn instanceof mysqli) {
+        return [];
+    }
+
+    $chk = @$conn->query("SHOW TABLES LIKE 'sales_manager_teams'");
+    if (!$chk || $chk->num_rows === 0) {
+        $cached = [];
+        return [];
+    }
+
+    $sql = "SELECT smt.manager_user_id, smt.team_id, u.full_name
+            FROM sales_manager_teams smt
+            INNER JOIN users u ON u.id = smt.manager_user_id
+            WHERE smt.is_active = 1
+            ORDER BY u.full_name, smt.team_id";
+    $res = @$conn->query($sql);
+    $managers = [];
+    while ($res && $row = $res->fetch_assoc()) {
+        $mid = (int) ($row['manager_user_id'] ?? 0);
+        $tid = (int) ($row['team_id'] ?? 0);
+        if ($mid <= 0 || $tid <= 0) {
+            continue;
+        }
+        if (!isset($managers[$mid])) {
+            $managers[$mid] = [
+                'id' => $mid,
+                'name' => trim((string) ($row['full_name'] ?? '')) ?: ('Manager #' . $mid),
+                'team_ids' => [],
+            ];
+        }
+        if (!in_array($tid, $managers[$mid]['team_ids'], true)) {
+            $managers[$mid]['team_ids'][] = $tid;
+        }
+    }
+
+    $cached = $managers;
+    return $cached;
+}
+
+/**
  * Determine the current user's Sales portal filter scope:
  * - is_global: Head of Sales (9) & Management (1, 3, 20, 32, 33, 34, 35, 38) -> all teams, executives, projects
  * - is_manager: New Sales Manager -> only their assigned teams (sales_manager_teams)

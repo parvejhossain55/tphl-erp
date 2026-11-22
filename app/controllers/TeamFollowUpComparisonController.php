@@ -77,6 +77,8 @@ class TeamFollowUpComparisonController extends Controller
         $to = !empty($_GET['to']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to']) ? $_GET['to'] : null;
 
         $teamId = !empty($_GET['team_id']) ? (int) $_GET['team_id'] : null;
+        $scope = function_exists('getSalesFilterScope') ? getSalesFilterScope($this->db) : ['is_global' => true];
+        $salesManagerId = (!empty($scope['is_global']) && !empty($_GET['sales_manager_id'])) ? (int) $_GET['sales_manager_id'] : null;
         $projectId = !empty($_GET['project_id']) ? (int) $_GET['project_id'] : null;
         $executiveId = !empty($_GET['executive_id']) ? (int) $_GET['executive_id'] : null;
 
@@ -88,6 +90,7 @@ class TeamFollowUpComparisonController extends Controller
             'month' => $month,
             'from' => $from,
             'to' => $to,
+            'sales_manager_id' => $salesManagerId,
             'team_id' => $teamId,
             'project_id' => $projectId,
             'executive_id' => $executiveId,
@@ -143,6 +146,8 @@ class TeamFollowUpComparisonController extends Controller
             'teams' => $scopedTeams,
             'salesUsers' => $scopedUsers,
             'projects' => $scopedProjects,
+            'isGlobalViewer' => !empty($scope['is_global']),
+            'salesManagers' => !empty($scope['is_global']) ? getSalesManagersWithTeams($this->db) : [],
         ]);
     }
 
@@ -164,6 +169,7 @@ class TeamFollowUpComparisonController extends Controller
         );
 
         $drillFilters = [
+            'sales_manager_id' => $filters['sales_manager_id'],
             'team_id' => !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null,
             'executive_id' => !empty($_GET['executive_id']) ? (int)$_GET['executive_id'] : null,
             'project_id' => !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null,

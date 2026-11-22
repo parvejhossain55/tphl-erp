@@ -76,9 +76,21 @@ class LeadController extends Controller
         // Sales Manager (multi-team) sees their assigned teams, others filter by own team.
         $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
         $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
+        $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9], true) || in_array($userSecondaryRoleId, [3, 9], true));
+        $filterSalesManagerId = ($canFilterBySalesManager && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : null;
 
         if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
-            $teamIdForQuery = $filterTeamId;
+            if ($filterSalesManagerId) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $filterSalesManagerId);
+                if (!empty($filterTeamId)) {
+                    $teamIdForQuery = in_array((int)$filterTeamId, $mgrTeamIds, true) ? (int)$filterTeamId : [-1];
+                } else {
+                    $teamIdForQuery = !empty($mgrTeamIds) ? $mgrTeamIds : [-1];
+                }
+            } else {
+                $teamIdForQuery = $filterTeamId;
+            }
         } elseif ($isSalesManagerUser) {
             if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedTeamIds, true)) {
                 $teamIdForQuery = (int)$filterTeamId;
@@ -97,9 +109,16 @@ class LeadController extends Controller
                 return in_array((int)($u['team_id'] ?? 0), $allowedTids, true);
             }));
         } elseif (!empty($teamIdForQuery)) {
-            $assignedUsers = $this->userModel->getUsersByTeamAndRole($teamIdForQuery);
-            if (empty($assignedUsers)) {
-                $assignedUsers = $allRoleUsers;
+            if (is_array($teamIdForQuery)) {
+                $allowedTids = $teamIdForQuery;
+                $assignedUsers = array_values(array_filter($allRoleUsers, function ($u) use ($allowedTids) {
+                    return in_array((int)($u['team_id'] ?? 0), $allowedTids, true);
+                }));
+            } else {
+                $assignedUsers = $this->userModel->getUsersByTeamAndRole($teamIdForQuery);
+                if (empty($assignedUsers)) {
+                    $assignedUsers = $allRoleUsers;
+                }
             }
         } elseif (in_array((int)$userRoleId, [9, 33, 35]) || in_array((int)$userRoleId, [1, 3, 32, 34])) {
             $assignedUsers = $allRoleUsers;
@@ -388,6 +407,9 @@ class LeadController extends Controller
             "categories" => $categories,
             "countries"  => $countries,
             "selectedTeam" => $filterTeamId,
+            "canFilterBySalesManager" => $canFilterBySalesManager,
+            "salesManagers" => $canFilterBySalesManager ? getSalesManagersWithTeams($this->db) : [],
+            "selectedSalesManagerId" => $filterSalesManagerId,
             "selectedProject" => $filterProjectId,
             "selectedCategory" => $filterCategoryId,
             "selectedCountry" => $filterCountry,
@@ -518,9 +540,21 @@ class LeadController extends Controller
         // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default, but can filter.
         $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
         $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
+        $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9], true) || in_array($userSecondaryRoleId, [3, 9], true));
+        $filterSalesManagerId = ($canFilterBySalesManager && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : null;
 
         if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
-            $teamIdForQuery = $filterTeamId;
+            if ($filterSalesManagerId) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $filterSalesManagerId);
+                if (!empty($filterTeamId)) {
+                    $teamIdForQuery = in_array((int)$filterTeamId, $mgrTeamIds, true) ? (int)$filterTeamId : [-1];
+                } else {
+                    $teamIdForQuery = !empty($mgrTeamIds) ? $mgrTeamIds : [-1];
+                }
+            } else {
+                $teamIdForQuery = $filterTeamId;
+            }
         } elseif ($isSalesManagerUser) {
             if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedTeamIds, true)) {
                 $teamIdForQuery = (int)$filterTeamId;
@@ -1143,9 +1177,21 @@ class LeadController extends Controller
         // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default, but can filter.
         $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
         $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
+        $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9], true) || in_array($userSecondaryRoleId, [3, 9], true));
+        $filterSalesManagerId = ($canFilterBySalesManager && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : null;
 
         if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
-            $teamIdForQuery = $filterTeamId;
+            if ($filterSalesManagerId) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $filterSalesManagerId);
+                if (!empty($filterTeamId)) {
+                    $teamIdForQuery = in_array((int)$filterTeamId, $mgrTeamIds, true) ? (int)$filterTeamId : [-1];
+                } else {
+                    $teamIdForQuery = !empty($mgrTeamIds) ? $mgrTeamIds : [-1];
+                }
+            } else {
+                $teamIdForQuery = $filterTeamId;
+            }
         } elseif ($isSalesManagerUser) {
             if (!empty($filterTeamId) && in_array((int)$filterTeamId, $managedTeamIds, true)) {
                 $teamIdForQuery = (int)$filterTeamId;
