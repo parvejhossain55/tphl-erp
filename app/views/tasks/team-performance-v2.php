@@ -98,9 +98,9 @@
 .team-filter-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 10px 18px;
-    margin-bottom: 16px;
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-bottom: 12px;
 }
 .team-filter-label {
     font-size: 11.5px;
@@ -131,8 +131,8 @@
 .team-kpi-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 12px;
 }
 @media (max-width: 1280px) {
     .team-kpi-grid {
@@ -152,28 +152,11 @@
 
 .team-kpi-card {
     background: #ffffff;
-    border: 1px solid #f1f5f9;
-    border-radius: 14px;
-    padding: 18px 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 16px;
     position: relative;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    overflow: hidden;
 }
-.team-kpi-card::after {
-    content: "";
-    position: absolute;
-    bottom: -15px;
-    right: -15px;
-    width: 65px;
-    height: 65px;
-    border-radius: 50%;
-    opacity: 0.12;
-    pointer-events: none;
-}
-.team-kpi-card.kpi-green::after { background: #16a34a; }
-.team-kpi-card.kpi-amber::after { background: #d97706; }
-.team-kpi-card.kpi-red::after   { background: #dc2626; }
-.team-kpi-card.kpi-purple::after{ background: #8b5cf6; }
 
 .team-kpi-header {
     display: flex;
@@ -685,6 +668,52 @@
                 ?>
             </select>
 
+            <?php if (!empty($isManagementRole) && !empty($departmentsList)): ?>
+                <!-- Department Filter (Management Only) -->
+                <select name="department_id" id="filterDepartment" class="team-select-pill">
+                    <option value="">All Departments</option>
+                    <?php foreach ($departmentsList as $dl): ?>
+                        <option value="<?= (int)$dl['id'] ?>" <?= (!empty($deptFilter) && (int)$deptFilter === (int)$dl['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($dl['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            <?php endif; ?>
+
+            <!-- Cluster Head / Sales Manager & Team Filter -->
+            <?php if (($roleTier ?? '') === 'team_leader'): ?>
+                <?php if (!empty($teamOptions)): ?>
+                    <input type="hidden" name="team_scope" value="team_<?= (int)$teamOptions[0]['team_id'] ?>">
+                    <select id="filterTeamScope" class="team-select-pill" disabled title="Locked to your assigned team">
+                        <option value="team_<?= (int)$teamOptions[0]['team_id'] ?>" selected>
+                            <?= htmlspecialchars($teamOptions[0]['label']) ?>
+                        </option>
+                    </select>
+                <?php endif; ?>
+            <?php elseif (!empty($clusterManagers) || !empty($teamOptions)): ?>
+                <select name="team_scope" id="filterTeamScope" class="team-select-pill">
+                    <option value=""><?= (($roleTier ?? '') === 'sales_manager') ? 'All My Teams' : 'All Teams' ?></option>
+                    <?php if (!empty($clusterManagers)): ?>
+                        <optgroup label="Sales Managers / Cluster Heads">
+                            <?php foreach ($clusterManagers as $cm): $val = 'mgr_' . (int)$cm['user_id']; ?>
+                                <option value="<?= $val ?>" <?= (($teamScopeFilter ?? '') === $val) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cm['full_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endif; ?>
+                    <?php if (!empty($teamOptions)): ?>
+                        <optgroup label="Team Leaders / Teams">
+                            <?php foreach ($teamOptions as $to): $val = 'team_' . (int)$to['team_id']; ?>
+                                <option value="<?= $val ?>" <?= (($teamScopeFilter ?? '') === $val) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($to['label']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endif; ?>
+                </select>
+            <?php endif; ?>
+
             <!-- Team Members Filter -->
             <select name="member_id" id="filterMember" class="team-select-pill">
                 <option value="">All Team Members</option>
@@ -1103,12 +1132,15 @@
 
             <?php
             $currentUserId = (int)($userId ?? ($_SESSION['user']['id'] ?? 0));
-            $mwMulti = function (string $name, string $placeholder, bool $single = false, ?int $selectedId = null, string $id = '') use ($usersList) { ?>
+            $companyUsersPool = $allCompanyUsers ?? $usersList ?? [];
+            $mwMulti = function (string $name, string $placeholder, bool $single = false, ?int $selectedId = null, string $id = '', ?array $customList = null) use ($usersList) {
+                $items = $customList !== null ? $customList : ($usersList ?? []);
+            ?>
                 <div class="mw-multi" <?= $id !== '' ? 'id="' . htmlspecialchars($id) . '"' : '' ?> data-single="<?= $single ? '1' : '0' ?>" data-clearable="<?= ($single && $selectedId === null) ? '1' : '0' ?>" data-placeholder="<?= htmlspecialchars($placeholder) ?>">
                     <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
                     <div class="mw-multi-panel">
                         <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
-                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; 
+                        <?php foreach ($items as $u): if (trim((string)$u['full_name']) === '') continue; 
                             $rawCode = !empty($u['employee_code']) ? trim((string)$u['employee_code']) : '';
                             $empCode = preg_replace('/^EMP-?/i', '', $rawCode);
                             $displayName = trim((string)$u['full_name']) . ($empCode !== '' ? " ({$empCode})" : '');
@@ -1249,7 +1281,7 @@
                 </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">CC</label>
-                    <?php $mwMulti('cc_ids[]', 'Select CC...'); ?>
+                    <?php $mwMulti('cc_ids[]', 'Select CC...', false, null, '', $companyUsersPool); ?>
                 </div>
             </div>
 
@@ -1257,11 +1289,11 @@
             <div id="sectionReviewFields" class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Reviewer</label>
-                    <?php $mwMulti('reviewer_id', 'Select Reviewer...', true, null, 'taskReviewerSelect'); ?>
+                    <?php $mwMulti('reviewer_id', 'Select Reviewer...', true, null, 'taskReviewerSelect', $companyUsersPool); ?>
                 </div>
                 <div class="mw-form-col">
                     <label class="mw-form-label">Collaborators</label>
-                    <?php $mwMulti('collaborator_ids[]', 'Select Collaborators...'); ?>
+                    <?php $mwMulti('collaborator_ids[]', 'Select Collaborators...', false, null, '', $companyUsersPool); ?>
                 </div>
             </div>
 
@@ -2304,6 +2336,20 @@ window.initTeamTableInteractions();
             contentWrap.style.opacity = '1';
             contentWrap.style.pointerEvents = '';
 
+            // Sync cascading filter dropdowns (Team Scope & Team Members)
+            const newScopeEl = doc.getElementById('filterTeamScope');
+            const curScopeEl = document.getElementById('filterTeamScope');
+            if (newScopeEl && curScopeEl && !curScopeEl.disabled) {
+                curScopeEl.innerHTML = newScopeEl.innerHTML;
+                curScopeEl.value = newScopeEl.value;
+            }
+            const newMemberEl = doc.getElementById('filterMember');
+            const curMemberEl = document.getElementById('filterMember');
+            if (newMemberEl && curMemberEl) {
+                curMemberEl.innerHTML = newMemberEl.innerHTML;
+                curMemberEl.value = newMemberEl.value;
+            }
+
             // Sync Export button href
             const newExport = doc.getElementById('teamExportBtn');
             const curExport = document.getElementById('teamExportBtn');
@@ -2342,12 +2388,34 @@ window.initTeamTableInteractions();
             const targetUrl = filterForm.action + '?' + params.toString();
             loadTeamPerformanceAjax(targetUrl, true);
         });
+
+        const deptSel = document.getElementById('filterDepartment');
+        if (deptSel) {
+            deptSel.addEventListener('change', function() {
+                const scopeSel = document.getElementById('filterTeamScope');
+                const memberSel = document.getElementById('filterMember');
+                if (scopeSel && !scopeSel.disabled) scopeSel.value = '';
+                if (memberSel) memberSel.value = '';
+                filterForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            });
+        }
+
+        const scopeSel = document.getElementById('filterTeamScope');
+        if (scopeSel && !scopeSel.disabled) {
+            scopeSel.addEventListener('change', function() {
+                const memberSel = document.getElementById('filterMember');
+                if (memberSel) memberSel.value = '';
+                filterForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            });
+        }
     }
 
     if (resetBtn) {
         resetBtn.addEventListener('click', function(e) {
             e.preventDefault();
             const monthEl = document.getElementById('filterMonth');
+            const deptEl = document.getElementById('filterDepartment');
+            const scopeEl = document.getElementById('filterTeamScope');
             const memberEl = document.getElementById('filterMember');
             const projectEl = document.getElementById('filterProject');
             const statusEl = document.getElementById('filterStatus');
@@ -2356,6 +2424,8 @@ window.initTeamTableInteractions();
             const sortEl = filterForm ? filterForm.querySelector('input[name="sort"]') : null;
 
             if (monthEl) monthEl.value = defaultMonth;
+            if (deptEl) deptEl.value = '';
+            if (scopeEl && !scopeEl.disabled) scopeEl.value = '';
             if (memberEl) memberEl.value = '';
             if (projectEl) projectEl.value = '';
             if (statusEl) statusEl.value = '';

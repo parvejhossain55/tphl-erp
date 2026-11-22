@@ -17,232 +17,337 @@ $onTimeRate = $kpi['on_time_rate'] ?? 0;
 $hodAssigned = $kpi['hod_assigned'] ?? 0;
 
 $currMonth = date('Y-m');
-$monthNames = [
-    '2026-01' => 'January 2026', '2026-02' => 'February 2026', '2026-03' => 'March 2026',
-    '2026-04' => 'April 2026', '2026-05' => 'May 2026', '2026-06' => 'June 2026',
-    '2026-07' => 'July 2026', '2026-08' => 'August 2026', '2026-09' => 'September 2026',
-    '2026-10' => 'October 2026', '2026-11' => 'November 2026', '2026-12' => 'December 2026'
-];
+$monthNames = [];
+for ($m = 0; $m < 12; $m++) {
+    $ts = strtotime("-$m months", strtotime(date('Y-m-01')));
+    $monthNames[date('Y-m', $ts)] = date('F Y', $ts);
+}
+if (!empty($period) && $period !== 'all' && !isset($monthNames[$period]) && preg_match('/^\d{4}-\d{2}$/', $period)) {
+    $monthNames[$period] = date('F Y', strtotime($period . '-01'));
+}
 ?>
 
-<div class="container-fluid px-3 py-3">
-    <!-- Header with Breadcrumb & Quick Actions -->
-    <div class="row align-items-center mb-3">
-        <div class="col-md-7">
-            <h4 class="fw-bold mb-1 text-dark" style="letter-spacing: -0.4px;">
-                <i class="fa-sharp fa-solid fa-chart-pie me-2 text-primary"></i>Management Overview
-            </h4>
-            <p class="text-muted small mb-0">Executive monitoring of organization-wide task delivery, department health, and HOD performance.</p>
+<style>
+.mgmt-container {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1e293b;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 4px;
+    margin: 0;
+}
+.mgmt-header-tag {
+    font-size: 11px;
+    font-weight: 800;
+    color: #15803d;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+.mgmt-header-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+}
+.mgmt-mode-pills {
+    display: inline-flex;
+    background: #f1f5f9;
+    border-radius: 20px;
+    padding: 3px;
+    border: 1px solid #e2e8f0;
+}
+.mgmt-mode-pill {
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 16px;
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-block;
+}
+.mgmt-mode-pill:hover { color: #0f172a; }
+.mgmt-mode-pill.active {
+    background: #ffffff;
+    color: #15803d;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.mgmt-btn-export {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mgmt-btn-export:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+.mgmt-btn-add {
+    background: #15803d;
+    border: 1px solid #15803d;
+    color: #ffffff;
+    padding: 7px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mgmt-btn-add:hover {
+    background: #166534;
+    border-color: #166534;
+    color: #ffffff;
+}
+.mgmt-filter-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-bottom: 12px;
+}
+.mgmt-filter-label {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #64748b;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-right: 6px;
+}
+.mgmt-select-pill {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mgmt-select-pill:focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.15);
+}
+.mgmt-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 12px;
+}
+@media (max-width: 1280px) { .mgmt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .mgmt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .mgmt-kpi-grid { grid-template-columns: 1fr; } }
+.mgmt-kpi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+.mgmt-kpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.mgmt-kpi-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.mgmt-kpi-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+.mgmt-kpi-val {
+    font-size: 26px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.1;
+    margin-bottom: 6px;
+}
+.mgmt-kpi-sub {
+    font-size: 11.5px;
+    color: #64748b;
+    font-weight: 500;
+}
+.mgmt-charts-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: stretch;
+}
+@media (max-width: 991px) { .mgmt-charts-grid { grid-template-columns: 1fr; } }
+#mgmtTabs .nav-link {
+    color: #475569;
+    border-radius: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+#mgmtTabs .nav-link.active {
+    background: #15803d;
+    border-color: #15803d;
+    color: #ffffff;
+}
+</style>
+
+<div class="mgmt-container">
+    <!-- Top Header Area (Matching Team Performance Design) -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <div>
+            <div class="mgmt-header-tag mb-1">EXECUTIVE OVERVIEW</div>
+            <h3 class="mgmt-header-title mb-1">Management Overview</h3>
+            <p class="text-muted small mb-0">Organization-wide task delivery, department health, and HOD leadership performance.</p>
         </div>
-        <div class="col-md-5 text-md-end mt-2 mt-md-0 d-flex justify-content-md-end gap-2 align-items-center">
-            <button type="button" onclick="exportOverviewCSV()" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 shadow-sm">
-                <i class="fa-solid fa-file-csv text-success"></i> Export CSV
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <div class="mgmt-mode-pills">
+                <a href="<?= $GLOBALS['base_url'] ?>/management-task-overview-v2" class="mgmt-mode-pill active">Overview</a>
+                <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" class="mgmt-mode-pill">Team Performance</a>
+                <a href="<?= $GLOBALS['base_url'] ?>/my-work-dashboard" class="mgmt-mode-pill">My Work</a>
+            </div>
+            <button type="button" onclick="exportOverviewCSV()" class="mgmt-btn-export">
+                <i class="bi bi-box-arrow-down"></i> Export
             </button>
-            <a href="<?= $GLOBALS['base_url'] ?>/team-performance-v2" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 shadow-sm">
-                <i class="fa-solid fa-users-viewfinder"></i> Team Performance
-            </a>
-            <button type="button" onclick="openAssignTaskDrawer()" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 shadow-sm">
-                <i class="fa-solid fa-plus"></i> Add Task
+            <button type="button" onclick="openAssignTaskDrawer()" class="mgmt-btn-add">
+                <i class="bi bi-plus-lg"></i> Add Task
             </button>
         </div>
     </div>
 
-    <!-- Filter Card -->
-    <div class="card shadow-sm border-0 mb-4" style="border-radius: 14px; background: #ffffff;">
-        <div class="card-body p-3">
-            <form method="GET" action="<?= $GLOBALS['base_url'] ?>/management-task-overview-v2" id="mgmtFilterForm">
-                <div class="row g-2 align-items-end">
-                    <!-- Period Filter -->
-                    <div class="col-lg-3 col-md-4 col-sm-6">
-                        <label class="form-label small fw-semibold text-secondary mb-1">Period</label>
-                        <select name="period" id="mgmtFilterPeriod" class="form-select form-select-sm">
-                            <option value="all" <?= ($period === 'all') ? 'selected' : '' ?>>All Time</option>
-                            <?php foreach ($monthNames as $mKey => $mLabel): ?>
-                                <option value="<?= $mKey ?>" <?= ($period === $mKey) ? 'selected' : '' ?>><?= $mLabel ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+    <!-- Filter Bar Card (Matching Team Performance Pill Bar) -->
+    <div class="mgmt-filter-card">
+        <form method="GET" action="<?= $GLOBALS['base_url'] ?>/management-task-overview-v2" id="mgmtFilterForm" class="d-flex align-items-center flex-wrap gap-2">
+            <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>" id="mgmtTabInput">
+            <span class="mgmt-filter-label">FILTER BY</span>
 
-                    <!-- Department Filter -->
-                    <div class="col-lg-3 col-md-4 col-sm-6">
-                        <label class="form-label small fw-semibold text-secondary mb-1">Department</label>
-                        <select name="department_id" id="mgmtFilterDepartment" class="form-select form-select-sm">
-                            <option value="0">All Departments</option>
-                            <?php foreach ($departments as $d): ?>
-                                <option value="<?= $d['id'] ?>" <?= ($deptFilter == $d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+            <!-- Period Filter -->
+            <select name="period" id="mgmtFilterPeriod" class="mgmt-select-pill">
+                <option value="all" <?= ($period === 'all') ? 'selected' : '' ?>>All Time</option>
+                <?php foreach ($monthNames as $mKey => $mLabel): ?>
+                    <option value="<?= $mKey ?>" <?= ($period === $mKey) ? 'selected' : '' ?>><?= $mLabel ?></option>
+                <?php endforeach; ?>
+            </select>
 
-                    <!-- Employee Filter -->
-                    <div class="col-lg-2 col-md-4 col-sm-6">
-                        <label class="form-label small fw-semibold text-secondary mb-1">Employee</label>
-                        <select name="employee_id" id="mgmtFilterEmployee" class="form-select form-select-sm">
-                            <option value="0">All Employees</option>
-                            <?php foreach ($employees as $e): ?>
-                                <option value="<?= $e['id'] ?>" <?= ($empFilter == $e['id']) ? 'selected' : '' ?>><?= htmlspecialchars($e['full_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
+            <!-- Department Filter -->
+            <select name="department_id" id="mgmtFilterDepartment" class="mgmt-select-pill">
+                <option value="0">All Departments</option>
+                <?php foreach ($departments as $d): ?>
+                    <option value="<?= $d['id'] ?>" <?= ($deptFilter == $d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-                    <!-- Task Type Filter -->
-                    <div class="col-lg-2 col-md-4 col-sm-6">
-                        <label class="form-label small fw-semibold text-secondary mb-1">Task Type</label>
-                        <select name="type" id="mgmtFilterType" class="form-select form-select-sm">
-                            <option value="all" <?= ($typeFilter === 'all') ? 'selected' : '' ?>>Assigned + Self</option>
-                            <option value="assigned" <?= ($typeFilter === 'assigned') ? 'selected' : '' ?>>Team Projects Only</option>
-                            <option value="self" <?= ($typeFilter === 'self') ? 'selected' : '' ?>>Self Tasks Only</option>
-                        </select>
-                    </div>
+            <!-- Employee Filter -->
+            <select name="employee_id" id="mgmtFilterEmployee" class="mgmt-select-pill">
+                <option value="0">All Employees</option>
+                <?php foreach ($employees as $e): ?>
+                    <option value="<?= $e['id'] ?>" <?= ($empFilter == $e['id']) ? 'selected' : '' ?>><?= htmlspecialchars($e['full_name']) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-                    <!-- Action Buttons -->
-                    <div class="col-lg-2 col-md-4 col-sm-6 d-flex gap-2">
-                        <button type="submit" id="btnMgmtApplyFilters" class="btn btn-sm btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-1">
-                            <i class="fa-solid fa-filter"></i> Apply
-                        </button>
-                        <button type="button" id="btnMgmtResetFilters" class="btn btn-sm btn-outline-secondary w-50 d-inline-flex align-items-center justify-content-center">
-                            Reset
-                        </button>
-                    </div>
-                </div>
-                <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>" id="mgmtTabInput">
-            </form>
-        </div>
+            <!-- Task Type Filter -->
+            <select name="type" id="mgmtFilterType" class="mgmt-select-pill">
+                <option value="all" <?= ($typeFilter === 'all') ? 'selected' : '' ?>>Assigned + Self</option>
+                <option value="assigned" <?= ($typeFilter === 'assigned') ? 'selected' : '' ?>>Team Projects Only</option>
+                <option value="self" <?= ($typeFilter === 'self') ? 'selected' : '' ?>>Self Tasks Only</option>
+            </select>
+
+            <!-- Action Buttons -->
+            <div class="d-flex align-items-center gap-1 ms-1">
+                <button type="submit" id="btnMgmtApplyFilters" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold text-white d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px; background-color: #15803d; border-color: #15803d;">
+                    <i class="bi bi-funnel-fill"></i> Apply
+                </button>
+                <button type="button" id="btnMgmtResetFilters" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 12.5px; height: 32px;">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+            </div>
+        </form>
     </div>
 
     <div id="mgmtDashboardContent" style="transition: opacity 0.18s ease;">
-    <!-- 6 KPI Metric Cards Row -->
-    <div class="row  mb-4">
-        <!-- 1. Organization Tasks -->
-        <div class="col-xxl-2 col-lg-4 col-sm-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: #ffffff; border-left: 4px solid #6366f1 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small fw-semibold text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Organization Tasks</span>
-                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-                            <i class="fa-solid fa-list-check" style="font-size: 14px;"></i>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline gap-2">
-                        <h3 class="fw-bold mb-0 text-dark"><?= number_format($totalOrg) ?></h3>
-                    </div>
-                    <div class="mt-2 text-muted small" style="font-size: 11.5px;">
-                        <span class="text-secondary fw-semibold">100%</span> total tracked pipeline
-                    </div>
-                </div>
+    <!-- 6 KPI Metric Cards Grid (Matching Team Performance) -->
+    <div class="mgmt-kpi-grid">
+        <div class="mgmt-kpi-card">
+            <div class="mgmt-kpi-header">
+                <span class="mgmt-kpi-title">ORG TASKS</span>
+                <span class="mgmt-kpi-icon"><i class="bi bi-grid-fill"></i></span>
             </div>
+            <div class="mgmt-kpi-val"><?= str_pad((string)$totalOrg, 2, '0', STR_PAD_LEFT) ?></div>
+            <div class="mgmt-kpi-sub">Total tracked pipeline</div>
         </div>
 
-        <!-- 2. Completed -->
-        <div class="col-xxl-2 col-lg-4 col-sm-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: #ffffff; border-left: 4px solid #10b981 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small fw-semibold text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Completed</span>
-                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                            <i class="fa-solid fa-circle-check" style="font-size: 14px;"></i>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline gap-2">
-                        <h3 class="fw-bold mb-0 text-success"><?= number_format($totalComp) ?></h3>
-                        <span class="badge bg-success-subtle text-success rounded-pill fw-semibold" style="font-size: 10px;"><?= $compRate ?>%</span>
-                    </div>
-                    <div class="mt-2 text-muted small" style="font-size: 11.5px;">
-                        Delivered successfully
-                    </div>
-                </div>
+        <div class="mgmt-kpi-card">
+            <div class="mgmt-kpi-header">
+                <span class="mgmt-kpi-title">COMPLETED</span>
+                <span class="mgmt-kpi-icon"><i class="bi bi-check2"></i></span>
             </div>
+            <div class="mgmt-kpi-val"><?= str_pad((string)$totalComp, 2, '0', STR_PAD_LEFT) ?></div>
+            <div class="mgmt-kpi-sub"><?= $compRate ?>% completion rate</div>
         </div>
 
-        <!-- 3. Active Tasks -->
-        <div class="col-xxl-2 col-lg-4 col-sm-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: #ffffff; border-left: 4px solid #3b82f6 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small fw-semibold text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Active Tasks</span>
-                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                            <i class="fa-solid fa-spinner" style="font-size: 14px;"></i>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline gap-2">
-                        <h3 class="fw-bold mb-0 text-primary"><?= number_format($totalAct) ?></h3>
-                    </div>
-                    <div class="mt-2 text-muted small" style="font-size: 11.5px;">
-                        In progress & pending
-                    </div>
-                </div>
+        <div class="mgmt-kpi-card">
+            <div class="mgmt-kpi-header">
+                <span class="mgmt-kpi-title">ACTIVE TASKS</span>
+                <span class="mgmt-kpi-icon"><i class="bi bi-clock"></i></span>
             </div>
+            <div class="mgmt-kpi-val"><?= str_pad((string)$totalAct, 2, '0', STR_PAD_LEFT) ?></div>
+            <div class="mgmt-kpi-sub">In progress & pending</div>
         </div>
 
-        <!-- 4. Overdue -->
-        <div class="col-xxl-2 col-lg-4 col-sm-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: #ffffff; border-left: 4px solid #ef4444 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small fw-semibold text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Overdue</span>
-                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: rgba(239, 68, 68, 0.1); color: #ef4444;">
-                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 14px;"></i>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline gap-2">
-                        <h3 class="fw-bold mb-0 text-danger"><?= number_format($totalOvd) ?></h3>
-                        <?php if ($totalOvd > 0): ?>
-                            <span class="badge bg-danger-subtle text-danger rounded-pill fw-semibold" style="font-size: 10px;"><?= $ovdRate ?>%</span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="mt-2 text-muted small" style="font-size: 11.5px;">
-                        Past target deadline
-                    </div>
-                </div>
+        <div class="mgmt-kpi-card">
+            <div class="mgmt-kpi-header">
+                <span class="mgmt-kpi-title">OVERDUE</span>
+                <span class="mgmt-kpi-icon" style="<?= $totalOvd > 0 ? 'background:#fef2f2;color:#dc2626;' : '' ?>"><i class="bi bi-exclamation-triangle"></i></span>
             </div>
+            <div class="mgmt-kpi-val" style="<?= $totalOvd > 0 ? 'color:#dc2626;' : '' ?>"><?= str_pad((string)$totalOvd, 2, '0', STR_PAD_LEFT) ?></div>
+            <div class="mgmt-kpi-sub" style="<?= $totalOvd > 0 ? 'color:#dc2626;' : '' ?>"><?= $totalOvd > 0 ? $ovdRate . '% past deadline' : 'Zero overdue' ?></div>
         </div>
 
-        <!-- 5. On-Time Rate -->
-        <div class="col-xxl-2 col-lg-4 col-sm-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: #ffffff; border-left: 4px solid #06b6d4 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small fw-semibold text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">On-Time Rate</span>
-                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: rgba(6, 182, 212, 0.1); color: #06b6d4;">
-                            <i class="fa-solid fa-clock-rotate-left" style="font-size: 14px;"></i>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline gap-2">
-                        <h3 class="fw-bold mb-0" style="color: #06b6d4;"><?= $onTimeRate ?>%</h3>
-                    </div>
-                    <div class="mt-2 text-muted small" style="font-size: 11.5px;">
-                        Punctuality index
-                    </div>
-                </div>
+        <div class="mgmt-kpi-card">
+            <div class="mgmt-kpi-header">
+                <span class="mgmt-kpi-title">ON-TIME RATE</span>
+                <span class="mgmt-kpi-icon"><i class="bi bi-speedometer2"></i></span>
             </div>
+            <div class="mgmt-kpi-val"><?= $onTimeRate ?>%</div>
+            <div class="mgmt-kpi-sub">Punctuality index</div>
         </div>
 
-        <!-- 6. HOD Assignments -->
-        <div class="col-xxl-2 col-lg-4 col-sm-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: #ffffff; border-left: 4px solid #8b5cf6 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small fw-semibold text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">HOD Assignments</span>
-                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
-                            <i class="fa-solid fa-diagram-project" style="font-size: 14px;"></i>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline gap-2">
-                        <h3 class="fw-bold mb-0" style="color: #8b5cf6;"><?= number_format($hodAssigned) ?></h3>
-                    </div>
-                    <div class="mt-2 text-muted small" style="font-size: 11.5px;">
-                        Shared team tasks
-                    </div>
-                </div>
+        <div class="mgmt-kpi-card">
+            <div class="mgmt-kpi-header">
+                <span class="mgmt-kpi-title">HOD ASSIGNED</span>
+                <span class="mgmt-kpi-icon"><i class="bi bi-diagram-3"></i></span>
             </div>
+            <div class="mgmt-kpi-val"><?= str_pad((string)$hodAssigned, 2, '0', STR_PAD_LEFT) ?></div>
+            <div class="mgmt-kpi-sub">Delegated team tasks</div>
         </div>
     </div>
 
     <!-- Charts & Analytics Row -->
-    <div class="row  mb-4">
+    <div class="mgmt-charts-grid">
         <!-- Left: Department Performance (Horizontal Stacked Bars) -->
-        <div class="col-xxl-7 col-xl-7 col-lg-12">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 14px; background: #ffffff;">
+        <div>
+            <div class="card border shadow-none h-100" style="border-radius: 12px; background: #ffffff; border-color: #e2e8f0 !important;">
                 <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3 d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bars-progress me-2 text-primary"></i>Department Performance</h6>
@@ -301,8 +406,8 @@ $monthNames = [
         </div>
 
         <!-- Right: Organization Task Health (Donut + Management Insights) -->
-        <div class="col-xxl-5 col-xl-5 col-lg-12">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 14px; background: #ffffff;">
+        <div>
+            <div class="card border shadow-none h-100" style="border-radius: 12px; background: #ffffff; border-color: #e2e8f0 !important;">
                 <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3 d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-heart-pulse me-2 text-primary"></i>Organization Task Health</h6>
@@ -325,7 +430,7 @@ $monthNames = [
                     </div>
 
                     <!-- Management Insights Box -->
-                    <div class="card border-0 p-3" style="border-radius: 12px; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-left: 4px solid var(--clr-theme-primary, #059669) !important;">
+                    <div class="card border p-3 shadow-none" style="border-radius: 10px; background: #f8fafc; border-color: #e2e8f0 !important;">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <span class="rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; background: #059669; color: #ffffff; font-size: 11px;">
                                 <i class="fa-solid fa-sparkles"></i>
@@ -344,7 +449,7 @@ $monthNames = [
     </div>
 
     <!-- Leaderboard & Performance Tabs Section -->
-    <div class="card border-0 shadow-sm mb-5" style="border-radius: 14px; background: #ffffff;">
+    <div class="card border shadow-none mb-3" style="border-radius: 12px; background: #ffffff; border-color: #e2e8f0 !important;">
         <div class="card-header bg-transparent border-0 pt-3 pb-2 px-3">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <!-- Nav Tabs -->
@@ -368,6 +473,13 @@ $monthNames = [
                                 onclick="switchMgmtTab('individuals')" type="button">
                             <i class="fa-solid fa-users me-1"></i> Top Individuals
                             <span class="badge <?= ($tab === 'individuals') ? 'bg-white text-primary' : 'bg-light text-secondary' ?> ms-1 rounded-pill"><?= count($topIndividuals) ?></span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link <?= ($tab === 'overdue') ? 'active' : '' ?> px-3 py-2 fw-semibold small" 
+                                onclick="switchMgmtTab('overdue')" type="button">
+                            <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> Overdue & Bottlenecks
+                            <span class="badge <?= ($tab === 'overdue') ? 'bg-white text-danger' : 'bg-danger-subtle text-danger' ?> ms-1 rounded-pill"><?= count($overdueBottlenecks ?? []) ?></span>
                         </button>
                     </li>
                 </ul>
@@ -581,6 +693,58 @@ $monthNames = [
                                             <span class="badge <?= $indScoreClass ?> fw-bold px-2 py-1" style="font-size: 11px;" title="70% Completion + 30% On-Time (On-Time: <?= $ind['on_time_pct'] ?>%)">
                                                 <?= $ind['score'] ?> / 100
                                             </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: Overdue & Bottlenecks Table -->
+            <div id="tab-overdue" class="tab-pane-content <?= ($tab === 'overdue') ? '' : 'd-none' ?>">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="overdueTable">
+                        <thead class="table-light text-uppercase small text-secondary" style="font-size: 11px; letter-spacing: 0.5px;">
+                            <tr>
+                                <th class="ps-3 py-3">Task</th>
+                                <th class="py-3">Assignee / Department</th>
+                                <th class="py-3">Reporting Boss</th>
+                                <th class="text-center py-3">Priority</th>
+                                <th class="text-center py-3">Deadline & Delay</th>
+                                <th class="pe-3 text-center py-3">Progress</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <?php if (empty($overdueBottlenecks)): ?>
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">Zero overdue tasks found for the selected period.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($overdueBottlenecks as $ob):
+                                    $pBadge = $ob['priority'] === 'urgent' ? 'bg-danger text-white'
+                                        : ($ob['priority'] === 'high' ? 'bg-warning-subtle text-warning'
+                                        : ($ob['priority'] === 'low' ? 'bg-light text-secondary border' : 'bg-info-subtle text-info'));
+                                ?>
+                                    <tr class="searchable-row">
+                                        <td class="ps-3 py-3">
+                                            <div class="fw-semibold text-dark small"><?= htmlspecialchars($ob['title']) ?></div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold text-dark small"><?= htmlspecialchars($ob['assignee_name']) ?></div>
+                                            <div class="text-muted" style="font-size: 11px;"><?= htmlspecialchars($ob['department_name']) ?></div>
+                                        </td>
+                                        <td class="small text-secondary"><?= htmlspecialchars($ob['boss_name']) ?></td>
+                                        <td class="text-center">
+                                            <span class="badge <?= $pBadge ?> text-uppercase" style="font-size: 10px;"><?= htmlspecialchars($ob['priority']) ?></span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="small fw-semibold text-dark"><?= date('d M Y', strtotime($ob['deadline'])) ?></div>
+                                            <span class="badge bg-danger-subtle text-danger" style="font-size: 10.5px;"><?= (int)$ob['days_overdue'] ?>d overdue</span>
+                                        </td>
+                                        <td class="pe-3 text-center">
+                                            <span class="fw-bold small text-secondary"><?= (int)$ob['progress'] ?>%</span>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

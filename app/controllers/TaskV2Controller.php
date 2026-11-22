@@ -1521,187 +1521,158 @@ class TaskV2Controller extends Controller
             exit;
         }
 
-        // 1. Fetch relevant team members based on role (or specific ?hod_id=... when Management/Admin drills down)
+        // 1. Fetch authorized team members based on strict role / hierarchy
         $hodIdParam = !empty($_GET['hod_id']) ? (int)$_GET['hod_id'] : 0;
-        $viewingHod = null;
-        $teamEmployees = [];
+        $scope = $this->resolveTeamScope($userId, $userRole, $isManagementRole, $hodIdParam);
+        $viewingHod = $scope['viewingHod'];
+        $teamEmployees = $scope['teamEmployees'];
+        $roleTier = $scope['roleTier'] ?? 'team_leader';
+        $userDeptId = (int)($scope['userDeptId'] ?? 0);
+        $managedTeamIds = $scope['managedTeamIds'] ?? [];
+        $leaderTeamIds = $scope['leaderTeamIds'] ?? [];
+        if (!empty($scope['isDeptHead'])) {
+            $isDeptHead = true;
+        }
 
-        if ($hodIdParam > 0 && $isManagementRole) {
-            $hodInfoRes = $this->db->query("
-                SELECT e.id as employee_id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
-                       e.full_name, e.department_id, d.name as department_name, des.name as designation_name
-                FROM employees e
-                LEFT JOIN users u ON u.employee_id = e.id
-                LEFT JOIN departments d ON e.department_id = d.id
-                LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE (e.id = $hodIdParam OR e.user_id = $hodIdParam) AND e.deleted_at IS NULL
-                ORDER BY (e.id = $hodIdParam) DESC
-                LIMIT 1
+        // 2. Filters (including Department & Hierarchical Team/Cluster Scope)
+        $deptFilter = ($isManagementRole && !empty($_GET['department_id'])) ? (int)$_GET['department_id'] : 0;
+        $teamScopeFilter = trim((string)($_GET['team_scope'] ?? ''));
+
+        // For Team Leaders, lock team_scope to their own primary team
+        if ($roleTier === 'team_leader' && !empty($leaderTeamIds)) {
+            $teamScopeFilter = 'team_' . (int)$leaderTeamIds[0];
+        }
+
+        // Build Departments dropdown (Management only)
+        $departmentsList = [];
+        if ($isManagementRole) {
+            $dRes = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC");
+            if ($dRes) {
+                while ($dr = $dRes->fetch_assoc()) {
+                    $departmentsList[] = $dr;
+                }
+            }
+        }
+
+        // Apply Department filter first (Management only) so team/manager options reflect selected department
+        if ($isManagementRole && $deptFilter > 0) {
+            $teamEmployees = array_values(array_filter($teamEmployees, function ($emp) use ($deptFilter) {
+                return (int)($emp['department_id'] ?? 0) === $deptFilter;
+            }));
+        }
+
+        // Collect team IDs and user IDs currently in scope (post-dept filter) for building dropdown options
+        $scopeTeamIds = [];
+        $scopeUserIds = [];
+        foreach ($teamEmployees as $te) {
+            $tid = (int)($te['team_id'] ?? 0);
+            if ($tid > 0) $scopeTeamIds[$tid] = true;
+            $uid = (int)($te['user_id'] ?? 0);
+            if ($uid > 0) $scopeUserIds[$uid] = true;
+        }
+
+        // Build Cluster Heads / Sales Managers options (Management, Head of Sales, or HOD if dept has any)
+        $clusterManagers = [];
+        if (in_array($roleTier, ['management', 'head_of_sales', 'dept_head'], true)) {
+            $smRoleId = function_exists('getSalesManagerRoleId') ? getSalesManagerRoleId($this->db) : 0;
+            $smRoleCond = $smRoleId > 0
+                ? "(u.role_id = $smRoleId OR u.secondary_role_id = $smRoleId OR LOWER(TRIM(r.name)) LIKE '%sales manager%')"
+                : "LOWER(TRIM(r.name)) LIKE '%sales manager%'";
+            $smListRes = $this->db->query("
+                SELECT DISTINCT u.id AS user_id, u.full_name, e.department_id
+                FROM users u
+                LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE $smRoleCond
+                  AND (e.deleted_at IS NULL)
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                ORDER BY u.full_name ASC
             ");
-            if ($hodInfoRes && $hodRow = $hodInfoRes->fetch_assoc()) {
-                $viewingHod = $hodRow;
-                $hodEmpId = (int)$hodRow['employee_id'];
-                $hodUid = (int)$hodRow['user_id'];
-                $hodDeptId = (int)($hodRow['department_id'] ?? 0);
-
-                $isSoleDeptHead = false;
-                if ($hodDeptId > 0) {
-                    $hdCntRes = $this->db->query("
-                        SELECT COUNT(*) as c FROM employees
-                        WHERE is_dept_head = 1 AND department_id = $hodDeptId AND deleted_at IS NULL
-                          AND (employee_status IS NULL OR LOWER(TRIM(employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
-                          AND (employee_type IS NULL OR LOWER(TRIM(employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-                    ");
-                    $isSoleDeptHead = $hdCntRes && ((int)$hdCntRes->fetch_assoc()['c'] <= 1);
-                }
-
-                $deptCond = ($isSoleDeptHead && $hodDeptId > 0)
-                    ? "OR COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) = $hodDeptId"
-                    : "";
-
-                $hodTeamSql = "
-                    SELECT e.id as employee_id,
-                           COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
-                           e.full_name, e.photo,
-                           COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) as department_id,
-                           COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0), 0) as designation_id,
-                           e.employee_type, e.employee_status,
-                           d.name as department_name, des.name as designation_name
-                    FROM employees e
-                    LEFT JOIN users u ON (u.id = e.user_id OR u.employee_id = e.id)
-                    LEFT JOIN designations des ON COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0)) = des.id
-                    LEFT JOIN departments d ON COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0)) = d.id
-                    WHERE e.deleted_at IS NULL
-                      AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
-                      AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-                      AND (e.reporting_user_id = $hodUid OR e.reporting_user_id = $hodEmpId OR e.id = $hodEmpId $deptCond)
-                    ORDER BY e.full_name ASC
-                ";
-                $htRes = $this->db->query($hodTeamSql);
-                $seenHodUids = [];
-                if ($htRes) {
-                    while ($row = $htRes->fetch_assoc()) {
-                        $teamEmployees[$row['employee_id']] = $row;
-                        if ((int)$row['user_id'] > 0) {
-                            $seenHodUids[(int)$row['user_id']] = true;
+            if ($smListRes) {
+                while ($smr = $smListRes->fetch_assoc()) {
+                    $smUid = (int)$smr['user_id'];
+                    $smDept = (int)($smr['department_id'] ?? 0);
+                    if ($isManagementRole && $deptFilter > 0 && $smDept !== $deptFilter) {
+                        // Also check if any of their managed teams are in $scopeTeamIds
+                        $mTeams = function_exists('getManagedTeamIds') ? getManagedTeamIds($this->db, $smUid) : [];
+                        $hasOverlap = false;
+                        foreach ($mTeams as $mt) {
+                            if (isset($scopeTeamIds[(int)$mt])) { $hasOverlap = true; break; }
                         }
+                        if (!$hasOverlap) continue;
+                    } elseif (!$isManagementRole && $roleTier === 'dept_head' && $userDeptId > 0 && $smDept !== $userDeptId) {
+                        continue;
                     }
+                    $clusterManagers[] = [
+                        'user_id' => $smUid,
+                        'full_name' => $smr['full_name']
+                    ];
                 }
+            }
+        }
 
-                // Also include designation-linked users without an employees row if sole HOD of department
-                if ($isSoleDeptHead && $hodDeptId > 0) {
-                    $uOnlyHodRes = $this->db->query("
-                        SELECT u.id as user_id, u.full_name, u.photo,
-                               COALESCE(NULLIF(des.department_id, 0), 0) as department_id,
-                               u.designation_id, d.name as department_name, des.name as designation_name
-                        FROM users u
-                        LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
-                        LEFT JOIN designations des ON u.designation_id = des.id
-                        LEFT JOIN departments d ON des.department_id = d.id
-                        WHERE e.id IS NULL AND des.department_id = $hodDeptId
-                        ORDER BY u.full_name ASC
-                    ");
-                    if ($uOnlyHodRes) {
-                        while ($ur = $uOnlyHodRes->fetch_assoc()) {
-                            $uid = (int)$ur['user_id'];
-                            if (!isset($seenHodUids[$uid])) {
-                                $teamEmployees[-$uid] = [
-                                    'employee_id' => -$uid,
-                                    'user_id' => $uid,
-                                    'full_name' => $ur['full_name'],
-                                    'photo' => $ur['photo'] ?? '',
-                                    'department_id' => (int)$ur['department_id'],
-                                    'designation_id' => (int)$ur['designation_id'],
-                                    'employee_type' => '',
-                                    'employee_status' => 'active',
-                                    'department_name' => $ur['department_name'],
-                                    'designation_name' => $ur['designation_name']
-                                ];
-                            }
-                        }
+        // Build Teams / Team Leaders options
+        $teamOptions = [];
+        $allowedTeamIdsForDropdown = [];
+        if ($roleTier === 'sales_manager') {
+            $allowedTeamIdsForDropdown = $managedTeamIds;
+        } elseif ($roleTier === 'team_leader') {
+            $allowedTeamIdsForDropdown = $leaderTeamIds;
+        } else {
+            $allowedTeamIdsForDropdown = array_keys($scopeTeamIds);
+        }
+
+        if (!empty($allowedTeamIdsForDropdown)) {
+            $tIdsIn = implode(',', array_map('intval', $allowedTeamIdsForDropdown));
+            $tOptRes = $this->db->query("
+                SELECT t.id AS team_id, t.name AS team_name,
+                       GROUP_CONCAT(DISTINCT CASE WHEN e.is_team_leader = 1 THEN e.full_name END ORDER BY e.full_name SEPARATOR ', ') AS leader_names
+                FROM teams t
+                LEFT JOIN employees e ON e.team_id = t.id AND e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                WHERE t.id IN ($tIdsIn)
+                GROUP BY t.id, t.name
+                ORDER BY t.name ASC
+            ");
+            if ($tOptRes) {
+                while ($tr = $tOptRes->fetch_assoc()) {
+                    $label = $tr['team_name'];
+                    if (!empty($tr['leader_names'])) {
+                        $label .= ' — ' . $tr['leader_names'];
                     }
+                    $teamOptions[] = [
+                        'team_id' => (int)$tr['team_id'],
+                        'team_name' => $tr['team_name'],
+                        'leader_names' => $tr['leader_names'] ?? '',
+                        'label' => $label
+                    ];
                 }
             }
         }
 
-        // CASE A: Department Head / Manager with reportees (when not drilling down via ?hod_id=)
-        if (empty($viewingHod) && ($hasReportees || $isDeptHead)) {
-            $repSql = "
-                SELECT e.id as employee_id, 
-                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
-                       e.full_name, e.photo, e.department_id, e.designation_id,
-                       e.employee_type, e.employee_status,
-                       d.name as department_name, des.name as designation_name
-                FROM employees e
-                LEFT JOIN users u ON u.employee_id = e.id
-                LEFT JOIN departments d ON e.department_id = d.id
-                LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE e.reporting_user_id = $userId AND e.deleted_at IS NULL
-                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
-                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-                ORDER BY e.full_name ASC
-            ";
-            $repRes = $this->db->query($repSql);
-            if ($repRes) {
-                while ($row = $repRes->fetch_assoc()) {
-                    $teamEmployees[$row['employee_id']] = $row;
+        // Apply team_scope filter (mgr_<uid> or team_<tid>) to $teamEmployees
+        if ($teamScopeFilter !== '') {
+            if (strpos($teamScopeFilter, 'mgr_') === 0) {
+                $mgrUid = (int)substr($teamScopeFilter, 4);
+                if ($mgrUid > 0) {
+                    $mgrTeamIds = function_exists('getManagedTeamIds') ? getManagedTeamIds($this->db, $mgrUid) : [];
+                    $teamEmployees = array_values(array_filter($teamEmployees, function ($emp) use ($mgrUid, $mgrTeamIds) {
+                        $eTid = (int)($emp['team_id'] ?? 0);
+                        $eRep = (int)($emp['reporting_user_id'] ?? 0);
+                        $eUid = (int)($emp['user_id'] ?? 0);
+                        return ($eTid > 0 && in_array($eTid, $mgrTeamIds, true)) || $eRep === $mgrUid || $eUid === $mgrUid;
+                    }));
+                }
+            } elseif (strpos($teamScopeFilter, 'team_') === 0) {
+                $filterTid = (int)substr($teamScopeFilter, 5);
+                if ($filterTid > 0) {
+                    $teamEmployees = array_values(array_filter($teamEmployees, function ($emp) use ($filterTid) {
+                        return (int)($emp['team_id'] ?? 0) === $filterTid;
+                    }));
                 }
             }
         }
 
-        // CASE B: Team Leader or Co-Leader (fetch assigned team members)
-        if (empty($viewingHod) && ($isUserTeamLeader || $isUserCoLeader) && $userTeamId > 0) {
-            $teamSql = "
-                SELECT e.id as employee_id, 
-                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
-                       e.full_name, e.photo, e.department_id, e.designation_id,
-                       e.employee_type, e.employee_status,
-                       d.name as department_name, des.name as designation_name
-                FROM employees e
-                LEFT JOIN users u ON u.employee_id = e.id
-                LEFT JOIN departments d ON e.department_id = d.id
-                LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE e.team_id = $userTeamId AND e.deleted_at IS NULL
-                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
-                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-                ORDER BY e.is_team_leader DESC, e.is_sales_co_leader DESC, e.full_name ASC
-            ";
-            $tRes = $this->db->query($teamSql);
-            if ($tRes) {
-                while ($row = $tRes->fetch_assoc()) {
-                    $teamEmployees[$row['employee_id']] = $row;
-                }
-            }
-        }
-
-        // CASE C: Admin / Management fallback if no specific reportees/team (load ALL active employees without LIMIT)
-        if (empty($viewingHod) && empty($teamEmployees) && $isManagementRole) {
-            $allSql = "
-                SELECT e.id as employee_id, 
-                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
-                       e.full_name, e.photo, e.department_id, e.designation_id,
-                       e.employee_type, e.employee_status,
-                       d.name as department_name, des.name as designation_name
-                FROM employees e
-                LEFT JOIN users u ON u.employee_id = e.id
-                LEFT JOIN departments d ON e.department_id = d.id
-                LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE e.deleted_at IS NULL
-                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
-                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
-                ORDER BY e.full_name ASC
-            ";
-            $allRes = $this->db->query($allSql);
-            if ($allRes) {
-                while ($row = $allRes->fetch_assoc()) {
-                    $teamEmployees[$row['employee_id']] = $row;
-                }
-            }
-        }
-
-        $teamEmployees = array_values($teamEmployees);
-
-        // 2. Filters
         $monthFilter = $_GET['month'] ?? ''; // YYYY-MM
         $memberFilter = !empty($_GET['member_id']) ? (int)$_GET['member_id'] : 0;
         $projectFilter = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
@@ -1727,7 +1698,7 @@ class TaskV2Controller extends Controller
             LEFT JOIN tasks t ON t.todo_project_id = p.id
             WHERE p.user_id = $userId 
                OR p.manager_user_id = $userId
-               OR p.is_team_project = 1
+               OR (p.is_team_project = 1 AND (p.manager_user_id = $userId OR p.user_id IN ($teamUserIdsList) OR t.user_id IN ($teamUserIdsList)))
                OR p.user_id IN ($teamUserIdsList)
                OR t.user_id IN ($teamUserIdsList)
             ORDER BY p.is_team_project DESC, p.name ASC
@@ -1738,8 +1709,8 @@ class TaskV2Controller extends Controller
             }
         }
 
-        // If a specific project is selected, ensure all employees who have tasks in that project are included
-        if ($projectFilter > 0) {
+        // If a specific project is selected, only Management can pull outside employees into the view
+        if ($projectFilter > 0 && $isManagementRole) {
             $existingEmpIds = array_column($teamEmployees, 'employee_id');
             $projEmpSql = "
                 SELECT DISTINCT e.id as employee_id,
@@ -2124,9 +2095,9 @@ class TaskV2Controller extends Controller
             exit;
         }
 
-        // Fetch usersList and realEstateProjectsList for Create/Assign Task Drawer
-        $usersList = [];
-        $resUsers = $this->db->query("
+        // Fetch usersList (strictly authorized team members for Assignee) and allCompanyUsers (all active users for Reviewer/CC/Collaborators)
+        $allCompanyUsers = [];
+        $resAllUsers = $this->db->query("
             SELECT
                 u.id, 
                 u.full_name,
@@ -2139,8 +2110,26 @@ class TaskV2Controller extends Controller
               AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
             ORDER BY u.full_name ASC
         ");
-        if ($resUsers) {
-            $usersList = $resUsers->fetch_all(MYSQLI_ASSOC);
+        if ($resAllUsers) {
+            $allCompanyUsers = $resAllUsers->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $usersList = [];
+        if ($isManagementRole) {
+            $usersList = $allCompanyUsers;
+        } else {
+            $allowedUids = [];
+            foreach ($scope['teamEmployees'] as $te) {
+                $uid = (int)($te['user_id'] ?? 0);
+                if ($uid > 0) $allowedUids[] = $uid;
+            }
+            $allowedUids[] = $userId;
+            $allowedUidMap = array_flip(array_values(array_unique(array_filter($allowedUids))));
+            foreach ($allCompanyUsers as $cu) {
+                if (isset($allowedUidMap[(int)$cu['id']])) {
+                    $usersList[] = $cu;
+                }
+            }
         }
 
         $realEstateProjectsList = [];
@@ -2154,9 +2143,17 @@ class TaskV2Controller extends Controller
             "current_route"          => "team-performance-v2",
             "userId"                 => $userId,
             "isDeptHead"             => $isDeptHead,
+            "isManagementRole"       => $isManagementRole,
+            "roleTier"               => $roleTier,
             "viewingHod"             => $viewingHod,
             "teamEmployees"          => $teamEmployees,
             "usersList"              => $usersList,
+            "allCompanyUsers"        => $allCompanyUsers,
+            "departmentsList"        => $departmentsList,
+            "deptFilter"             => $deptFilter,
+            "clusterManagers"        => $clusterManagers,
+            "teamOptions"            => $teamOptions,
+            "teamScopeFilter"        => $teamScopeFilter,
             "realEstateProjectsList" => $realEstateProjectsList,
             "members"                => $filteredMembers,
             "allMembersCount"        => count($memberStats),
@@ -2214,6 +2211,20 @@ class TaskV2Controller extends Controller
         }
 
         $empId = (int)$memberId;
+        $isManagementRole = hasPermission('Management Task Overview');
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Security check: non-management can only view members of their authorized team scope
+        if (!$isManagementRole) {
+            $scope = $this->resolveTeamScope($userId, $userRole, false);
+            $authEmpIds = array_column($scope['teamEmployees'], 'employee_id');
+            $authUids = array_column($scope['teamEmployees'], 'user_id');
+
+            if (!in_array($empId, $authEmpIds, true) && !in_array($empId, $authUids, true) && $empId !== $userId) {
+                echo json_encode(['success' => false, 'message' => 'Access restricted: You can only view performance of your team/department members.']);
+                exit;
+            }
+        }
         $empRes = $this->db->query("
             SELECT e.id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id, e.full_name, des.name as designation_name
             FROM employees e
@@ -2338,8 +2349,22 @@ class TaskV2Controller extends Controller
             exit;
         }
 
+        $isManagementRole = hasPermission('Management Task Overview');
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $assignedUserId = (int)($_POST['assigned_user_id'] ?? 0);
+
+            // Security check: non-management can only assign tasks to their authorized team members (or themselves)
+            if (!$isManagementRole && $assignedUserId !== $userId) {
+                $scope = $this->resolveTeamScope($userId, $userRole, false);
+                $authUids = array_column($scope['teamEmployees'], 'user_id');
+                if (!in_array($assignedUserId, $authUids, true)) {
+                    setError("Access restricted: You can only assign tasks to members of your team/department.");
+                    header("Location: " . $GLOBALS['base_url'] . "/team-performance-v2");
+                    exit;
+                }
+            }
             $title = trim($_POST['title'] ?? '');
             $description = trim($_POST['description'] ?? '');
             $priority = (int)($_POST['priority'] ?? 3);
@@ -2753,15 +2778,27 @@ class TaskV2Controller extends Controller
             $hDeptId = (int)($h['department_id'] ?? 0);
             $isSoleDeptHead = ($hDeptId > 0 && ($deptHeadCounts[$hDeptId] ?? 0) <= 1);
 
-            // Find all team members reporting to this HOD (and department fallback only when sole HOD for that department)
+            // Find all team members reporting to this HOD (direct + 2nd-level nested reportees, and department fallback when sole HOD)
+            $directEmpOrUids = [$hUId];
+            if ($hEmpId > 0) $directEmpOrUids[] = $hEmpId;
             $teamEmpUserIds = [];
             foreach ($employees as $e) {
                 $repId = (int)($e['reporting_user_id'] ?? 0);
                 $eUId = (int)($e['user_id'] ?? 0);
                 if ($eUId > 0 && $eUId !== $hUId) {
-                    if ($repId === $hUId || $repId === $hEmpId || ($isSoleDeptHead && (int)($e['department_id'] ?? 0) === $hDeptId)) {
+                    if ($repId === $hUId || ($hEmpId > 0 && $repId === $hEmpId) || ($isSoleDeptHead && (int)($e['department_id'] ?? 0) === $hDeptId)) {
                         $teamEmpUserIds[] = $eUId;
+                        $directEmpOrUids[] = $eUId;
+                        if (!empty($e['id'])) $directEmpOrUids[] = (int)$e['id'];
                     }
+                }
+            }
+            // Include 2nd-level nested reportees (e.g. Executives reporting to Team Leaders under this HOD)
+            foreach ($employees as $e) {
+                $repId = (int)($e['reporting_user_id'] ?? 0);
+                $eUId = (int)($e['user_id'] ?? 0);
+                if ($eUId > 0 && $eUId !== $hUId && $repId > 0 && in_array($repId, $directEmpOrUids, true)) {
+                    $teamEmpUserIds[] = $eUId;
                 }
             }
             if ($isSoleDeptHead && !empty($extraUsersByDept[$hDeptId])) {
@@ -2939,7 +2976,41 @@ class TaskV2Controller extends Controller
             return strcmp($a['full_name'], $b['full_name']);
         });
 
-        // 7. Dynamic Management Insights
+        // 7. Overdue Bottlenecks & Pending Acceptance for CEO visibility
+        $overdueBottlenecks = [];
+        $pendingAcceptanceCount = 0;
+        $prioRank = ['urgent' => 1, 'high' => 2, 'medium' => 3, 'low' => 4];
+        $todayTs = strtotime(date('Y-m-d'));
+
+        foreach ($allTasks as $t) {
+            [$isCompleted, $isOverdue] = $classifyTask($t);
+            if (!$isCompleted && !empty($t['assigned_by']) && (int)$t['assigned_by'] !== (int)$t['user_id'] && (int)($t['employee_accept'] ?? 1) === 0) {
+                $pendingAcceptanceCount++;
+            }
+            if ($isOverdue) {
+                $dlDate = substr((string)$t['deadline'], 0, 10);
+                $daysOverdue = max(1, (int)floor(($todayTs - strtotime($dlDate)) / 86400));
+                $prioKey = strtolower(trim((string)($t['priority'] ?? 'medium')));
+                $overdueBottlenecks[] = [
+                    'id' => (int)$t['id'],
+                    'title' => $t['title'],
+                    'assignee_name' => $t['user_name'] ?: ('User #' . (int)$t['user_id']),
+                    'department_name' => $t['department_name'] ?: 'General',
+                    'boss_name' => $t['reporting_boss_name'] ?: '—',
+                    'priority' => $prioKey,
+                    'prio_rank' => $prioRank[$prioKey] ?? 3,
+                    'deadline' => $dlDate,
+                    'days_overdue' => $daysOverdue,
+                    'progress' => (int)($t['progress'] ?? 0),
+                ];
+            }
+        }
+        usort($overdueBottlenecks, function ($a, $b) {
+            if ($a['prio_rank'] !== $b['prio_rank']) return $a['prio_rank'] <=> $b['prio_rank'];
+            return $b['days_overdue'] <=> $a['days_overdue'];
+        });
+
+        // 8. Dynamic Management Insights
         $insights = [];
         if ($totalOrgTasks > 0) {
             $insights[] = "Organization is currently at a <strong>{$completionRate}%</strong> overall task completion rate with <strong>{$totalActive}</strong> active tasks.";
@@ -2947,6 +3018,9 @@ class TaskV2Controller extends Controller
                 $insights[] = "Executive attention needed: <strong>{$totalOverdue} tasks</strong> ({$overdueRate}%) are past deadline across departments.";
             } else {
                 $insights[] = "Excellent progress! Zero overdue tasks currently logged across all operational units.";
+            }
+            if ($pendingAcceptanceCount > 0) {
+                $insights[] = "<strong>{$pendingAcceptanceCount} assigned tasks</strong> are still awaiting employee acceptance.";
             }
 
             // Pick top performing real department (with completed tasks > 0, or highest total tasks)
@@ -3023,8 +3097,397 @@ class TaskV2Controller extends Controller
             "deptList"               => $deptList,
             "hodList"                => $hodList,
             "topIndividuals"         => $topIndividuals,
+            "overdueBottlenecks"     => $overdueBottlenecks,
             "insights"               => $insights
         ]);
+    }
+
+    /**
+     * Resolve the strictly authorized team employees for a given user according to their role / hierarchy.
+     */
+    protected function resolveTeamScope(int $userId, int $userRole, bool $isManagementRole, int $hodIdParam = 0): array
+    {
+        $viewingHod = null;
+        $teamEmployees = [];
+
+        // 1. Management drill-down via ?hod_id=...
+        if ($hodIdParam > 0 && $isManagementRole) {
+            $hodInfoRes = $this->db->query("
+                SELECT e.id as employee_id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.department_id, d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE (e.id = $hodIdParam OR e.user_id = $hodIdParam) AND e.deleted_at IS NULL
+                ORDER BY (e.id = $hodIdParam) DESC
+                LIMIT 1
+            ");
+            if ($hodInfoRes && $hodRow = $hodInfoRes->fetch_assoc()) {
+                $viewingHod = $hodRow;
+                $hodEmpId = (int)$hodRow['employee_id'];
+                $hodUid = (int)$hodRow['user_id'];
+                $hodDeptId = (int)($hodRow['department_id'] ?? 0);
+
+                $isSoleDeptHead = false;
+                if ($hodDeptId > 0) {
+                    $hdCntRes = $this->db->query("
+                        SELECT COUNT(*) as c FROM employees
+                        WHERE is_dept_head = 1 AND department_id = $hodDeptId AND deleted_at IS NULL
+                          AND (employee_status IS NULL OR LOWER(TRIM(employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                          AND (employee_type IS NULL OR LOWER(TRIM(employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                    ");
+                    $isSoleDeptHead = $hdCntRes && ((int)$hdCntRes->fetch_assoc()['c'] <= 1);
+                }
+
+                $deptCond = ($isSoleDeptHead && $hodDeptId > 0)
+                    ? "OR COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) = $hodDeptId"
+                    : "";
+
+                $hodTeamSql = "
+                    SELECT e.id as employee_id,
+                           COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                           e.full_name, e.photo,
+                           COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) as department_id,
+                           COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0), 0) as designation_id,
+                           e.employee_type, e.employee_status,
+                           d.name as department_name, des.name as designation_name
+                    FROM employees e
+                    LEFT JOIN users u ON (u.id = e.user_id OR u.employee_id = e.id)
+                    LEFT JOIN designations des ON COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0)) = des.id
+                    LEFT JOIN departments d ON COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0)) = d.id
+                    WHERE e.deleted_at IS NULL
+                      AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                      AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                      AND (e.reporting_user_id = $hodUid OR e.reporting_user_id = $hodEmpId OR e.id = $hodEmpId $deptCond)
+                    ORDER BY e.full_name ASC
+                ";
+                $htRes = $this->db->query($hodTeamSql);
+                $seenHodUids = [];
+                if ($htRes) {
+                    while ($row = $htRes->fetch_assoc()) {
+                        $teamEmployees[$row['employee_id']] = $row;
+                        if ((int)$row['user_id'] > 0) {
+                            $seenHodUids[(int)$row['user_id']] = true;
+                        }
+                    }
+                }
+
+                if ($isSoleDeptHead && $hodDeptId > 0) {
+                    $uOnlyHodRes = $this->db->query("
+                        SELECT u.id as user_id, u.full_name, u.photo,
+                               COALESCE(NULLIF(des.department_id, 0), 0) as department_id,
+                               u.designation_id, d.name as department_name, des.name as designation_name
+                        FROM users u
+                        LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                        LEFT JOIN designations des ON u.designation_id = des.id
+                        LEFT JOIN departments d ON des.department_id = d.id
+                        WHERE e.id IS NULL AND des.department_id = $hodDeptId
+                        ORDER BY u.full_name ASC
+                    ");
+                    if ($uOnlyHodRes) {
+                        while ($ur = $uOnlyHodRes->fetch_assoc()) {
+                            $uid = (int)$ur['user_id'];
+                            if (!isset($seenHodUids[$uid])) {
+                                $teamEmployees[-$uid] = [
+                                    'employee_id' => -$uid,
+                                    'user_id' => $uid,
+                                    'full_name' => $ur['full_name'],
+                                    'photo' => $ur['photo'] ?? '',
+                                    'department_id' => (int)$ur['department_id'],
+                                    'designation_id' => (int)$ur['designation_id'],
+                                    'employee_type' => '',
+                                    'employee_status' => 'active',
+                                    'department_name' => $ur['department_name'],
+                                    'designation_name' => $ur['designation_name']
+                                ];
+                            }
+                        }
+                    }
+                }
+
+                return [
+                    'viewingHod' => $viewingHod,
+                    'teamEmployees' => array_values($teamEmployees),
+                    'isDeptHead' => true
+                ];
+            }
+        }
+
+        // 2. Fetch logged-in user's employee & hierarchy details
+        $userEmpDbId = 0;
+        $isDeptHead = false;
+        $hasReportees = false;
+        $userDeptId = 0;
+        $userTeamId = 0;
+        $isUserTeamLeader = !empty($_SESSION['user']['is_team_leader']);
+        $isUserCoLeader = !empty($_SESSION['user']['is_sales_co_leader']);
+
+        $empRelRes = $this->db->query("
+            SELECT e.id as emp_id, e.is_dept_head, e.reporting_user_id, e.department_id, e.team_id, e.is_team_leader, e.is_sales_co_leader 
+            FROM employees e 
+            WHERE (e.user_id = $userId OR e.id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
+              AND e.deleted_at IS NULL 
+            LIMIT 1
+        ");
+        if ($empRelRes && $erRow = $empRelRes->fetch_assoc()) {
+            $userEmpDbId = (int)$erRow['emp_id'];
+            if ((int)$erRow['is_dept_head'] === 1) {
+                $isDeptHead = true;
+            }
+            $userDeptId = (int)($erRow['department_id'] ?? 0);
+            $userTeamId = (int)($erRow['team_id'] ?? 0);
+            if ((int)($erRow['is_team_leader'] ?? 0) === 1) {
+                $isUserTeamLeader = true;
+            }
+            if ((int)($erRow['is_sales_co_leader'] ?? 0) === 1) {
+                $isUserCoLeader = true;
+            }
+        }
+
+        if ($userTeamId <= 0 && !empty($_SESSION['user']['team_id'])) {
+            $userTeamId = (int)$_SESSION['user']['team_id'];
+        }
+
+        $repChkSql = "SELECT COUNT(*) as total FROM employees WHERE (reporting_user_id = $userId" . ($userEmpDbId > 0 ? " OR reporting_user_id = $userEmpDbId" : "") . ") AND deleted_at IS NULL LIMIT 1";
+        $repChk = $this->db->query($repChkSql);
+        if ($repChk && (int)$repChk->fetch_assoc()['total'] > 0) {
+            $hasReportees = true;
+        }
+
+        $isSalesMgr = function_exists('isSalesManager') && isSalesManager();
+        $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $roleName = strtolower(trim((string)($_SESSION['user']['role_name'] ?? '')));
+        $isHeadOfSales = ($userRole === 9 || $secRoleId === 9 || strpos($roleName, 'head of sales') !== false || strpos($roleName, 'sales team head') !== false);
+
+        // --- TIER 1: Management / Super Admin (no HOD drill-down) -> ALL active employees
+        if ($isManagementRole) {
+            $allSql = "
+                SELECT e.id as employee_id, 
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.employee_type, e.employee_status,
+                       d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                ORDER BY e.full_name ASC
+            ";
+            $allRes = $this->db->query($allSql);
+            if ($allRes) {
+                while ($row = $allRes->fetch_assoc()) {
+                    $teamEmployees[$row['employee_id']] = $row;
+                }
+            }
+            return [
+                'viewingHod' => null,
+                'teamEmployees' => array_values($teamEmployees),
+                'isDeptHead' => true,
+                'roleTier' => 'management',
+                'userDeptId' => $userDeptId,
+                'managedTeamIds' => [],
+                'leaderTeamIds' => []
+            ];
+        }
+
+        // --- TIER 2: Head of Sales -> All Sales Teams & Sales Department Members
+        if ($isHeadOfSales) {
+            $salesSql = "
+                SELECT e.id as employee_id, 
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.employee_type, e.employee_status,
+                       d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (
+                      LOWER(TRIM(d.name)) LIKE '%sales%' 
+                      OR e.team_id > 0 
+                      OR e.reporting_user_id = $userId
+                      " . ($userEmpDbId > 0 ? "OR e.reporting_user_id = $userEmpDbId" : "") . "
+                  )
+                ORDER BY e.team_id ASC, e.is_team_leader DESC, e.full_name ASC
+            ";
+            $salesRes = $this->db->query($salesSql);
+            if ($salesRes) {
+                while ($row = $salesRes->fetch_assoc()) {
+                    $teamEmployees[$row['employee_id']] = $row;
+                }
+            }
+            return [
+                'viewingHod' => null,
+                'teamEmployees' => array_values($teamEmployees),
+                'isDeptHead' => true,
+                'roleTier' => 'head_of_sales',
+                'userDeptId' => $userDeptId,
+                'managedTeamIds' => [],
+                'leaderTeamIds' => []
+            ];
+        }
+
+        // --- TIER 3: Sales Manager -> All members of assigned teams in sales_manager_teams
+        if ($isSalesMgr) {
+            $managedTeamIds = function_exists('getManagedTeamIds') ? getManagedTeamIds($this->db, $userId) : [];
+            $teamCond = '';
+            if (!empty($managedTeamIds)) {
+                $teamIdsIn = implode(',', array_map('intval', $managedTeamIds));
+                $teamCond = "e.team_id IN ($teamIdsIn) OR ";
+            }
+
+            $smSql = "
+                SELECT e.id as employee_id, 
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.employee_type, e.employee_status,
+                       d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (
+                      {$teamCond}
+                      e.reporting_user_id = $userId
+                      " . ($userEmpDbId > 0 ? "OR e.reporting_user_id = $userEmpDbId" : "") . "
+                  )
+                ORDER BY e.team_id ASC, e.is_team_leader DESC, e.full_name ASC
+            ";
+            $smRes = $this->db->query($smSql);
+            if ($smRes) {
+                while ($row = $smRes->fetch_assoc()) {
+                    $teamEmployees[$row['employee_id']] = $row;
+                }
+            }
+            return [
+                'viewingHod' => null,
+                'teamEmployees' => array_values($teamEmployees),
+                'isDeptHead' => true,
+                'roleTier' => 'sales_manager',
+                'userDeptId' => $userDeptId,
+                'managedTeamIds' => $managedTeamIds,
+                'leaderTeamIds' => []
+            ];
+        }
+
+        // --- TIER 4: Department Head (HOD of Accounts, HR, Engineering, etc.)
+        // Sees their whole department AND nested reportees
+        if ($isDeptHead) {
+            $deptCond = $userDeptId > 0 ? "e.department_id = $userDeptId OR " : "";
+            $hodSql = "
+                SELECT e.id as employee_id, 
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.employee_type, e.employee_status,
+                       d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (
+                      {$deptCond}
+                      e.reporting_user_id = $userId
+                      " . ($userEmpDbId > 0 ? "OR e.reporting_user_id = $userEmpDbId" : "") . "
+                      OR e.reporting_user_id IN (
+                          SELECT COALESCE(NULLIF(sub_u.id, 0), sub_e.user_id) 
+                          FROM employees sub_e 
+                          LEFT JOIN users sub_u ON sub_u.employee_id = sub_e.id 
+                          WHERE sub_e.reporting_user_id = $userId" . ($userEmpDbId > 0 ? " OR sub_e.reporting_user_id = $userEmpDbId" : "") . "
+                      )
+                  )
+                ORDER BY e.full_name ASC
+            ";
+            $hodRes = $this->db->query($hodSql);
+            if ($hodRes) {
+                while ($row = $hodRes->fetch_assoc()) {
+                    $teamEmployees[$row['employee_id']] = $row;
+                }
+            }
+            return [
+                'viewingHod' => null,
+                'teamEmployees' => array_values($teamEmployees),
+                'isDeptHead' => true,
+                'roleTier' => 'dept_head',
+                'userDeptId' => $userDeptId,
+                'managedTeamIds' => [],
+                'leaderTeamIds' => []
+            ];
+        }
+
+        // --- TIER 5: Team Leader / Sales Co-Leader / Section Leader
+        // Strictly sees only members of their assigned team_id OR direct reportees
+        $leaderTeamIds = [];
+        if ($userTeamId > 0) {
+            $leaderTeamIds[] = $userTeamId;
+        }
+        $chkTeam = $this->db->query("SELECT DISTINCT team_id FROM employees WHERE (user_id = $userId" . ($userEmpDbId > 0 ? " OR id = $userEmpDbId" : "") . ") AND team_id > 0");
+        if ($chkTeam) {
+            while ($ctRow = $chkTeam->fetch_assoc()) {
+                $leaderTeamIds[] = (int)$ctRow['team_id'];
+            }
+        }
+        $leaderTeamIds = array_values(array_unique(array_filter($leaderTeamIds)));
+
+        $teamLeaderCond = [];
+        if (!empty($leaderTeamIds)) {
+            $tIn = implode(',', $leaderTeamIds);
+            $teamLeaderCond[] = "e.team_id IN ($tIn)";
+        }
+        if ($hasReportees || $userId > 0) {
+            $teamLeaderCond[] = "e.reporting_user_id = $userId";
+            if ($userEmpDbId > 0) {
+                $teamLeaderCond[] = "e.reporting_user_id = $userEmpDbId";
+            }
+        }
+
+        if (!empty($teamLeaderCond)) {
+            $whereOr = implode(' OR ', $teamLeaderCond);
+            $tlSql = "
+                SELECT e.id as employee_id, 
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.employee_type, e.employee_status,
+                       d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND ({$whereOr})
+                ORDER BY e.is_team_leader DESC, e.is_sales_co_leader DESC, e.full_name ASC
+            ";
+            $tlRes = $this->db->query($tlSql);
+            if ($tlRes) {
+                while ($row = $tlRes->fetch_assoc()) {
+                    $teamEmployees[$row['employee_id']] = $row;
+                }
+            }
+        }
+
+        return [
+            'viewingHod' => null,
+            'teamEmployees' => array_values($teamEmployees),
+            'isDeptHead' => false,
+            'roleTier' => 'team_leader',
+            'userDeptId' => $userDeptId,
+            'managedTeamIds' => [],
+            'leaderTeamIds' => $leaderTeamIds
+        ];
     }
 }
 
