@@ -306,7 +306,7 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         $vendorsList = [];
-        $resVend = $this->db->query("SELECT id, name, company_name FROM vendors ORDER BY name ASC");
+        $resVend = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name, company_name FROM vendors ORDER BY name ASC");
         if ($resVend && $resVend->num_rows > 0) {
             while ($row = $resVend->fetch_assoc()) {
                 $vendorsList[] = $row;
@@ -465,7 +465,7 @@ class Con_VendorPaymentRequestController extends Controller
         if ($id) {
             // Fetch project and vendor names for approval title
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
-            $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
+            $vendor  = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
 
             // Set approve_role: if submitted by Purchase Head (17) or Management (1, 3), go directly to QC ('qc'); else 'purchase_head'
             $approveRole = in_array((int)$this->userRole, [1, 3, 17], true) ? 'qc' : 'purchase_head';
@@ -1122,7 +1122,7 @@ class Con_VendorPaymentRequestController extends Controller
                     $updatedRequest = $this->model->find($id);
                     if ($updatedRequest) {
                         // Fetch vendor name for the email
-                        $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                        $vendor = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
                         $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
                         $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
                         $updatedRequest['project_name'] = $project['name'] ?? '';
@@ -1229,7 +1229,7 @@ class Con_VendorPaymentRequestController extends Controller
                 if ($stmtAr->affected_rows === 0) {
                     $checkAr = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = " . (int)$id)->fetch_assoc();
                     if (!$checkAr) {
-                        $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                        $vendor = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
                         $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
                         $this->approvalModel->create([
                             'department'     => 'construction',
@@ -1252,7 +1252,7 @@ class Con_VendorPaymentRequestController extends Controller
             try {
                 $updatedRequest = $this->model->find($id);
                 if ($updatedRequest) {
-                    $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                    $vendor = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
                     $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
                     $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
                     $updatedRequest['project_name'] = $project['name'] ?? '';

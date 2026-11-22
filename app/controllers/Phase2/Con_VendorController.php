@@ -53,6 +53,49 @@ class Con_VendorController extends Controller
         ]);
     }
 
+    /**
+     * Upload a vendor document (NID or Trade License) as image or PDF.
+     * Returns ['path' => string|null, 'error' => string|null].
+     */
+    private function uploadVendorDocument(string $fieldName, string $prefix, bool $required = false): array
+    {
+        if (!isset($_FILES[$fieldName]) || $_FILES[$fieldName]['error'] === UPLOAD_ERR_NO_FILE) {
+            if ($required) {
+                return ['path' => null, 'error' => ucfirst(str_replace('_', ' ', $fieldName)) . ' document (Image/PDF) is required.'];
+            }
+            return ['path' => null, 'error' => null];
+        }
+
+        $file = $_FILES[$fieldName];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return ['path' => null, 'error' => 'Failed to upload ' . str_replace('_', ' ', $fieldName) . '.'];
+        }
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+        if (!in_array($ext, $allowedExts, true)) {
+            return ['path' => null, 'error' => 'Invalid file format for ' . str_replace('_', ' ', $fieldName) . '. Allowed: JPG, JPEG, PNG, WEBP, PDF.'];
+        }
+
+        if ($file['size'] > 10 * 1024 * 1024) {
+            return ['path' => null, 'error' => 'File size for ' . str_replace('_', ' ', $fieldName) . ' must not exceed 10MB.'];
+        }
+
+        $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/vendor-documents/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $filename = $prefix . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $targetPath = $uploadDir . $filename;
+
+        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return ['path' => null, 'error' => 'Could not save uploaded ' . str_replace('_', ' ', $fieldName) . ' file.'];
+        }
+
+        return ['path' => 'uploads/vendor-documents/' . $filename, 'error' => null];
+    }
+
     public function store()
     {
         if (in_array($_SESSION['user']['role_id'] ?? 0, [22])) {
@@ -63,22 +106,77 @@ class Con_VendorController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $data = [
-            'name'         => trim($_POST['name'] ?? ''),
-            'company_name' => trim($_POST['company_name'] ?? ''),
-            'phone'        => $_POST['phone'] ?? null,
-            'email'        => $_POST['email'] ?? null,
-            'address'      => $_POST['address'] ?? null,
-            'rating'       => 5.00,
-            'status'       => 'pending_approval',
-            'created_by'   => $_SESSION['user']['id'] ?? null,
-        ];
+        $companyName        = trim($_POST['company_name'] ?? '');
+        $name               = trim($_POST['name'] ?? '');
+        $phone              = trim($_POST['phone'] ?? '');
+        $email              = trim($_POST['email'] ?? '');
+        $address            = trim($_POST['address'] ?? '');
+        $nidNumber          = trim($_POST['nid_number'] ?? '');
+        $tradeLicenseNumber = trim($_POST['trade_license_number'] ?? '');
 
-        if (empty($data['name'])) {
-            setError('Vendor name is required.');
+        if ($companyName === '') {
+            setError('Business / Company Name is required.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-create");
             exit;
         }
+        if ($name === '') {
+            setError('Contact Person / Designated Person Name is required.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-create");
+            exit;
+        }
+        if ($phone === '') {
+            setError('Phone Number is required.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-create");
+            exit;
+        }
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            setError('A valid Email Address is required.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-create");
+            exit;
+        }
+
+        // Prevent duplicate active/pending business name
+        $dupStmt = $this->db->prepare("SELECT id FROM vendors WHERE LOWER(TRIM(company_name)) = LOWER(TRIM(?)) AND status IN ('active', 'pending_approval') LIMIT 1");
+        if ($dupStmt) {
+            $dupStmt->bind_param('s', $companyName);
+            $dupStmt->execute();
+            if ($dupStmt->get_result()->num_rows > 0) {
+                $dupStmt->close();
+                setError("A vendor with Business Name \"{$companyName}\" already exists or is pending approval.");
+                header("Location: {$GLOBALS['base_url']}/con-vendor-create");
+                exit;
+            }
+            $dupStmt->close();
+        }
+
+        $nidUpload = $this->uploadVendorDocument('nid_file', 'vendor_nid', true);
+        if ($nidUpload['error']) {
+            setError($nidUpload['error']);
+            header("Location: {$GLOBALS['base_url']}/con-vendor-create");
+            exit;
+        }
+
+        $tlUpload = $this->uploadVendorDocument('trade_license_file', 'vendor_tl', true);
+        if ($tlUpload['error']) {
+            setError($tlUpload['error']);
+            header("Location: {$GLOBALS['base_url']}/con-vendor-create");
+            exit;
+        }
+
+        $data = [
+            'name'                 => $name,
+            'company_name'         => $companyName,
+            'phone'                => $phone,
+            'email'                => $email,
+            'address'              => $address !== '' ? $address : null,
+            'nid_number'           => $nidNumber !== '' ? $nidNumber : null,
+            'trade_license_number' => $tradeLicenseNumber !== '' ? $tradeLicenseNumber : null,
+            'nid_file'             => $nidUpload['path'],
+            'trade_license_file'   => $tlUpload['path'],
+            'rating'               => 5.00,
+            'status'               => 'pending_approval',
+            'created_by'           => $_SESSION['user']['id'] ?? null,
+        ];
 
         $vendorId = $this->vendorModel->create($data);
         if ($vendorId) {
@@ -88,7 +186,7 @@ class Con_VendorController extends Controller
             $stepLabel = $enrollmentApproval->getStepLabel($initialStep);
             
             setSuccess("Vendor enrollment request submitted successfully! It is now pending approval from: {$stepLabel}.");
-            header("Location: {$GLOBALS['base_url']}/vendor-enrollment-requests");
+            header("Location: {$GLOBALS['base_url']}/vendor-enrollment-requests?tab=pending");
             exit;
         }
 
@@ -130,19 +228,68 @@ class Con_VendorController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        $data = [
-            'name'    => trim($_POST['name'] ?? ''),
-            'phone'   => $_POST['phone'] ?? null,
-            'email'   => $_POST['email'] ?? null,
-            'address' => $_POST['address'] ?? null,
-            'status'  => $_POST['status'] ?? 'active',
-        ];
+        $existing = $this->vendorModel->find($id);
+        if (!$existing) {
+            setError('Vendor not found.');
+            header("Location: {$GLOBALS['base_url']}/con-vendors");
+            exit;
+        }
 
-        if (empty($data['name'])) {
-            setError('Vendor name is required.');
+        $companyName        = trim($_POST['company_name'] ?? '');
+        $name               = trim($_POST['name'] ?? '');
+        $phone              = trim($_POST['phone'] ?? '');
+        $email              = trim($_POST['email'] ?? '');
+        $address            = trim($_POST['address'] ?? '');
+        $nidNumber          = trim($_POST['nid_number'] ?? '');
+        $tradeLicenseNumber = trim($_POST['trade_license_number'] ?? '');
+
+        if ($companyName === '') {
+            setError('Business / Company Name is required.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-edit/{$id}");
             exit;
         }
+        if ($name === '') {
+            setError('Contact Person / Designated Person Name is required.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-edit/{$id}");
+            exit;
+        }
+        if ($phone === '') {
+            setError('Phone Number is required.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-edit/{$id}");
+            exit;
+        }
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            setError('A valid Email Address is required.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-edit/{$id}");
+            exit;
+        }
+
+        $nidUpload = $this->uploadVendorDocument('nid_file', 'vendor_nid', false);
+        if ($nidUpload['error']) {
+            setError($nidUpload['error']);
+            header("Location: {$GLOBALS['base_url']}/con-vendor-edit/{$id}");
+            exit;
+        }
+
+        $tlUpload = $this->uploadVendorDocument('trade_license_file', 'vendor_tl', false);
+        if ($tlUpload['error']) {
+            setError($tlUpload['error']);
+            header("Location: {$GLOBALS['base_url']}/con-vendor-edit/{$id}");
+            exit;
+        }
+
+        $data = [
+            'name'                 => $name,
+            'company_name'         => $companyName,
+            'phone'                => $phone,
+            'email'                => $email,
+            'address'              => $address !== '' ? $address : null,
+            'nid_number'           => $nidNumber !== '' ? $nidNumber : null,
+            'trade_license_number' => $tradeLicenseNumber !== '' ? $tradeLicenseNumber : null,
+            'nid_file'             => $nidUpload['path'] ?? ($existing['nid_file'] ?? null),
+            'trade_license_file'   => $tlUpload['path'] ?? ($existing['trade_license_file'] ?? null),
+            'status'               => $_POST['status'] ?? ($existing['status'] ?? 'active'),
+        ];
 
         if ($this->vendorModel->update($id, $data)) {
             setSuccess('Vendor updated successfully!');
@@ -169,7 +316,7 @@ class Con_VendorController extends Controller
 
         $this->view('phase2/vendors/show-vendor', [
             'current_route' => 'con-vendors',
-            'page_title'    => 'Vendor Profile — ' . $vendor['name'],
+            'page_title'    => 'Vendor Profile — ' . Con_Vendor::displayName($vendor),
             'vendor'        => $vendor,
             'stats'         => $stats,
             'penalties'     => $penalties,
@@ -195,87 +342,9 @@ class Con_VendorController extends Controller
         exit;
     }
 
-    // ─── CSV Import Method ────────────────────────────────────────────────
+    // ─── CSV Import Method (Disabled to enforce multi-step enrollment approval) ──
     public function importCsv() {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: ' . $GLOBALS['base_url'] . '/con-vendors');
-            exit;
-        }
-        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-            setError('Please upload a valid CSV file.');
-            header('Location: ' . $GLOBALS['base_url'] . '/con-vendors');
-            exit;
-        }
-        
-        // Read entire file as string to properly handle UTF-8 Bengali text
-        $content = file_get_contents($_FILES['csv_file']['tmp_name']);
-        $content = ltrim($content, "\xEF\xBB\xBF");
-        $content = str_replace("\r\n", "\n", str_replace("\r", "\n", $content));
-        $lines = array_values(array_filter(explode("\n", $content), fn($l) => trim($l) !== ''));
-        if (empty($lines)) { setError('CSV file is empty.'); header('Location: ' . $GLOBALS['base_url'] . '/con-vendors'); exit; }
-        $header = array_map('trim', str_getcsv(array_shift($lines)));
-        
-        $resolveKey = function($row, $targetKey) {
-            $targetLower = strtolower($targetKey);
-            foreach ($row as $key => $val) {
-                $keyLower = strtolower(trim($key));
-                if ($keyLower === $targetLower || strpos($keyLower, $targetLower) === 0) {
-                    return $val;
-                }
-            }
-            return '';
-        };
-
-        $successCount = 0; $errorCount = 0; $errors = [];
-        $userId = $_SESSION['user']['id'] ?? 0;
-
-        foreach ($lines as $line) {
-            if (trim($line) === '') continue;
-            $data = array_pad(str_getcsv($line), count($header), '');
-            $row  = array_combine($header, $data);
-            
-            $vendorName = trim($resolveKey($row, 'Vendor_Name'));
-            $phone      = trim($resolveKey($row, 'Phone'));
-            $email      = trim($resolveKey($row, 'Email'));
-            $address    = trim($resolveKey($row, 'Address'));
-            
-            if (empty($vendorName)) { 
-                $errorCount++; $errors[] = "Missing Vendor Name"; 
-                continue; 
-            }
-            
-            $stmt = $this->db->prepare("SELECT id FROM vendors WHERE name = ? LIMIT 1");
-            $stmt->bind_param("s", $vendorName); 
-            $stmt->execute();
-            if ($stmt->get_result()->num_rows > 0) { 
-                $errors[] = "Vendor '$vendorName' already exists"; 
-                $errorCount++; 
-                continue; 
-            }
-            
-            $insertData = [
-                'name'       => $vendorName,
-                'phone'      => !empty($phone) ? $phone : null,
-                'email'      => !empty($email) ? $email : null,
-                'address'    => !empty($address) ? $address : null,
-                'rating'     => 5.00,
-                'status'     => 'active',
-                'created_by' => $userId
-            ];
-
-            if ($this->vendorModel->create($insertData)) { 
-                $successCount++; 
-            } else { 
-                $errorCount++; $errors[] = "Failed to save vendor '$vendorName'"; 
-            }
-        }
-        
-        if ($errorCount > 0) {
-            setError("Imported $successCount. Failed $errorCount. Errors: " . implode(' | ', array_slice($errors, 0, 5)));
-        } else {
-            setSuccess("Successfully imported $successCount records.");
-        }
-        
+        setError('CSV import is disabled. Please use Add Vendor to submit an enrollment request with required documents.');
         header('Location: ' . $GLOBALS['base_url'] . '/con-vendors');
         exit;
     }
@@ -339,9 +408,9 @@ class Con_VendorController extends Controller
         $projects = $projectsQ ? $projectsQ->fetch_all(MYSQLI_ASSOC) : [];
 
         // All active vendors for filter dropdown
-        $allVendorsQ = @$this->db->query("SELECT id, name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
+        $allVendorsQ = @$this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
         if (!$allVendorsQ || $allVendorsQ->num_rows === 0) {
-            $allVendorsQ = $this->db->query("SELECT id, name FROM vendors ORDER BY name ASC");
+            $allVendorsQ = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors ORDER BY name ASC");
         }
         $allVendors = $allVendorsQ ? $allVendorsQ->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -387,7 +456,7 @@ class Con_VendorController extends Controller
 
         $this->view('phase2/vendors/vendor-ledger', [
             'current_route'      => 'con-vendor-ledger',
-            'page_title'         => $selectedVendor ? 'Vendor Ledger — ' . $selectedVendor['name'] : 'Vendor Financial Ledger & Dashboard',
+            'page_title'         => $selectedVendor ? 'Vendor Ledger — ' . Con_Vendor::displayName($selectedVendor) : 'Vendor Financial Ledger & Dashboard',
             'kpiMetrics'         => $kpiMetrics,
             'selectedVendorId'   => $selectedVendorId,
             'selectedVendor'     => $selectedVendor,

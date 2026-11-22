@@ -480,7 +480,7 @@ class AssetManagementController extends Controller
         }
 
         $vendors = [];
-        $vRes = $this->db->query("SELECT id, name, company_name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
+        $vRes = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name, company_name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
         if ($vRes) {
             $vendors = $vRes->fetch_all(MYSQLI_ASSOC);
         }

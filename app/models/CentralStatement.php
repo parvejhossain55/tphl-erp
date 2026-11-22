@@ -2620,7 +2620,7 @@ class CentralStatement extends Model
                 cft.payment_type,
                 cft.notes,
                 p.name as project_name,
-                v.name as vendor_name,
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as vendor_name,
                 vpr.payment_type as vpr_payment_type,
                 u.full_name as processed_by_name
             FROM con_financial_transactions cft
