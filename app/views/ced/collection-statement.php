@@ -1,4 +1,4 @@
-hid<?php
+<?php
 $page_title = "CED Collection Statement";
 $page = 'CED';
 $show_breadcrumb = true;
@@ -68,9 +68,6 @@ $exportTrxUrl = $base_url . '/ced-collection-statement-export?' . http_build_que
 }
 
 /* Light Mode Column Highlighting */
-th.col-land-share { background-color: #ecfeff !important; }
-td.col-land-share { background-color: #f0fdfa; }
-
 th.col-dev-charge { background-color: #fffbeb !important; }
 td.col-dev-charge { background-color: #fffdf5; }
 
@@ -82,9 +79,6 @@ td.col-settlement { background-color: #f0fdf4; }
 
 th.col-booking { background-color: #faf5ff !important; }
 td.col-booking { background-color: #faf5ff; }
-
-th.col-penalty { background-color: #fff1f2 !important; }
-td.col-penalty { background-color: #fff5f5; }
 
 th.col-total { background-color: #f8fafc !important; }
 td.col-total { background-color: #f8fafc; }
@@ -209,37 +203,6 @@ html.dark .table-ced.table-hover tbody tr:hover > td {
 }
 
 /* Columns Dark Mode Colors */
-/* Land Share */
-:root[bd-theme="bd-theme-dark"] th.col-land-share,
-[bd-theme="bd-theme-dark"] th.col-land-share,
-[data-bs-theme="dark"] th.col-land-share,
-[data-theme="dark"] th.col-land-share,
-body.dark-mode th.col-land-share,
-body.dark th.col-land-share,
-html.dark th.col-land-share {
-    background-color: rgba(6, 182, 212, 0.14) !important;
-    color: #67e8f9 !important;
-    border-bottom: 2px solid rgba(6, 182, 212, 0.35) !important;
-}
-:root[bd-theme="bd-theme-dark"] td.col-land-share,
-[bd-theme="bd-theme-dark"] td.col-land-share,
-[data-bs-theme="dark"] td.col-land-share,
-[data-theme="dark"] td.col-land-share,
-body.dark-mode td.col-land-share,
-body.dark td.col-land-share,
-html.dark td.col-land-share {
-    background-color: rgba(6, 182, 212, 0.06) !important;
-    color: #22d3ee !important;
-}
-:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-land-share,
-[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-land-share,
-[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-land-share,
-body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-land-share,
-body.dark .table-ced.table-hover tbody tr:hover > td.col-land-share,
-html.dark .table-ced.table-hover tbody tr:hover > td.col-land-share {
-    background-color: rgba(6, 182, 212, 0.13) !important;
-}
-
 /* Dev Charge */
 :root[bd-theme="bd-theme-dark"] th.col-dev-charge,
 [bd-theme="bd-theme-dark"] th.col-dev-charge,
@@ -362,37 +325,6 @@ body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-booking,
 body.dark .table-ced.table-hover tbody tr:hover > td.col-booking,
 html.dark .table-ced.table-hover tbody tr:hover > td.col-booking {
     background-color: rgba(147, 51, 234, 0.13) !important;
-}
-
-/* Penalty */
-:root[bd-theme="bd-theme-dark"] th.col-penalty,
-[bd-theme="bd-theme-dark"] th.col-penalty,
-[data-bs-theme="dark"] th.col-penalty,
-[data-theme="dark"] th.col-penalty,
-body.dark-mode th.col-penalty,
-body.dark th.col-penalty,
-html.dark th.col-penalty {
-    background-color: rgba(244, 63, 94, 0.14) !important;
-    color: #fda4af !important;
-    border-bottom: 2px solid rgba(244, 63, 94, 0.35) !important;
-}
-:root[bd-theme="bd-theme-dark"] td.col-penalty,
-[bd-theme="bd-theme-dark"] td.col-penalty,
-[data-bs-theme="dark"] td.col-penalty,
-[data-theme="dark"] td.col-penalty,
-body.dark-mode td.col-penalty,
-body.dark td.col-penalty,
-html.dark td.col-penalty {
-    background-color: rgba(244, 63, 94, 0.06) !important;
-    color: #fb7185 !important;
-}
-:root[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-penalty,
-[bd-theme="bd-theme-dark"] .table-ced.table-hover tbody tr:hover > td.col-penalty,
-[data-bs-theme="dark"] .table-ced.table-hover tbody tr:hover > td.col-penalty,
-body.dark-mode .table-ced.table-hover tbody tr:hover > td.col-penalty,
-body.dark .table-ced.table-hover tbody tr:hover > td.col-penalty,
-html.dark .table-ced.table-hover tbody tr:hover > td.col-penalty {
-    background-color: rgba(244, 63, 94, 0.13) !important;
 }
 
 /* Total Amount */
@@ -928,12 +860,12 @@ html.dark .cs-matrix-tabs .nav-link.active {
                             <i class="fa-solid fa-calendar-check"></i>
                         </div>
                         <div class="flex-grow-1 overflow-hidden">
-                            <div class="text-muted extra-small text-uppercase fw-bold text-success" style="font-size: 10px;">Regular &amp; Advance EMI</div>
+                            <div class="text-muted extra-small text-uppercase fw-bold text-success" style="font-size: 10px;">EMI &amp; Due Settled</div>
                             <div class="fw-bold text-dark fs-14 text-truncate" title="৳<?= number_format($summary['total_emi_amount'] ?? 0, 2) ?>">
                                 ৳<?= number_format($summary['total_emi_amount'] ?? 0, 2) ?>
                             </div>
-                            <small class="text-muted extra-small d-block text-truncate" style="font-size: 10px;" title="Regular: ৳<?= number_format($summary['emi_amount'] ?? 0, 2) ?> | Advance: ৳<?= number_format($summary['advance_emi_amount'] ?? 0, 2) ?>">
-                                Reg: ৳<?= number_format($summary['emi_amount'] ?? 0, 0) ?> &bull; Adv: ৳<?= number_format($summary['advance_emi_amount'] ?? 0, 0) ?>
+                            <small class="text-muted extra-small d-block" style="font-size: 10px;">
+                                <?= number_format($summary['total_emi_count'] ?? 0) ?> Installments
                             </small>
                         </div>
                     </div>
@@ -1096,12 +1028,10 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                     <th style="min-width: 220px;">Executive / Officer Name</th>
                                     <th style="min-width: 260px;">Assigned Project Portfolio</th>
                                     <th class="text-center" style="width: 90px;">Total Trx</th>
-                                    <th class="text-end col-land-share" style="min-width: 130px;">Land Share (BDT)</th>
                                     <th class="text-end col-dev-charge" style="min-width: 130px;">Dev Charge (BDT)</th>
                                     <th class="text-end col-emi" style="min-width: 130px;">Regular EMI (BDT)</th>
-                                    <th class="text-end col-settlement" style="min-width: 130px;">Advance EMI (BDT)</th>
+                                    <th class="text-end col-settlement" style="min-width: 130px;">Due Settled (BDT)</th>
                                     <th class="text-end col-booking" style="min-width: 120px;">Booking/Reg (BDT)</th>
-                                    <th class="text-end col-penalty" style="min-width: 120px;">Penalty (BDT)</th>
                                     <th class="text-end col-total" style="min-width: 140px;">Total Collected (BDT)</th>
                                     <th style="min-width: 140px;">% Share</th>
                                     <th class="text-center" style="width: 85px;">Action</th>
@@ -1113,7 +1043,7 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                 if (empty($portfolioList)): 
                                 ?>
                                     <tr>
-                                        <td colspan="13" class="text-center py-5 text-muted">
+                                        <td colspan="11" class="text-center py-5 text-muted">
                                             <i class="fa-solid fa-users-slash fa-2x mb-2 text-secondary opacity-50"></i>
                                             <div>No portfolio collection records found for the selected period &amp; filters.</div>
                                         </td>
@@ -1176,15 +1106,6 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                         <td class="text-center font-monospace">
                                             <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($row['total_count']) ?></span>
                                         </td>
-                                        <!-- Land Share -->
-                                        <td class="text-end font-monospace text-info fw-semibold col-land-share" style="color: #0891b2;">
-                                            <?php if (($row['land_share_amount'] ?? 0) > 0): ?>
-                                                <div>৳<?= number_format($row['land_share_amount'], 2) ?></div>
-                                                <small class="text-muted extra-small">(<?= $row['land_share_count'] ?? 0 ?> Trx)</small>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                            <?php endif; ?>
-                                        </td>
                                         <!-- Dev Charge -->
                                         <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
                                             <?php if ($row['dev_charge_amount'] > 0): ?>
@@ -1203,11 +1124,11 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
-                                        <!-- Advance EMI -->
+                                        <!-- Due Settlement / Advance -->
                                         <td class="text-end font-monospace text-info fw-semibold col-settlement">
-                                            <?php if (($row['advance_emi_amount'] ?? 0) > 0): ?>
-                                                <div>৳<?= number_format($row['advance_emi_amount'], 2) ?></div>
-                                                <small class="text-muted extra-small">(<?= $row['advance_emi_count'] ?? 0 ?> Trx)</small>
+                                            <?php if ($row['settlement_amount'] > 0): ?>
+                                                <div>৳<?= number_format($row['settlement_amount'], 2) ?></div>
+                                                <small class="text-muted extra-small">(<?= $row['settlement_count'] ?> Trx)</small>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
@@ -1215,21 +1136,12 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                         <!-- Booking & Reg (Rare) -->
                                         <td class="text-end font-monospace col-booking">
                                             <?php 
-                                             $bookRegAmt = $row['booking_amount'] + $row['registration_amount'];
+                                            $bookRegAmt = $row['booking_amount'] + $row['registration_amount'];
                                             $bookRegCnt = $row['booking_count'] + $row['registration_count'];
                                             if ($bookRegAmt > 0): 
                                             ?>
                                                 <div class="text-purple fw-semibold" style="color: #9333ea;">৳<?= number_format($bookRegAmt, 2) ?></div>
                                                 <small class="text-muted extra-small">(<?= $bookRegCnt ?> Trx)</small>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <!-- Penalty -->
-                                        <td class="text-end font-monospace text-danger fw-semibold col-penalty">
-                                            <?php if (($row['penalty_amount'] ?? 0) > 0): ?>
-                                                <div>৳<?= number_format($row['penalty_amount'], 2) ?></div>
-                                                <small class="text-muted extra-small">(<?= $row['penalty_count'] ?? 0 ?> Trx)</small>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
@@ -1268,9 +1180,6 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                         <td class="text-center font-monospace">
                                             <span class="badge bg-dark text-white px-2 py-1"><?= number_format($g['total_count']) ?></span>
                                         </td>
-                                        <td class="text-end font-monospace text-info col-land-share" style="color: #0891b2;">
-                                            ৳<?= number_format($g['land_share_amount'] ?? 0, 2) ?>
-                                        </td>
                                         <td class="text-end font-monospace text-warning col-dev-charge">
                                             ৳<?= number_format($g['dev_charge_amount'], 2) ?>
                                         </td>
@@ -1278,13 +1187,10 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                             ৳<?= number_format($g['emi_amount'], 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-info col-settlement">
-                                            ৳<?= number_format($g['advance_emi_amount'] ?? 0, 2) ?>
+                                            ৳<?= number_format($g['settlement_amount'], 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-purple col-booking" style="color: #9333ea;">
                                             ৳<?= number_format($g['booking_amount'] + $g['registration_amount'], 2) ?>
-                                        </td>
-                                        <td class="text-end font-monospace text-danger col-penalty">
-                                            ৳<?= number_format($g['penalty_amount'] ?? 0, 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
                                             ৳<?= number_format($g['total_amount'], 2) ?>
@@ -1316,11 +1222,9 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                     <th style="min-width: 220px;">Project Name</th>
                                     <th style="min-width: 200px;">Assigned CED Executive</th>
                                     <th class="text-center" style="width: 90px;">Inflow Trx</th>
-                                    <th class="text-end col-land-share" style="min-width: 130px;">Land Share (BDT)</th>
                                     <th class="text-end col-dev-charge" style="min-width: 130px;">Dev Charge (BDT)</th>
                                     <th class="text-end col-emi" style="min-width: 130px;">Regular EMI (BDT)</th>
-                                    <th class="text-end col-settlement" style="min-width: 130px;">Advance EMI (BDT)</th>
-                                    <th class="text-end col-penalty" style="min-width: 120px;">Penalty (BDT)</th>
+                                    <th class="text-end col-settlement" style="min-width: 130px;">Due Settled (BDT)</th>
                                     <th class="text-end col-total" style="min-width: 140px;">Total Inflow (BDT)</th>
                                     <th style="min-width: 200px;">Voucher Entered In Software By</th>
                                     <th class="text-center" style="width: 85px;">Action</th>
@@ -1332,7 +1236,7 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                 if (empty($projectRows)): 
                                 ?>
                                     <tr>
-                                        <td colspan="12" class="text-center py-5 text-muted">
+                                        <td colspan="10" class="text-center py-5 text-muted">
                                             <i class="fa-solid fa-city fa-2x mb-2 text-secondary opacity-50"></i>
                                             <div>No project inflows recorded for this period.</div>
                                         </td>
@@ -1341,19 +1245,15 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                     $pjSl = 1;
                                     $prjTotalTrx = 0;
                                     $prjTotalAmt = 0;
-                                    $prjLandAmt  = 0;
                                     $prjDevAmt   = 0;
                                     $prjEmiAmt   = 0;
-                                    $prjAdvAmt   = 0;
-                                    $prjPenAmt   = 0;
+                                    $prjSetAmt   = 0;
                                     foreach ($projectRows as $pr):
                                         $prjTotalTrx += $pr['total_count'];
                                         $prjTotalAmt += $pr['total_amount'];
-                                        $prjLandAmt  += ($pr['land_share_amount'] ?? 0);
                                         $prjDevAmt   += $pr['dev_charge_amount'];
                                         $prjEmiAmt   += $pr['emi_amount'];
-                                        $prjAdvAmt   += ($pr['advance_emi_amount'] ?? 0);
-                                        $prjPenAmt   += ($pr['penalty_amount'] ?? 0);
+                                        $prjSetAmt   += $pr['settlement_amount'];
 
                                         $prjFilterUrl = '?' . http_build_query(array_merge($queryParams, [
                                             'project_id' => $pr['project_id'],
@@ -1389,9 +1289,6 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                         <td class="text-center font-monospace">
                                             <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($pr['total_count']) ?></span>
                                         </td>
-                                        <td class="text-end font-monospace text-info fw-semibold col-land-share" style="color: #0891b2;">
-                                            <?= ($pr['land_share_amount'] ?? 0) > 0 ? '৳' . number_format($pr['land_share_amount'], 2) : '<span class="text-muted">-</span>' ?>
-                                        </td>
                                         <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
                                             <?= $pr['dev_charge_amount'] > 0 ? '৳' . number_format($pr['dev_charge_amount'], 2) : '<span class="text-muted">-</span>' ?>
                                         </td>
@@ -1399,10 +1296,7 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                             <?= $pr['emi_amount'] > 0 ? '৳' . number_format($pr['emi_amount'], 2) : '<span class="text-muted">-</span>' ?>
                                         </td>
                                         <td class="text-end font-monospace text-info fw-semibold col-settlement">
-                                            <?= ($pr['advance_emi_amount'] ?? 0) > 0 ? '৳' . number_format($pr['advance_emi_amount'], 2) : '<span class="text-muted">-</span>' ?>
-                                        </td>
-                                        <td class="text-end font-monospace text-danger fw-semibold col-penalty">
-                                            <?= ($pr['penalty_amount'] ?? 0) > 0 ? '৳' . number_format($pr['penalty_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                            <?= $pr['settlement_amount'] > 0 ? '৳' . number_format($pr['settlement_amount'], 2) : '<span class="text-muted">-</span>' ?>
                                         </td>
                                         <td class="text-end font-monospace fw-bold fs-13 col-total">
                                             ৳<?= number_format($pr['total_amount'], 2) ?>
@@ -1430,9 +1324,6 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                         <td class="text-center font-monospace">
                                             <span class="badge bg-dark text-white px-2 py-1"><?= number_format($prjTotalTrx) ?></span>
                                         </td>
-                                        <td class="text-end font-monospace text-info col-land-share" style="color: #0891b2;">
-                                            ৳<?= number_format($prjLandAmt, 2) ?>
-                                        </td>
                                         <td class="text-end font-monospace text-warning col-dev-charge">
                                             ৳<?= number_format($prjDevAmt, 2) ?>
                                         </td>
@@ -1440,10 +1331,7 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                             ৳<?= number_format($prjEmiAmt, 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-info col-settlement">
-                                            ৳<?= number_format($prjAdvAmt, 2) ?>
-                                        </td>
-                                        <td class="text-end font-monospace text-danger col-penalty">
-                                            ৳<?= number_format($prjPenAmt, 2) ?>
+                                            ৳<?= number_format($prjSetAmt, 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
                                             ৳<?= number_format($prjTotalAmt, 2) ?>
@@ -1468,12 +1356,10 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                     <th style="min-width: 220px;">Staff Member (Software Creator)</th>
                                     <th style="min-width: 170px;">Role &amp; Department</th>
                                     <th class="text-center" style="width: 90px;">Total Trx</th>
-                                    <th class="text-end col-land-share" style="min-width: 130px;">Land Share (BDT)</th>
                                     <th class="text-end col-dev-charge" style="min-width: 130px;">Dev Charge (BDT)</th>
                                     <th class="text-end col-emi" style="min-width: 130px;">Regular EMI (BDT)</th>
-                                    <th class="text-end col-settlement" style="min-width: 130px;">Advance EMI (BDT)</th>
+                                    <th class="text-end col-settlement" style="min-width: 130px;">Due Settled (BDT)</th>
                                     <th class="text-end col-booking" style="min-width: 120px;">Booking/Reg (BDT)</th>
-                                    <th class="text-end col-penalty" style="min-width: 120px;">Penalty (BDT)</th>
                                     <th class="text-end col-total" style="min-width: 140px;">Total Collected (BDT)</th>
                                     <th style="min-width: 140px;">% Share</th>
                                     <th class="text-center" style="width: 85px;">Action</th>
@@ -1485,7 +1371,7 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                 if (empty($creatorList)): 
                                 ?>
                                     <tr>
-                                        <td colspan="13" class="text-center py-5 text-muted">
+                                        <td colspan="11" class="text-center py-5 text-muted">
                                             <i class="fa-solid fa-keyboard fa-2x mb-2 text-secondary opacity-50"></i>
                                             <div>No voucher creators found for this period.</div>
                                         </td>
@@ -1529,9 +1415,6 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                         <td class="text-center font-monospace">
                                             <span class="badge bg-light text-dark border px-2 py-1"><?= number_format($crow['total_count']) ?></span>
                                         </td>
-                                        <td class="text-end font-monospace text-info fw-semibold col-land-share" style="color: #0891b2;">
-                                            <?= ($crow['land_share_amount'] ?? 0) > 0 ? '৳' . number_format($crow['land_share_amount'], 2) : '<span class="text-muted">-</span>' ?>
-                                        </td>
                                         <td class="text-end font-monospace text-warning fw-semibold col-dev-charge">
                                             <?= $crow['dev_charge_amount'] > 0 ? '৳' . number_format($crow['dev_charge_amount'], 2) : '<span class="text-muted">-</span>' ?>
                                         </td>
@@ -1539,16 +1422,13 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                             <?= $crow['emi_amount'] > 0 ? '৳' . number_format($crow['emi_amount'], 2) : '<span class="text-muted">-</span>' ?>
                                         </td>
                                         <td class="text-end font-monospace text-info fw-semibold col-settlement">
-                                            <?= ($crow['advance_emi_amount'] ?? 0) > 0 ? '৳' . number_format($crow['advance_emi_amount'], 2) : '<span class="text-muted">-</span>' ?>
+                                            <?= $crow['settlement_amount'] > 0 ? '৳' . number_format($crow['settlement_amount'], 2) : '<span class="text-muted">-</span>' ?>
                                         </td>
                                         <td class="text-end font-monospace col-booking">
                                             <?php 
                                             $cBookReg = $crow['booking_amount'] + $crow['registration_amount'];
                                             echo $cBookReg > 0 ? '<span class="text-purple fw-semibold" style="color: #9333ea;">৳' . number_format($cBookReg, 2) . '</span>' : '<span class="text-muted">-</span>';
                                             ?>
-                                        </td>
-                                        <td class="text-end font-monospace text-danger fw-semibold col-penalty">
-                                            <?= ($crow['penalty_amount'] ?? 0) > 0 ? '৳' . number_format($crow['penalty_amount'], 2) : '<span class="text-muted">-</span>' ?>
                                         </td>
                                         <td class="text-end font-monospace fw-bold fs-13 col-total">
                                             ৳<?= number_format($crow['total_amount'], 2) ?>
@@ -1581,9 +1461,6 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                         <td class="text-center font-monospace">
                                             <span class="badge bg-dark text-white px-2 py-1"><?= number_format($cg['total_count']) ?></span>
                                         </td>
-                                        <td class="text-end font-monospace text-info col-land-share" style="color: #0891b2;">
-                                            ৳<?= number_format($cg['land_share_amount'] ?? 0, 2) ?>
-                                        </td>
                                         <td class="text-end font-monospace text-warning col-dev-charge">
                                             ৳<?= number_format($cg['dev_charge_amount'], 2) ?>
                                         </td>
@@ -1591,13 +1468,10 @@ html.dark .cs-matrix-tabs .nav-link.active {
                                             ৳<?= number_format($cg['emi_amount'], 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-info col-settlement">
-                                            ৳<?= number_format($cg['advance_emi_amount'] ?? 0, 2) ?>
+                                            ৳<?= number_format($cg['settlement_amount'], 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-purple col-booking" style="color: #9333ea;">
                                             ৳<?= number_format($cg['booking_amount'] + $cg['registration_amount'], 2) ?>
-                                        </td>
-                                        <td class="text-end font-monospace text-danger col-penalty">
-                                            ৳<?= number_format($cg['penalty_amount'] ?? 0, 2) ?>
                                         </td>
                                         <td class="text-end font-monospace text-primary fs-14 col-total cs-total-badge">
                                             ৳<?= number_format($cg['total_amount'], 2) ?>
@@ -2152,50 +2026,6 @@ function switchView(mode, updateUrl) {
 }
 
 window.collectorsByScope = <?= json_encode($collectors_by_scope ?? []) ?>;
-window.collectorProjectsMap = <?= json_encode($collector_projects_map ?? []) ?>;
-window.allProjectsList = <?= json_encode($projects_list ?? []) ?>;
-
-function syncProjectSelectForCollector(collectorId, preserveCurrent) {
-    var projectEl = document.getElementById('projectSelect');
-    if (!projectEl) return;
-
-    var curProjectVal = (typeof jQuery !== 'undefined') ? (jQuery(projectEl).val() || '') : projectEl.value;
-    var uid = parseInt(collectorId, 10) || 0;
-    var assignedIds = (uid > 0 && window.collectorProjectsMap && window.collectorProjectsMap[uid])
-        ? window.collectorProjectsMap[uid].map(function(id) { return parseInt(id, 10); })
-        : [];
-
-    var projectsToShow = (assignedIds.length > 0)
-        ? (window.allProjectsList || []).filter(function(p) { return assignedIds.indexOf(parseInt(p.id, 10)) !== -1; })
-        : (window.allProjectsList || []);
-
-    var defaultLabel = (assignedIds.length > 0)
-        ? ('All Assigned Projects (' + projectsToShow.length + ')')
-        : 'All Projects';
-
-    var html = '<option value="">' + defaultLabel + '</option>';
-    for (var i = 0; i < projectsToShow.length; i++) {
-        var p = projectsToShow[i];
-        html += '<option value="' + p.id + '">' + escapeHtml(p.name) + '</option>';
-    }
-    projectEl.innerHTML = html;
-
-    var targetVal = '';
-    if (preserveCurrent && curProjectVal) {
-        var curInt = parseInt(curProjectVal, 10);
-        var exists = projectsToShow.some(function(p) { return parseInt(p.id, 10) === curInt; });
-        if (exists) {
-            targetVal = String(curProjectVal);
-        }
-    } else if (projectsToShow.length === 1 && assignedIds.length > 0) {
-        targetVal = String(projectsToShow[0].id);
-    }
-
-    projectEl.value = targetVal;
-    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 === 'function') {
-        jQuery(projectEl).val(targetVal).trigger('change.select2');
-    }
-}
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -2233,7 +2063,6 @@ function onTeamScopeChange(scope) {
     select.innerHTML = html;
     if (!valExists) {
         select.value = '';
-        syncProjectSelectForCollector('', false);
     }
     if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 === 'function') {
         jQuery(select).trigger('change.select2');
@@ -2322,14 +2151,6 @@ function changeTrxLimit(val) {
                         allowClear: true
                     });
                 });
-            }
-
-            // Auto-sync Project dropdown when Collector/Executive changes
-            $('#collectorSelect').on('change', function() {
-                syncProjectSelectForCollector($(this).val(), false);
-            });
-            if ($('#collectorSelect').val()) {
-                syncProjectSelectForCollector($('#collectorSelect').val(), true);
             }
 
             // Initialize any popovers or tooltips safely

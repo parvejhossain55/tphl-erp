@@ -4,7 +4,6 @@ require_once __DIR__ . '/../core/Controller.php';
 class CedCollectionStatementController extends Controller
 {
     protected $db;
-    protected $emiSplitCache = [];
 
     public function __construct($db)
     {
@@ -78,19 +77,6 @@ class CedCollectionStatementController extends Controller
         ];
         $projectsList     = $this->fetchProjects();
 
-        // Map of user_id => [project_id, ...] for active CED project assignments
-        $collectorProjectsMap = [];
-        $assignRes = $this->db->query("SELECT user_id, project_id FROM ced_project_assignments WHERE status = 'active'");
-        if ($assignRes) {
-            while ($aRow = $assignRes->fetch_assoc()) {
-                $uId = (int)$aRow['user_id'];
-                $pId = (int)$aRow['project_id'];
-                if ($uId > 0 && $pId > 0) {
-                    $collectorProjectsMap[$uId][] = $pId;
-                }
-            }
-        }
-
         // Default view mode for CED: 'collectors' (Executive-wise Collection Summary)
         // If page parameter is explicitly present (> 1) and view_mode is not passed, default to 'transactions' because only transactions are paginated
         if (!isset($_GET['view_mode']) && isset($_GET['page']) && (int)$_GET['page'] > 1) {
@@ -114,8 +100,7 @@ class CedCollectionStatementController extends Controller
                 }
             }
             if ($colTrxCount === 0) {
-                // Check if they have collections in any month (historical or current assignment)
-                $effAgentHist = $this->getEffectiveAgentSql('lb.project_id');
+                // Check if they have collections in any month
                 $qHist = $this->db->query("
                     SELECT 
                         COUNT(lp.id) as total_life_trx,
@@ -126,7 +111,7 @@ class CedCollectionStatementController extends Controller
                         DATE_FORMAT(MAX(lp.payment_date), '%M %Y') as latest_month_name
                     FROM lead_payments lp
                     INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
-                    WHERE ({$effAgentHist} = {$cId} OR ({$effAgentHist} = 0 AND lp.created_by = {$cId}))
+                    WHERE (lp.created_by = {$cId} OR lb.project_id IN (SELECT project_id FROM ced_project_assignments WHERE user_id = {$cId}))
                       AND lp.is_trashed = 0
                       AND COALESCE(lp.is_emi_discount, 0) = 0
                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
@@ -174,7 +159,6 @@ class CedCollectionStatementController extends Controller
             'collectors_list'          => $collectorsList,
             'collectors_by_scope'      => $collectorsByScope,
             'projects_list'            => $projectsList,
-            'collector_projects_map'   => $collectorProjectsMap,
             'pagination'          => [
                 'current_page' => $page,
                 'total_pages'  => $totalPages,
@@ -265,18 +249,14 @@ class CedCollectionStatementController extends Controller
                 'Employee ID',
                 'Assigned Projects',
                 'Voucher Creators in Software',
-                'Land Share Trx',
-                'Land Share (BDT)',
                 'Dev Charge Trx',
                 'Dev Charge Amount (BDT)',
-                'Regular EMI Trx',
-                'Regular EMI (BDT)',
-                'Advance EMI Trx',
-                'Advance EMI (BDT)',
+                'EMI Trx',
+                'EMI Amount (BDT)',
+                'Due Settlement Trx',
+                'Due Settlement Amount (BDT)',
                 'Booking & Reg Trx',
                 'Booking & Reg Amount (BDT)',
-                'Penalty Trx',
-                'Penalty (BDT)',
                 'Other Trx',
                 'Other Amount (BDT)',
                 'Cash Inflow (BDT)',
@@ -297,18 +277,14 @@ class CedCollectionStatementController extends Controller
                     $r['emp_code'] ?? 'N/A',
                     $assignedPrjs,
                     $creators,
-                    $r['land_share_count'] ?? 0,
-                    number_format($r['land_share_amount'] ?? 0, 2, '.', ''),
                     $r['dev_charge_count'],
                     number_format($r['dev_charge_amount'], 2, '.', ''),
                     $r['emi_count'],
                     number_format($r['emi_amount'], 2, '.', ''),
-                    $r['advance_emi_count'] ?? 0,
-                    number_format($r['advance_emi_amount'] ?? 0, 2, '.', ''),
+                    $r['settlement_count'],
+                    number_format($r['settlement_amount'], 2, '.', ''),
                     $r['booking_count'] + $r['registration_count'],
                     number_format($r['booking_amount'] + $r['registration_amount'], 2, '.', ''),
-                    $r['penalty_count'] ?? 0,
-                    number_format($r['penalty_amount'] ?? 0, 2, '.', ''),
                     $r['other_count'],
                     number_format($r['other_amount'], 2, '.', ''),
                     number_format($r['cash_amount'], 2, '.', ''),
@@ -328,18 +304,14 @@ class CedCollectionStatementController extends Controller
                 '',
                 '',
                 '',
-                $grand['land_share_count'] ?? 0,
-                number_format($grand['land_share_amount'] ?? 0, 2, '.', ''),
                 $grand['dev_charge_count'],
                 number_format($grand['dev_charge_amount'], 2, '.', ''),
                 $grand['emi_count'],
                 number_format($grand['emi_amount'], 2, '.', ''),
-                $grand['advance_emi_count'] ?? 0,
-                number_format($grand['advance_emi_amount'] ?? 0, 2, '.', ''),
+                $grand['settlement_count'],
+                number_format($grand['settlement_amount'], 2, '.', ''),
                 $grand['booking_count'] + $grand['registration_count'],
                 number_format($grand['booking_amount'] + $grand['registration_amount'], 2, '.', ''),
-                $grand['penalty_count'] ?? 0,
-                number_format($grand['penalty_amount'] ?? 0, 2, '.', ''),
                 $grand['other_count'],
                 number_format($grand['other_amount'], 2, '.', ''),
                 number_format($grand['cash_amount'], 2, '.', ''),
@@ -588,8 +560,6 @@ class CedCollectionStatementController extends Controller
             "lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))"
         ];
 
-        $effAgentExpr = $this->getEffectiveAgentSql('lb.project_id');
-
         // Team scope: CED Only vs CED & Management vs All
         if (!empty($filters['team_scope']) && empty($filters['collector_id'])) {
             if ($filters['team_scope'] === 'ced_only') {
@@ -598,7 +568,7 @@ class CedCollectionStatementController extends Controller
                              OR r_cr.name LIKE '%recovery%' 
                              OR d_cr.name LIKE '%client%' 
                              OR d_cr.name LIKE '%ced%' 
-                             OR {$effAgentExpr} > 0)";
+                             OR lb.project_id IN (SELECT DISTINCT project_id FROM ced_project_assignments))";
             } elseif ($filters['team_scope'] === 'ced_mgmt') {
                 $conds[] = "(u_cr.role_id IN (7, 37, 39, 1, 3, 33, 34, 35, 38) 
                              OR r_cr.name LIKE '%client%' 
@@ -608,13 +578,13 @@ class CedCollectionStatementController extends Controller
                              OR d_cr.name LIKE '%client%' 
                              OR d_cr.name LIKE '%ced%' 
                              OR u_cr.user_name LIKE '%management%' 
-                             OR {$effAgentExpr} > 0)";
+                             OR lb.project_id IN (SELECT DISTINCT project_id FROM ced_project_assignments))";
             }
         }
 
         if (!empty($filters['collector_id'])) {
             $cId = (int)$filters['collector_id'];
-            $conds[] = "({$effAgentExpr} = {$cId} OR ({$effAgentExpr} = 0 AND lp.created_by = {$cId}))";
+            $conds[] = "(lp.created_by = {$cId} OR lb.project_id IN (SELECT project_id FROM ced_project_assignments WHERE user_id = {$cId}))";
         }
 
         if (!empty($filters['project_id'])) {
@@ -629,8 +599,12 @@ class CedCollectionStatementController extends Controller
 
         if (!empty($filters['payment_type'])) {
             $pt = $filters['payment_type'];
-            if ($pt === 'advance_emi' || $pt === 'emi_settlement' || $pt === 'emi') {
-                $conds[] = "lp.payment_type = 'emi'";
+            if ($pt === 'advance_emi') {
+                $conds[] = "lp.payment_type = 'emi' AND lp.payment_status = 'partially_paid' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')";
+            } elseif ($pt === 'emi_settlement') {
+                $conds[] = "lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement'";
+            } elseif ($pt === 'emi') {
+                $conds[] = "lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')";
             } else {
                 $ptEsc = $this->db->real_escape_string($pt);
                 $conds[] = "lp.payment_type = '{$ptEsc}'";
@@ -651,44 +625,10 @@ class CedCollectionStatementController extends Controller
     }
 
     /**
-     * Resolve the assigned CED agent for a payment at the time it was logged.
-     * Uses ced_project_assignment_history date ranges so historical collections stay
-     * under the previous agent when a project is reassigned, and falls back to the
-     * active assignment if no history range matches.
-     */
-    protected function getEffectiveAgentSql(string $projectExpr = 'lb.project_id'): string
-    {
-        return "COALESCE(
-            (
-                SELECT h.user_id
-                FROM ced_project_assignment_history h
-                WHERE h.project_id = {$projectExpr}
-                  AND h.assigned_from <= COALESCE(lp.created_at, CONCAT(lp.payment_date, ' 23:59:59'))
-                  AND (h.assigned_to IS NULL OR h.assigned_to > COALESCE(lp.created_at, CONCAT(lp.payment_date, ' 23:59:59')))
-                ORDER BY h.id DESC
-                LIMIT 1
-            ),
-            (
-                SELECT cpa_a.user_id
-                FROM ced_project_assignments cpa_a
-                WHERE cpa_a.project_id = {$projectExpr} AND cpa_a.status = 'active'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM ced_project_assignment_history h0
-                      WHERE h0.project_id = {$projectExpr}
-                  )
-                ORDER BY cpa_a.id DESC
-                LIMIT 1
-            ),
-            0
-        )";
-    }
-
-    /**
      * Common JOINs for queries
      */
     protected function getBaseJoins()
     {
-        $effAgentExpr = $this->getEffectiveAgentSql('lb.project_id');
         return "
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
             INNER JOIN leads l ON lb.lead_id = l.id
@@ -698,7 +638,8 @@ class CedCollectionStatementController extends Controller
             LEFT JOIN employees e_cr ON (u_cr.employee_id = e_cr.id OR e_cr.user_id = u_cr.id)
             LEFT JOIN roles r_cr ON u_cr.role_id = r_cr.id
             LEFT JOIN departments d_cr ON e_cr.department_id = d_cr.id
-            LEFT JOIN users u_cpa ON u_cpa.id = {$effAgentExpr}
+            LEFT JOIN ced_project_assignments cpa ON cpa.project_id = lb.project_id
+            LEFT JOIN users u_cpa ON cpa.user_id = u_cpa.id
             LEFT JOIN employees e_cpa ON (u_cpa.employee_id = e_cpa.id OR e_cpa.user_id = u_cpa.id)
             LEFT JOIN roles r_cpa ON u_cpa.role_id = r_cpa.id
         ";
@@ -721,199 +662,6 @@ class CedCollectionStatementController extends Controller
         return '৳' . number_format($v, 2);
     }
 
-    /**
-     * Split EMI collections into Regular EMI (up to Asked Amount) and Advance EMI (surplus),
-     * automatically adjusting any prior advance against new asks.
-     */
-    protected function calculateEmiSplit($startDate, $endDate, $filters)
-    {
-        $cacheKey = md5($startDate . '|' . $endDate . '|' . json_encode($filters));
-        if (isset($this->emiSplitCache[$cacheKey])) {
-            return $this->emiSplitCache[$cacheKey];
-        }
-
-        $where = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
-        $joins = $this->getBaseJoins();
-        $isFilterRejected = (!empty($filters['verification_status']) && $filters['verification_status'] === 'rejected');
-        $validCond = $isFilterRejected ? "1=1" : "(lp.verification_status IS NULL OR lp.verification_status != 'rejected')";
-        $effAgentPrj = $this->getEffectiveAgentSql('lb.project_id');
-
-        $sql = "
-            SELECT
-                lp.id,
-                lp.booking_id,
-                lb.project_id,
-                lp.created_by,
-                lp.amount,
-                lp.payment_method,
-                lp.payment_date,
-                COALESCE(NULLIF({$effAgentPrj}, 0), CASE WHEN (u_cr.role_id IN (7, 37, 39) OR e_cr.department_id IN (4, 29)) THEN lp.created_by ELSE 0 END, 0) AS ced_officer_id
-            FROM lead_payments lp
-            {$joins}
-            WHERE {$where}
-              AND lp.payment_type = 'emi'
-              AND {$validCond}
-            ORDER BY lp.booking_id ASC, lp.payment_date ASC, lp.id ASC
-        ";
-
-        $payments = [];
-        $bookingIds = [];
-        $res = $this->db->query($sql);
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $bId = (int)$row['booking_id'];
-                $payments[] = $row;
-                $bookingIds[$bId] = true;
-            }
-        }
-
-        $result = [
-            'total' => [
-                'regular_emi_amount' => 0.0,
-                'regular_emi_count'  => 0,
-                'advance_emi_amount' => 0.0,
-                'advance_emi_count'  => 0,
-                'regular_methods'    => ['cash' => 0.0, 'bank' => 0.0, 'cheque' => 0.0, 'online' => 0.0],
-                'advance_methods'    => ['cash' => 0.0, 'bank' => 0.0, 'cheque' => 0.0, 'online' => 0.0],
-            ],
-            'by_creator'         => [],
-            'by_project_officer' => [],
-        ];
-
-        if (empty($payments)) {
-            $this->emiSplitCache[$cacheKey] = $result;
-            return $result;
-        }
-
-        $inIds = implode(',', array_keys($bookingIds));
-        $startDateEsc = $this->db->real_escape_string($startDate);
-        $endDateEsc   = $this->db->real_escape_string($endDate);
-
-        $schedulesByBooking = [];
-        $qSched = $this->db->query("
-            SELECT
-                es.lead_booking_id,
-                COUNT(*) AS sched_count,
-                COALESCE(SUM(
-                    CASE
-                        WHEN es.status != 'cancelled'
-                             AND (
-                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb_es.project_id) AND pesi.is_active = 1)
-                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb_es.project_id) AND es.due_date <= '{$endDateEsc}')
-                             )
-                        THEN es.emi_amount
-                        ELSE 0
-                    END
-                ), 0) AS asked_upto_end
-            FROM emi_schedules es
-            INNER JOIN lead_bookings lb_es ON lb_es.id = es.lead_booking_id
-            LEFT JOIN project_emi_schedule_items pesi ON pesi.project_id = lb_es.project_id AND pesi.emi_no = es.emi_no
-            WHERE es.lead_booking_id IN ({$inIds})
-            GROUP BY es.lead_booking_id
-        ");
-        if ($qSched) {
-            while ($sr = $qSched->fetch_assoc()) {
-                $schedulesByBooking[(int)$sr['lead_booking_id']] = [
-                    'sched_count'    => (int)$sr['sched_count'],
-                    'asked_upto_end' => (float)$sr['asked_upto_end'],
-                ];
-            }
-        }
-
-        $paidBeforeByBooking = [];
-        $qPrior = $this->db->query("
-            SELECT
-                booking_id,
-                COALESCE(SUM(amount), 0) AS paid_before_start
-            FROM lead_payments
-            WHERE booking_id IN ({$inIds})
-              AND payment_type = 'emi'
-              AND is_trashed = 0
-              AND COALESCE(is_emi_discount, 0) = 0
-              AND (verification_status IS NULL OR verification_status != 'rejected')
-              AND payment_date < '{$startDateEsc}'
-            GROUP BY booking_id
-        ");
-        if ($qPrior) {
-            while ($pr = $qPrior->fetch_assoc()) {
-                $paidBeforeByBooking[(int)$pr['booking_id']] = (float)$pr['paid_before_start'];
-            }
-        }
-
-        $remainingByBooking = [];
-        foreach ($payments as $p) {
-            $bId       = (int)$p['booking_id'];
-            $pId       = (int)$p['project_id'];
-            $creatorId = (int)$p['created_by'];
-            $officerId = (int)$p['ced_officer_id'];
-            $amt       = (float)$p['amount'];
-            $method    = strtolower(trim($p['payment_method'] ?? ''));
-
-            $schedInfo  = $schedulesByBooking[$bId] ?? ['sched_count' => 0, 'asked_upto_end' => 0.0];
-            $schedCount = $schedInfo['sched_count'];
-
-            if (!array_key_exists($bId, $remainingByBooking)) {
-                $paidBefore = $paidBeforeByBooking[$bId] ?? 0.0;
-                $remainingByBooking[$bId] = max(0.0, round($schedInfo['asked_upto_end'] - $paidBefore, 2));
-            }
-
-            if ($schedCount === 0) {
-                $reg = round($amt, 2);
-                $adv = 0.0;
-            } else {
-                $reg = round(min($amt, $remainingByBooking[$bId]), 2);
-                $adv = round(max(0.0, $amt - $reg), 2);
-                $remainingByBooking[$bId] = max(0.0, round($remainingByBooking[$bId] - $reg, 2));
-            }
-
-            // Filter by payment_type if user explicitly filtered for advance_emi or emi
-            $ptFilter = $filters['payment_type'] ?? '';
-            if ($ptFilter === 'advance_emi' && $adv <= 0) {
-                continue;
-            }
-
-            $result['total']['regular_emi_amount'] += $reg;
-            $result['total']['advance_emi_amount'] += $adv;
-            if ($reg > 0) $result['total']['regular_emi_count']++;
-            if ($adv > 0) $result['total']['advance_emi_count']++;
-
-            if (isset($result['total']['regular_methods'][$method])) {
-                $result['total']['regular_methods'][$method] += $reg;
-                $result['total']['advance_methods'][$method] += $adv;
-            }
-
-            if (!isset($result['by_creator'][$creatorId])) {
-                $result['by_creator'][$creatorId] = [
-                    'regular_emi_amount' => 0.0,
-                    'regular_emi_count'  => 0,
-                    'advance_emi_amount' => 0.0,
-                    'advance_emi_count'  => 0,
-                ];
-            }
-            $result['by_creator'][$creatorId]['regular_emi_amount'] += $reg;
-            $result['by_creator'][$creatorId]['advance_emi_amount'] += $adv;
-            if ($reg > 0) $result['by_creator'][$creatorId]['regular_emi_count']++;
-            if ($adv > 0) $result['by_creator'][$creatorId]['advance_emi_count']++;
-
-            $poKey = $pId . '_' . $officerId;
-            if (!isset($result['by_project_officer'][$poKey])) {
-                $result['by_project_officer'][$poKey] = [
-                    'regular_emi_amount' => 0.0,
-                    'regular_emi_count'  => 0,
-                    'advance_emi_amount' => 0.0,
-                    'advance_emi_count'  => 0,
-                ];
-            }
-            $result['by_project_officer'][$poKey]['regular_emi_amount'] += $reg;
-            $result['by_project_officer'][$poKey]['advance_emi_amount'] += $adv;
-            if ($reg > 0) $result['by_project_officer'][$poKey]['regular_emi_count']++;
-            if ($adv > 0) $result['by_project_officer'][$poKey]['advance_emi_count']++;
-        }
-
-        $this->emiSplitCache[$cacheKey] = $result;
-        return $result;
-    }
-
     protected function fetchSummary($startDate, $endDate, $filters)
     {
         $where = $this->buildLeadPaymentsConditions($startDate, $endDate, $filters);
@@ -926,8 +674,6 @@ class CedCollectionStatementController extends Controller
             SELECT 
                 COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) as total_count,
                 COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) as total_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as land_share_amount,
-                COUNT(CASE WHEN lp.payment_type = 'land_share' AND {$validCond} THEN 1 ELSE NULL END) as land_share_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as dev_charge_amount,
                 COUNT(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN 1 ELSE NULL END) as dev_charge_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN lp.amount ELSE 0 END), 0) as emi_amount,
@@ -938,8 +684,6 @@ class CedCollectionStatementController extends Controller
                 COUNT(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN 1 ELSE NULL END) as booking_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as registration_amount,
                 COUNT(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN 1 ELSE NULL END) as registration_count,
-                COALESCE(SUM(CASE WHEN {$validCond} THEN COALESCE(lp.penalty_paid, 0) ELSE 0 END), 0) as penalty_amount,
-                COUNT(CASE WHEN {$validCond} AND lp.penalty_paid > 0 THEN 1 ELSE NULL END) as penalty_count,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as cash_amount,
                 COUNT(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN 1 ELSE NULL END) as cash_count,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as bank_amount,
@@ -957,13 +701,9 @@ class CedCollectionStatementController extends Controller
         ";
 
         $res = $this->db->query($sql);
-        $emiSplit = $this->calculateEmiSplit($startDate, $endDate, $filters);
-
         $summary = [
             'total_count' => 0, 'total_amount' => 0, 'dev_charge_amount' => 0, 'dev_charge_count' => 0,
-            'land_share_amount' => 0, 'land_share_count' => 0,
-            'penalty_amount' => 0, 'penalty_count' => 0,
-            'emi_amount' => 0, 'emi_count' => 0, 'advance_emi_amount' => 0, 'advance_emi_count' => 0,
+            'emi_amount' => 0, 'emi_count' => 0, 'settlement_amount' => 0, 'settlement_count' => 0,
             'total_emi_amount' => 0, 'total_emi_count' => 0, 'booking_amount' => 0, 'booking_count' => 0,
             'registration_amount' => 0, 'registration_count' => 0, 'cash_amount' => 0, 'cash_count' => 0,
             'bank_amount' => 0, 'bank_count' => 0, 'cheque_amount' => 0, 'cheque_count' => 0,
@@ -972,25 +712,16 @@ class CedCollectionStatementController extends Controller
         ];
 
         if ($res && $row = $res->fetch_assoc()) {
-            $regEmiAmt = $emiSplit['total']['regular_emi_amount'];
-            $regEmiCnt = $emiSplit['total']['regular_emi_count'];
-            $advEmiAmt = $emiSplit['total']['advance_emi_amount'];
-            $advEmiCnt = $emiSplit['total']['advance_emi_count'];
-
             $summary = [
                 'total_count'             => (int)$row['total_count'],
                 'total_amount'            => (float)$row['total_amount'],
-                'land_share_amount'       => (float)($row['land_share_amount'] ?? 0),
-                'land_share_count'        => (int)($row['land_share_count'] ?? 0),
                 'dev_charge_amount'       => (float)$row['dev_charge_amount'],
                 'dev_charge_count'        => (int)$row['dev_charge_count'],
-                'penalty_amount'          => (float)($row['penalty_amount'] ?? 0),
-                'penalty_count'           => (int)($row['penalty_count'] ?? 0),
-                'emi_amount'              => $regEmiAmt,
-                'emi_count'               => $regEmiCnt,
-                'advance_emi_amount'      => $advEmiAmt,
-                'advance_emi_count'       => $advEmiCnt,
-                'total_emi_amount'        => $regEmiAmt + $advEmiAmt,
+                'emi_amount'              => (float)$row['emi_amount'],
+                'emi_count'               => (int)$row['emi_count'],
+                'settlement_amount'       => (float)$row['settlement_amount'],
+                'settlement_count'        => (int)$row['settlement_count'],
+                'total_emi_amount'        => (float)$row['emi_amount'] + (float)$row['settlement_amount'],
                 'total_emi_count'         => (int)$row['emi_count'] + (int)$row['settlement_count'],
                 'booking_amount'          => (float)$row['booking_amount'],
                 'booking_count'           => (int)$row['booking_count'],
@@ -1073,8 +804,6 @@ class CedCollectionStatementController extends Controller
                 d_cr.name AS dept_name,
                 COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) AS total_count,
                 COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) AS total_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS land_share_amount,
-                COUNT(CASE WHEN lp.payment_type = 'land_share' AND {$validCond} THEN 1 ELSE NULL END) AS land_share_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS dev_charge_amount,
                 COUNT(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN 1 ELSE NULL END) AS dev_charge_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS emi_amount,
@@ -1085,10 +814,8 @@ class CedCollectionStatementController extends Controller
                 COUNT(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN 1 ELSE NULL END) AS booking_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS registration_amount,
                 COUNT(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN 1 ELSE NULL END) AS registration_count,
-                COALESCE(SUM(CASE WHEN {$validCond} THEN COALESCE(lp.penalty_paid, 0) ELSE 0 END), 0) AS penalty_amount,
-                COUNT(CASE WHEN {$validCond} AND lp.penalty_paid > 0 THEN 1 ELSE NULL END) AS penalty_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration', 'land_share') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS other_amount,
-                COUNT(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration', 'land_share') AND {$validCond} THEN 1 ELSE NULL END) AS other_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS other_amount,
+                COUNT(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN 1 ELSE NULL END) AS other_count,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cash_amount,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS bank_amount,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cheque_amount,
@@ -1111,26 +838,20 @@ class CedCollectionStatementController extends Controller
             ORDER BY total_amount DESC
         ";
 
-        $emiSplit = $this->calculateEmiSplit($startDate, $endDate, $filters);
-
         $rows = [];
         $grand = [
             'total_count'        => 0,
             'total_amount'       => 0.0,
-            'land_share_amount'  => 0.0,
-            'land_share_count'   => 0,
             'dev_charge_amount'  => 0.0,
             'dev_charge_count'   => 0,
             'emi_amount'         => 0.0,
             'emi_count'          => 0,
-            'advance_emi_amount' => 0.0,
-            'advance_emi_count'  => 0,
+            'settlement_amount'  => 0.0,
+            'settlement_count'   => 0,
             'booking_amount'     => 0.0,
             'booking_count'      => 0,
             'registration_amount'=> 0.0,
             'registration_count' => 0,
-            'penalty_amount'     => 0.0,
-            'penalty_count'      => 0,
             'other_amount'       => 0.0,
             'other_count'        => 0,
             'cash_amount'        => 0.0,
@@ -1142,26 +863,19 @@ class CedCollectionStatementController extends Controller
         $res = $this->db->query($sql);
         if ($res) {
             while ($r = $res->fetch_assoc()) {
-                $creatorId = (int)$r['created_by'];
-                $creatorSplit = $emiSplit['by_creator'][$creatorId] ?? ['regular_emi_amount' => 0.0, 'regular_emi_count' => 0, 'advance_emi_amount' => 0.0, 'advance_emi_count' => 0];
-
                 $totalAmt = (float)$r['total_amount'];
                 $r['total_amount']       = $totalAmt;
                 $r['total_count']        = (int)$r['total_count'];
-                $r['land_share_amount']  = (float)($r['land_share_amount'] ?? 0);
-                $r['land_share_count']   = (int)($r['land_share_count'] ?? 0);
                 $r['dev_charge_amount']  = (float)$r['dev_charge_amount'];
                 $r['dev_charge_count']   = (int)$r['dev_charge_count'];
-                $r['emi_amount']         = $creatorSplit['regular_emi_amount'];
-                $r['emi_count']          = $creatorSplit['regular_emi_count'];
-                $r['advance_emi_amount'] = $creatorSplit['advance_emi_amount'];
-                $r['advance_emi_count']  = $creatorSplit['advance_emi_count'];
+                $r['emi_amount']         = (float)$r['emi_amount'];
+                $r['emi_count']          = (int)$r['emi_count'];
+                $r['settlement_amount']  = (float)$r['settlement_amount'];
+                $r['settlement_count']   = (int)$r['settlement_count'];
                 $r['booking_amount']     = (float)$r['booking_amount'];
                 $r['booking_count']      = (int)$r['booking_count'];
                 $r['registration_amount']= (float)$r['registration_amount'];
                 $r['registration_count'] = (int)$r['registration_count'];
-                $r['penalty_amount']     = (float)($r['penalty_amount'] ?? 0);
-                $r['penalty_count']      = (int)($r['penalty_count'] ?? 0);
                 $r['other_amount']       = (float)$r['other_amount'];
                 $r['other_count']        = (int)$r['other_count'];
                 $r['cash_amount']        = (float)$r['cash_amount'];
@@ -1173,20 +887,16 @@ class CedCollectionStatementController extends Controller
 
                 $grand['total_count']        += $r['total_count'];
                 $grand['total_amount']       += $r['total_amount'];
-                $grand['land_share_amount']  += $r['land_share_amount'];
-                $grand['land_share_count']   += $r['land_share_count'];
                 $grand['dev_charge_amount']  += $r['dev_charge_amount'];
                 $grand['dev_charge_count']   += $r['dev_charge_count'];
                 $grand['emi_amount']         += $r['emi_amount'];
                 $grand['emi_count']          += $r['emi_count'];
-                $grand['advance_emi_amount'] += $r['advance_emi_amount'];
-                $grand['advance_emi_count']  += $r['advance_emi_count'];
+                $grand['settlement_amount']  += $r['settlement_amount'];
+                $grand['settlement_count']   += $r['settlement_count'];
                 $grand['booking_amount']     += $r['booking_amount'];
                 $grand['booking_count']      += $r['booking_count'];
                 $grand['registration_amount']+= $r['registration_amount'];
                 $grand['registration_count'] += $r['registration_count'];
-                $grand['penalty_amount']     += $r['penalty_amount'];
-                $grand['penalty_count']      += $r['penalty_count'];
                 $grand['other_amount']       += $r['other_amount'];
                 $grand['other_count']        += $r['other_count'];
                 $grand['cash_amount']        += $r['cash_amount'];
@@ -1210,7 +920,6 @@ class CedCollectionStatementController extends Controller
             SELECT cpa.user_id, p.id AS project_id, p.name AS project_name
             FROM ced_project_assignments cpa
             INNER JOIN projects p ON cpa.project_id = p.id
-            WHERE cpa.status = 'active'
             ORDER BY p.name ASC
         ");
         if ($qAssigned) {
@@ -1237,7 +946,6 @@ class CedCollectionStatementController extends Controller
             WHERE e.department_id IN (4, 29)
                OR u.role_id IN (7, 37, 39)
                OR u.id IN (SELECT DISTINCT user_id FROM ced_project_assignments)
-               OR u.id IN (SELECT DISTINCT user_id FROM ced_project_assignment_history)
             ORDER BY full_name ASC
         ");
         if ($qOfficers) {
@@ -1246,19 +954,16 @@ class CedCollectionStatementController extends Controller
             }
         }
 
-        $effAgentPrj = $this->getEffectiveAgentSql('p.id');
         $sqlPrj = "
             SELECT 
                 p.id AS project_id,
                 p.name AS project_name,
-                COALESCE(NULLIF({$effAgentPrj}, 0), CASE WHEN (u_cr.role_id IN (7, 37, 39) OR e_cr.department_id IN (4, 29)) THEN lp.created_by ELSE 0 END, 0) AS ced_officer_id,
+                COALESCE(cpa.user_id, CASE WHEN (u_cr.role_id IN (7, 37, 39) OR e_cr.department_id IN (4, 29)) THEN lp.created_by ELSE 0 END, 0) AS ced_officer_id,
                 COALESCE(e_cpa.full_name, u_cpa.full_name, u_cpa.user_name, e_cr.full_name, u_cr.full_name, u_cr.user_name, 'Unassigned') AS ced_officer_name,
                 COALESCE(r_cpa.name, r_cr.name, 'N/A') AS ced_officer_role,
                 COALESCE(e_cpa.employee_id, e_cr.employee_id, '') AS ced_emp_code,
                 COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) AS total_count,
                 COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) AS total_amount,
-                COALESCE(SUM(CASE WHEN lp.payment_type = 'land_share' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS land_share_amount,
-                COUNT(CASE WHEN lp.payment_type = 'land_share' AND {$validCond} THEN 1 ELSE NULL END) AS land_share_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS dev_charge_amount,
                 COUNT(CASE WHEN lp.payment_type = 'development_charge' AND {$validCond} THEN 1 ELSE NULL END) AS dev_charge_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS emi_amount,
@@ -1269,10 +974,8 @@ class CedCollectionStatementController extends Controller
                 COUNT(CASE WHEN lp.payment_type = 'booking_money' AND {$validCond} THEN 1 ELSE NULL END) AS booking_count,
                 COALESCE(SUM(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS registration_amount,
                 COUNT(CASE WHEN lp.payment_type = 'registration' AND {$validCond} THEN 1 ELSE NULL END) AS registration_count,
-                COALESCE(SUM(CASE WHEN {$validCond} THEN COALESCE(lp.penalty_paid, 0) ELSE 0 END), 0) AS penalty_amount,
-                COUNT(CASE WHEN {$validCond} AND lp.penalty_paid > 0 THEN 1 ELSE NULL END) AS penalty_count,
-                COALESCE(SUM(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration', 'land_share') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS other_amount,
-                COUNT(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration', 'land_share') AND {$validCond} THEN 1 ELSE NULL END) AS other_count,
+                COALESCE(SUM(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS other_amount,
+                COUNT(CASE WHEN lp.payment_type NOT IN ('development_charge', 'emi', 'booking_money', 'registration') AND {$validCond} THEN 1 ELSE NULL END) AS other_count,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'cash' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cash_amount,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS bank_amount,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'cheque' AND {$validCond} THEN lp.amount ELSE 0 END), 0) AS cheque_amount,
@@ -1283,7 +986,8 @@ class CedCollectionStatementController extends Controller
             INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
             LEFT JOIN flats f ON lb.flat_id = f.id
-            LEFT JOIN users u_cpa ON u_cpa.id = {$effAgentPrj}
+            LEFT JOIN ced_project_assignments cpa ON cpa.project_id = p.id
+            LEFT JOIN users u_cpa ON cpa.user_id = u_cpa.id
             LEFT JOIN employees e_cpa ON (u_cpa.employee_id = e_cpa.id OR e_cpa.user_id = u_cpa.id)
             LEFT JOIN roles r_cpa ON u_cpa.role_id = r_cpa.id
             LEFT JOIN users u_cr ON lp.created_by = u_cr.id
@@ -1303,9 +1007,6 @@ class CedCollectionStatementController extends Controller
         if ($resPrj) {
             while ($r = $resPrj->fetch_assoc()) {
                 $uId = (int)$r['ced_officer_id'];
-                $poKey = (int)$r['project_id'] . '_' . $uId;
-                $poSplit = $emiSplit['by_project_officer'][$poKey] ?? ['regular_emi_amount' => 0.0, 'regular_emi_count' => 0, 'advance_emi_amount' => 0.0, 'advance_emi_count' => 0];
-
                 if (!empty($filters['collector_id'])) {
                     $targetCId = (int)$filters['collector_id'];
                     if ($uId === $targetCId || $uId === 0) {
@@ -1319,20 +1020,16 @@ class CedCollectionStatementController extends Controller
                 }
                 $r['total_count']         = (int)$r['total_count'];
                 $r['total_amount']        = (float)$r['total_amount'];
-                $r['land_share_amount']   = (float)($r['land_share_amount'] ?? 0);
-                $r['land_share_count']    = (int)($r['land_share_count'] ?? 0);
                 $r['dev_charge_amount']   = (float)$r['dev_charge_amount'];
                 $r['dev_charge_count']    = (int)$r['dev_charge_count'];
-                $r['emi_amount']          = $poSplit['regular_emi_amount'];
-                $r['emi_count']           = $poSplit['regular_emi_count'];
-                $r['advance_emi_amount']  = $poSplit['advance_emi_amount'];
-                $r['advance_emi_count']   = $poSplit['advance_emi_count'];
+                $r['emi_amount']          = (float)$r['emi_amount'];
+                $r['emi_count']           = (int)$r['emi_count'];
+                $r['settlement_amount']   = (float)$r['settlement_amount'];
+                $r['settlement_count']    = (int)$r['settlement_count'];
                 $r['booking_amount']      = (float)$r['booking_amount'];
                 $r['booking_count']       = (int)$r['booking_count'];
                 $r['registration_amount'] = (float)$r['registration_amount'];
                 $r['registration_count']  = (int)$r['registration_count'];
-                $r['penalty_amount']      = (float)($r['penalty_amount'] ?? 0);
-                $r['penalty_count']       = (int)($r['penalty_count'] ?? 0);
                 $r['other_amount']        = (float)$r['other_amount'];
                 $r['other_count']         = (int)$r['other_count'];
                 $r['cash_amount']         = (float)$r['cash_amount'];
@@ -1355,20 +1052,16 @@ class CedCollectionStatementController extends Controller
                         'is_management'       => false,
                         'total_count'         => 0,
                         'total_amount'        => 0.0,
-                        'land_share_amount'   => 0.0,
-                        'land_share_count'    => 0,
                         'dev_charge_amount'   => 0.0,
                         'dev_charge_count'    => 0,
                         'emi_amount'          => 0.0,
                         'emi_count'           => 0,
-                        'advance_emi_amount'  => 0.0,
-                        'advance_emi_count'   => 0,
+                        'settlement_amount'   => 0.0,
+                        'settlement_count'    => 0,
                         'booking_amount'      => 0.0,
                         'booking_count'       => 0,
                         'registration_amount' => 0.0,
                         'registration_count'  => 0,
-                        'penalty_amount'      => 0.0,
-                        'penalty_count'       => 0,
                         'other_amount'        => 0.0,
                         'other_count'         => 0,
                         'cash_amount'         => 0.0,
@@ -1381,20 +1074,16 @@ class CedCollectionStatementController extends Controller
                 }
                 $officerSummary[$uId]['total_count']         += $r['total_count'];
                 $officerSummary[$uId]['total_amount']        += $r['total_amount'];
-                $officerSummary[$uId]['land_share_amount']   += $r['land_share_amount'];
-                $officerSummary[$uId]['land_share_count']    += $r['land_share_count'];
                 $officerSummary[$uId]['dev_charge_amount']   += $r['dev_charge_amount'];
                 $officerSummary[$uId]['dev_charge_count']    += $r['dev_charge_count'];
                 $officerSummary[$uId]['emi_amount']          += $r['emi_amount'];
                 $officerSummary[$uId]['emi_count']           += $r['emi_count'];
-                $officerSummary[$uId]['advance_emi_amount']  += $r['advance_emi_amount'];
-                $officerSummary[$uId]['advance_emi_count']   += $r['advance_emi_count'];
+                $officerSummary[$uId]['settlement_amount']   += $r['settlement_amount'];
+                $officerSummary[$uId]['settlement_count']    += $r['settlement_count'];
                 $officerSummary[$uId]['booking_amount']      += $r['booking_amount'];
                 $officerSummary[$uId]['booking_count']       += $r['booking_count'];
                 $officerSummary[$uId]['registration_amount'] += $r['registration_amount'];
                 $officerSummary[$uId]['registration_count']  += $r['registration_count'];
-                $officerSummary[$uId]['penalty_amount']      += $r['penalty_amount'];
-                $officerSummary[$uId]['penalty_count']       += $r['penalty_count'];
                 $officerSummary[$uId]['other_amount']        += $r['other_amount'];
                 $officerSummary[$uId]['other_count']         += $r['other_count'];
                 $officerSummary[$uId]['cash_amount']         += $r['cash_amount'];
@@ -1434,20 +1123,16 @@ class CedCollectionStatementController extends Controller
                     'is_management'       => false,
                     'total_count'         => 0,
                     'total_amount'        => 0.0,
-                    'land_share_amount'   => 0.0,
-                    'land_share_count'    => 0,
                     'dev_charge_amount'   => 0.0,
                     'dev_charge_count'    => 0,
                     'emi_amount'          => 0.0,
                     'emi_count'           => 0,
-                    'advance_emi_amount'  => 0.0,
-                    'advance_emi_count'   => 0,
+                    'settlement_amount'   => 0.0,
+                    'settlement_count'    => 0,
                     'booking_amount'      => 0.0,
                     'booking_count'       => 0,
                     'registration_amount' => 0.0,
                     'registration_count'  => 0,
-                    'penalty_amount'      => 0.0,
-                    'penalty_count'       => 0,
                     'other_amount'        => 0.0,
                     'other_count'         => 0,
                     'cash_amount'         => 0.0,
@@ -1477,20 +1162,16 @@ class CedCollectionStatementController extends Controller
                         'is_management'       => false,
                         'total_count'         => 0,
                         'total_amount'        => 0.0,
-                        'land_share_amount'   => 0.0,
-                        'land_share_count'    => 0,
                         'dev_charge_amount'   => 0.0,
                         'dev_charge_count'    => 0,
                         'emi_amount'          => 0.0,
                         'emi_count'           => 0,
-                        'advance_emi_amount'  => 0.0,
-                        'advance_emi_count'   => 0,
+                        'settlement_amount'   => 0.0,
+                        'settlement_count'    => 0,
                         'booking_amount'      => 0.0,
                         'booking_count'       => 0,
                         'registration_amount' => 0.0,
                         'registration_count'  => 0,
-                        'penalty_amount'      => 0.0,
-                        'penalty_count'       => 0,
                         'other_amount'        => 0.0,
                         'other_count'         => 0,
                         'cash_amount'         => 0.0,
@@ -1555,7 +1236,10 @@ class CedCollectionStatementController extends Controller
 
         $sql = "
             SELECT 
-                lp.payment_type as ptype,
+                CASE 
+                    WHEN lp.payment_type = 'emi' AND lp.settlement_type = 'emi_due_settlement' THEN 'emi_due_settlement'
+                    ELSE lp.payment_type
+                END as ptype,
                 COUNT(CASE WHEN {$validCond} THEN 1 ELSE NULL END) as count,
                 COALESCE(SUM(CASE WHEN {$validCond} THEN lp.amount ELSE 0 END), 0) as total_amount,
                 COALESCE(SUM(CASE WHEN lp.payment_method = 'bank' AND {$validCond} THEN lp.amount ELSE 0 END), 0) as bank_amount,
@@ -1582,8 +1266,8 @@ class CedCollectionStatementController extends Controller
 
         $labels = [
             'development_charge'  => 'Development Charge',
-            'emi'                 => 'Regular EMI',
-            'advance_emi'         => 'Advance EMI',
+            'emi'                 => 'Monthly EMI Installment',
+            'emi_due_settlement'  => 'EMI Due Settlement / Advance',
             'booking_money'       => 'Booking Money (Rare)',
             'registration'        => 'Registration Money (Rare)',
             'land_share'          => 'Land Share Collection',
@@ -1591,54 +1275,10 @@ class CedCollectionStatementController extends Controller
             'others'              => 'Other Collections'
         ];
 
-        $emiSplit = $this->calculateEmiSplit($startDate, $endDate, $filters);
-
         $res = $this->db->query($sql);
         if ($res) {
             while ($r = $res->fetch_assoc()) {
                 $pt = $r['ptype'];
-                if ($pt === 'emi') {
-                    $regAmt = $emiSplit['total']['regular_emi_amount'];
-                    $regCnt = $emiSplit['total']['regular_emi_count'];
-                    $advAmt = $emiSplit['total']['advance_emi_amount'];
-                    $advCnt = $emiSplit['total']['advance_emi_count'];
-
-                    if ($regAmt > 0 || $regCnt > 0) {
-                        $regRow = [
-                            'ptype'         => 'emi',
-                            'label'         => $labels['emi'],
-                            'count'         => $regCnt,
-                            'total_amount'  => $regAmt,
-                            'bank_amount'   => $emiSplit['total']['regular_methods']['bank'],
-                            'cash_amount'   => $emiSplit['total']['regular_methods']['cash'],
-                            'cheque_amount' => $emiSplit['total']['regular_methods']['cheque'],
-                            'online_amount' => $emiSplit['total']['regular_methods']['online'],
-                        ];
-                        $rows['emi'] = $regRow;
-                    }
-                    if ($advAmt > 0 || $advCnt > 0) {
-                        $advRow = [
-                            'ptype'         => 'advance_emi',
-                            'label'         => $labels['advance_emi'],
-                            'count'         => $advCnt,
-                            'total_amount'  => $advAmt,
-                            'bank_amount'   => $emiSplit['total']['advance_methods']['bank'],
-                            'cash_amount'   => $emiSplit['total']['advance_methods']['cash'],
-                            'cheque_amount' => $emiSplit['total']['advance_methods']['cheque'],
-                            'online_amount' => $emiSplit['total']['advance_methods']['online'],
-                        ];
-                        $rows['advance_emi'] = $advRow;
-                    }
-
-                    $grand['count']        += (int)$r['count'];
-                    $grand['total_amount'] += $regAmt + $advAmt;
-                    $grand['bank_amount']  += $emiSplit['total']['regular_methods']['bank'] + $emiSplit['total']['advance_methods']['bank'];
-                    $grand['cash_amount']  += $emiSplit['total']['regular_methods']['cash'] + $emiSplit['total']['advance_methods']['cash'];
-                    $grand['cheque_amount']+= $emiSplit['total']['regular_methods']['cheque'] + $emiSplit['total']['advance_methods']['cheque'];
-                    $grand['online_amount']+= $emiSplit['total']['regular_methods']['online'] + $emiSplit['total']['advance_methods']['online'];
-                    continue;
-                }
-
                 $r['label'] = $labels[$pt] ?? ucwords(str_replace('_', ' ', $pt));
                 $r['count'] = (int)$r['count'];
                 $r['total_amount'] = (float)$r['total_amount'];
@@ -1968,7 +1608,7 @@ class CedCollectionStatementController extends Controller
                 COALESCE(r.name, 'Staff') AS role_name,
                 COALESCE(r.id, 0) AS role_id,
                 COALESCE(d.name, 'General') AS dept_name,
-                (SELECT COUNT(*) FROM ced_project_assignments cpa WHERE cpa.user_id = u.id AND cpa.status = 'active') AS assigned_projects_count,
+                (SELECT COUNT(*) FROM ced_project_assignments cpa WHERE cpa.user_id = u.id) AS assigned_projects_count,
                 CASE 
                     WHEN (e.department_id IN (4, 29) OR u.role_id IN (7, 37, 39) OR r.name LIKE '%client%' OR r.name LIKE '%recovery%' OR d.name LIKE '%client%' OR d.name LIKE '%ced%' OR u.id IN (SELECT DISTINCT user_id FROM ced_project_assignments)) THEN 'ced_only'
                     WHEN (u.role_id IN (1, 3, 33, 34, 35, 38) OR r.name LIKE '%management%' OR r.name LIKE '%admin%' OR u.user_name LIKE '%management%') THEN 'ced_mgmt'

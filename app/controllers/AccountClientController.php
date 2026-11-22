@@ -1596,7 +1596,7 @@ public function indexTwo($bookingId = null)
             $html .= '<td>' . ($typeLastPayment ? date('d M, Y', strtotime($typeLastPayment)) : 'No Payment') . '</td>';
             $html .= '<td><span class="badge ' . $badgeClass . '"><i class="fa-light ' . $badgeIcon . ' me-1"></i>' . $verText . '</span></td>';
             $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
-            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', (string)($client['client_name'] ?? ''))), ENT_QUOTES);
+            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES);
             $stmtBtn = !empty($client['booking_id']) ? '<a href="' . $GLOBALS['base_url'] . '/client-statement/' . (int)$client['booking_id'] . '" target="_blank" class="table__icon" style="color: #4f46e5; border: 1px solid #c7d2fe; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;" title="Print Client Statement"><i class="fa-solid fa-print"></i></a>' : '';
             $html .= '<td><div class="d-flex align-items-center justify-content-start gap-1">' . $stmtBtn . '<button class="table__icon download" onclick="openProjectsModal(' . (int)$client['lead_id'] . ', \'' . $escapedName . '\')" title="View Projects"><i class="fa-regular fa-eye"></i></button></div></td>';
             $html .= '</tr>';
@@ -1889,7 +1889,7 @@ public function indexTwo($bookingId = null)
 
             $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
 
-            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', (string)($client['client_name'] ?? ''))), ENT_QUOTES);
+            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES);
             $html .= '<td><div class="d-flex align-items-center justify-content-start gap-2">';
             $html .= '<button class="table__icon download" onclick="openProjectsModal(' . (int)$client['lead_id'] . ', \'' . $escapedName . '\')" title="View Projects"><i class="fa-regular fa-eye"></i></button>';
 
@@ -2203,11 +2203,9 @@ public function indexTwo($bookingId = null)
             if ($emi['maturity_status'] === 'due') {
                 $hasDue = true;
             }
-            if (!empty($emi['due_date'])) {
-                $dueMonth = (int)date('Ym', strtotime((string)$emi['due_date']));
-                if ($dueMonth === $currentMonth) {
-                    $currentMonthStatus = $emi['maturity_status'];
-                }
+            $dueMonth = (int)date('Ym', strtotime($emi['due_date']));
+            if ($dueMonth === $currentMonth) {
+                $currentMonthStatus = $emi['maturity_status'];
             }
         }
         

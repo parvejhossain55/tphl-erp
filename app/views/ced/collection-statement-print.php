@@ -263,9 +263,9 @@ $printMode = $print_mode ?? 'collectors';
             <small style="color: #64748b;"><?= number_format($summary['dev_charge_count'] ?? 0) ?> Collections</small>
         </div>
         <div class="kpi-box">
-            <div class="kpi-label">Regular &amp; Advance EMI</div>
+            <div class="kpi-label">EMI &amp; Due Settled</div>
             <div class="kpi-value font-mono" style="color: #16a34a;">৳<?= number_format($summary['total_emi_amount'] ?? 0, 2) ?></div>
-            <small style="color: #64748b;">Reg: ৳<?= number_format($summary['emi_amount'] ?? 0, 0) ?> &bull; Adv: ৳<?= number_format($summary['advance_emi_amount'] ?? 0, 0) ?></small>
+            <small style="color: #64748b;"><?= number_format($summary['total_emi_count'] ?? 0) ?> Installments</small>
         </div>
         <div class="kpi-box">
             <div class="kpi-label">Booking &amp; Reg (Rare)</div>
@@ -297,12 +297,10 @@ $printMode = $print_mode ?? 'collectors';
                     <th>Role / Dept</th>
                     <th>Assigned Projects</th>
                     <th class="text-center">Total Trx</th>
-                    <th class="text-end">Land Share (BDT)</th>
                     <th class="text-end">Dev Charge (BDT)</th>
                     <th class="text-end">Regular EMI (BDT)</th>
-                    <th class="text-end">Advance EMI (BDT)</th>
+                    <th class="text-end">Due Settled (BDT)</th>
                     <th class="text-end">Booking &amp; Reg (BDT)</th>
-                    <th class="text-end">Penalty (BDT)</th>
                     <th class="text-end">Total Collected (BDT)</th>
                     <th class="text-center" style="width: 60px;">% Share</th>
                     <th>Voucher Entered By</th>
@@ -327,12 +325,10 @@ $printMode = $print_mode ?? 'collectors';
                         <td><?= htmlspecialchars($r['collector_role']) ?></td>
                         <td style="font-size: 9.5px;"><?= htmlspecialchars($prjNames) ?></td>
                         <td class="text-center font-mono"><?= number_format($r['total_count']) ?></td>
-                        <td class="text-end font-mono"><?= ($r['land_share_amount'] ?? 0) > 0 ? '৳' . number_format($r['land_share_amount'], 2) : '-' ?></td>
                         <td class="text-end font-mono"><?= $r['dev_charge_amount'] > 0 ? '৳' . number_format($r['dev_charge_amount'], 2) : '-' ?></td>
                         <td class="text-end font-mono"><?= $r['emi_amount'] > 0 ? '৳' . number_format($r['emi_amount'], 2) : '-' ?></td>
-                        <td class="text-end font-mono"><?= ($r['advance_emi_amount'] ?? 0) > 0 ? '৳' . number_format($r['advance_emi_amount'], 2) : '-' ?></td>
+                        <td class="text-end font-mono"><?= $r['settlement_amount'] > 0 ? '৳' . number_format($r['settlement_amount'], 2) : '-' ?></td>
                         <td class="text-end font-mono"><?= $bookReg > 0 ? '৳' . number_format($bookReg, 2) : '-' ?></td>
-                        <td class="text-end font-mono"><?= ($r['penalty_amount'] ?? 0) > 0 ? '৳' . number_format($r['penalty_amount'], 2) : '-' ?></td>
                         <td class="text-end font-mono fw-bold">৳<?= number_format($r['total_amount'], 2) ?></td>
                         <td class="text-center font-mono"><?= number_format($r['percentage'], 1) ?>%</td>
                         <td style="font-size: 9.5px; color: #475569;"><?= htmlspecialchars($r['creators_list'] ?? 'N/A') ?></td>
@@ -346,12 +342,10 @@ $printMode = $print_mode ?? 'collectors';
                     <tr style="background: #f1f5f9; font-weight: 700;">
                         <td colspan="4" class="text-uppercase">Total Collections:</td>
                         <td class="text-center font-mono"><?= number_format($cg['total_count']) ?></td>
-                        <td class="text-end font-mono">৳<?= number_format($cg['land_share_amount'] ?? 0, 2) ?></td>
                         <td class="text-end font-mono">৳<?= number_format($cg['dev_charge_amount'], 2) ?></td>
                         <td class="text-end font-mono">৳<?= number_format($cg['emi_amount'], 2) ?></td>
-                        <td class="text-end font-mono">৳<?= number_format($cg['advance_emi_amount'] ?? 0, 2) ?></td>
+                        <td class="text-end font-mono">৳<?= number_format($cg['settlement_amount'], 2) ?></td>
                         <td class="text-end font-mono">৳<?= number_format($cg['booking_amount'] + $cg['registration_amount'], 2) ?></td>
-                        <td class="text-end font-mono">৳<?= number_format($cg['penalty_amount'] ?? 0, 2) ?></td>
                         <td class="text-end font-mono fw-bold" style="color: #0284c7;">৳<?= number_format($cg['total_amount'], 2) ?></td>
                         <td class="text-center font-mono">100.0%</td>
                         <td></td>
@@ -372,11 +366,9 @@ $printMode = $print_mode ?? 'collectors';
                         <th>Project Name</th>
                         <th>Assigned CED Executive</th>
                         <th class="text-center">Inflow Trx</th>
-                        <th class="text-end">Land Share (BDT)</th>
                         <th class="text-end">Dev Charge (BDT)</th>
                         <th class="text-end">Regular EMI (BDT)</th>
-                        <th class="text-end">Advance EMI (BDT)</th>
-                        <th class="text-end">Penalty (BDT)</th>
+                        <th class="text-end">Due Settled (BDT)</th>
                         <th class="text-end">Total Inflow (BDT)</th>
                         <th>Voucher Entered By</th>
                     </tr>
@@ -386,19 +378,15 @@ $printMode = $print_mode ?? 'collectors';
                     $pjSl = 1;
                     $pTotalAmt = 0;
                     $pTotalTrx = 0;
-                    $pLandAmt  = 0;
                     $pDevAmt   = 0;
                     $pEmiAmt   = 0;
-                    $pAdvAmt   = 0;
-                    $pPenAmt   = 0;
+                    $pSetAmt   = 0;
                     foreach ($collectorSummary['project_rows'] as $pr):
                         $pTotalTrx += $pr['total_count'];
                         $pTotalAmt += $pr['total_amount'];
-                        $pLandAmt  += ($pr['land_share_amount'] ?? 0);
                         $pDevAmt   += $pr['dev_charge_amount'];
                         $pEmiAmt   += $pr['emi_amount'];
-                        $pAdvAmt   += ($pr['advance_emi_amount'] ?? 0);
-                        $pPenAmt   += ($pr['penalty_amount'] ?? 0);
+                        $pSetAmt   += $pr['settlement_amount'];
                     ?>
                         <tr>
                             <td class="text-center"><?= $pjSl++ ?></td>
@@ -408,11 +396,9 @@ $printMode = $print_mode ?? 'collectors';
                                 <?= !empty($pr['ced_emp_code']) ? ' [ID: ' . htmlspecialchars($pr['ced_emp_code']) . ']' : '' ?>
                             </td>
                             <td class="text-center font-mono"><?= number_format($pr['total_count']) ?></td>
-                            <td class="text-end font-mono"><?= ($pr['land_share_amount'] ?? 0) > 0 ? '৳' . number_format($pr['land_share_amount'], 2) : '-' ?></td>
                             <td class="text-end font-mono"><?= $pr['dev_charge_amount'] > 0 ? '৳' . number_format($pr['dev_charge_amount'], 2) : '-' ?></td>
                             <td class="text-end font-mono"><?= $pr['emi_amount'] > 0 ? '৳' . number_format($pr['emi_amount'], 2) : '-' ?></td>
-                            <td class="text-end font-mono"><?= ($pr['advance_emi_amount'] ?? 0) > 0 ? '৳' . number_format($pr['advance_emi_amount'], 2) : '-' ?></td>
-                            <td class="text-end font-mono"><?= ($pr['penalty_amount'] ?? 0) > 0 ? '৳' . number_format($pr['penalty_amount'], 2) : '-' ?></td>
+                            <td class="text-end font-mono"><?= $pr['settlement_amount'] > 0 ? '৳' . number_format($pr['settlement_amount'], 2) : '-' ?></td>
                             <td class="text-end font-mono fw-bold">৳<?= number_format($pr['total_amount'], 2) ?></td>
                             <td style="font-size: 9.5px; color: #475569;"><?= htmlspecialchars($pr['creators_list'] ?: 'N/A') ?></td>
                         </tr>
@@ -422,11 +408,9 @@ $printMode = $print_mode ?? 'collectors';
                     <tr style="background: #f1f5f9; font-weight: 700;">
                         <td colspan="3" class="text-uppercase">Total Project Inflows:</td>
                         <td class="text-center font-mono"><?= number_format($pTotalTrx) ?></td>
-                        <td class="text-end font-mono">৳<?= number_format($pLandAmt, 2) ?></td>
                         <td class="text-end font-mono">৳<?= number_format($pDevAmt, 2) ?></td>
                         <td class="text-end font-mono">৳<?= number_format($pEmiAmt, 2) ?></td>
-                        <td class="text-end font-mono">৳<?= number_format($pAdvAmt, 2) ?></td>
-                        <td class="text-end font-mono">৳<?= number_format($pPenAmt, 2) ?></td>
+                        <td class="text-end font-mono">৳<?= number_format($pSetAmt, 2) ?></td>
                         <td class="text-end font-mono fw-bold" style="color: #0284c7;">৳<?= number_format($pTotalAmt, 2) ?></td>
                         <td></td>
                     </tr>

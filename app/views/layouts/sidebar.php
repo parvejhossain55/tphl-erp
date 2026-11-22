@@ -2589,13 +2589,6 @@
                                     <span class="sidebar__menu-label">Manage Projects for CED</span>
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('manage-project-emi', $current_route) ?>">
-                                <a href="<?= $base_url ?>/manage-project-emi"
-                                    class="sidebar__menu-item <?= isActive('manage-project-emi', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-calendar-days"></i></div>
-                                    <span class="sidebar__menu-label">Manage Project EMI</span>
-                                </a>
-                            </li>
                         <?php endif; ?>
 
 
