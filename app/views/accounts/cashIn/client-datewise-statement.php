@@ -22,9 +22,6 @@ $clientDetails       = $summaryData['client_details'];
 $totalPrice          = (float)($summaryData['total_price'] ?? 0);
 $totalPaid           = (float)($summaryData['total_paid'] ?? 0);
 $totalDiscount       = (float)($summaryData['total_discount'] ?? 0);
-$totalDue            = (float)($summaryData['total_due'] ?? 0);
-$askedAmount         = (float)($summaryData['asked_amount'] ?? 0);
-$activeEmiCount      = (int)($summaryData['active_emi_count'] ?? 0);
 $currentDue          = (float)($summaryData['current_due'] ?? 0);
 $batches             = $summaryData['batches'] ?? [];
 
@@ -254,11 +251,6 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
             border-color: #fef08a;
         }
 
-        .summary-card.highlight-current-due {
-            background: #fffbeb;
-            border-color: #fde68a;
-        }
-
         .sc-label {
             font-size: 9.5px;
             font-weight: 700;
@@ -278,7 +270,6 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
         .highlight-paid .sc-value { color: #059669; }
         .highlight-due .sc-value { color: #dc2626; }
         .highlight-discount .sc-value { color: #d97706; }
-        .highlight-current-due .sc-value { color: #b45309; }
 
         /* Main Table */
         .statement-table {
@@ -504,7 +495,7 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
         </div>
 
         <!-- Financial Summary Strip -->
-        <div class="summary-strip" style="<?= $totalDiscount > 0 ? 'grid-template-columns: repeat(5, 1fr);' : '' ?>">
+        <div class="summary-strip">
             <div class="summary-card highlight-price">
                 <div class="sc-label">Total Agreement Value</div>
                 <div class="sc-value">৳<?= number_format($totalPrice, 2) ?></div>
@@ -513,32 +504,21 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
                 <div class="sc-label">Total Amount Paid</div>
                 <div class="sc-value">৳<?= number_format($totalPaid, 2) ?></div>
             </div>
-            <div class="summary-card highlight-due">
-                <div class="sc-label">Total Due</div>
-                <div class="sc-value">
-                    <?php if ($totalDue <= 0.01): ?>
-                        <span style="color:#059669;">FULLY PAID</span>
-                    <?php else: ?>
-                        ৳<?= number_format($totalDue, 2) ?>
-                    <?php endif; ?>
-                </div>
-            </div>
             <?php if ($totalDiscount > 0): ?>
             <div class="summary-card highlight-discount">
                 <div class="sc-label">Total Discount</div>
                 <div class="sc-value">৳<?= number_format($totalDiscount, 2) ?></div>
             </div>
             <?php endif; ?>
-            <div class="summary-card highlight-current-due">
-                <div class="sc-label">Current Due</div>
+            <div class="summary-card highlight-due" style="<?= $totalDiscount <= 0 ? 'grid-column: span 2;' : '' ?>">
+                <div class="sc-label">Current Outstanding Due</div>
                 <div class="sc-value">
                     <?php if ($currentDue <= 0.01): ?>
-                        <span style="color:#059669;">CLEAR</span>
+                        <span style="color:#059669;">FULLY PAID</span>
                     <?php else: ?>
                         ৳<?= number_format($currentDue, 2) ?>
                     <?php endif; ?>
                 </div>
-                <div style="font-size: 9px; color: #64748b; margin-top: 2px;">Asked: ৳<?= number_format($askedAmount, 2) ?></div>
             </div>
         </div>
 
@@ -632,8 +612,8 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
                     <td class="text-end" style="color: #059669; font-size: 12px; font-family: monospace;">
                         ৳<?= number_format($totalPaid, 2) ?>
                     </td>
-                    <td class="text-end" style="color: <?= $totalDue > 0 ? '#dc2626' : '#059669' ?>; font-size: 12px; font-family: monospace;">
-                        ৳<?= number_format($totalDue, 2) ?>
+                    <td class="text-end" style="color: <?= $currentDue > 0 ? '#dc2626' : '#059669' ?>; font-size: 12px; font-family: monospace;">
+                        ৳<?= number_format($currentDue, 2) ?>
                     </td>
                 </tr>
             </tfoot>
