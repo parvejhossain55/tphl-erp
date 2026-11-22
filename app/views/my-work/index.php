@@ -1566,6 +1566,9 @@ $todayDateFormatted = date('j F');
                     <a href="<?= $base_url ?>/task-sheets-export?<?= htmlspecialchars((string) ($pts['export_query'] ?? 'all=1')) ?>" id="btnTsExport" class="mw-pill-btn" style="text-decoration:none;">
                         <i class="fa-solid fa-file-excel text-success"></i> Export Excel
                     </a>
+                    <button type="button" class="mw-btn-create" id="btnTsAddNote" style="padding: 6px 12px; font-size: 12px;" data-bs-toggle="modal" data-bs-target="#modalPrevSheetAddNote">
+                        <i class="fa-solid fa-plus"></i> Add Note
+                    </button>
                 </div>
             </div>
 
@@ -1585,6 +1588,56 @@ $todayDateFormatted = date('j F');
                         <?= $pts['rows_html'] ?? '' ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Note to Previous Task Sheet -->
+    <div class="modal fade" id="modalPrevSheetAddNote" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 12px; border: 1px solid #E2EAE5;">
+                <div class="modal-header" style="border-bottom: 1px solid #E2EAE5;">
+                    <h5 class="modal-title fw-bold" style="font-size: 16px; color: #142D26;">
+                        <i class="fa-solid fa-note-sticky me-2 text-success"></i>Add Previous Task Sheet Note
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formPrevSheetAddNote">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Date <span class="text-danger">*</span></label>
+                                <input type="date" name="work_date" id="tsNoteDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Hours</label>
+                                <input type="number" name="hours_spent" id="tsNoteHours" class="form-control form-control-sm" step="0.25" min="0" value="1" placeholder="0.00">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Status</label>
+                                <select name="status" id="tsNoteStatus" class="form-select form-select-sm">
+                                    <option value="Done" selected>Done</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Pending">Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Task Description <span class="text-danger">*</span></label>
+                                <textarea name="task_description" id="tsNoteDesc" class="form-control form-control-sm" rows="3" placeholder="Describe the task..." required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Remarks</label>
+                                <input type="text" name="remarks" id="tsNoteRemarks" class="form-control form-control-sm" placeholder="Optional remarks...">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #E2EAE5;">
+                        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" id="btnTsSaveNote" class="mw-btn-create" style="padding: 6px 14px; font-size: 12.5px;">
+                            <i class="fa-solid fa-check"></i> Save Note
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -2545,6 +2598,52 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnTsAll = document.getElementById('btnTsAll');
     if (btnTsApply) btnTsApply.addEventListener('click', () => fetchPreviousTaskSheet(false));
     if (btnTsAll) btnTsAll.addEventListener('click', () => fetchPreviousTaskSheet(true));
+
+    const formTsAddNote = document.getElementById('formPrevSheetAddNote');
+    if (formTsAddNote) {
+        formTsAddNote.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const saveBtn = document.getElementById('btnTsSaveNote');
+            const origHtml = saveBtn ? saveBtn.innerHTML : '';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            }
+            const fd = new FormData(formTsAddNote);
+            fetch(`${baseUrl}/my-work/previous-task-sheet/add-note`, {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    const modalEl = document.getElementById('modalPrevSheetAddNote');
+                    if (modalEl && window.bootstrap) {
+                        const inst = bootstrap.Modal.getInstance(modalEl);
+                        if (inst) inst.hide();
+                    }
+                    formTsAddNote.reset();
+                    const dateInput = document.getElementById('tsNoteDate');
+                    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+                    if (typeof showToast === 'function') showToast(res.message || 'Note added.', 'success');
+                    fetchPreviousTaskSheet(false);
+                } else {
+                    if (typeof showToast === 'function') showToast(res.message || 'Failed to save note.', 'error');
+                }
+            })
+            .catch(() => {
+                if (typeof showToast === 'function') showToast('Network error while saving note.', 'error');
+            })
+            .finally(() => {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = origHtml;
+                }
+            });
+        });
+    }
 
     // 1. Tab Click Event (Assigned to me, Assigned by me, Following)
     document.querySelectorAll('.mw-tab-item').forEach(tabEl => {
