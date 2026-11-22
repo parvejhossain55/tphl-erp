@@ -2200,24 +2200,31 @@ class AccountClient extends Model
         }
         $paidEmiStmt->close();
 
-        // 2. Fetch custom fixed dates set by CED
+        // 2. Fetch custom fixed dates set by CED (excluding deactivated unpaid project EMIs)
+        $projectId = (int)($clientDetails['project_id'] ?? 0);
         $fixedDates = [];
         $fixedStmt = $this->db->prepare("
             SELECT cef.emi_no, cef.due_date, cef.notes, cef.fixed_by, cef.fixed_at,
                    u.full_name as fixed_by_name,
-                   COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as fixed_by_code
+                   COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as fixed_by_code,
+                   pesi.is_active as project_emi_active
             FROM client_emi_fixed_dates cef
             LEFT JOIN users u ON u.id = cef.fixed_by
             LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN project_emi_schedule_items pesi ON (pesi.project_id = ? AND pesi.emi_no = cef.emi_no)
             WHERE cef.booking_id = ?
         ");
         if ($fixedStmt) {
-            $fixedStmt->bind_param("i", $bookingId);
+            $fixedStmt->bind_param("ii", $projectId, $bookingId);
             $fixedStmt->execute();
             $fRes = $fixedStmt->get_result();
             if ($fRes) {
                 while ($frow = $fRes->fetch_assoc()) {
-                    $fixedDates[(int)$frow['emi_no']] = $frow;
+                    $emiNo = (int)$frow['emi_no'];
+                    if ($frow['project_emi_active'] !== null && (int)$frow['project_emi_active'] === 0 && !isset($paidEmis[$emiNo])) {
+                        continue;
+                    }
+                    $fixedDates[$emiNo] = $frow;
                 }
             }
             $fixedStmt->close();
@@ -4553,13 +4560,70 @@ class AccountClient extends Model
             }
         }
 
+        $projectId      = (int)($clientDetails['project_id'] ?? 0);
+        $landShareAsk   = (float)($clientDetails['total_land_share'] ?? 0);
+        $devChargeAsk   = (float)($clientDetails['flat_development_charges'] ?? 0)
+            + (!empty($clientDetails['is_shop']) && (int)$clientDetails['is_shop'] === 1 ? (float)($clientDetails['shop_service_charge'] ?? 0) : 0.0);
+        $activeEmiAsked = 0.0;
+        $activeEmiCount = 0;
+        $todayStr       = date('Y-m-d');
+
+        $emiAskStmt = $this->db->prepare("
+            SELECT
+                COALESCE(SUM(
+                    CASE
+                        WHEN es.status != 'cancelled'
+                             AND (
+                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND pesi.is_active = 1)
+                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND es.due_date <= ?)
+                             )
+                        THEN es.emi_amount
+                        ELSE 0
+                    END
+                ), 0) AS active_emi_asked,
+                SUM(
+                    CASE
+                        WHEN es.status != 'cancelled'
+                             AND (
+                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND pesi.is_active = 1)
+                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND es.due_date <= ?)
+                             )
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS active_emi_count
+            FROM emi_schedules es
+            LEFT JOIN project_emi_schedule_items pesi ON (pesi.project_id = ? AND pesi.emi_no = es.emi_no)
+            WHERE es.lead_booking_id = ?
+        ");
+        if ($emiAskStmt) {
+            $emiAskStmt->bind_param("iisiisii", $projectId, $projectId, $todayStr, $projectId, $projectId, $todayStr, $projectId, $bookingId);
+            $emiAskStmt->execute();
+            $emiAskRow = $emiAskStmt->get_result()->fetch_assoc();
+            if ($emiAskRow) {
+                $activeEmiAsked = round((float)($emiAskRow['active_emi_asked'] ?? 0), 2);
+                $activeEmiCount = (int)($emiAskRow['active_emi_count'] ?? 0);
+            }
+            $emiAskStmt->close();
+        }
+
+        $askedAmount = round($landShareAsk + $devChargeAsk + $activeEmiAsked, 2);
+        $totalDue    = max(0.0, round($totalPrice - ($grandTotalPaid + $grandTotalDiscount), 2));
+        $currentDue  = max(0.0, round($askedAmount - ($grandTotalPaid + $grandTotalDiscount), 2));
+
         return [
             'client_details'        => $clientDetails,
             'total_agreement_value' => $totalPrice,
             'total_price'           => $totalPrice,
             'total_paid'            => $grandTotalPaid,
             'total_discount'        => $grandTotalDiscount,
-            'current_due'           => max(0, $totalPrice - ($grandTotalPaid + $grandTotalDiscount)),
+            'total_due'             => $totalDue,
+            'asked_amount'          => $askedAmount,
+            'land_share_ask'        => round($landShareAsk, 2),
+            'dev_charge_ask'        => round($devChargeAsk, 2),
+            'active_emi_asked'      => $activeEmiAsked,
+            'active_emi_count'      => $activeEmiCount,
+            'current_due'           => $currentDue,
             'batches'               => array_values($batches),
             'batch_map'             => $batchMap
         ];

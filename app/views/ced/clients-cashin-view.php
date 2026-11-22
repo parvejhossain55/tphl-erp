@@ -1207,7 +1207,9 @@ $show_breadcrumb = true;
     }
 
     function formatDate(dateString) {
+        if (!dateString || dateString === '0000-00-00' || dateString === '0000-00-00 00:00:00') return '—';
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '—';
         const options = { day: '2-digit', month: 'short', year: 'numeric' };
         return date.toLocaleDateString('en-GB', options);
     }
