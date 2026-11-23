@@ -26,27 +26,60 @@ class SmsService
     }
 
     /**
-     * Validate Bangladeshi mobile number format
+     * Validate and normalize Bangladeshi mobile number formats.
+     * Supports: 01XXXXXXXXX, +8801..., 8801..., 008801..., 88001...,
+     * 10-digit missing leading 0 (1XXXXXXXXX), Bangla digits (০-৯),
+     * spaces/dashes/notes, and comma/slash-separated multiple numbers.
      */
     public function validatePhoneNumber($phone)
     {
-        if (empty($phone)) {
+        if (empty($phone) || trim((string)$phone) === '') {
             return ['valid' => false, 'normalized' => '', 'message' => 'Client phone number is empty'];
         }
 
-        // Clean spaces, dashes, plus signs
-        $cleaned = preg_replace('/[^\d]/', '', (string)$phone);
+        // Convert Bangla digits (০-৯) to English (0-9)
+        $raw = str_replace(
+            ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'],
+            ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            trim((string)$phone)
+        );
 
-        // If starts with 8801...
-        if (strlen($cleaned) === 13 && substr($cleaned, 0, 3) === '880') {
-            $cleaned = substr($cleaned, 2); // convert to 01...
+        // Split if multiple numbers are stored in a single field (e.g. "017... / 018...", "017..., 019...")
+        $parts = preg_split('/[,\/;|\r\n]+/', $raw) ?: [$raw];
+        $firstCleaned = '';
+
+        foreach ($parts as $part) {
+            $cleaned = preg_replace('/[^\d]/', '', trim($part));
+            if ($cleaned === '') {
+                continue;
+            }
+            if ($firstCleaned === '') {
+                $firstCleaned = $cleaned;
+            }
+
+            // 008801[3-9]XXXXXXXX (15 digits) -> 01...
+            if (strlen($cleaned) === 15 && substr($cleaned, 0, 5) === '00880') {
+                $cleaned = substr($cleaned, 4);
+            }
+            // 88001[3-9]XXXXXXXX (14 digits, typo double zero) -> 01...
+            elseif (strlen($cleaned) === 14 && substr($cleaned, 0, 5) === '88001') {
+                $cleaned = substr($cleaned, 3);
+            }
+            // 8801[3-9]XXXXXXXX (13 digits) -> 01...
+            elseif (strlen($cleaned) === 13 && substr($cleaned, 0, 3) === '880') {
+                $cleaned = substr($cleaned, 2);
+            }
+            // 1[3-9]XXXXXXXX (10 digits, Excel/CSV missing leading 0) -> 01...
+            elseif (strlen($cleaned) === 10 && preg_match('/^1[3-9]\d{8}$/', $cleaned)) {
+                $cleaned = '0' . $cleaned;
+            }
+
+            if (strlen($cleaned) === 11 && preg_match('/^01[3-9]\d{8}$/', $cleaned)) {
+                return ['valid' => true, 'normalized' => $cleaned, 'message' => 'Valid phone number'];
+            }
         }
 
-        if (strlen($cleaned) === 11 && preg_match('/^01[3-9]\d{8}$/', $cleaned)) {
-            return ['valid' => true, 'normalized' => $cleaned, 'message' => 'Valid phone number'];
-        }
-
-        return ['valid' => false, 'normalized' => $cleaned, 'message' => 'Invalid phone number format (must be 11-digit BD mobile number like 01XXXXXXXXX)'];
+        return ['valid' => false, 'normalized' => $firstCleaned, 'message' => 'Invalid phone number format (must be 11-digit BD mobile number like 01XXXXXXXXX)'];
     }
 
     /**

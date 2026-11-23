@@ -194,6 +194,19 @@ tr.project-row.is-open .ced-pd-expand-icon {
             <small class="text-muted">Under Due Tracking &amp; Management — Click any project row to expand client-level financial breakdown</small>
         </div>
         <div class="d-flex gap-2">
+            <?php
+            $pdRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $pdSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+            $pdCanBroadcast = in_array($pdRoleId, [1, 3, 33, 38, 39], true)
+                || in_array($pdSecRoleId, [1, 3, 38, 39], true)
+                || (function_exists('isHeadOfClientExperience') && isHeadOfClientExperience());
+            if ($pdCanBroadcast):
+                $bcUrl = $base_url . '/ced-client-broadcast' . (!empty($filters['project_id']) ? '?project_id=' . (int)$filters['project_id'] : '');
+            ?>
+                <a href="<?= $bcUrl ?>" class="btn btn-success btn-sm">
+                    <i class="fa-solid fa-paper-plane me-1"></i>Send SMS / Email
+                </a>
+            <?php endif; ?>
             <a href="<?= $base_url ?>/client-wise-due-tracking" class="btn btn-primary btn-sm">
                 <i class="fa-solid fa-arrow-left me-1"></i>Back to Due Tracking &amp; Mgt
             </a>
