@@ -1348,8 +1348,8 @@ class AccountClient extends Model
                                        AND lp.verification_status = 'verified' 
                                   THEN lp.amount ELSE 0 END), 0) AS total_verified_collected,
                 COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                       AND lp.verification_status != 'rejected' 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                       AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                   THEN lp.amount ELSE 0 END), 0) AS total_unverified_collected,
 
                 COALESCE(SUM(CASE WHEN (lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0) 
@@ -1370,8 +1370,8 @@ class AccountClient extends Model
                                   THEN lp.amount ELSE 0 END), 0) AS total_verified_emi_collected,
                 COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
                                        AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                       AND lp.verification_status != 'rejected' 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                       AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                   THEN lp.amount ELSE 0 END), 0) AS total_unverified_emi_collected
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
@@ -1439,8 +1439,8 @@ class AccountClient extends Model
                                       AND lp.verification_status = 'verified' 
                                  THEN lp.amount ELSE 0 END), 0) AS verified_collected,
                 COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                      AND lp.verification_status != 'rejected' 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                      AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                  THEN lp.amount ELSE 0 END), 0) AS unverified_collected,
                 COALESCE(SUM(CASE WHEN (lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0) 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
@@ -1460,8 +1460,8 @@ class AccountClient extends Model
                                  THEN lp.amount ELSE 0 END), 0) AS verified_emi_collected,
                 COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                      AND lp.verification_status != 'rejected' 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                      AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                  THEN lp.amount ELSE 0 END), 0) AS unverified_emi_collected
             FROM projects p
             LEFT JOIN lead_bookings lb ON lb.project_id = p.id 

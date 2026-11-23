@@ -182,7 +182,7 @@ $hasTransactions = !empty($recentTransactions);
                         <h6 class="card__sub-title mb-1 text-muted">Total Cash In</h6>
                         <h4 class="card__title mb-1 text-primary text-break">৳<?= format_bdt($overviewStats['total_cashin']) ?></h4>
                         <small class="text-muted extra-small d-block fw-semibold" style="font-size: 11px; line-height: 1.2;">
-                            <i class="fa-solid fa-circle-info text-primary me-1"></i>Total Verified (Land Share + EMI Payments + Development Charge)
+                            <i class="fa-solid fa-circle-info text-primary me-1"></i>Total Verified (Land Share + Booking + EMI + Dev Charge + Reg + Mgmt)
                         </small>
                     </div>
                 </div>
@@ -201,7 +201,7 @@ $hasTransactions = !empty($recentTransactions);
                         <h6 class="card__sub-title mb-1 text-muted">Total Revenue</h6>
                         <h4 class="card__title mb-1 text-success text-break">৳<?= format_bdt($overviewStats['total_revenue']) ?></h4>
                         <small class="text-muted extra-small d-block fw-semibold" style="font-size: 11px; line-height: 1.2;">
-                            <i class="fa-solid fa-circle-info text-success me-1"></i>(Total Verified EMI 10% + Booking + Dev Charge)
+                            <i class="fa-solid fa-circle-info text-success me-1"></i>(Verified EMI Service Fee + Land Share + Booking + Dev Charge + Reg)
                         </small>
                     </div>
                 </div>
@@ -231,7 +231,7 @@ $hasTransactions = !empty($recentTransactions);
             <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
                 <div>
                     <h6 class="fw-bold mb-0 text-dark">
-                        <i class="fa-solid fa-chart-pie text-primary me-2"></i>Collection & EMI Financial Summary
+                        <i class="fa-solid fa-chart-pie text-primary me-2"></i>Collection & EMI Financial Summary <span class="badge bg-light text-muted border ms-1 fw-normal" style="font-size: 10px;">All Time</span>
                     </h6>
                     <small class="text-muted">Overview of total collections, land shares, dev charges, and EMI verification status</small>
                 </div>
@@ -396,7 +396,7 @@ $hasTransactions = !empty($recentTransactions);
                     <div class="tab-pane fade" id="pills-bar-year" role="tabpanel"
                         aria-labelledby="pills-bar-year-tab">
                         <div class="chart-container">
-                            <?php if (!empty($chartLabels)): ?>
+                            <?php if (!empty($yearlyChartLabels)): ?>
                                 <canvas id="transactionChartYearly" class="card__title"></canvas>
                             <?php else: ?>
                                 <div class="no-data-placeholder">
@@ -754,7 +754,7 @@ $hasTransactions = !empty($recentTransactions);
                                     <th>Project</th>
                                     <th>Flat/Unit</th>
                                     <th>Unit Value</th>
-                                    <th>Booking Amount</th>
+                                    <th>Agreement Value</th>
                                     <th>Status</th>
                                     <th>Date</th>
                                     <th class="text-center d-none">Actions</th>
@@ -792,7 +792,7 @@ $hasTransactions = !empty($recentTransactions);
                                         <td class="fw-semibold">৳ <?= format_bdt($item['price_value']) ?></td>
                                         <td class="text-success fw-semibold">৳ <?= format_bdt(number: $item['agreement_value'] ?? '') ?></td>
                                         <td>
-                                            <?php if ($item['is_booked'] === 1): ?>
+                                            <?php if ((int)($item['is_booked'] ?? 0) === 1): ?>
                                                 <span class="badge bg-success">Paid Booked</span>
                                             <?php else: ?>
                                                 <span class="badge bg-danger">Unpaid</span>
@@ -850,6 +850,8 @@ $hasTransactions = !empty($recentTransactions);
         // Chart data from PHP
         const dynamicChartLabels = <?= json_encode($chartLabels) ?>;
         const dynamicChartData = <?= json_encode($chartData) ?>;
+        const yearlyChartLabels = <?= json_encode($yearlyChartLabels ?? []) ?>;
+        const yearlyChartData = <?= json_encode($yearlyChartData ?? []) ?>;
         const paymentMethodLabels = <?= json_encode($paymentMethodLabels) ?>;
         const paymentMethodData = <?= json_encode($paymentMethodData) ?>;
 
@@ -1067,8 +1069,8 @@ $hasTransactions = !empty($recentTransactions);
         ========================== */
         const ctxYear = document.getElementById('transactionChartYearly');
         if (ctxYear) {
-            const yearlyLabels = dynamicChartLabels.length ? dynamicChartLabels : ['2023', '2024', '2025'];
-            const yearlyData = dynamicChartData.length ? dynamicChartData : [1250000, 1420000, 1380000];
+            const yearlyLabels = yearlyChartLabels.length ? yearlyChartLabels : ['2023', '2024', '2025'];
+            const yearlyData = yearlyChartData.length ? yearlyChartData : [0, 0, 0];
             const yearlyColor = '<?= $viewType === "cashin" ? "#6366f1" : "#ef4444" ?>';
 
             const transactionChartYearly = new Chart(ctxYear.getContext('2d'), {

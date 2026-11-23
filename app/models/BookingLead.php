@@ -513,37 +513,73 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     }
 
     //dashboard
-    public function getTotalBookings($period = null)
+    public function getTotalBookings($period = null, $strictMode = false)
     {
-        $sqlQuery = "SELECT COUNT(*) AS onboarded 
-                 FROM lead_bookings 
-                 WHERE booking_status IN ('booked', 'completed') 
-                 AND deleted_at IS NULL";
+        if ($strictMode) {
+            $sqlQuery = "SELECT COUNT(*) AS onboarded 
+                     FROM lead_bookings lb
+                     INNER JOIN leads l ON lb.lead_id = l.id
+                     WHERE lb.booking_status IN ('booked', 'completed') 
+                     AND lb.deleted_at IS NULL
+                     AND l.deleted_at IS NULL
+                     AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                     AND lb.id NOT IN (
+                         SELECT crr.booking_id FROM client_refund_requests crr
+                         WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded')
+                     )";
+            $dateCol = "lb.created_at";
+        } else {
+            $sqlQuery = "SELECT COUNT(*) AS onboarded 
+                     FROM lead_bookings 
+                     WHERE booking_status IN ('booked', 'completed') 
+                     AND deleted_at IS NULL";
+            $dateCol = "created_at";
+        }
 
-        if ($period) {
+        if ($period && $period !== 'all_time') {
             switch ($period) {
                 case 'daily':
-                    $sqlQuery .= " AND DATE(created_at) = CURDATE()";
+                    $sqlQuery .= " AND DATE({$dateCol}) = CURDATE()";
                     break;
                 case 'weekly':
-                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    if ($strictMode) {
+                        $start = date('Y-m-d', strtotime('monday this week'));
+                        $end = date('Y-m-d', strtotime('sunday this week'));
+                        $sqlQuery .= " AND DATE({$dateCol}) BETWEEN '{$start}' AND '{$end}'";
+                    } else {
+                        $sqlQuery .= " AND {$dateCol} >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+                    }
                     break;
                 case 'monthly':
-                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    if ($strictMode) {
+                        $start = date('Y-m-01');
+                        $end = date('Y-m-t');
+                        $sqlQuery .= " AND DATE({$dateCol}) BETWEEN '{$start}' AND '{$end}'";
+                    } else {
+                        $sqlQuery .= " AND {$dateCol} >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    }
                     break;
                 case 'yearly':
-                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    if ($strictMode) {
+                        $start = date('Y-01-01');
+                        $end = date('Y-12-31');
+                        $sqlQuery .= " AND DATE({$dateCol}) BETWEEN '{$start}' AND '{$end}'";
+                    } else {
+                        $sqlQuery .= " AND {$dateCol} >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    }
                     break;
                 case 'custom':
                     $fromDate = $_GET['from_date'] ?? '1970-01-01';
                     $toDate = $_GET['to_date'] ?? '2099-12-31';
-                    $sqlQuery .= " AND DATE(created_at) >= '$fromDate' AND DATE(created_at) <= '$toDate'";
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
+                        $sqlQuery .= " AND DATE({$dateCol}) >= '{$fromDate}' AND DATE({$dateCol}) <= '{$toDate}'";
+                    }
                     break;
             }
         }
 
         $result = $this->db->query($sqlQuery);
-        $row = $result->fetch_assoc();
+        $row = $result ? $result->fetch_assoc() : null;
         return (int)($row['onboarded'] ?? 0);
     }
 

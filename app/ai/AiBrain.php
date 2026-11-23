@@ -1,6 +1,7 @@
 <?php
 namespace ai;
 
+require_once __DIR__ . '/AiDataService.php';
 require_once dirname(__DIR__) . '/helpers/DbSchemaHelper.php';
 require_once dirname(__DIR__) . '/helpers/SqlValidator.php';
 
@@ -84,7 +85,7 @@ class AiBrain {
                               "PROJECT NAME FUZZY MATCHING RULE: Users might make slight typos or use synonyms in project names (e.g. typing 'test project by developer' instead of 'test project from developer'). If your SQL query on a specific project name returns no results, you MUST try a fallback search using partial words (e.g. `LIKE '%developer%'` or `LIKE '%test%'`) or retrieve all active project names (`SELECT id, name FROM projects WHERE deleted_at IS NULL`) to identify the closest match. Never claim a project does not exist without attempting to find similar names first. " .
                               "COMPANY-WIDE FINANCIAL OVERVIEW RULE: When asked for the company's overall/total cash in, cash out, or net cashflow (e.g., 'আমাদের টোটাল ক্যাশফ্লো এবং ক্যাশ ইন ও ক্যাশ আউট এর হিসাব দেখাও'), you MUST execute this exact query to get the total cash in and total cash out, because company-wide cashout involves multiple union tables:\n" .
                               "SELECT (\n" .
-                              "  (SELECT COALESCE(SUM(CASE WHEN payment_type = 'land_share' THEN land_share_amount ELSE amount END), 0) FROM lead_payments WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified') +\n" .
+                              "  (SELECT COALESCE(SUM(CASE WHEN payment_type = 'land_share' THEN land_share_amount ELSE amount END), 0) FROM lead_payments WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified' AND is_trashed = 0 AND COALESCE(is_emi_discount, 0) = 0) +\n" .
                               "  (SELECT COALESCE(SUM(amount), 0) FROM management_cashin WHERE payment_status = 'paid') +\n" .
                               "  (SELECT COALESCE(SUM(at.amount), 0) FROM adjustment_transactions at JOIN expense_adjustments ea ON at.adjustment_id = ea.id WHERE at.transaction_type = 'cashin' AND ea.status IN ('approved', 'partially_paid', 'fully_paid'))\n" .
                               ") AS total_cash_in,\n" .
@@ -228,9 +229,8 @@ class AiBrain {
             foreach ($contents as &$content) {
                 if (isset($content['parts'])) {
                     foreach ($content['parts'] as &$part) {
-                        if (isset($part['functionCall']) && (empty($part['functionCall']['args']) || is_array($part['functionCall']['args']))) {
-                            // If it's an array and empty, force to stdClass to serialize as {}
-                            if (is_array($part['functionCall']['args']) && count($part['functionCall']['args']) === 0) {
+                        if (isset($part['functionCall'])) {
+                            if (empty($part['functionCall']['args']) || (is_array($part['functionCall']['args']) && array_values($part['functionCall']['args']) === $part['functionCall']['args'])) {
                                 $part['functionCall']['args'] = new \stdClass();
                             }
                         }
@@ -265,7 +265,7 @@ class AiBrain {
 
             if ($functionCall) {
                 $functionName = $functionCall['name'];
-                $args = $functionCall['args'];
+                $args = $functionCall['args'] ?? [];
 
                 $dbResult = [];
                 $validCall = false;
