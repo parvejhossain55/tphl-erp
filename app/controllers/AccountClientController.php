@@ -7576,6 +7576,11 @@ public function discountStatement($bookingId = null)
                 COUNT(CASE WHEN f.next_follow_up_date < CURDATE() AND f.next_follow_up_date IS NOT NULL THEN 1 END) as overdue_count,
                 COUNT(CASE WHEN f.next_follow_up_date IS NOT NULL THEN 1 END) as total_scheduled_count
             FROM emi_followups f
+            INNER JOIN (
+                SELECT booking_id, MAX(id) AS max_id
+                FROM emi_followups
+                GROUP BY booking_id
+            ) latest ON latest.max_id = f.id
             INNER JOIN lead_bookings lb ON f.booking_id = lb.id
             WHERE {$where}
         ";
@@ -7635,10 +7640,15 @@ public function discountStatement($bookingId = null)
 
         $whereSql = implode(" AND ", $whereParts);
 
-        // Count query
+        // Count query (only consider the latest follow-up per booking so completed schedules are not shown as overdue)
         $countSql = "
             SELECT COUNT(*) as total 
             FROM emi_followups f
+            INNER JOIN (
+                SELECT booking_id, MAX(id) AS max_id
+                FROM emi_followups
+                GROUP BY booking_id
+            ) latest ON latest.max_id = f.id
             INNER JOIN lead_bookings lb ON f.booking_id = lb.id
             INNER JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
@@ -7702,6 +7712,11 @@ public function discountStatement($bookingId = null)
                 ua.full_name as sales_agent_name,
                 COALESCE(f_agg.total_followup_count, 1) as total_followup_count
             FROM emi_followups f
+            INNER JOIN (
+                SELECT booking_id, MAX(id) AS max_id
+                FROM emi_followups
+                GROUP BY booking_id
+            ) latest ON latest.max_id = f.id
             INNER JOIN lead_bookings lb ON f.booking_id = lb.id
             INNER JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
