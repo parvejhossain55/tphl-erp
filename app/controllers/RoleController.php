@@ -6,6 +6,28 @@ class RoleController extends Controller
 
     public function __construct($db)
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if ($userId <= 0) {
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $allowed = in_array($roleId, [1, 3], true)
+            || in_array($secRoleId, [1, 3], true)
+            || ($roleId !== 9 && function_exists('hasPermission') && hasPermission('role & permission'));
+        if (!$allowed) {
+            http_response_code(403);
+            if (function_exists('setError')) {
+                setError("Access Denied: You do not have permission to manage roles & permissions.");
+            }
+            header("Location: {$GLOBALS['base_url']}/my-profile");
+            exit;
+        }
+
         $this->roleModel = new Role($db);
         $this->permissionModel = new Permission($db);
     }

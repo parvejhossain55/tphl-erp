@@ -798,6 +798,7 @@
                                             Profile</a>
                                     </li>
                                  
+                                    <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 5], true) || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3], true) || (function_exists('hasPermission') && hasPermission(['role & permission', 'User Manage', 'Add User']))): ?>
                                     <li>
                                         <a href="<?= $GLOBALS['base_url'] ?>/create-user"><svg width="18" height="18" viewBox="0 0 18 18"
                                                 fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -811,6 +812,7 @@
                                             add acount
                                         </a>
                                     </li>
+                                    <?php endif; ?>
                                     <?php if(isset($_SESSION['user']['secondary_role_id']) && !empty($_SESSION['user']['secondary_role_id'])): ?>
                                     <li>
                                         <a href="<?= $GLOBALS['base_url'] ?>/switch-role">
