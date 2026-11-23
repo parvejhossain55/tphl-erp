@@ -52,16 +52,16 @@ class HomeController extends Controller
         // Get period from GET (optional)
         $period = $_GET['period'] ?? null;
 
-        // Employees
+        // Employees (active only on Super Admin Home)
         $totalEmployees = $period
-            ? $this->employeeModel->getTotalCountByPeriod($period)
-            : $this->employeeModel->getTotalCount();
+            ? $this->employeeModel->getActiveCountByPeriod($period)
+            : $this->employeeModel->getActiveCount();
 
         // Leads
         $totalLeadsCount = $this->leadModel->countAll($period);
 
         // Leads % change calculation
-        if ($period) {
+        if ($period && $period !== 'all_time') {
             $prevCount = $this->leadModel->countAllByDate($period, true);
 
             if ($prevCount == 0) {
@@ -85,30 +85,8 @@ class HomeController extends Controller
                 $leadsPercentChange = round((($currentMonthLeads - $lastMonthLeads) / $lastMonthLeads) * 100, 2);
             }
         }
-        // Leads % change calculation
 
-
-
-        $completedTasks  = $this->taskModel->getTaskCount("status = 'completed'");
         $totalVisitedCount = $this->leadModel->getVisitedLeadCount($period);
-        // Current month
-        $currentYear = date('Y');
-        $currentMonth = date('m');
-
-        $currentMonthLeads = $this->leadModel->countLeadsByMonth($currentYear, $currentMonth);
-
-        // Last month
-        $lastMonth = date('m', strtotime("-1 month"));
-        $lastMonthYear = date('Y', strtotime("-1 month"));
-
-        $lastMonthLeads = $this->leadModel->countLeadsByMonth($lastMonthYear, $lastMonth);
-
-        // % change calculation
-        if ($lastMonthLeads == 0) {
-            $leadsPercentChange = $currentMonthLeads > 0 ? 100 : 0;
-        } else {
-            $leadsPercentChange = round((($currentMonthLeads - $lastMonthLeads) / $lastMonthLeads) * 100, 2);
-        }
         // accounts part 
         $viewType = $_GET['view'] ?? 'cashin';
 
@@ -138,16 +116,16 @@ class HomeController extends Controller
             $weeklyData = $this->dashboardModel->getWeeklyTransactionData('cashout', $period, $projectId);
             $yearlyData = $this->dashboardModel->getYearlyTransactionData('cashout', 3, $period, $projectId);
         }
-        // Get combined overview statistics (always shown)
-        $overviewStats = $this->dashboardModel->getOverviewStatistics($period, $projectId);
+        // Get combined overview statistics (strict mode aligned with CentralStatement)
+        $overviewStats = $this->dashboardModel->getOverviewStatistics($period, $projectId, true);
 
 
-        // Weekly data for charts
-        $weeklyCashInData = $weeklyData ?? [0, 0, 0, 0, 0, 0, 0];
-        $weeklyCashOutData = $weeklyData ?? [0, 0, 0, 0, 0, 0, 0];
+        // Weekly data for charts (fetch cashin & cashout separately)
+        $weeklyCashInData = $this->dashboardModel->getWeeklyTransactionData('cashin', $period, $projectId) ?? [0, 0, 0, 0, 0, 0, 0];
+        $weeklyCashOutData = $this->dashboardModel->getWeeklyTransactionData('cashout', $period, $projectId) ?? [0, 0, 0, 0, 0, 0, 0];
 
         $period = $_GET['period'] ?? null;
-        $totalFlatsBooking = $this->bookingModel->getTotalBookings($period);
+        $totalFlatsBooking = $this->bookingModel->getTotalBookings($period, true);
         // Prepare chart data
         $chartLabels = [];
         $chartData = [];
@@ -156,6 +134,15 @@ class HomeController extends Controller
             foreach ($monthlyData as $data) {
                 $chartLabels[] = date('M Y', strtotime($data['month'] . '-01'));
                 $chartData[] = floatval($data['total']);
+            }
+        }
+
+        $yearlyChartLabels = [];
+        $yearlyChartData = [];
+        if (!empty($yearlyData)) {
+            foreach ($yearlyData as $data) {
+                $yearlyChartLabels[] = (string)($data['year'] ?? '');
+                $yearlyChartData[] = floatval($data['total'] ?? 0);
             }
         }
 
@@ -336,6 +323,8 @@ class HomeController extends Controller
             "period" => $period,
             "chartLabels" => $chartLabels,
             "chartData" => $chartData,
+            "yearlyChartLabels" => $yearlyChartLabels,
+            "yearlyChartData" => $yearlyChartData,
             "weeklyCashInData" => $weeklyCashInData,
             "weeklyCashOutData" => $weeklyCashOutData,
 

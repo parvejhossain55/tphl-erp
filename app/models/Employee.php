@@ -338,6 +338,62 @@ class Employee extends Model
         return (int) $result['total'];
     }
 
+    /**
+     * Get count of active employees (used by Super Admin Home Dashboard).
+     */
+    public function getActiveCount()
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS total FROM employees WHERE LOWER(IFNULL(employee_status, '')) = 'active'");
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        return (int) ($result['total'] ?? 0);
+    }
+
+    /**
+     * Get count of active employees joined/created within a standard period.
+     */
+    public function getActiveCountByPeriod($period)
+    {
+        if (empty($period) || $period === 'all_time') {
+            return $this->getActiveCount();
+        }
+
+        switch ($period) {
+            case 'daily':
+                $where = "DATE(created_at) = CURDATE()";
+                break;
+            case 'weekly':
+                $start = date('Y-m-d', strtotime('monday this week'));
+                $end = date('Y-m-d', strtotime('sunday this week'));
+                $where = "DATE(created_at) BETWEEN '{$start}' AND '{$end}'";
+                break;
+            case 'monthly':
+                $start = date('Y-m-01');
+                $end = date('Y-m-t');
+                $where = "DATE(created_at) BETWEEN '{$start}' AND '{$end}'";
+                break;
+            case 'yearly':
+                $start = date('Y-01-01');
+                $end = date('Y-12-31');
+                $where = "DATE(created_at) BETWEEN '{$start}' AND '{$end}'";
+                break;
+            case 'custom':
+                $fromDate = $_GET['from_date'] ?? '1970-01-01';
+                $toDate = $_GET['to_date'] ?? '2099-12-31';
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate)) {
+                    return $this->getActiveCount();
+                }
+                $where = "DATE(created_at) >= '$fromDate' AND DATE(created_at) <= '$toDate'";
+                break;
+            default:
+                return $this->getActiveCount();
+        }
+
+        $sql = "SELECT COUNT(*) AS total FROM employees WHERE LOWER(IFNULL(employee_status, '')) = 'active' AND $where";
+        $result = $this->db->query($sql);
+        return (int) ($result ? ($result->fetch_assoc()['total'] ?? 0) : 0);
+    }
+
     public function getTotalCountByPeriod($period)
     {
         switch ($period) {
