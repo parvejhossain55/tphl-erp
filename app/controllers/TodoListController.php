@@ -9,12 +9,13 @@ class TodoListController extends Controller
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        if (empty($_SESSION['user']['id'])) {
+        $currentRoute = $GLOBALS['route'] ?? '';
+        if ($currentRoute !== 'todo/cron' && empty($_SESSION['user']['id'])) {
             header("Location: " . $GLOBALS['base_url'] . "/login");
             exit();
         }
         $this->db = $db;
-        $this->userId = (int)$_SESSION['user']['id'];
+        $this->userId = (int)($_SESSION['user']['id'] ?? 0);
     }
 
     public function index()
@@ -418,7 +419,28 @@ class TodoListController extends Controller
     public function cron()
     {
         $processed = $this->processPendingReminders();
-        echo "Cron Executed Successfully at " . date('Y-m-d H:i:s') . ". Processed {$processed} reminders.";
+        $output = "Task Reminders Processed: {$processed}. ";
+
+        // Process Tipsoi late arrival email alerts during office hours (09:00 - 18:00 Asia/Dhaka)
+        try {
+            $dhakaTz = new DateTimeZone('Asia/Dhaka');
+            $nowDhaka = new DateTime('now', $dhakaTz);
+            $dhakaHour = (int)$nowDhaka->format('H');
+
+            if ($dhakaHour >= 9 && $dhakaHour <= 18) {
+                require_once dirname(__DIR__) . '/services/TipsoiLateAlertService.php';
+                $lateService = new TipsoiLateAlertService($this->db);
+                $lateRes = $lateService->processDailyLateAlerts();
+                $output .= "Tipsoi Late Alerts: Sent " . ($lateRes['dispatched_count'] ?? 0) . ", Skipped " . ($lateRes['skipped_count'] ?? 0) . ".";
+            } else {
+                $output .= "Tipsoi Late Alerts: Skipped (outside 09:00 - 18:00 window).";
+            }
+        } catch (\Throwable $e) {
+            error_log("Tipsoi late alert in cron error: " . $e->getMessage());
+            $output .= "Tipsoi Late Alerts Error: " . $e->getMessage();
+        }
+
+        echo "Cron Executed Successfully at " . date('Y-m-d H:i:s') . ". " . $output;
     }
 
     private function processPendingReminders(): int
