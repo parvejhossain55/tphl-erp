@@ -77,10 +77,10 @@ class LeadController extends Controller
         $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
         $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
         $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9], true) || in_array($userSecondaryRoleId, [3, 9], true));
+        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9, 33, 35], true) || in_array($userSecondaryRoleId, [3, 9, 33, 35], true));
         $filterSalesManagerId = ($canFilterBySalesManager && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : null;
 
-        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35]) || in_array($userSecondaryRoleId, [33, 35], true)) {
             if ($filterSalesManagerId) {
                 $mgrTeamIds = getManagedTeamIds($this->db, $filterSalesManagerId);
                 if (!empty($filterTeamId)) {
@@ -541,10 +541,10 @@ class LeadController extends Controller
         $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
         $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
         $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9], true) || in_array($userSecondaryRoleId, [3, 9], true));
+        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9, 33, 35], true) || in_array($userSecondaryRoleId, [3, 9, 33, 35], true));
         $filterSalesManagerId = ($canFilterBySalesManager && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : null;
 
-        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35]) || in_array($userSecondaryRoleId, [33, 35], true)) {
             if ($filterSalesManagerId) {
                 $mgrTeamIds = getManagedTeamIds($this->db, $filterSalesManagerId);
                 if (!empty($filterTeamId)) {
@@ -1178,10 +1178,10 @@ class LeadController extends Controller
         $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
         $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, (int)($_SESSION['user']['id'] ?? 0)) : [];
         $userSecondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9], true) || in_array($userSecondaryRoleId, [3, 9], true));
+        $canFilterBySalesManager = !$isSalesManagerUser && (in_array((int)$userRoleId, [3, 9, 33, 35], true) || in_array($userSecondaryRoleId, [3, 9, 33, 35], true));
         $filterSalesManagerId = ($canFilterBySalesManager && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : null;
 
-        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35]) || in_array($userSecondaryRoleId, [33, 35], true)) {
             if ($filterSalesManagerId) {
                 $mgrTeamIds = getManagedTeamIds($this->db, $filterSalesManagerId);
                 if (!empty($filterTeamId)) {
