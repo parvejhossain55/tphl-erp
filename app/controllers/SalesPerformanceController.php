@@ -31,8 +31,8 @@ class SalesPerformanceController extends Controller
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $secRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
 
-        // Fallback for Admin / Super Admin (Roles 1 & 3)
-        return in_array($roleId, [1, 3], true) || in_array($secRoleId, [1, 3], true);
+        // Fallback for Admin / Super Admin / Chief Officer / SEAL CEO (Roles 1, 3, 33 & 35)
+        return in_array($roleId, [1, 3, 33, 35], true) || in_array($secRoleId, [1, 3, 33, 35], true);
     }
 
     protected function guard(bool $json = false): void
