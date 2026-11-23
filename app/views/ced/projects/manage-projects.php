@@ -342,19 +342,29 @@
                     <input type="hidden" name="user_id" id="modalAgentId" value="">
                     
                     <div class="row g-2" id="projectCheckboxesContainer" style="max-height: 420px; overflow-y: auto;">
-                        <?php foreach ($projects as $proj): ?>
+                        <?php $projectOwners = $projectOwners ?? []; ?>
+                        <?php foreach ($projects as $proj):
+                            $ownerInfo = $projectOwners[(int)$proj['id']] ?? null;
+                        ?>
                             <div class="col-md-6 project-item-col" data-project-name="<?= strtolower(htmlspecialchars($proj['name'])) ?>">
                                 <div class="project-checkbox-item" onclick="toggleProjectItem(this, <?= $proj['id'] ?>)">
                                     <div class="form-check d-flex align-items-center justify-content-between mb-0 pointer-events-none">
-                                        <div class="d-flex align-items-center gap-2">
+                                        <div class="d-flex align-items-center gap-2 min-w-0">
                                             <input class="form-check-input project-chk" type="checkbox" name="project_ids[]" value="<?= $proj['id'] ?>" id="chk_proj_<?= $proj['id'] ?>" style="cursor: pointer;">
-                                            <label class="form-check-label fw-semibold text-dark mb-0 text-truncate" style="max-width: 250px; font-size: 13px;" for="chk_proj_<?= $proj['id'] ?>">
+                                            <label class="form-check-label fw-semibold text-dark mb-0 text-truncate" style="max-width: 210px; font-size: 13px;" for="chk_proj_<?= $proj['id'] ?>">
                                                 <?= htmlspecialchars($proj['name']) ?>
                                             </label>
                                         </div>
-                                        <?php if (!empty($proj['project_sale_status'])): ?>
-                                            <span class="badge bg-light text-secondary border small" style="font-size: 9.5px;"><?= htmlspecialchars($proj['project_sale_status']) ?></span>
-                                        <?php endif; ?>
+                                        <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                            <?php if ($ownerInfo): ?>
+                                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle project-owner-badge" data-owner-id="<?= (int)$ownerInfo['user_id'] ?>" style="font-size: 9.5px;" title="Selecting this will reassign from <?= htmlspecialchars($ownerInfo['agent_name']) ?>">
+                                                    <?= htmlspecialchars($ownerInfo['agent_name']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($proj['project_sale_status'])): ?>
+                                                <span class="badge bg-light text-secondary border small" style="font-size: 9.5px;"><?= htmlspecialchars($proj['project_sale_status']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -388,10 +398,13 @@
         document.getElementById('projectModalFilter').value = '';
         filterProjectCheckboxes();
 
-        // Clear all checkboxes first
+        // Clear all checkboxes first and show owner badges only for OTHER agents
         document.querySelectorAll('.project-chk').forEach(chk => {
             chk.checked = false;
             chk.closest('.project-checkbox-item').classList.remove('checked');
+        });
+        document.querySelectorAll('.project-owner-badge').forEach(b => {
+            b.style.display = (parseInt(b.dataset.ownerId, 10) === parseInt(agentId, 10)) ? 'none' : '';
         });
         updateSelectedCount();
 
