@@ -2596,6 +2596,13 @@
                                     <span class="sidebar__menu-label">Manage Project EMI</span>
                                 </a>
                             </li>
+                            <li class="slide <?= isActive('ced-client-broadcast', $current_route) ?>">
+                                <a href="<?= $base_url ?>/ced-client-broadcast"
+                                    class="sidebar__menu-item <?= isActive('ced-client-broadcast', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-paper-plane"></i></div>
+                                    <span class="sidebar__menu-label">Client SMS &amp; Email</span>
+                                </a>
+                            </li>
                         <?php endif; ?>
 
 
