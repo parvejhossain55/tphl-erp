@@ -7,13 +7,55 @@ class UserController extends Controller
     protected $roleModel;
     public function __construct($db)
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
         $this->db = $db;
         $this->designationModel = new Designation($this->db);
         $this->userModel = new User($this->db);
         $this->roleModel = new Role($this->db);
     }
+
+    private function ensureLoggedIn(): int
+    {
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if ($userId <= 0) {
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+        return $userId;
+    }
+
+    private function canManageUsers(): bool
+    {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        if (in_array($roleId, [1, 3], true) || in_array($secRoleId, [1, 3], true)) {
+            return true;
+        }
+        if ($roleId === 9) {
+            return false;
+        }
+        return function_exists('hasPermission') && hasPermission(['role & permission', 'User Manage']);
+    }
+
+    private function denyAccess(): void
+    {
+        http_response_code(403);
+        if (function_exists('setError')) {
+            setError("Access Denied: You do not have permission to manage users.");
+        }
+        header("Location: {$GLOBALS['base_url']}/my-profile");
+        exit;
+    }
+
     public function index()
     {
+        $this->ensureLoggedIn();
+        if (!$this->canManageUsers()) {
+            $this->denyAccess();
+        }
+
         $searchTerm = $_GET['q'] ?? '';
         $roleFilter = $_GET['role'] ?? '';
 
@@ -48,9 +90,14 @@ class UserController extends Controller
     // Create user form
     public function create()
     {
+        $this->ensureLoggedIn();
+        $loggedInRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!$this->canManageUsers() && $loggedInRoleId !== 5 && !(function_exists('hasPermission') && hasPermission('Add User'))) {
+            $this->denyAccess();
+        }
+
         $designations = $this->designationModel->getAll();
 
-        $loggedInRoleId = $_SESSION['user']['role_id'] ?? 0;
         if ($loggedInRoleId == 1) {
             $roles = $this->roleModel->getAll();
         } else {
@@ -71,6 +118,12 @@ class UserController extends Controller
     // Handle form submission
     public function store()
     {
+        $this->ensureLoggedIn();
+        $loggedInRoleIdCheck = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!$this->canManageUsers() && $loggedInRoleIdCheck !== 5 && !(function_exists('hasPermission') && hasPermission('Add User'))) {
+            $this->denyAccess();
+        }
+
         $data = [
             'full_name'        => trim($_POST['full_name'] ?? ''),
             'user_name'        => trim($_POST['user_name'] ?? ''),
@@ -134,6 +187,11 @@ class UserController extends Controller
 
     public function edit($id)
     {
+        $loggedInUserId = $this->ensureLoggedIn();
+        if (!$this->canManageUsers() && (int)$id !== $loggedInUserId) {
+            $this->denyAccess();
+        }
+
         $user = $this->userModel->find($id);
         $designations = $this->designationModel->getAll();
         
@@ -164,6 +222,12 @@ class UserController extends Controller
 
     public function show($id)
     {
+        $loggedInUserId = $this->ensureLoggedIn();
+        $loggedInRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!$this->canManageUsers() && (int)$id !== $loggedInUserId && $loggedInRoleId !== 5 && !(function_exists('hasPermission') && hasPermission('Sales Team'))) {
+            $this->denyAccess();
+        }
+
         $user = $this->userModel->find($id);
         $designations = $this->designationModel->getAll();
         $roles = $this->roleModel->getAll();
@@ -181,6 +245,11 @@ class UserController extends Controller
 
     public function update($id)
     {
+        $loggedInUserId = $this->ensureLoggedIn();
+        if (!$this->canManageUsers() && (int)$id !== $loggedInUserId) {
+            $this->denyAccess();
+        }
+
         $data = [
             'full_name'      => trim($_POST['full_name'] ?? ''),
             'user_name'      => trim($_POST['user_name'] ?? ''),
@@ -266,6 +335,11 @@ class UserController extends Controller
     }
     public function delete()
     {
+        $this->ensureLoggedIn();
+        if (!$this->canManageUsers()) {
+            $this->denyAccess();
+        }
+
         $id = $_POST['id'] ?? 0;
         if ($id && $this->userModel->delete($id)) {
             setSuccess("User deleted successfully");

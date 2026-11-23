@@ -313,7 +313,7 @@ class EmployeeDashboardController extends Controller
         $recentTasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         $recentActivity = array_merge($recentLeaves, $recentTasks);
-        usort($recentActivity, fn($a, $b) => strtotime($b['activity_date']) - strtotime($a['activity_date']));
+        usort($recentActivity, fn($a, $b) => strtotime($b['activity_date'] ?? '') - strtotime($a['activity_date'] ?? ''));
         $recentActivity = array_slice($recentActivity, 0, 5);
 
         // Calculate years of service
