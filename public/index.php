@@ -156,7 +156,8 @@ $public_routes = [
     'api/client-authenticate',
     'api/client-details',
     'run-restore-bookings-payments',
-    'restore-bookings-data'
+    'restore-bookings-data',
+    'todo/cron'
 ];
 
 $isPublicReceiptAccess = (
