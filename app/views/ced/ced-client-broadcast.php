@@ -985,16 +985,10 @@ $preselectedAgentId   = (int)($preselected_agent_id ?? 0);
 
                         <!-- Options -->
                         <div class="cb-options-box mb-3">
-                            <div class="form-check small mb-1">
+                            <div class="form-check small mb-0">
                                 <input class="form-check-input" type="checkbox" id="cbIncludeSecondary">
                                 <label class="form-check-label text-dark" for="cbIncludeSecondary">
                                     Also include <strong>Alt Email &amp; 2nd Owner</strong> contacts (if available)
-                                </label>
-                            </div>
-                            <div class="form-check small mb-0">
-                                <input class="form-check-input" type="checkbox" id="cbIsTesting" <?= $globalSmsTesting ? 'checked' : '' ?>>
-                                <label class="form-check-label fw-semibold" style="color:#b45309;" for="cbIsTesting">
-                                    <i class="fa-solid fa-flask me-1"></i>Dry-Run / Testing Mode (log only, no real SMS/Email sent)
                                 </label>
                             </div>
                         </div>
@@ -1932,7 +1926,7 @@ $preselectedAgentId   = (int)($preselected_agent_id ?? 0);
             return;
         }
 
-        const isTesting = document.getElementById('cbIsTesting').checked;
+        const isTesting = false;
         let validSms = 0, validEmail = 0, skippedEst = 0;
         clientsData.forEach(c => {
             if (selectedIds.has(c.booking_id)) {
