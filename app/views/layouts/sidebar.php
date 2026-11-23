@@ -2455,10 +2455,10 @@
                 if ($canViewCedCategory) {
                     global $db;
                     if ($db) {
-                        $sbR1 = $db->query("SELECT COUNT(*) as cnt FROM emi_followups f INNER JOIN lead_bookings lb ON f.booking_id = lb.id WHERE lb.deleted_at IS NULL AND f.next_follow_up_date = CURDATE()");
+                        $sbR1 = $db->query("SELECT COUNT(*) as cnt FROM emi_followups f INNER JOIN (SELECT booking_id, MAX(id) AS max_id FROM emi_followups GROUP BY booking_id) latest ON latest.max_id = f.id INNER JOIN lead_bookings lb ON f.booking_id = lb.id WHERE lb.deleted_at IS NULL AND f.next_follow_up_date = CURDATE()");
                         if ($sbR1 && $sbRow = $sbR1->fetch_assoc()) $sbTodayFollowupCount = (int)$sbRow['cnt'];
 
-                        $sbR2 = $db->query("SELECT COUNT(*) as cnt FROM emi_followups f INNER JOIN lead_bookings lb ON f.booking_id = lb.id WHERE lb.deleted_at IS NULL AND f.next_follow_up_date > CURDATE() AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 5 DAY)");
+                        $sbR2 = $db->query("SELECT COUNT(*) as cnt FROM emi_followups f INNER JOIN (SELECT booking_id, MAX(id) AS max_id FROM emi_followups GROUP BY booking_id) latest ON latest.max_id = f.id INNER JOIN lead_bookings lb ON f.booking_id = lb.id WHERE lb.deleted_at IS NULL AND f.next_follow_up_date > CURDATE() AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 5 DAY)");
                         if ($sbR2 && $sbRow = $sbR2->fetch_assoc()) $sbUpcomingFollowupCount = (int)$sbRow['cnt'];
                     }
                 }
