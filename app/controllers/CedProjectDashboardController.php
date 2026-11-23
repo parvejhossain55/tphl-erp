@@ -67,17 +67,23 @@ class CedProjectDashboardController extends CedCollectionStatementController
         $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
         $roleName      = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        $unrestrictedRoles = [1, 3, 6, 30, 33, 34, 35, 36, 38, 39];
+        $unrestrictedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36, 37, 38, 39];
         $isUnrestricted = $currentUserId <= 0
             || $currentUserId === 94
             || in_array($userRoleId, $unrestrictedRoles, true)
             || in_array($userSecRoleId, $unrestrictedRoles, true)
             || in_array($userPriRoleId, $unrestrictedRoles, true)
             || strpos($roleName, 'head of client experience') !== false
+            || strpos($roleName, 'client experience') !== false
+            || strpos($roleName, 'clients experiment') !== false
+            || strpos($roleName, 'credit recovery') !== false
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'admin') !== false
             || strpos($roleName, 'account') !== false
             || (function_exists('isHeadOfClientExperience') && isHeadOfClientExperience())
+            || (function_exists('isClientsCommunicated') && isClientsCommunicated())
+            || (function_exists('isCreditRecovery') && isCreditRecovery())
+            || (function_exists('hasPermission') && hasPermission('CED Manage'))
             || (function_exists('isAccountsHead') && isAccountsHead())
             || (function_exists('isAccountsExecutive') && isAccountsExecutive());
 

@@ -31,6 +31,30 @@ class CedProjectManageController extends Controller
     }
 
     /**
+     * Check if the current user can access and manage Project EMI schedules (all CED users + Admin/Management)
+     */
+    protected function canManageProjectEmi(): bool
+    {
+        if ($this->canManageCed()) {
+            return true;
+        }
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        return in_array($roleId, [7, 37, 39], true)
+            || in_array($secRoleId, [7, 37, 39], true)
+            || in_array($priRoleId, [7, 37, 39], true)
+            || strpos($roleName, 'client experience') !== false
+            || strpos($roleName, 'clients experiment') !== false
+            || strpos($roleName, 'credit recovery') !== false
+            || (function_exists('isClientsCommunicated') && isClientsCommunicated())
+            || (function_exists('isCreditRecovery') && isCreditRecovery())
+            || (function_exists('hasPermission') && hasPermission('CED Manage'));
+    }
+
+    /**
      * View: Manage Projects for CED (Head of CED & Admin)
      */
     public function manageProjects()
@@ -141,19 +165,14 @@ class CedProjectManageController extends Controller
         $search = trim($_GET['search'] ?? '');
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
 
-        // If regular agent (Role 7 or 37) and NOT manager, lock to self
-        if (!$canManage) {
-            $selectedAgentId = $currentUserId;
-        }
+        // All CED users can view/filter all officers & projects
+        $allAgentsSummary = $this->assignmentModel->getPortfolioSummary($search, null, $selectedProjectId);
 
-        // Summary metrics (supports search and project filter)
-        $allAgentsSummary = $canManage ? $this->assignmentModel->getPortfolioSummary($search, null, $selectedProjectId) : [];
-
-        // If a specific agent is selected (or regular agent viewing self)
+        // If a specific agent is selected
         $targetAgentSummary = null;
         $projectDetails = [];
         $assignedProjects = [];
-        $activeAgentId = $selectedAgentId ?: ($canManage ? null : $currentUserId);
+        $activeAgentId = $selectedAgentId ?: null;
 
         $allProjects = $this->assignmentModel->getAllProjects();
         $companyOverallStats = $this->assignmentModel->getCompanyOverallStats();
@@ -193,7 +212,7 @@ class CedProjectManageController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        if (!$this->canManageCed()) {
+        if (!$this->canManageProjectEmi()) {
             setError("You do not have permission to manage project EMI schedules.");
             header("Location: {$GLOBALS['base_url']}/ced-projects-history");
             exit;
@@ -262,7 +281,7 @@ class CedProjectManageController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json; charset=utf-8');
 
-        if (!$this->canManageCed()) {
+        if (!$this->canManageProjectEmi()) {
             echo json_encode(['success' => false, 'message' => 'Permission denied.']);
             exit;
         }
@@ -426,7 +445,7 @@ class CedProjectManageController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json; charset=utf-8');
 
-        if (!$this->canManageCed()) {
+        if (!$this->canManageProjectEmi()) {
             echo json_encode(['success' => false, 'message' => 'Unauthorized']);
             exit;
         }
@@ -529,7 +548,7 @@ class CedProjectManageController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json; charset=utf-8');
 
-        if (!$this->canManageCed()) {
+        if (!$this->canManageProjectEmi()) {
             echo json_encode(['success' => false, 'message' => 'Permission denied.']);
             exit;
         }

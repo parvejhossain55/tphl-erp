@@ -2581,19 +2581,19 @@
                                 <span class="sidebar__menu-label">CED Projects History</span>
                             </a>
                         </li>
+                        <li class="slide <?= isActive('manage-project-emi', $current_route) ?>">
+                            <a href="<?= $base_url ?>/manage-project-emi"
+                                class="sidebar__menu-item <?= isActive('manage-project-emi', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-calendar-days"></i></div>
+                                <span class="sidebar__menu-label">Manage Project EMI</span>
+                            </a>
+                        </li>
                         <?php if (in_array($sbUserRoleId, [1, 3, 33, 38, 39], true) || (function_exists('isHeadOfClientExperience') && isHeadOfClientExperience())): ?>
                             <li class="slide <?= isActive('manage-projects-for-ced', $current_route) ?>">
                                 <a href="<?= $base_url ?>/manage-projects-for-ced"
                                     class="sidebar__menu-item <?= isActive('manage-projects-for-ced', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-diagram-project"></i></div>
                                     <span class="sidebar__menu-label">Manage Projects for CED</span>
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('manage-project-emi', $current_route) ?>">
-                                <a href="<?= $base_url ?>/manage-project-emi"
-                                    class="sidebar__menu-item <?= isActive('manage-project-emi', $current_route) ?>">
-                                    <div class="side-menu__icon"><i class="fa-solid fa-calendar-days"></i></div>
-                                    <span class="sidebar__menu-label">Manage Project EMI</span>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('ced-client-broadcast', $current_route) ?>">
