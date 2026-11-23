@@ -54,28 +54,84 @@ class CedProjectAssignment
     }
 
     /**
-     * Save/sync assigned projects for an agent
+     * Get map of currently active project owners: [project_id => ['user_id' => int, 'agent_name' => string]]
+     */
+    public function getActiveProjectOwnerMap(): array
+    {
+        $sql = "SELECT cpa.project_id, cpa.user_id, COALESCE(e.full_name, u.full_name, u.user_name) AS agent_name
+                FROM ced_project_assignments cpa
+                INNER JOIN users u ON u.id = cpa.user_id
+                LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id)
+                WHERE cpa.status = 'active'
+                ORDER BY cpa.id ASC";
+        $res = $this->db->query($sql);
+        $map = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $map[(int)$row['project_id']] = [
+                    'user_id'    => (int)$row['user_id'],
+                    'agent_name' => $row['agent_name'],
+                ];
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * Save/sync assigned projects for an agent while enforcing:
+     * 1) At most 1 active CED agent per project at any time.
+     * 2) Full date-range history in ced_project_assignment_history so historical
+     *    collections remain under the previous agent after reassignment.
      */
     public function saveAgentProjectAssignments(int $userId, array $projectIds, int $assignedBy): bool
     {
+        $cleanProjectIds = array_values(array_unique(array_filter(array_map('intval', $projectIds), fn($id) => $id > 0)));
+
         $this->db->begin_transaction();
         try {
-            // Deactivate existing assignments
-            $delStmt = $this->db->prepare("DELETE FROM ced_project_assignments WHERE user_id = ?");
-            $delStmt->bind_param("i", $userId);
-            $delStmt->execute();
-            $delStmt->close();
+            $currentIds = $this->getAgentAssignedProjectIds($userId);
+            $toRemove = array_values(array_diff($currentIds, $cleanProjectIds));
+            $toAdd    = array_values(array_diff($cleanProjectIds, $currentIds));
 
-            if (!empty($projectIds)) {
-                $insStmt = $this->db->prepare("INSERT INTO ced_project_assignments (user_id, project_id, assigned_by, status) VALUES (?, ?, ?, 'active')");
-                foreach ($projectIds as $pId) {
-                    $pId = (int)$pId;
-                    if ($pId > 0) {
-                        $insStmt->bind_param("iii", $userId, $pId, $assignedBy);
-                        $insStmt->execute();
-                    }
+            // 1. Deactivate projects removed from this agent and close their open history
+            if (!empty($toRemove)) {
+                $deactOwn = $this->db->prepare("UPDATE ced_project_assignments SET status = 'inactive' WHERE user_id = ? AND project_id = ? AND status = 'active'");
+                $closeOwn = $this->db->prepare("UPDATE ced_project_assignment_history SET assigned_to = NOW() WHERE project_id = ? AND user_id = ? AND assigned_to IS NULL");
+                foreach ($toRemove as $pId) {
+                    $deactOwn->bind_param("ii", $userId, $pId);
+                    $deactOwn->execute();
+                    $closeOwn->bind_param("ii", $pId, $userId);
+                    $closeOwn->execute();
                 }
-                $insStmt->close();
+                $deactOwn->close();
+                $closeOwn->close();
+            }
+
+            // 2. Assign newly selected projects to this agent (closing any previous agent's active ownership)
+            if (!empty($toAdd)) {
+                $deactOther = $this->db->prepare("UPDATE ced_project_assignments SET status = 'inactive' WHERE project_id = ? AND user_id != ? AND status = 'active'");
+                $closePrev  = $this->db->prepare("UPDATE ced_project_assignment_history SET assigned_to = NOW() WHERE project_id = ? AND assigned_to IS NULL");
+                $upsertAct  = $this->db->prepare("INSERT INTO ced_project_assignments (user_id, project_id, assigned_by, status) VALUES (?, ?, ?, 'active') ON DUPLICATE KEY UPDATE assigned_by = VALUES(assigned_by), status = 'active'");
+                $openHist   = $this->db->prepare("INSERT INTO ced_project_assignment_history (project_id, user_id, assigned_by, assigned_from, assigned_to) VALUES (?, ?, ?, NOW(), NULL)");
+
+                foreach ($toAdd as $pId) {
+                    $deactOther->bind_param("ii", $pId, $userId);
+                    $deactOther->execute();
+
+                    $closePrev->bind_param("i", $pId);
+                    $closePrev->execute();
+
+                    $upsertAct->bind_param("iii", $userId, $pId, $assignedBy);
+                    $upsertAct->execute();
+
+                    $openHist->bind_param("iii", $pId, $userId, $assignedBy);
+                    $openHist->execute();
+                }
+
+                $deactOther->close();
+                $closePrev->close();
+                $upsertAct->close();
+                $openHist->close();
             }
 
             $this->db->commit();
