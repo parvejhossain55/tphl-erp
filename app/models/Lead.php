@@ -4965,7 +4965,8 @@ class Lead extends Model
         $stmt = $this->db->prepare("
         SELECT COUNT(*) AS total
         FROM leads
-        WHERE created_at >= ? AND created_at <= ?
+        WHERE deleted_at IS NULL
+          AND created_at >= ? AND created_at <= ?
     ");
         $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
