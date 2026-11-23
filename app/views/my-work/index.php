@@ -17,6 +17,7 @@ $openTasksCount = $openTasksCount ?? 0;
 $completedTasksCount = $completedTasksCount ?? 0;
 $tasks = $tasks ?? [];
 $reviewTasks = $reviewTasks ?? [];
+$reviewTasksCount = $reviewTasksCount ?? count($reviewTasks);
 $blockedTask = $blockedTask ?? null;
 
 // Date range for "Next 7 days" card
@@ -103,10 +104,28 @@ $todayDateFormatted = date('j F');
     color: #65776F;
     padding-bottom: 12px;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     position: relative;
     cursor: pointer;
     transition: color 0.15s ease;
+}
+
+.mw-tab-badge {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background-color: #EDF2EF;
+    color: #4D625A;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.mw-tab-item.active .mw-tab-badge {
+    background-color: #E3F6EE;
+    color: #087F5B;
 }
 
 .mw-tab-item:hover {
@@ -136,13 +155,18 @@ $todayDateFormatted = date('j F');
 @media (max-width: 768px) { .mw-td { left: 0; } }
 .mw-td-body { flex: 1; overflow-y: auto; padding: 14px 1.75% 16px 1.75%; }
 .mw-td-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; line-height: 15px; color: #65776F; }
+.mw-td-top-right { display: inline-flex; align-items: center; gap: 8px; }
+.mw-td-remind-btn { background: #F0FAF6; border: 1px solid #BBE3D0; color: #087F5B; border-radius: 6px; padding: 5px 11px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; line-height: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; }
+.mw-td-remind-btn:hover:not(:disabled) { background: #087F5B; border-color: #087F5B; color: #FFFFFF; }
+.mw-td-remind-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 .mw-td-close { background: none; border: 0; color: #65776F; font-size: 16px; cursor: pointer; padding: 4px; }
 .mw-td-title { font-size: 24px; line-height: 29px; font-weight: 700; color: #142D26; margin: 14px 0 12px; }
 .mw-td-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .mw-td-pill { font-size: 11.5px; line-height: 14px; font-weight: 700; padding: 5px 10px; border-radius: 6px; background: #EDF2EF; color: #65776F; }
 .mw-td-pill.status { background: #EEF3FC; color: #4364A5; }
 .mw-td-pill.overdue { background: #FFF5E2; color: #9A6216; }
-.mw-td-tabs { display: flex; gap: 22px; border-bottom: 1px solid #E2EAE5; margin-bottom: 16px; }
+.mw-td-tabs { display: flex; gap: 22px; align-items: center; border-bottom: 1px solid #E2EAE5; margin-bottom: 16px; }
+.mw-td-tabs .mw-td-remind-btn { margin-left: auto; margin-bottom: 6px; }
 .mw-td-tab { background: none; border: 0; padding: 0 0 9px; font-size: 13px; line-height: 16px; font-weight: 700; color: #65776F; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .mw-td-tab.active { color: #087F5B; border-bottom-color: #087F5B; }
 .mw-td-blocked { background: #FFF5E2; color: #9A6216; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
@@ -432,6 +456,27 @@ $todayDateFormatted = date('j F');
     display: inline-block;
 }
 
+.mw-header-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mw-header-tab:hover {
+    background: #F4FAF7;
+}
+
+.mw-header-tab.active {
+    background: #F4FAF7;
+    border-color: #C3E6CD;
+}
+
 .mw-tasks-completed-text {
     font-weight: 400;
     font-size: 12px;
@@ -588,6 +633,85 @@ $todayDateFormatted = date('j F');
     height: 1px;
     background-color: #E2EAE5;
     margin: 6px 0;
+}
+
+.mw-period-menu {
+    min-width: 260px;
+    padding: 12px 14px;
+    right: 0;
+    left: auto;
+}
+
+.mw-period-field {
+    margin-bottom: 10px;
+}
+
+.mw-period-field label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #65776F;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+}
+
+.mw-period-field input[type="date"] {
+    width: 100%;
+    height: 32px;
+    padding: 4px 8px;
+    font-size: 12.5px;
+    color: #142D26;
+    background: #F5F7F6;
+    border: 1px solid #E2EAE5;
+    border-radius: 6px;
+    outline: none;
+}
+
+.mw-period-field input[type="date"]:focus {
+    border-color: #087F5B;
+    background: #FFFFFF;
+}
+
+.mw-period-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #E2EAE5;
+}
+
+.mw-period-btn-clear {
+    background: #F5F7F6;
+    color: #5C6B66;
+    border: 1px solid #E2EAE5;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mw-period-btn-clear:hover {
+    background: #EAEFED;
+    color: #142D26;
+}
+
+.mw-period-btn-apply {
+    background: #087F5B;
+    color: #FFFFFF;
+    border: 1px solid #087F5B;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mw-period-btn-apply:hover {
+    background: #066649;
 }
 
 .mw-dots-icon {
@@ -1299,7 +1423,7 @@ $todayDateFormatted = date('j F');
 
 .mw-drawer-footer-actions {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 12px;
 }
@@ -1365,28 +1489,37 @@ $todayDateFormatted = date('j F');
     </div>
 
     <!-- Scope Tabs (Single-page Ajax switching) -->
+    <?php
+    $tc = $tabCounts ?? [];
+    $renderTabBadge = function (string $key) use ($tc): string {
+        $c = (int)($tc[$key] ?? 0);
+        return '<span class="mw-tab-badge" data-tab-count="' . $key . '"' . ($c > 0 ? '' : ' style="display:none;"') . '>' . ($c > 0 ? $c : '') . '</span>';
+    };
+    ?>
     <div class="mw-tabs-wrap">
         <a class="mw-tab-item <?= $tab === 'all' ? 'active' : '' ?>" 
-           data-tab="all" href="javascript:void(0);">All</a>
+           data-tab="all" href="javascript:void(0);">All <?= $renderTabBadge('all') ?></a>
         <a class="mw-tab-item <?= $tab === 'assigned_to_me' ? 'active' : '' ?>" 
-           data-tab="assigned_to_me" href="javascript:void(0);">Assigned to me</a>
+           data-tab="assigned_to_me" href="javascript:void(0);">Assigned to me <?= $renderTabBadge('assigned_to_me') ?></a>
         <a class="mw-tab-item <?= $tab === 'assigned_by_me' ? 'active' : '' ?>" 
-           data-tab="assigned_by_me" href="javascript:void(0);">Assigned by me</a>
+           data-tab="assigned_by_me" href="javascript:void(0);">Assigned by me <?= $renderTabBadge('assigned_by_me') ?></a>
         <a class="mw-tab-item <?= $tab === 'following' ? 'active' : '' ?>" 
-           data-tab="following" href="javascript:void(0);">Following</a>
+           data-tab="following" href="javascript:void(0);">Following <?= $renderTabBadge('following') ?></a>
         <a class="mw-tab-item <?= $tab === 'reviewer' ? 'active' : '' ?>" 
-           data-tab="reviewer" href="javascript:void(0);">Reviewer</a>
+           data-tab="reviewer" href="javascript:void(0);">Reviewer <?= $renderTabBadge('reviewer') ?></a>
         <a class="mw-tab-item <?= $tab === 'realestate_project' ? 'active' : '' ?>" 
-           data-tab="realestate_project" href="javascript:void(0);">Realestate Project</a>
+           data-tab="realestate_project" href="javascript:void(0);">Realestate Project <?= $renderTabBadge('realestate_project') ?></a>
         <a class="mw-tab-item <?= $tab === 'self_initiated' ? 'active' : '' ?>" 
-           data-tab="self_initiated" href="javascript:void(0);">Self-Initiated Task</a>
+           data-tab="self_initiated" href="javascript:void(0);">Self-Initiated Task <?= $renderTabBadge('self_initiated') ?></a>
         <a class="mw-tab-item <?= $tab === 'recurring' ? 'active' : '' ?>" 
-           data-tab="recurring" href="javascript:void(0);">Recurring Task</a>
+           data-tab="recurring" href="javascript:void(0);">Recurring Task <?= $renderTabBadge('recurring') ?></a>
+        <a class="mw-tab-item <?= $tab === 'previous_task_sheet' ? 'active' : '' ?>" 
+           data-tab="previous_task_sheet" href="javascript:void(0);">Previous Task Sheet <?= $renderTabBadge('previous_task_sheet') ?></a>
     </div>
 
     <!-- Summary cards (all tabs, scoped to the active tab) -->
     <?php $as = $allStats ?? []; ?>
-    <div class="mw-stats-row mw-stats-all" id="mwStatsAll">
+    <div class="mw-stats-row mw-stats-all" id="mwStatsAll" style="<?= $tab === 'previous_task_sheet' ? 'display:none;' : '' ?>">
         <div class="mw-stat-card <?= $metricFilter === 'all_total' ? 'active-metric' : '' ?>" data-metric="all_total"><span class="mw-stat-label">TOTAL TASKS</span><span class="mw-stat-count" id="allTotal"><?= (int)($as['total'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_in_progress' ? 'active-metric' : '' ?>" data-metric="all_in_progress"><span class="mw-stat-label">IN PROGRESS</span><span class="mw-stat-count next7" id="allInProgress"><?= (int)($as['in_progress'] ?? 0) ?></span></div>
         <div class="mw-stat-card <?= $metricFilter === 'all_completed' ? 'active-metric' : '' ?>" data-metric="all_completed"><span class="mw-stat-label">COMPLETED</span><span class="mw-stat-count review" id="allCompleted"><?= (int)($as['completed'] ?? 0) ?></span></div>
@@ -1397,29 +1530,138 @@ $todayDateFormatted = date('j F');
 
 
 
+    <!-- Previous Task Sheet (Read-only History View) -->
+    <?php $pts = $previousTaskSheetData ?? null; ?>
+    <div id="mwPreviousTaskSheetSection" style="<?= $tab === 'previous_task_sheet' ? '' : 'display:none;' ?>">
+        <div class="mw-stats-row mw-stats-all" style="margin-bottom: 16px;">
+            <div class="mw-stat-card"><span class="mw-stat-label">TOTAL RECORDS</span><span class="mw-stat-count" id="tsStatTotal"><?= (int) ($pts['summary']['total'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">DONE</span><span class="mw-stat-count review" id="tsStatDone"><?= (int) ($pts['summary']['done'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">PENDING</span><span class="mw-stat-count today" id="tsStatPending"><?= (int) ($pts['summary']['pending'] ?? 0) ?></span></div>
+            <div class="mw-stat-card"><span class="mw-stat-label">TOTAL HOURS</span><span class="mw-stat-count next7" id="tsStatHours"><?= htmlspecialchars((string) ($pts['summary']['total_hours'] ?? '0.00')) ?>h</span></div>
+        </div>
+
+        <div class="mw-card">
+            <div class="mw-tasks-header" style="flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 class="mw-tasks-title" style="margin: 0;">Previous Task Sheet <span class="text-muted fw-normal" style="font-size: 12.5px;" id="tsPeriodLabel">— <?= htmlspecialchars((string) ($pts['period_label'] ?? 'All Time')) ?></span></h3>
+                    <div class="text-muted" style="font-size: 11.5px; margin-top: 2px;">Read-only historical records from Employee Task Sheet</div>
+                </div>
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <select id="tsYear" class="form-select form-select-sm" style="width: 105px;">
+                        <option value="all">All Years</option>
+                        <?php for ($y = (int) date('Y'); $y >= 2022; $y--): ?>
+                            <option value="<?= $y ?>"><?= $y ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <select id="tsMonth" class="form-select form-select-sm" style="width: 125px;">
+                        <option value="all">All Months</option>
+                        <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <option value="<?= sprintf('%02d', $m) ?>"><?= date('F', mktime(0, 0, 0, $m, 1)) ?></option>
+                        <?php endfor; ?>
+                    </select>
+                    <input type="date" id="tsDateFrom" class="form-control form-control-sm" style="width: 135px;" title="From Date">
+                    <input type="date" id="tsDateTo" class="form-control form-control-sm" style="width: 135px;" title="To Date">
+                    <button type="button" class="mw-pill-btn active" id="btnTsApply">Filter</button>
+                    <button type="button" class="mw-pill-btn" id="btnTsAll">All Time</button>
+                    <a href="<?= $base_url ?>/task-sheets-export?<?= htmlspecialchars((string) ($pts['export_query'] ?? 'all=1')) ?>" id="btnTsExport" class="mw-pill-btn" style="text-decoration:none;">
+                        <i class="fa-solid fa-file-excel text-success"></i> Export Excel
+                    </a>
+                    <button type="button" class="mw-btn-create" id="btnTsAddNote" style="padding: 6px 12px; font-size: 12px;" data-bs-toggle="modal" data-bs-target="#modalPrevSheetAddNote">
+                        <i class="fa-solid fa-plus"></i> Add Note
+                    </button>
+                </div>
+            </div>
+
+            <div class="mw-table-wrap">
+                <table class="mw-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 120px;">DATE</th>
+                            <th style="min-width: 280px;">TASK DESCRIPTION</th>
+                            <th style="width: 90px;">HOURS</th>
+                            <th style="width: 110px;">STATUS</th>
+                            <th style="min-width: 180px;">REMARKS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mwPrevSheetTbody">
+                        <?= $pts['rows_html'] ?? '' ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Note to Previous Task Sheet -->
+    <div class="modal fade" id="modalPrevSheetAddNote" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 12px; border: 1px solid #E2EAE5;">
+                <div class="modal-header" style="border-bottom: 1px solid #E2EAE5;">
+                    <h5 class="modal-title fw-bold" style="font-size: 16px; color: #142D26;">
+                        <i class="fa-solid fa-note-sticky me-2 text-success"></i>Add Previous Task Sheet Note
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formPrevSheetAddNote">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Date <span class="text-danger">*</span></label>
+                                <input type="date" name="work_date" id="tsNoteDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Hours</label>
+                                <input type="number" name="hours_spent" id="tsNoteHours" class="form-control form-control-sm" step="0.25" min="0" value="1" placeholder="0.00">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Status</label>
+                                <select name="status" id="tsNoteStatus" class="form-select form-select-sm">
+                                    <option value="Done" selected>Done</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Pending">Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Task Description <span class="text-danger">*</span></label>
+                                <textarea name="task_description" id="tsNoteDesc" class="form-control form-control-sm" rows="3" placeholder="Describe the task..." required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold">Remarks</label>
+                                <input type="text" name="remarks" id="tsNoteRemarks" class="form-control form-control-sm" placeholder="Optional remarks...">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #E2EAE5;">
+                        <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" id="btnTsSaveNote" class="mw-btn-create" style="padding: 6px 14px; font-size: 12.5px;">
+                            <i class="fa-solid fa-check"></i> Save Note
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Grid Layout -->
-    <div class="mw-grid-layout">
+    <div class="mw-grid-layout" id="mwMainGrid" style="<?= $tab === 'previous_task_sheet' ? 'display:none;' : '' ?>">
         <!-- Left: Task Worklist -->
         <div class="mw-card">
             <!-- Header -->
             <div class="mw-tasks-header">
-                <div class="mw-tasks-title-group" style="display:flex; align-items:center; gap:16px;">
-                    <div style="display:flex; align-items:center; gap:10px;">
+                <div class="mw-tasks-title-group" style="display:flex; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <button type="button" class="mw-header-tab <?= $statusFilter === 'open' ? 'active' : '' ?>" id="tabMyActionable" data-header-status="open">
                         <h3 class="mw-tasks-title">My Actionable</h3>
                         <span class="mw-badge-open" id="badgeOpenCount"><?= $openTasksCount ?> open</span>
-                    </div>
-                    <div id="wrapUpdatedBy" style="display:<?= $tab === 'reviewer' ? 'flex' : 'none' ?>; align-items:center; gap:16px;">
-                        <div style="display:inline-block; width:1px; height:18px; background:#D8E3DD;"></div>
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <h3 class="mw-tasks-title" style="color:#2D453E;">Updated By</h3>
-                            <span class="mw-badge-open" id="badgeReviewedCount" style="background:#EBF2FE; color:#1864AB; font-weight:700;">
-                                <?= (int)($myReviewedCompletedCount ?? 0) ?> completed
-                            </span>
-                        </div>
-                    </div>
+                    </button>
+                    <button type="button" class="mw-header-tab <?= $statusFilter === 'completed' ? 'active' : '' ?>" id="tabMyCompleted" data-header-status="completed">
+                        <h3 class="mw-tasks-title" style="color:#2D453E;">Completed</h3>
+                        <span class="mw-badge-open" id="badgeCompletedCount" style="background:#EDF2FF; color:#364FC7; font-weight:700;">
+                            <?= $completedTasksCount ?> completed
+                        </span>
+                    </button>
                 </div>
                 <div class="mw-tasks-completed-text" id="textCompletedCount">
-                    <?= $completedTasksCount ?> completed
+                    <?= $openTasksCount + $completedTasksCount ?> total
                 </div>
             </div>
 
@@ -1464,7 +1706,7 @@ $todayDateFormatted = date('j F');
                         <div class="mw-popup-divider"></div>
 
                         <div class="mw-popup-header">STATUS</div>
-                        <a class="mw-popup-item" href="javascript:void(0);" data-status="">All Statuses</a>
+                        <a class="mw-popup-item" href="javascript:void(0);" data-status="all">All Statuses</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="open">Open only</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="pending">To do</a>
                         <a class="mw-popup-item" href="javascript:void(0);" data-status="in_progress">In progress</a>
@@ -1472,14 +1714,39 @@ $todayDateFormatted = date('j F');
                     </div>
                 </div>
 
-                <!-- List view Pill Button (Static view indicator, no action) -->
-                <span class="mw-pill-btn" style="cursor: default;" title="List view">
+                <!-- List view Pill Button (Hidden) -->
+                <span class="mw-pill-btn d-none" style="display: none !important; cursor: default;" title="List view">
                     <i class="fa-solid fa-bars-staggered"></i>
                     <span>List view</span>
                 </span>
 
-                <!-- Dots icon -->
-                <span class="mw-dots-icon" title="More options">···</span>
+                <!-- Period Pill Button (Date Range Filter) -->
+                <div class="position-relative d-inline-block">
+                    <button type="button" class="mw-pill-btn<?= (!empty($periodFrom) || !empty($periodTo)) ? ' active' : '' ?>" id="btnPeriod" title="Filter by created date range">
+                        <i class="fa-regular fa-calendar-days"></i>
+                        <span id="periodBtnText">Period</span>
+                    </button>
+                    <div class="mw-popup-menu mw-period-menu" id="menuPeriod">
+                        <div class="mw-popup-header" style="padding: 0 0 8px 0;">CREATED DATE RANGE</div>
+                        <div class="mw-period-field">
+                            <label for="periodFromInput">From Date</label>
+                            <input type="date" id="periodFromInput" value="<?= htmlspecialchars((string) ($periodFrom ?? '')) ?>">
+                        </div>
+                        <div class="mw-period-field" style="margin-bottom: 0;">
+                            <label for="periodToInput">To Date</label>
+                            <input type="date" id="periodToInput" value="<?= htmlspecialchars((string) ($periodTo ?? '')) ?>">
+                        </div>
+                        <div class="mw-period-actions">
+                            <button type="button" class="mw-period-btn-clear" id="btnClearPeriod">Clear</button>
+                            <button type="button" class="mw-period-btn-apply" id="btnApplyPeriod">Apply</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Export Sheet Pill Button -->
+                <button type="button" class="mw-pill-btn" id="btnExportSheet" title="Export tasks to Excel">
+                    <i class="fa-regular fa-file-excel" style="color: #087F5B;"></i>
+                    <span id="exportSheetBtnText">Export Sheet</span>
+                </button>
             </div>
 
             <!-- Table -->
@@ -1487,6 +1754,9 @@ $todayDateFormatted = date('j F');
                 <table class="mw-table">
                     <thead>
                         <tr>
+                            <th style="width: 42px; text-align: center;">
+                                <input type="checkbox" class="mw-task-check" id="mwSelectAllTasks" style="margin-right: 0;" title="Select all tasks">
+                            </th>
                             <th style="min-width: 280px;">TASK / PROJECT</th>
                             <th style="width: 110px;">PRIORITY</th>
                             <th style="width: 120px;">STATUS</th>
@@ -1498,7 +1768,7 @@ $todayDateFormatted = date('j F');
                     <tbody id="mwTasksTbody">
                         <?php if (empty($tasks)): ?>
                             <tr>
-                                <td colspan="6">
+                                <td colspan="7">
                                     <div class="mw-empty-state">
                                         <i class="fa-regular fa-clipboard d-block"></i>
                                         <div>No tasks found for this view.</div>
@@ -1518,16 +1788,17 @@ $todayDateFormatted = date('j F');
                                 
                                 if (!empty($t['deadline'])) {
                                     $deadlineTime = strtotime($t['deadline']);
-                                    $now = time();
+                                    $deadlineDate = date('Y-m-d', $deadlineTime);
+                                    $todayDate = date('Y-m-d');
                                     
-                                    if (!$isCompleted && $deadlineTime < $now) {
+                                    if (!$isCompleted && $deadlineDate < $todayDate) {
                                         $isOverdue = true;
-                                        $diffDays = (int) ceil(($now - $deadlineTime) / 86400);
+                                        $diffDays = (int) round((strtotime($todayDate) - strtotime($deadlineDate)) / 86400);
                                         $duePrimary = date('j M', $deadlineTime);
                                         $dueSub = ($diffDays <= 1) ? '1 day overdue' : "{$diffDays} days overdue";
-                                    } elseif (date('Y-m-d', $deadlineTime) === date('Y-m-d')) {
+                                    } elseif ($deadlineDate === $todayDate) {
                                         $duePrimary = date('j M', $deadlineTime);
-                                        $dueSub = 'Today · ' . date('g:i A', $deadlineTime);
+                                        $dueSub = (date('H:i:s', $deadlineTime) === '00:00:00') ? 'Today' : ('Today · ' . date('g:i A', $deadlineTime));
                                     } else {
                                         $duePrimary = date('j M', $deadlineTime);
                                         $dueSub = date('D · g:i A', $deadlineTime);
@@ -1568,6 +1839,9 @@ $todayDateFormatted = date('j F');
                                 $isHighlighted = ($index === 1 && $isBlocked) || ($index === 0 && $isOverdue);
                                 ?>
                                 <tr class="<?= $isHighlighted ? 'row-selected' : '' ?>" data-task-id="<?= $taskId ?>">
+                                    <td style="width: 42px; text-align: center;" onclick="event.stopPropagation();">
+                                        <input type="checkbox" class="mw-task-check mw-row-select" value="<?= $taskId ?>" style="margin-right: 0;" aria-label="Select task T-<?= $taskId ?>">
+                                    </td>
                                     <td>
                                         <div class="d-flex align-items-start">
                                             <div>
@@ -1647,7 +1921,7 @@ $todayDateFormatted = date('j F');
             <div class="mw-focus-card" id="mwCardNeedsReview">
                 <h4 class="mw-focus-title">Needs your review</h4>
                 <div class="mw-focus-subtitle">
-                    <?= count($reviewTasks) ?> completed task<?= count($reviewTasks) === 1 ? '' : 's' ?> waiting for your review
+                    <?= $reviewTasksCount ?> completed task<?= $reviewTasksCount === 1 ? '' : 's' ?> waiting for your review
                 </div>
 
                 <?php if (!empty($reviewTasks)): ?>
@@ -1779,10 +2053,14 @@ $todayDateFormatted = date('j F');
                     <button type="button" class="mw-form-select mw-multi-btn"><span class="mw-multi-text"><?= htmlspecialchars($placeholder) ?></span></button>
                     <div class="mw-multi-panel">
                         <input type="text" class="mw-form-input mw-multi-search" placeholder="Search...">
-                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; ?>
+                        <?php foreach (($usersList ?? []) as $u): if (trim((string)$u['full_name']) === '') continue; 
+                            $rawCode = !empty($u['employee_code']) ? trim((string)$u['employee_code']) : '';
+                            $empCode = preg_replace('/^EMP-?/i', '', $rawCode);
+                            $displayName = trim((string)$u['full_name']) . ($empCode !== '' ? " ({$empCode})" : '');
+                        ?>
                             <label class="mw-multi-item">
-                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($u['full_name']) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
-                                <span><?= htmlspecialchars($u['full_name']) ?></span>
+                                <input type="<?= $single ? 'radio' : 'checkbox' ?>" name="<?= htmlspecialchars($name) ?>" value="<?= (int)$u['id'] ?>" data-name="<?= htmlspecialchars($displayName) ?>" <?= ($selectedId !== null && (int)$u['id'] === $selectedId) ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($displayName) ?></span>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -1790,24 +2068,27 @@ $todayDateFormatted = date('j F');
             <?php }; ?>
             <!-- Row 1: Owner & Due Date -->
             <div class="mw-form-row mw-form-group">
-                <div class="mw-form-col">
+                <div class="mw-form-col" id="colTaskOwner">
                     <label class="mw-form-label">Owner</label>
                     <?php
                     $ownerName = $_SESSION['user']['full_name'] ?? ($_SESSION['user']['name'] ?? '');
-                    foreach (($usersList ?? []) as $u) { if ((int)$u['id'] === (int)$userId) { $ownerName = $u['full_name']; break; } }
+                    $ownerEmpCode = !empty($_SESSION['user']['employee_id']) ? $_SESSION['user']['employee_id'] : '';
+                    foreach (($usersList ?? []) as $u) {
+                        if ((int)$u['id'] === (int)$userId) {
+                            $ownerName = $u['full_name'];
+                            if (!empty($u['employee_code'])) {
+                                $ownerEmpCode = $u['employee_code'];
+                            }
+                            break;
+                        }
+                    }
+                    $ownerEmpCode = preg_replace('/^EMP-?/i', '', trim((string)$ownerEmpCode));
+                    $ownerDisplay = trim($ownerName) . ($ownerEmpCode !== '' ? " ({$ownerEmpCode})" : '');
                     ?>
                     <div id="taskOwnerSelect">
-                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerName) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
-                                            </div>
+                        <input type="text" class="mw-form-input" value="<?= htmlspecialchars($ownerDisplay) ?>" readonly style="background:#F5F7F6;cursor:not-allowed;">
+                    </div>
                 </div>
-                <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
-                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" required>
-                </div>
-            </div>
-
-            <!-- Row 2: Priority -->
-            <div class="mw-form-row mw-form-group">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Priority</label>
                     <select name="priority" class="mw-form-select">
@@ -1816,6 +2097,32 @@ $todayDateFormatted = date('j F');
                         <option value="high">High</option>
                         <option value="urgent">Urgent</option>
                     </select>
+                </div>
+                <div class="mw-form-col" id="colWorkingHour">
+                    <label class="mw-form-label">Working Time <span style="font-weight:400; color:#65776F;">(hr : min)</span></label>
+                    <input type="hidden" name="working_hour" id="drawerWorkingHour" value="">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;">
+                            <input type="number" id="drawerWorkingHourHr" class="mw-form-input" min="0" max="24" step="1" placeholder="0" oninput="syncWorkingHourFromHm()" style="min-width:0; text-align:center;">
+                            <span style="font-size:12px; color:#65776F; font-weight:600;">hr</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:4px; flex:1; min-width:0;">
+                            <input type="number" id="drawerWorkingHourMin" class="mw-form-input" min="0" max="59" step="1" placeholder="0" oninput="syncWorkingHourFromHm()" style="min-width:0; text-align:center;">
+                            <span style="font-size:12px; color:#65776F; font-weight:600;">min</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Start Date & Deadline -->
+            <div class="mw-form-row mw-form-group">
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Start Date</label>
+                    <input type="date" name="start_date" class="mw-form-input">
+                </div>
+                <div class="mw-form-col">
+                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" required>
                 </div>
             </div>
 
@@ -1846,7 +2153,29 @@ $todayDateFormatted = date('j F');
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
+                    <option value="custom">Custom</option>
                 </select>
+                <div id="customRecurringDatesWrap" style="display:none; margin-top:12px; padding:14px; background:#FAFCFA; border:1px solid #E2EAE5; border-radius:8px;">
+                    <style>
+                        .mw-day-pill input:checked + span {
+                            background: #087F5B !important;
+                            border-color: #087F5B !important;
+                            color: #FFFFFF !important;
+                        }
+                    </style>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="mw-form-label mb-0" style="color:#142D26;">Select Days <span class="req">*</span></span>
+                        <button type="button" id="btnClearCustomDates" style="border:0; background:none; color:#C92A2A; font-size:12px; font-weight:600; cursor:pointer; padding:0;">Clear</button>
+                    </div>
+                    <div id="customRecurringDaysGroup" style="display:flex; flex-wrap:wrap; gap:8px;">
+                        <?php foreach (['sun' => 'Sun', 'mon' => 'Mon', 'tue' => 'Tue', 'wed' => 'Wed', 'thu' => 'Thu', 'fri' => 'Fri', 'sat' => 'Sat'] as $dayKey => $dayLabel): ?>
+                            <label class="mw-day-pill" style="margin:0; cursor:pointer;">
+                                <input type="checkbox" name="recurrence_custom_dates[]" value="<?= $dayKey ?>" class="mw-custom-day-chk" style="display:none;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center; min-width:44px; padding:6px 10px; border-radius:6px; border:1px solid #D1DDD6; background:#FFFFFF; color:#142D26; font-size:12.5px; font-weight:600; transition:all .15s ease; user-select:none;"><?= $dayLabel ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
             </div>
 
 
@@ -1872,7 +2201,7 @@ $todayDateFormatted = date('j F');
             </div>
 
             <!-- Assigned to & CC -->
-            <div class="mw-form-row mw-form-group">
+            <div class="mw-form-row mw-form-group" id="rowAssignedToCc">
                 <div class="mw-form-col">
                     <label class="mw-form-label">Assigned to</label>
                     <?php $mwMulti('assigned_to_id', 'Select Assigned to...', true, (int)$userId, 'taskAssignedToSelect'); ?>
@@ -1901,11 +2230,13 @@ $todayDateFormatted = date('j F');
                 <input type="file" name="attachment" id="drawerAttachment" class="mw-form-input">
             </div>
 
-            <!-- Start Date -->
-            <div class="mw-form-group">
-                    <label class="mw-form-label">Start Date</label>
-                    <input type="date" name="start_date" class="mw-form-input">
-                </div>
+            <!-- Direct Mark as Completed (Self Create Mode only) -->
+            <div class="mw-form-group" id="wrapSelfCompleted" style="display:none;">
+                <label class="mw-checkbox-wrap" style="margin: 4px 0;">
+                    <input type="checkbox" name="mark_completed" value="1" id="chkSelfCompleted">
+                    <span>Mark as Completed immediately</span>
+                </label>
+            </div>
 
             <!-- Callout Notice Box -->
             <div class="mw-callout-box" id="mwTaskNoticeBox">
@@ -1931,6 +2262,50 @@ $todayDateFormatted = date('j F');
             </div>
         </div>
     </form>
+</div>
+
+<!-- Task Type Selection Modal (Self vs Others) -->
+<div class="modal fade" id="mwTaskTypeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm" style="max-width: 440px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <div class="modal-header border-bottom-0 pb-1 pt-4 px-4">
+                <div>
+                    <h5 class="modal-title fw-bold mb-1" style="color:#142D26; font-size:18px;">Create Task</h5>
+                    <p class="mb-0 text-muted" style="font-size:12.5px;">Choose who this task is for</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 pb-4 pt-3">
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <button type="button" id="btnChooseSelfTask" class="btn text-start p-3 d-flex align-items-center"
+                            style="gap:14px; border:1px solid #D1DDD6; border-radius:10px; background:#FAFCFA; transition:all 0.15s ease;">
+                        <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                             style="width:42px; height:42px; background:#E9F5EF; color:#087F5B; font-size:17px;">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold" style="color:#142D26; font-size:14px;">Self</div>
+                            <div class="text-muted" style="font-size:12px;">Create a personal task for yourself</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-muted" style="font-size:12px;"></i>
+                    </button>
+
+                    <button type="button" id="btnChooseOthersTask" class="btn text-start p-3 d-flex align-items-center"
+                            style="gap:14px; border:1px solid #D1DDD6; border-radius:10px; background:#FFFFFF; transition:all 0.15s ease;">
+                        <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                             style="width:42px; height:42px; background:#EBF2FE; color:#1864AB; font-size:17px;">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold" style="color:#142D26; font-size:14px;">Others</div>
+                            <div class="text-muted" style="font-size:12px;">Assign a task to a team member</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-muted" style="font-size:12px;"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Task detail drawer (UI preview; filled via AJAX on row click) -->
@@ -2026,14 +2401,24 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentMetric = '<?= $metricFilter ?>';
     let currentPriority = '<?= $priorityFilter ?>';
     let currentStatus = '<?= $statusFilter ?>';
+    let currentPeriodFrom = '<?= htmlspecialchars((string) ($periodFrom ?? ''), ENT_QUOTES) ?>';
+    let currentPeriodTo = '<?= htmlspecialchars((string) ($periodTo ?? ''), ENT_QUOTES) ?>';
     let currentViewAll = false;
     let searchTimer = null;
 
     const tbody = document.getElementById('mwTasksTbody');
     const footerInfo = document.getElementById('mwFooterInfo');
     const badgeOpen = document.getElementById('badgeOpenCount');
-    const badgeReviewed = document.getElementById('badgeReviewedCount');
+    const badgeCompleted = document.getElementById('badgeCompletedCount');
     const textCompleted = document.getElementById('textCompletedCount');
+
+    function syncHeaderStatusTabs(activeStatus) {
+        const stVal = typeof activeStatus !== 'undefined' ? activeStatus : currentStatus;
+        document.querySelectorAll('.mw-header-tab[data-header-status]').forEach(btn => {
+            const st = btn.getAttribute('data-header-status');
+            btn.classList.toggle('active', !currentMetric && st === stVal);
+        });
+    }
     const statOverdue = document.getElementById('statOverdue');
     const statDueToday = document.getElementById('statDueToday');
     const statNext7 = document.getElementById('statNext7');
@@ -2053,6 +2438,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentMetric) params.set('metric', currentMetric);
         if (currentPriority) params.set('priority', currentPriority);
         if (currentStatus) params.set('status', currentStatus);
+        if (currentPeriodFrom) params.set('period_from', currentPeriodFrom);
+        if (currentPeriodTo) params.set('period_to', currentPeriodTo);
         if (currentViewAll) params.set('view_all', '1');
         if (searchInput && searchInput.value.trim() !== '') {
             params.set('search', searchInput.value.trim());
@@ -2070,6 +2457,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             if (data.status === 'success') {
                 tbody.innerHTML = data.table_html;
+                if (typeof syncTaskSelectionUi === 'function') syncTaskSelectionUi();
                 if (footerInfo && data.footer_info) {
                     footerInfo.innerText = data.footer_info;
                 }
@@ -2091,22 +2479,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTxt('allDeadlineMissed', s.deadline_missed);
                     setTxt('allCompletionRate', s.completion_rate + '%');
                 }
+                if (data.tab_counts) {
+                    Object.keys(data.tab_counts).forEach(k => {
+                        const badgeEl = document.querySelector(`.mw-tab-badge[data-tab-count="${k}"]`);
+                        if (badgeEl) {
+                            const cnt = parseInt(data.tab_counts[k], 10) || 0;
+                            badgeEl.innerText = cnt > 0 ? cnt : '';
+                            badgeEl.style.display = cnt > 0 ? '' : 'none';
+                        }
+                    });
+                }
                 if (data.counts) {
                     if (badgeOpen) badgeOpen.innerText = `${data.counts.open} open`;
-                    if (badgeReviewed && typeof data.counts.my_reviewed !== 'undefined') {
-                        badgeReviewed.innerText = `${data.counts.my_reviewed} completed`;
-                    }
-                    if (textCompleted) textCompleted.innerText = `${data.counts.completed} completed`;
+                    if (badgeCompleted) badgeCompleted.innerText = `${data.counts.completed} completed`;
+                    if (textCompleted) textCompleted.innerText = `${(data.counts.open || 0) + (data.counts.completed || 0)} total`;
                     if (statOverdue) statOverdue.innerText = data.counts.overdue;
                     if (statDueToday) statDueToday.innerText = data.counts.due_today;
                     if (statNext7) statNext7.innerText = data.counts.next7;
                     if (statReview) statReview.innerText = data.counts.waiting_review;
                 }
 
-                const wrapUpdatedBy = document.getElementById('wrapUpdatedBy');
-                if (wrapUpdatedBy) {
-                    wrapUpdatedBy.style.display = (currentTab === 'reviewer') ? 'flex' : 'none';
+                if (typeof data.active_status !== 'undefined' && !currentMetric && currentStatus === '') {
+                    currentStatus = data.active_status;
                 }
+                syncHeaderStatusTabs(data.active_status);
 
                 // Update Browser URL state silently without page reload
                 params.delete('ajax');
@@ -2119,6 +2515,133 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .finally(() => {
             tbody.style.opacity = '1';
+        });
+    }
+
+    const prevSheetSection = document.getElementById('mwPreviousTaskSheetSection');
+    const mwStatsAllEl = document.getElementById('mwStatsAll');
+    const mwMainGridEl = document.getElementById('mwMainGrid');
+    const prevSheetTbody = document.getElementById('mwPrevSheetTbody');
+
+    function togglePreviousTaskSheetMode(isPrev) {
+        if (prevSheetSection) prevSheetSection.style.display = isPrev ? '' : 'none';
+        if (mwStatsAllEl) mwStatsAllEl.style.display = isPrev ? 'none' : '';
+        if (mwMainGridEl) mwMainGridEl.style.display = isPrev ? 'none' : '';
+    }
+
+    function fetchPreviousTaskSheet(forceAll = false) {
+        if (!prevSheetTbody) return;
+        prevSheetTbody.style.opacity = '0.4';
+
+        const tsYearEl = document.getElementById('tsYear');
+        const tsMonthEl = document.getElementById('tsMonth');
+        const tsFromEl = document.getElementById('tsDateFrom');
+        const tsToEl = document.getElementById('tsDateTo');
+
+        const params = new URLSearchParams();
+        params.set('ajax', '1');
+        params.set('tab', 'previous_task_sheet');
+
+        if (forceAll) {
+            if (tsYearEl) tsYearEl.value = 'all';
+            if (tsMonthEl) tsMonthEl.value = 'all';
+            if (tsFromEl) tsFromEl.value = '';
+            if (tsToEl) tsToEl.value = '';
+            params.set('ts_all', '1');
+        } else {
+            const df = tsFromEl ? tsFromEl.value.trim() : '';
+            const dt = tsToEl ? tsToEl.value.trim() : '';
+            const yr = tsYearEl ? tsYearEl.value : 'all';
+            const mo = tsMonthEl ? tsMonthEl.value : 'all';
+            if (df || dt) {
+                if (df) params.set('ts_date_from', df);
+                if (dt) params.set('ts_date_to', dt);
+            } else if (yr === 'all' && mo === 'all') {
+                params.set('ts_all', '1');
+            } else {
+                params.set('ts_year', yr);
+                params.set('ts_month', mo);
+            }
+        }
+
+        fetch(window.location.pathname + '?' + params.toString(), {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                prevSheetTbody.innerHTML = data.rows_html || '';
+                const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+                if (data.summary) {
+                    setTxt('tsStatTotal', data.summary.total ?? 0);
+                    setTxt('tsStatDone', data.summary.done ?? 0);
+                    setTxt('tsStatPending', data.summary.pending ?? 0);
+                    setTxt('tsStatHours', (data.summary.total_hours ?? '0.00') + 'h');
+                }
+                setTxt('tsPeriodLabel', '— ' + (data.period_label || 'All Time'));
+                const exportBtn = document.getElementById('btnTsExport');
+                if (exportBtn && typeof data.export_query !== 'undefined') {
+                    exportBtn.href = `${baseUrl}/task-sheets-export?${data.export_query}`;
+                }
+                params.delete('ajax');
+                window.history.pushState(null, '', `${baseUrl}/my-work-dashboard?${params.toString()}`);
+            }
+        })
+        .catch(err => console.error('Previous task sheet fetch error:', err))
+        .finally(() => {
+            prevSheetTbody.style.opacity = '1';
+        });
+    }
+
+    const btnTsApply = document.getElementById('btnTsApply');
+    const btnTsAll = document.getElementById('btnTsAll');
+    if (btnTsApply) btnTsApply.addEventListener('click', () => fetchPreviousTaskSheet(false));
+    if (btnTsAll) btnTsAll.addEventListener('click', () => fetchPreviousTaskSheet(true));
+
+    const formTsAddNote = document.getElementById('formPrevSheetAddNote');
+    if (formTsAddNote) {
+        formTsAddNote.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const saveBtn = document.getElementById('btnTsSaveNote');
+            const origHtml = saveBtn ? saveBtn.innerHTML : '';
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            }
+            const fd = new FormData(formTsAddNote);
+            fetch(`${baseUrl}/my-work/previous-task-sheet/add-note`, {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    const modalEl = document.getElementById('modalPrevSheetAddNote');
+                    if (modalEl && window.bootstrap) {
+                        const inst = bootstrap.Modal.getInstance(modalEl);
+                        if (inst) inst.hide();
+                    }
+                    formTsAddNote.reset();
+                    const dateInput = document.getElementById('tsNoteDate');
+                    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+                    if (typeof showToast === 'function') showToast(res.message || 'Note added.', 'success');
+                    fetchPreviousTaskSheet(false);
+                } else {
+                    if (typeof showToast === 'function') showToast(res.message || 'Failed to save note.', 'error');
+                }
+            })
+            .catch(() => {
+                if (typeof showToast === 'function') showToast('Network error while saving note.', 'error');
+            })
+            .finally(() => {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = origHtml;
+                }
+            });
         });
     }
 
@@ -2142,6 +2665,30 @@ document.addEventListener('DOMContentLoaded', function () {
             const filterBtnText = document.getElementById('filterBtnText');
             if (filterBtnText) filterBtnText.innerText = 'Filters';
             document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
+
+            if (tabName === 'previous_task_sheet') {
+                togglePreviousTaskSheetMode(true);
+                fetchPreviousTaskSheet(false);
+            } else {
+                togglePreviousTaskSheetMode(false);
+                fetchWorkspaceData();
+            }
+        });
+    });
+
+    // 1b. Header Status Tabs (My Actionable / Completed)
+    document.querySelectorAll('.mw-header-tab[data-header-status]').forEach(tabBtn => {
+        tabBtn.addEventListener('click', function () {
+            const targetStatus = this.getAttribute('data-header-status');
+            if (currentStatus === targetStatus && currentMetric === '') return;
+
+            currentStatus = targetStatus;
+            currentMetric = '';
+            document.querySelectorAll('.mw-stat-card').forEach(el => el.classList.remove('active-metric'));
+            const btnDueDateEl = document.getElementById('btnDueDate');
+            if (btnDueDateEl) btnDueDateEl.classList.remove('active');
+
+            syncHeaderStatusTabs(targetStatus);
             fetchWorkspaceData();
         });
     });
@@ -2189,11 +2736,46 @@ document.addEventListener('DOMContentLoaded', function () {
     const menuDueDate = document.getElementById('menuDueDate');
     const btnFilters = document.getElementById('btnFilters');
     const menuFilters = document.getElementById('menuFilters');
+    const btnPeriod = document.getElementById('btnPeriod');
+    const menuPeriod = document.getElementById('menuPeriod');
+    const periodBtnText = document.getElementById('periodBtnText');
+    const periodFromInput = document.getElementById('periodFromInput');
+    const periodToInput = document.getElementById('periodToInput');
+    const btnApplyPeriod = document.getElementById('btnApplyPeriod');
+    const btnClearPeriod = document.getElementById('btnClearPeriod');
+
+    function formatShortDate(iso) {
+        if (!iso) return '';
+        const parts = iso.split('-');
+        if (parts.length !== 3) return iso;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const m = parseInt(parts[1], 10) - 1;
+        return parts[2] + ' ' + (months[m] || parts[1]);
+    }
+
+    function updatePeriodButtonUi() {
+        if (!btnPeriod || !periodBtnText) return;
+        if (currentPeriodFrom && currentPeriodTo) {
+            btnPeriod.classList.add('active');
+            periodBtnText.textContent = formatShortDate(currentPeriodFrom) + ' - ' + formatShortDate(currentPeriodTo);
+        } else if (currentPeriodFrom) {
+            btnPeriod.classList.add('active');
+            periodBtnText.textContent = 'From ' + formatShortDate(currentPeriodFrom);
+        } else if (currentPeriodTo) {
+            btnPeriod.classList.add('active');
+            periodBtnText.textContent = 'Until ' + formatShortDate(currentPeriodTo);
+        } else {
+            btnPeriod.classList.remove('active');
+            periodBtnText.textContent = 'Period';
+        }
+    }
+    updatePeriodButtonUi();
 
     if (btnDueDate && menuDueDate) {
         btnDueDate.addEventListener('click', function (e) {
             e.stopPropagation();
             if (menuFilters) menuFilters.classList.remove('show');
+            if (menuPeriod) menuPeriod.classList.remove('show');
             menuDueDate.classList.toggle('show');
         });
     }
@@ -2202,15 +2784,143 @@ document.addEventListener('DOMContentLoaded', function () {
         btnFilters.addEventListener('click', function (e) {
             e.stopPropagation();
             if (menuDueDate) menuDueDate.classList.remove('show');
+            if (menuPeriod) menuPeriod.classList.remove('show');
             menuFilters.classList.toggle('show');
         });
     }
 
-    // Close popups on click outside
-    document.addEventListener('click', function () {
+    if (btnPeriod && menuPeriod) {
+        btnPeriod.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (menuDueDate) menuDueDate.classList.remove('show');
+            if (menuFilters) menuFilters.classList.remove('show');
+            menuPeriod.classList.toggle('show');
+        });
+
+        menuPeriod.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
+    }
+
+    if (btnApplyPeriod) {
+        btnApplyPeriod.addEventListener('click', function () {
+            let fromVal = periodFromInput ? periodFromInput.value.trim() : '';
+            let toVal = periodToInput ? periodToInput.value.trim() : '';
+            if (fromVal && toVal && fromVal > toVal) {
+                [fromVal, toVal] = [toVal, fromVal];
+                if (periodFromInput) periodFromInput.value = fromVal;
+                if (periodToInput) periodToInput.value = toVal;
+            }
+            currentPeriodFrom = fromVal;
+            currentPeriodTo = toVal;
+            updatePeriodButtonUi();
+            if (menuPeriod) menuPeriod.classList.remove('show');
+            fetchWorkspaceData();
+        });
+    }
+
+    if (btnClearPeriod) {
+        btnClearPeriod.addEventListener('click', function () {
+            currentPeriodFrom = '';
+            currentPeriodTo = '';
+            if (periodFromInput) periodFromInput.value = '';
+            if (periodToInput) periodToInput.value = '';
+            updatePeriodButtonUi();
+            if (menuPeriod) menuPeriod.classList.remove('show');
+            fetchWorkspaceData();
+        });
+    }
+
+    // Close popups on click outside (capture phase so stopPropagation elsewhere can't block it) or Escape
+    function closeFilterPopups() {
         if (menuDueDate) menuDueDate.classList.remove('show');
         if (menuFilters) menuFilters.classList.remove('show');
+        if (menuPeriod) menuPeriod.classList.remove('show');
+    }
+
+    document.addEventListener('click', function (e) {
+        if (menuDueDate && !menuDueDate.contains(e.target) && (!btnDueDate || !btnDueDate.contains(e.target))) {
+            menuDueDate.classList.remove('show');
+        }
+        if (menuFilters && !menuFilters.contains(e.target) && (!btnFilters || !btnFilters.contains(e.target))) {
+            menuFilters.classList.remove('show');
+        }
+        if (menuPeriod && !menuPeriod.contains(e.target) && (!btnPeriod || !btnPeriod.contains(e.target))) {
+            menuPeriod.classList.remove('show');
+        }
+    }, true);
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeFilterPopups();
     });
+
+    // Table Row Selection Checkboxes (Select / Unselect & Select All)
+    const selectAllTasksChk = document.getElementById('mwSelectAllTasks');
+    const exportSheetBtnText = document.getElementById('exportSheetBtnText');
+    const btnExportSheet = document.getElementById('btnExportSheet');
+
+    function syncTaskSelectionUi() {
+        const rowCheckboxes = Array.from(document.querySelectorAll('#mwTasksTbody .mw-row-select'));
+        const checkedCount = rowCheckboxes.filter(cb => cb.checked).length;
+
+        if (selectAllTasksChk) {
+            selectAllTasksChk.checked = rowCheckboxes.length > 0 && checkedCount === rowCheckboxes.length;
+            selectAllTasksChk.indeterminate = checkedCount > 0 && checkedCount < rowCheckboxes.length;
+        }
+        if (exportSheetBtnText) {
+            exportSheetBtnText.textContent = checkedCount > 0 ? `Export Sheet (${checkedCount})` : 'Export Sheet';
+        }
+        if (btnExportSheet) {
+            btnExportSheet.classList.toggle('active', checkedCount > 0);
+        }
+    }
+
+    if (selectAllTasksChk) {
+        selectAllTasksChk.addEventListener('change', function () {
+            const isChecked = this.checked;
+            document.querySelectorAll('#mwTasksTbody .mw-row-select').forEach(cb => {
+                cb.checked = isChecked;
+                const tr = cb.closest('tr');
+                if (tr) tr.classList.toggle('row-selected', isChecked);
+            });
+            syncTaskSelectionUi();
+        });
+    }
+
+    const tasksTbodyEl = document.getElementById('mwTasksTbody');
+    if (tasksTbodyEl) {
+        tasksTbodyEl.addEventListener('change', function (e) {
+            const cb = e.target.closest('.mw-row-select');
+            if (!cb) return;
+            const tr = cb.closest('tr');
+            if (tr) tr.classList.toggle('row-selected', cb.checked);
+            syncTaskSelectionUi();
+        });
+    }
+
+    if (btnExportSheet) {
+        btnExportSheet.addEventListener('click', function () {
+            const selectedIds = Array.from(document.querySelectorAll('#mwTasksTbody .mw-row-select:checked'))
+                .map(cb => cb.value)
+                .filter(Boolean);
+
+            const params = new URLSearchParams({
+                tab: currentTab,
+                status: currentStatus,
+                priority: currentPriority,
+                metric: currentMetric,
+                period_from: currentPeriodFrom,
+                period_to: currentPeriodTo,
+                search: searchInput ? searchInput.value.trim() : '',
+                view_all: currentViewAll ? '1' : '0',
+                export: 'excel'
+            });
+            if (selectedIds.length > 0) {
+                params.set('task_ids', selectedIds.join(','));
+            }
+            window.location.href = `${baseUrl}/my-work-dashboard?${params.toString()}`;
+        });
+    }
 
     // Due Date Popup Items
     if (menuDueDate) {
@@ -2370,16 +3080,103 @@ document.addEventListener('DOMContentLoaded', function () {
     const formCreateTask = document.getElementById('mwCreateTaskForm');
     const btnSubmitDrawer = document.getElementById('btnSubmitDrawer');
 
+    window.syncWorkingHourFromHm = function () {
+        const hrEl = document.getElementById('drawerWorkingHourHr');
+        const minEl = document.getElementById('drawerWorkingHourMin');
+        const hiddenEl = document.getElementById('drawerWorkingHour');
+        if (!hrEl || !minEl || !hiddenEl) return;
+
+        const rawHr = hrEl.value.trim();
+        const rawMin = minEl.value.trim();
+        if (rawHr === '' && rawMin === '') {
+            hiddenEl.value = '';
+            return;
+        }
+
+        let h = Math.max(0, Math.min(24, parseInt(rawHr || '0', 10) || 0));
+        let m = Math.max(0, Math.min(59, parseInt(rawMin || '0', 10) || 0));
+        if (h === 24 && m > 0) m = 0;
+
+        if (rawHr !== '' && parseInt(rawHr, 10) !== h) hrEl.value = h;
+        if (rawMin !== '' && parseInt(rawMin, 10) !== m) minEl.value = m;
+
+        hiddenEl.value = (h + (m / 60)).toFixed(2);
+    };
+
+    window.setWorkingHourInputs = function (val) {
+        const hrEl = document.getElementById('drawerWorkingHourHr');
+        const minEl = document.getElementById('drawerWorkingHourMin');
+        const hiddenEl = document.getElementById('drawerWorkingHour');
+        if (!hrEl || !minEl || !hiddenEl) return;
+
+        if (val === null || val === undefined || val === '') {
+            hrEl.value = '';
+            minEl.value = '';
+            hiddenEl.value = '';
+            return;
+        }
+
+        const totalMin = Math.max(0, Math.round(parseFloat(val) * 60));
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        hrEl.value = h > 0 ? h : (m > 0 ? 0 : '');
+        minEl.value = m > 0 ? m : (h > 0 ? 0 : '');
+        hiddenEl.value = (h + (m / 60)).toFixed(2);
+    };
+
+    window.formatWorkingHourLabel = function (val) {
+        const totalMin = Math.max(0, Math.round(parseFloat(val) * 60));
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        const parts = [];
+        if (h > 0) parts.push(`${h}h`);
+        if (m > 0) parts.push(`${m}m`);
+        return parts.length ? parts.join(' ') : '0m';
+    };
+
     function openDrawer(mode = 'create') {
         if (drawer && backdrop) {
             const isEdit = (mode === 'edit');
             const drawerTitle = document.getElementById('mwDrawerTitle');
             const drawerSubtitle = document.getElementById('mwDrawerSubtitle');
             const editIdInput = document.getElementById('drawerEditTaskId');
-            if (drawerTitle) drawerTitle.innerText = isEdit ? 'Edit task' : 'Create task';
-            if (drawerSubtitle) drawerSubtitle.innerText = isEdit ? 'Update details, owner and deadline.' : 'Define the output, owner and deadline.';
+            const isSelf = !isEdit && (arguments[1] === 'self');
+
+            const colTaskOwner = document.getElementById('colTaskOwner');
+            const rowAssignedToCc = document.getElementById('rowAssignedToCc');
+            const colWorkingHour = document.getElementById('colWorkingHour');
+            if (colTaskOwner) colTaskOwner.style.display = isSelf ? 'none' : '';
+            if (rowAssignedToCc) rowAssignedToCc.style.display = isSelf ? 'none' : '';
+            if (colWorkingHour) {
+                colWorkingHour.style.display = isSelf ? '' : 'none';
+                if (!isSelf && !isEdit) {
+                    setWorkingHourInputs('');
+                }
+                if (isSelf && !isEdit) {
+                    setWorkingHourInputs('');
+                }
+            }
+            const wrapSelfCompleted = document.getElementById('wrapSelfCompleted');
+            if (wrapSelfCompleted) {
+                wrapSelfCompleted.style.display = isSelf ? '' : 'none';
+                if (!isSelf) {
+                    const chkSC = document.getElementById('chkSelfCompleted');
+                    if (chkSC) chkSC.checked = false;
+                }
+            }
+
+            if (drawerTitle) {
+                drawerTitle.innerText = isEdit ? 'Edit task' : (isSelf ? 'Create Self Task' : 'Create task');
+            }
+            if (drawerSubtitle) {
+                drawerSubtitle.innerText = isEdit
+                    ? 'Update details, owner and deadline.'
+                    : (isSelf ? 'Define the output and deadline for your task.' : 'Define the output, owner and deadline.');
+            }
             if (btnSubmitDrawer) {
-                btnSubmitDrawer.innerHTML = isEdit ? '<i class="fa-solid fa-check me-1"></i> Update task' : '<i class="fa-solid fa-plus me-1"></i> Create & assign';
+                btnSubmitDrawer.innerHTML = isEdit
+                    ? '<i class="fa-solid fa-check me-1"></i> Update task'
+                    : (isSelf ? '<i class="fa-solid fa-plus me-1"></i> Create task' : '<i class="fa-solid fa-plus me-1"></i> Create & assign');
             }
 
             drawer.classList.add('show');
@@ -2401,6 +3198,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
         const selRec = document.getElementById('taskRecurrenceType');
         if (selRec) selRec.required = false;
+        if (typeof window.setCustomRecurringDates === 'function') {
+            window.setCustomRecurringDates([]);
+        }
         document.querySelectorAll('.mw-multi').forEach(b => {
             const s = b.querySelector('.mw-multi-search');
             if (s) s.value = '';
@@ -2422,10 +3222,52 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    const taskTypeModalEl = document.getElementById('mwTaskTypeModal');
+    const btnChooseSelfTask = document.getElementById('btnChooseSelfTask');
+    const btnChooseOthersTask = document.getElementById('btnChooseOthersTask');
+
     if (btnOpenCreateTask) {
         btnOpenCreateTask.addEventListener('click', function() {
+            if (taskTypeModalEl && typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(taskTypeModalEl).show();
+            } else {
+                resetDrawerForm();
+                openDrawer('create', 'others');
+            }
+        });
+    }
+
+    if (btnChooseSelfTask) {
+        btnChooseSelfTask.addEventListener('click', function() {
+            if (taskTypeModalEl && typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(taskTypeModalEl).hide();
+            }
             resetDrawerForm();
-            openDrawer('create');
+            const curUid = '<?= (int)$userId ?>';
+            const boxAssignedTo = document.getElementById('taskAssignedToSelect');
+            if (boxAssignedTo) {
+                boxAssignedTo.querySelectorAll('input[type=radio]').forEach(r => {
+                    r.checked = (String(r.value) === curUid);
+                });
+                if (boxAssignedTo._refresh) boxAssignedTo._refresh();
+            }
+            const boxCc = document.querySelector('.mw-multi[data-placeholder="Select CC..."]');
+            if (boxCc) {
+                boxCc.querySelectorAll('input[type=checkbox]').forEach(c => { c.checked = false; });
+                if (boxCc._refresh) boxCc._refresh();
+            }
+            updateNoticeBox();
+            openDrawer('create', 'self');
+        });
+    }
+
+    if (btnChooseOthersTask) {
+        btnChooseOthersTask.addEventListener('click', function() {
+            if (taskTypeModalEl && typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(taskTypeModalEl).hide();
+            }
+            resetDrawerForm();
+            openDrawer('create', 'others');
         });
     }
     if (btnCloseCreateTask) btnCloseCreateTask.addEventListener('click', closeDrawer);
@@ -2467,6 +3309,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 const prioritySelect = formCreateTask.querySelector('select[name="priority"]');
                 if (prioritySelect && t.priority) prioritySelect.value = t.priority;
 
+                setWorkingHourInputs((t.working_hour !== null && t.working_hour !== undefined) ? t.working_hour : '');
+                const colWorkingHourEdit = document.getElementById('colWorkingHour');
+                if (colWorkingHourEdit) {
+                    const isSelfEdit = (parseInt(t.assigned_to_id, 10) === <?= (int)$userId ?>) || (t.working_hour !== null && t.working_hour !== '');
+                    colWorkingHourEdit.style.display = isSelfEdit ? '' : 'none';
+                }
+
                 const projectSelect = formCreateTask.querySelector('select[name="project_id"]');
                 if (projectSelect) projectSelect.value = t.project_id || '';
 
@@ -2480,6 +3329,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         selRec.value = t.recurrence_type || '';
                         selRec.required = chkRec.checked;
                     }
+                    if (typeof window.setCustomRecurringDates === 'function') {
+                        window.setCustomRecurringDates(Array.isArray(t.recurrence_custom_dates) ? t.recurrence_custom_dates : []);
+                    }
+                    const endEl = document.getElementById('customRecurringEndInput');
+                    if (endEl) endEl.value = t.recurrence_end_date || '';
                 }
 
                 // Expected output field
@@ -2568,7 +3422,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tdBody = document.getElementById('mwTdBody');
     const tdNote = document.getElementById('mwTdNote');
     const tdEsc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    const tdInitials = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    const tdInitials = n => String(n || '?').replace(/\s*\([^)]*\)/g, '').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
     const tdAvatarHtml = (name, photo) => {
         if (photo) {
             return `<img src="${tdEsc(photo)}" alt="${tdEsc(name)}" class="mw-td-avatar" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'mw-td-avatar\\'>${tdEsc(tdInitials(name))}</span>'">`;
@@ -2597,6 +3451,43 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderTaskDetail(t) {
         currentDetailTaskId = t.id;
         const isReviewerView = Boolean(t.is_reviewer && (t.is_completed || t.status === 'completed' || t.status_class === 'in_review'));
+        const remindBtnHtml = (t.is_owner && !t.is_completed)
+            ? `<button type="button" class="mw-td-remind-btn" id="btnSendTaskReminder" title="Send email reminder to Assignee, Collaborators, Reviewer & CC">
+                <i class="fa-regular fa-bell"></i> Remind
+               </button>`
+            : '';
+        const bindRemindBtn = () => {
+            const btnRemind = tdBody.querySelector('#btnSendTaskReminder');
+            if (!btnRemind) return;
+            btnRemind.addEventListener('click', function() {
+                btnRemind.disabled = true;
+                btnRemind.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+
+                fetch(`${baseUrl}/my-work/send-reminder/${t.id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showMwToast(data.message || 'Reminder email sent to all task members!', 'success');
+                        const activeTabEl = tdBody.querySelector('.mw-td-tab.active');
+                        const activePaneIdx = activeTabEl ? activeTabEl.getAttribute('data-pane') : null;
+                        openTaskDetail(t.id, activePaneIdx);
+                    } else {
+                        showMwToast(data.message || 'Failed to send reminder.', 'error');
+                        btnRemind.disabled = false;
+                        btnRemind.innerHTML = '<i class="fa-regular fa-bell"></i> Remind';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error sending task reminder:', err);
+                    showMwToast('Network error while sending reminder.', 'error');
+                    btnRemind.disabled = false;
+                    btnRemind.innerHTML = '<i class="fa-regular fa-bell"></i> Remind';
+                });
+            });
+        };
 
         if (isReviewerView) {
             // =========================================================================
@@ -2658,9 +3549,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <h2 class="mw-td-title" style="font-size:25px; line-height:30px; margin:14px 0 12px;">${tdEsc(t.title)}</h2>
-                <div class="mw-td-pills" style="margin-bottom:18px;">
+                <div class="mw-td-pills" style="margin-bottom:18px; align-items:center;">
                     <span class="mw-td-pill in-review">In review</span>
                     ${t.due_badge ? `<span class="mw-td-pill ${t.overdue ? 'overdue' : ''}">${tdEsc(t.due_badge)}</span>` : ''}
+                    ${remindBtnHtml ? `<span style="margin-left:auto;">${remindBtnHtml}</span>` : ''}
                 </div>
 
                 <!-- Your review is needed banner -->
@@ -2724,6 +3616,7 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
 
             tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
+            bindRemindBtn();
 
             // Configure footer for Reviewer
             const footActions = document.querySelector('.mw-td-foot-actions');
@@ -2995,9 +3888,9 @@ document.addEventListener('DOMContentLoaded', function () {
                </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
 
-        // Owner Feedback & Satisfaction Rating section (Only when task is completed)
+        // Owner Feedback & Satisfaction Rating section (Only when task is completed and not a self-task)
         let ownerFeedbackHtml = '';
-        if (t.is_completed) {
+        if (t.is_completed && !t.is_self_task) {
             const currentRating = parseInt(t.satisfaction_rating, 10) || 0;
             if (t.is_owner) {
                 if (currentRating > 0) {
@@ -3063,15 +3956,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         tdBody.innerHTML = `
-            <div class="mw-td-top"><span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
-                <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="mw-td-top">
+                <span>${tdEsc(t.code)} · ${tdEsc(t.project)}</span>
+                <button type="button" class="mw-td-close" id="mwTdClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             <h2 class="mw-td-title">${tdEsc(t.title)}</h2>
             <div class="mw-td-pills">
                 <span class="mw-td-pill status" id="mwTdStatusPill">${tdEsc(t.status_label)}</span>
                 <span class="mw-td-pill">${tdEsc(t.priority)} priority</span>
+                ${t.working_hour !== null && t.working_hour > 0 ? `<span class="mw-td-pill"><i class="fa-regular fa-clock me-1"></i>${formatWorkingHourLabel(t.working_hour)}</span>` : ''}
                 ${t.overdue ? `<span class="mw-td-pill overdue">${tdEsc(t.overdue)}</span>` : ''}
             </div>
-            <div class="mw-td-tabs">${tabsHtml}</div>
+            <div class="mw-td-tabs">${tabsHtml}${remindBtnHtml}</div>
             <div data-td-pane="0">
                 ${blocked}
                 <div class="mw-td-grid">
@@ -3107,6 +4003,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>`;
         tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
         tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
+        bindRemindBtn();
         tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
             tdBody.querySelectorAll('.mw-td-tab').forEach(x => x.classList.toggle('active', x === b));
             tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === b.dataset.pane ? '' : 'none');
@@ -3134,9 +4031,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 actionBtnHtml = `<button type="button" class="mw-td-btn" disabled style="background:#EDF2EF;color:#8A9992;border-color:#EDF2EF;"><i class="fa-solid fa-check me-1"></i> ${disabledLabel}</button>`;
             }
 
+            const extBtnHtml = !t.is_owner
+                ? `<button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>`
+                : '';
+
             footActions.innerHTML = `
                 ${actionBtnHtml}
-                <button type="button" class="mw-td-btn" id="btnDrawerRequestExtension" ${extBtnDisabled}>Request extension</button>
+                ${extBtnHtml}
             `;
 
             const btnStart = document.getElementById('btnDrawerStartTask');
@@ -3335,12 +4236,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                mentionPopup.innerHTML = matched.map(u => {
+                mentionPopup.innerHTML = matched.map((u, idx) => {
                     const avatar = u.photo
                         ? `<img src="${tdEsc(u.photo)}" class="mw-mention-avatar" alt="${tdEsc(u.name)}">`
                         : `<span class="mw-mention-avatar">${tdEsc(tdInitials(u.name))}</span>`;
                     return `
-                        <div class="mw-mention-item" data-uid="${u.id}" data-name="${tdEsc(u.name)}">
+                        <div class="mw-mention-item${idx === 0 ? ' selected' : ''}" data-uid="${u.id}" data-name="${tdEsc(u.name)}">
                             ${avatar}
                             <span class="mw-mention-name">${tdEsc(u.name)}</span>
                             <span class="mw-mention-role">${tdEsc(u.designation)}</span>
@@ -3380,7 +4281,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (lastAt !== -1 && (lastAt === 0 || /\s/.test(textBeforeCursor[lastAt - 1]))) {
                         mentionStartIndex = lastAt;
                         const query = textBeforeCursor.slice(lastAt + 1);
-                        if (!/\s/.test(query)) {
+                        if (query.length <= 40) {
                             renderMentionList(query);
                             return;
                         }
@@ -3458,12 +4359,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (input) {
                 input.addEventListener('keydown', e => {
+                    const isPopupOpen = mentionPopup && mentionPopup.classList.contains('show');
+                    if (isPopupOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                        const items = Array.from(mentionPopup.querySelectorAll('.mw-mention-item'));
+                        if (items.length > 0) {
+                            e.preventDefault();
+                            let curIdx = items.findIndex(el => el.classList.contains('selected'));
+                            if (curIdx >= 0) items[curIdx].classList.remove('selected');
+                            curIdx = e.key === 'ArrowDown'
+                                ? (curIdx + 1) % items.length
+                                : (curIdx <= 0 ? items.length - 1 : curIdx - 1);
+                            items[curIdx].classList.add('selected');
+                            items[curIdx].scrollIntoView({ block: 'nearest' });
+                            return;
+                        }
+                    }
                     if (e.key === 'Enter') {
-                        if (mentionPopup && mentionPopup.classList.contains('show')) {
-                            const firstItem = mentionPopup.querySelector('.mw-mention-item');
-                            if (firstItem) {
+                        if (isPopupOpen) {
+                            const activeItem = mentionPopup.querySelector('.mw-mention-item.selected') || mentionPopup.querySelector('.mw-mention-item');
+                            if (activeItem) {
                                 e.preventDefault();
-                                firstItem.click();
+                                activeItem.click();
                                 return;
                             }
                         }
@@ -3773,24 +4689,39 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (extNewDeadlineInput) {
-            // Set default date picker based on task's actual deadline + 2 days, or today + 2 days (Date only)
-            let baseDate = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const toYmd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let parsedDl = null;
             if (task.raw_deadline) {
-                const parsedDl = new Date(task.raw_deadline.replace(' ', 'T'));
-                if (!isNaN(parsedDl.getTime())) {
-                    baseDate = parsedDl;
+                const m = String(task.raw_deadline).match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (m) {
+                    parsedDl = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
                 }
             }
-            baseDate.setDate(baseDate.getDate() + 2);
 
-            const pad = n => String(n).padStart(2, '0');
-            const defaultDateStr = `${baseDate.getFullYear()}-${pad(baseDate.getMonth() + 1)}-${pad(baseDate.getDate())}`;
-            extNewDeadlineInput.value = defaultDateStr;
+            // Allow today when current deadline is already missed (in the past);
+            // otherwise require at least currentDeadline + 1 day
+            let minDate = new Date(today.getTime());
+            if (parsedDl) {
+                const dayAfterDl = new Date(parsedDl.getFullYear(), parsedDl.getMonth(), parsedDl.getDate() + 1);
+                if (dayAfterDl > minDate) {
+                    minDate = dayAfterDl;
+                }
+            }
 
-            // Set minimum date to tomorrow
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            extNewDeadlineInput.min = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+            // Default to current deadline + 2 days (or today + 2 days), clamped to >= minDate
+            const defaultDate = new Date((parsedDl || today).getTime());
+            defaultDate.setDate(defaultDate.getDate() + 2);
+            if (defaultDate < minDate) {
+                defaultDate.setTime(minDate.getTime());
+            }
+
+            extNewDeadlineInput.min = toYmd(minDate);
+            extNewDeadlineInput.value = toYmd(defaultDate);
         }
         if (extReasonInput) extReasonInput.value = '';
         extModal.classList.add('show');
@@ -3964,14 +4895,44 @@ document.addEventListener('DOMContentLoaded', function () {
     if (taskReviewerSelect) taskReviewerSelect.addEventListener('change', updateNoticeBox);
     updateNoticeBox();
 
-    // Show Repeat options only when "Is Recurring" is ticked
+    // Show Repeat options only when "Is Recurring" is ticked + Custom 7-day selector
     const chkIsRecurring = document.getElementById('chkIsRecurring');
     const rowRecurrenceEnd = document.getElementById('rowRecurrenceEnd');
+    const selRecType = document.getElementById('taskRecurrenceType');
+    const customDatesWrap = document.getElementById('customRecurringDatesWrap');
+    const btnClearCustomDates = document.getElementById('btnClearCustomDates');
+
+    window.setCustomRecurringDates = function (datesArr) {
+        const picked = new Set(Array.isArray(datesArr) ? datesArr.map(d => String(d).trim().toLowerCase()) : []);
+        document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
+            chk.checked = picked.has(chk.value);
+        });
+        if (customDatesWrap) {
+            customDatesWrap.style.display = (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') ? 'block' : 'none';
+        }
+    };
+
+    if (btnClearCustomDates) {
+        btnClearCustomDates.addEventListener('click', () => {
+            document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk').forEach(chk => {
+                chk.checked = false;
+            });
+        });
+    }
+
+    if (selRecType) {
+        selRecType.addEventListener('change', () => {
+            const isCust = (selRecType.value === 'custom');
+            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
+        });
+    }
+
     if (chkIsRecurring && rowRecurrenceEnd) {
         chkIsRecurring.addEventListener('change', () => {
             rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
-            const selRec = document.getElementById('taskRecurrenceType');
-            if (selRec) selRec.required = chkIsRecurring.checked;
+            if (selRecType) selRecType.required = chkIsRecurring.checked;
+            const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
+            if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
         });
     }
 
@@ -4061,6 +5022,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (formCreateTask) {
         formCreateTask.addEventListener('submit', function(e) {
             e.preventDefault();
+            if (chkIsRecurring && chkIsRecurring.checked && selRecType && selRecType.value === 'custom') {
+                const pickedDays = document.querySelectorAll('#customRecurringDaysGroup .mw-custom-day-chk:checked').length;
+                if (pickedDays === 0) {
+                    showMwToast('Please select at least one day for the custom recurring schedule.', 'error');
+                    return;
+                }
+            }
             const ownerVal = mwPicked('taskAssignedToSelect').value || '<?= (int)$userId ?>';
             const reviewerVal = mwPicked('taskReviewerSelect').value;
             if (reviewerVal && ownerVal && reviewerVal === ownerVal &&
@@ -4117,6 +5085,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         });
+    }
+
+    const initialTaskId = parseInt(new URLSearchParams(window.location.search).get('task_id'), 10);
+    if (initialTaskId > 0 && typeof window.openTaskDetail === 'function') {
+        window.openTaskDetail(initialTaskId);
     }
 });
 </script>

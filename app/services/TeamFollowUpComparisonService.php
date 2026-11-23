@@ -212,7 +212,8 @@ class TeamFollowUpComparisonService
         while ($res && $r = $res->fetch_assoc()) {
             $roleId = (int) $r['role_id'];
             $isSales = in_array($roleId, self::SALES_ROLE_IDS, true) 
-                || in_array((int) $r['secondary_role_id'], self::SALES_ROLE_IDS, true);
+                || in_array((int) $r['secondary_role_id'], self::SALES_ROLE_IDS, true)
+                || strtolower(trim((string) ($r['role_name'] ?? ''))) === 'sales manager';
 
             $users[(int) $r['id']] = [
                 'id' => (int) $r['id'],
@@ -290,6 +291,24 @@ class TeamFollowUpComparisonService
     }
 
     /**
+     * Resolve effective allowed team IDs from team_id and sales_manager_id filters.
+     */
+    protected function resolveAllowedTeamIds(?int $teamId, ?int $salesManagerId): ?array
+    {
+        if ($salesManagerId) {
+            $mgrTeamIds = function_exists('getManagedTeamIds') ? getManagedTeamIds($this->db, $salesManagerId) : [];
+            if ($teamId) {
+                return in_array($teamId, $mgrTeamIds, true) ? [$teamId] : [];
+            }
+            return $mgrTeamIds;
+        }
+        if ($teamId) {
+            return [$teamId];
+        }
+        return null;
+    }
+
+    /**
      * Build the entire comparison dataset.
      */
     public function build(array $period, array $filters = []): array
@@ -315,10 +334,14 @@ class TeamFollowUpComparisonService
             $pid = (int) $filters['project_id'];
             $whereClause .= " AND l.project_id = $pid";
         }
-        if (!empty($filters['team_id'])) {
-            $tid = (int) $filters['team_id'];
+        $allowedTeamIds = $this->resolveAllowedTeamIds(
+            !empty($filters['team_id']) ? (int) $filters['team_id'] : null,
+            !empty($filters['sales_manager_id']) ? (int) $filters['sales_manager_id'] : null
+        );
+        if ($allowedTeamIds !== null) {
+            $inTeams = !empty($allowedTeamIds) ? implode(',', array_map('intval', $allowedTeamIds)) : '-1';
             // Filter by lead team or assigned user's team
-            $whereClause .= " AND (COALESCE(NULLIF(u.team_id, 0), NULLIF(e.team_id, 0), l.team_id) = $tid)";
+            $whereClause .= " AND (COALESCE(NULLIF(u.team_id, 0), NULLIF(e.team_id, 0), l.team_id) IN ($inTeams))";
         }
         if (!empty($filters['executive_id'])) {
             $eid = (int) $filters['executive_id'];
@@ -611,6 +634,7 @@ class TeamFollowUpComparisonService
         }
 
         $filterTeamId = !empty($filters['team_id']) ? (int) $filters['team_id'] : 0;
+        $filterManagerId = !empty($filters['sales_manager_id']) ? (int) $filters['sales_manager_id'] : 0;
         $filterExecId = !empty($filters['executive_id']) ? (int) $filters['executive_id'] : 0;
         $filterStep   = !empty($filters['step']) ? (int) $filters['step'] : 0; // 1..5
         $filterStatus = !empty($filters['status']) ? trim($filters['status']) : ''; // 'overdue', 'late', 'ontime'
@@ -619,10 +643,12 @@ class TeamFollowUpComparisonService
             $pid = (int) $filters['project_id'];
             $whereClause .= " AND l.project_id = $pid";
         }
+        $allowedTeamIds = $this->resolveAllowedTeamIds($filterTeamId ?: null, $filterManagerId ?: null);
         if ($filterExecId > 0) {
             $whereClause .= " AND l.assigned_id = $filterExecId";
-        } elseif ($filterTeamId > 0) {
-            $whereClause .= " AND (COALESCE(NULLIF(u.team_id, 0), NULLIF(e.team_id, 0), l.team_id) = $filterTeamId)";
+        } elseif ($allowedTeamIds !== null) {
+            $inTeams = !empty($allowedTeamIds) ? implode(',', array_map('intval', $allowedTeamIds)) : '-1';
+            $whereClause .= " AND (COALESCE(NULLIF(u.team_id, 0), NULLIF(e.team_id, 0), l.team_id) IN ($inTeams))";
         }
 
         $sql = "

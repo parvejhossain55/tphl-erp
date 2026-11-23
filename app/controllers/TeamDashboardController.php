@@ -55,74 +55,131 @@ class TeamDashboardController extends Controller
         }
 
         // Team switching permission:
-        // Only Sales Team Head (Role 9), SEAL CEO (Role 35), Chief Officer (Role 33), and Management (Roles 1, 3, 32, 34, 38)
-        // Sales Managers (Role 5), Sales Executives (Role 8), and normal team leaders CANNOT switch teams - locked to own team
-        $canSwitchTeam = in_array($roleId, [1, 3, 9, 32, 33, 34, 35, 38]);
-        $isManagement  = $canSwitchTeam;
+        // Sales Team Head / Head of Sales (Role 9), SEAL CEO (35), Chief Officer (33), Management (1, 3, 32, 34, 38) -> all teams
+        // Sales Manager (new role via isSalesManager()) -> can switch ONLY among their assigned teams
+        // Sales Team Leader (Role 5), Sales Executive (Role 8), and normal team leaders -> locked to own team
+        $isSalesManagerUser = function_exists('isSalesManager') && isSalesManager();
+        $managedTeamIds = $isSalesManagerUser ? getManagedTeamIds($this->db, $loggedUserId) : [];
+        $isGlobalTeamViewer = in_array($roleId, [1, 3, 9, 32, 33, 34, 35, 38]) && !$isSalesManagerUser;
+        $canSwitchTeam = $isGlobalTeamViewer || ($isSalesManagerUser && count($managedTeamIds) > 0);
+        $isManagement  = $isGlobalTeamViewer;
 
         // Access check
-        $canAccess = $canSwitchTeam || in_array($roleId, [5, 8]) || $isTeamLeader || $isSalesCoLeader || $sessionTeamId > 0;
+        $canAccess = $canSwitchTeam || $isSalesManagerUser || in_array($roleId, [5, 8]) || $isTeamLeader || $isSalesCoLeader || $sessionTeamId > 0;
         if (!$canAccess) {
             header("Location: " . $GLOBALS['base_url'] . "/my-dashboard");
             exit;
         }
 
-        // Fetch all active teams
+        // Fetch all active teams (filtered to managed teams for Sales Manager)
         $allTeams = $this->teamModel->getAll();
+        $requestedManagerId = ($isGlobalTeamViewer && !empty($_GET['sales_manager_id'])) ? (int)$_GET['sales_manager_id'] : 0;
+        $salesManagers = $isGlobalTeamViewer ? getSalesManagersWithTeams($this->db) : [];
+        if ($isSalesManagerUser && !$isGlobalTeamViewer) {
+            $allTeams = array_values(array_filter($allTeams, function ($t) use ($managedTeamIds) {
+                return in_array((int)($t['id'] ?? 0), $managedTeamIds, true);
+            }));
+        }
 
-        // Resolve active Team ID
-        $requestedTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : 0;
-        if ($canSwitchTeam) {
-            if ($requestedTeamId > 0) {
+        // Resolve active Team ID(s)
+        $requestedTeamRaw = $_GET['team_id'] ?? null;
+        $requestedTeamId  = ($requestedTeamRaw !== null && $requestedTeamRaw !== '' && $requestedTeamRaw !== 'all') ? (int)$requestedTeamRaw : 0;
+        $isAllTeamsMode   = false;
+        $activeTeamIds    = [];
+
+        if ($isGlobalTeamViewer) {
+            if ($requestedManagerId > 0) {
+                $mgrTeamIds = getManagedTeamIds($this->db, $requestedManagerId);
+                $allTeams = array_values(array_filter($allTeams, function ($t) use ($mgrTeamIds) {
+                    return in_array((int)($t['id'] ?? 0), $mgrTeamIds, true);
+                }));
+                if ($requestedTeamId > 0 && in_array($requestedTeamId, $mgrTeamIds, true)) {
+                    $teamId = $requestedTeamId;
+                    $activeTeamIds = [$teamId];
+                } else {
+                    $isAllTeamsMode = true;
+                    $teamId = 0;
+                    $activeTeamIds = !empty($mgrTeamIds) ? $mgrTeamIds : [-1];
+                }
+            } elseif ($requestedTeamId > 0) {
                 $teamId = $requestedTeamId;
-            } elseif ($sessionTeamId > 0) {
-                $teamId = $sessionTeamId;
+                $activeTeamIds = [$teamId];
             } else {
-                $teamId = !empty($allTeams[0]['id']) ? (int)$allTeams[0]['id'] : 1;
+                // Default for Head of Sales & Global Viewers: All Teams
+                $isAllTeamsMode = true;
+                $teamId = 0;
+                $activeTeamIds = array_values(array_unique(array_filter(array_map(fn($t) => (int)($t['id'] ?? 0), $allTeams))));
+            }
+        } elseif ($isSalesManagerUser) {
+            if ($requestedTeamId > 0 && in_array($requestedTeamId, $managedTeamIds, true)) {
+                $teamId = $requestedTeamId;
+                $activeTeamIds = [$teamId];
+            } else {
+                // Default for Sales Manager: All Assigned Teams combined
+                $isAllTeamsMode = true;
+                $teamId = 0;
+                $activeTeamIds = $managedTeamIds;
             }
         } else {
-            // Sales managers, team leaders, etc. are strictly locked to their own team
+            // Sales team leaders (5), team leaders, etc. are strictly locked to their own team
             if ($sessionTeamId > 0) {
                 $teamId = $sessionTeamId;
             } else {
                 $teamId = !empty($allTeams[0]['id']) ? (int)$allTeams[0]['id'] : 1;
             }
+            $activeTeamIds = [$teamId];
+            $allTeams = array_values(array_filter($allTeams, fn($t) => (int)($t['id'] ?? 0) === $teamId));
         }
+
+        $showAllTeamsBtn = ($isGlobalTeamViewer || $isSalesManagerUser);
+        $teamScopeParam  = $isAllTeamsMode ? $activeTeamIds : $teamId;
 
         // Fetch Team Details
-        $teamStmt = $this->db->prepare("SELECT * FROM teams WHERE id = ? LIMIT 1");
         $team = null;
-        if ($teamStmt) {
-            $teamStmt->bind_param("i", $teamId);
-            $teamStmt->execute();
-            $team = $teamStmt->get_result()->fetch_assoc();
-            $teamStmt->close();
+        if ($isAllTeamsMode) {
+            $teamName = $isSalesManagerUser
+                ? 'All Assigned Teams (' . count($activeTeamIds) . ')'
+                : 'All Sales Teams (' . count($activeTeamIds) . ')';
+        } else {
+            $teamStmt = $this->db->prepare("SELECT * FROM teams WHERE id = ? LIMIT 1");
+            if ($teamStmt) {
+                $teamStmt->bind_param("i", $teamId);
+                $teamStmt->execute();
+                $team = $teamStmt->get_result()->fetch_assoc();
+                $teamStmt->close();
+            }
+            $teamName = $team['name'] ?? ('Team #' . $teamId);
         }
 
-        $teamName = $team['name'] ?? ('Team #' . $teamId);
-
         // Fetch active team members
-        $teamMembers = $this->leadModel->getTeamMemberUsers($teamId);
+        $teamMembers = $this->leadModel->getTeamMemberUsers($teamScopeParam);
 
         // Determine Team Leader
         $teamLeader = null;
-        foreach ($teamMembers as $m) {
-            if (!empty($m['is_team_leader']) && (int)$m['is_team_leader'] === 1) {
-                $teamLeader = $m;
-                break;
-            }
-        }
-        if (!$teamLeader) {
-            // Look for managerial / leadership role
+        if ($isAllTeamsMode) {
+            $teamLeader = [
+                'full_name' => $isSalesManagerUser ? ($_SESSION['user']['full_name'] ?? 'Sales Manager') : 'Head of Sales / All Leaders',
+                'role_name' => $isSalesManagerUser ? 'Sales Manager' : 'Overall Sales',
+            ];
+        } else {
             foreach ($teamMembers as $m) {
-                if (in_array((int)($m['role_id'] ?? 0), [35, 33, 34, 9, 5])) {
+                if (!empty($m['is_team_leader']) && (int)$m['is_team_leader'] === 1) {
                     $teamLeader = $m;
                     break;
                 }
             }
-        }
-        if (!$teamLeader && !empty($teamMembers[0])) {
-            $teamLeader = $teamMembers[0];
+            if (!$teamLeader) {
+                // Look for managerial / leadership role
+                foreach ($teamMembers as $m) {
+                    if (in_array((int)($m['role_id'] ?? 0), [35, 33, 34, 9, 5])) {
+                        $teamLeader = $m;
+                        break;
+                    }
+                }
+            }
+            if (!$teamLeader && !empty($teamMembers[0])) {
+                $teamLeader = $teamMembers[0];
+            }
         }
 
         // Selected Member filter (optional executive drill-down)
@@ -281,13 +338,13 @@ class TeamDashboardController extends Controller
                 $matrixMetrics = $this->leadModel->getExecutiveDashboardMetrics($selectedMemberId, null, null, null, false, null, null);
             }
         } else {
-            // Whole Team Aggregate Mode
+            // Whole Team / All Teams Aggregate Mode
             if ($hasFilter) {
-                $stats = $this->salesTargetModel->getTeamRangeStats($teamId, $memberUserIds, $selectedYear, $selectedStartMonth, $selectedEndMonth, $fromDate, $toDate);
-                $matrixMetrics = $this->leadModel->getTeamDashboardMetrics($teamId, null, $selectedYear, $selectedStartMonth, $selectedEndMonth, true, $fromDate, $toDate);
+                $stats = $this->salesTargetModel->getTeamRangeStats($teamScopeParam, $memberUserIds, $selectedYear, $selectedStartMonth, $selectedEndMonth, $fromDate, $toDate);
+                $matrixMetrics = $this->leadModel->getTeamDashboardMetrics($teamScopeParam, null, $selectedYear, $selectedStartMonth, $selectedEndMonth, true, $fromDate, $toDate);
             } else {
-                $stats = $this->salesTargetModel->getTeamRangeStats($teamId, $memberUserIds, null, null, null, null, null);
-                $matrixMetrics = $this->leadModel->getTeamDashboardMetrics($teamId, null, null, null, null, false, null, null);
+                $stats = $this->salesTargetModel->getTeamRangeStats($teamScopeParam, $memberUserIds, null, null, null, null, null);
+                $matrixMetrics = $this->leadModel->getTeamDashboardMetrics($teamScopeParam, null, null, null, null, false, null, null);
             }
         }
 
@@ -305,7 +362,7 @@ class TeamDashboardController extends Controller
         $dealsLost   = $stats['deals_lost'] ?? 0;
 
         // Team member sales & leads performance breakdown (deducting refunds)
-        $memberSalesPerformance = $this->leadModel->getTeamMemberSalesPerformance($teamId, $fromDate, $toDate, $hasFilter);
+        $memberSalesPerformance = $this->leadModel->getTeamMemberSalesPerformance($teamScopeParam, $fromDate, $toDate, $hasFilter);
 
         // Build lead query string for card links
         $leadQueryDate = '';
@@ -316,6 +373,9 @@ class TeamDashboardController extends Controller
         $viewData = array_merge([
             "current_route"             => "team-dashboard",
             "page_title"                => "Team Overview Dashboard",
+            "isGlobalTeamViewer"        => $isGlobalTeamViewer,
+            "salesManagers"             => $salesManagers,
+            "selectedSalesManagerId"    => $requestedManagerId,
             "teamId"                    => $teamId,
             "team"                      => $team,
             "teamName"                  => $teamName,
@@ -324,6 +384,8 @@ class TeamDashboardController extends Controller
             "allTeams"                  => $allTeams,
             "isManagement"              => $isManagement,
             "canSwitchTeam"             => $canSwitchTeam,
+            "isAllTeamsMode"            => $isAllTeamsMode,
+            "showAllTeamsBtn"           => $showAllTeamsBtn,
             "selectedMemberId"          => $selectedMemberId,
             "selectedMember"            => $selectedMember,
             "monthlySiteVisitTarget"    => $monthlySiteVisitTarget,

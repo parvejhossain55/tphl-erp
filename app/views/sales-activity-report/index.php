@@ -23,15 +23,30 @@
                     <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
                     <div class="row g-2 align-items-end">
                         <?php if ($activeTab === 'daily'): ?>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Specific Date (Daily)</label>
                                 <input type="date" name="date" class="form-control form-control-sm" value="<?= htmlspecialchars($date) ?>" required>
                             </div>
-                            <div class="col-md-5">
+                            <?php if (!empty($isGlobalViewer)): ?>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="fa-solid fa-user-tie text-primary me-1"></i>Sales Manager
+                                </label>
+                                <select name="sales_manager_id" id="sarManagerDaily" class="form-select form-select-sm">
+                                    <option value="">All Sales Managers</option>
+                                    <?php foreach (($salesManagers ?? []) as $sm): ?>
+                                        <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= (!empty($selectedSalesManagerId) && (int)$selectedSalesManagerId === (int)$sm['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($sm['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php endif; ?>
+                            <div class="<?= !empty($isGlobalViewer) ? 'col-md-3' : 'col-md-5' ?>">
                                 <label class="form-label fw-semibold">
                                     <i class="fa-solid fa-users text-primary me-1"></i>Team
                                 </label>
-                                <select name="team_id" class="form-select form-select-sm">
+                                <select name="team_id" id="sarTeamDaily" class="form-select form-select-sm">
                                     <option value="">All Teams (Company-Wide)</option>
                                     <?php if(!empty($teams)): foreach($teams as $t): ?>
                                         <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
@@ -65,11 +80,26 @@
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <?php if (!empty($isGlobalViewer)): ?>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="fa-solid fa-user-tie text-primary me-1"></i>Sales Manager
+                                </label>
+                                <select name="sales_manager_id" id="sarManagerMonthly" class="form-select form-select-sm">
+                                    <option value="">All Sales Managers</option>
+                                    <?php foreach (($salesManagers ?? []) as $sm): ?>
+                                        <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= (!empty($selectedSalesManagerId) && (int)$selectedSalesManagerId === (int)$sm['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($sm['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php endif; ?>
+                            <div class="<?= !empty($isGlobalViewer) ? 'col-md-2' : 'col-md-4' ?>">
                                 <label class="form-label fw-semibold">
                                     <i class="fa-solid fa-users text-primary me-1"></i>Team
                                 </label>
-                                <select name="team_id" class="form-select form-select-sm">
+                                <select name="team_id" id="sarTeamMonthly" class="form-select form-select-sm">
                                     <option value="">All Teams (Company-Wide)</option>
                                     <?php if(!empty($teams)): foreach($teams as $t): ?>
                                         <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
@@ -135,7 +165,8 @@
 
         <!-- Tabs Navigation -->
         <?php
-        $teamParam = !empty($selectedTeamId) ? '&team_id=' . urlencode($selectedTeamId) : '';
+        $teamParam = (!empty($selectedTeamId) ? '&team_id=' . urlencode($selectedTeamId) : '')
+            . (!empty($selectedSalesManagerId) ? '&sales_manager_id=' . urlencode($selectedSalesManagerId) : '');
         $monthYearParam = "&year={$year}&month={$month}";
         $dailyParam = !empty($date) ? "&date={$date}" : '';
 
@@ -147,12 +178,46 @@
             $exportParams['year'] = $year;
             $exportParams['month'] = $month;
         }
+        if (!empty($selectedSalesManagerId)) {
+            $exportParams['sales_manager_id'] = $selectedSalesManagerId;
+        }
         if (!empty($selectedTeamId)) {
             $exportParams['team_id'] = $selectedTeamId;
         }
         $excelExportUrl = '?' . http_build_query(array_merge($exportParams, ['export' => 'excel']));
         $pdfExportUrl = '?' . http_build_query(array_merge($exportParams, ['export' => 'pdf']));
         ?>
+        <?php if (!empty($isGlobalViewer)): ?>
+        <script>
+        (function () {
+            function bindCascade(mgrId, teamId) {
+                var mgr = document.getElementById(mgrId);
+                var team = document.getElementById(teamId);
+                if (!mgr || !team) return;
+                function sync() {
+                    var opt = mgr.options[mgr.selectedIndex];
+                    var raw = mgr.value && opt ? (opt.getAttribute('data-teams') || '') : '';
+                    var allowed = mgr.value ? raw.split(',').filter(Boolean) : null;
+                    var cur = team.value;
+                    var valid = false;
+                    for (var i = 0; i < team.options.length; i++) {
+                        var o = team.options[i];
+                        if (!o.value) { o.disabled = false; o.hidden = false; continue; }
+                        var ok = allowed === null || allowed.indexOf(o.value) !== -1;
+                        o.disabled = !ok;
+                        o.hidden = !ok;
+                        if (o.value === cur && ok) valid = true;
+                    }
+                    if (cur && !valid) team.value = '';
+                }
+                mgr.addEventListener('change', sync);
+                if (mgr.value) sync();
+            }
+            bindCascade('sarManagerDaily', 'sarTeamDaily');
+            bindCascade('sarManagerMonthly', 'sarTeamMonthly');
+        })();
+        </script>
+        <?php endif; ?>
         <div class="card custom-card">
             <div class="card-body">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 border-bottom pb-2">

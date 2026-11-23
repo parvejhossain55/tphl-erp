@@ -82,16 +82,16 @@
                                     <option value="">-- Select Employee --</option>
                                     <?php foreach ($employees as $emp): ?>
                                         <option value="<?= $emp['id'] ?>"
-                                            data-designation="<?= htmlspecialchars($emp['designation']) ?>"
-                                            data-designation-id="<?= $emp['designation_id'] ?>"
-                                            data-empid="<?= $emp['employee_id'] ?>" data-email="<?= $emp['email'] ?>"
-                                            data-basic-salary="<?= $emp['basic_salary'] ?>"
-                                            data-gross-salary="<?= $emp['gross_salary'] ?>"
+                                            data-designation="<?= htmlspecialchars((string) ($emp['designation'] ?? '')) ?>"
+                                            data-designation-id="<?= $emp['designation_id'] ?? '' ?>"
+                                            data-empid="<?= htmlspecialchars((string) ($emp['employee_id'] ?? '')) ?>" data-email="<?= htmlspecialchars((string) ($emp['email'] ?? '')) ?>"
+                                            data-basic-salary="<?= $emp['basic_salary'] ?? 0 ?>"
+                                            data-gross-salary="<?= $emp['gross_salary'] ?? 0 ?>"
                                             data-salary-items="<?= htmlspecialchars(json_encode($emp['salary_items'] ?? []), ENT_QUOTES, 'UTF-8') ?>"
                                             data-per-meal-amount="<?= $emp['per_meal_amount'] ?? 0 ?>"
                                             data-advance-salary="<?= $emp['advance_salary'] ?? 0 ?>"
-                                            data-joining-date="<?= $emp['joining_date'] ?>">
-                                            <?= htmlspecialchars($emp['full_name']) ?> - <?= $emp['employee_id'] ?>
+                                            data-joining-date="<?= htmlspecialchars((string) ($emp['joining_date'] ?? '')) ?>">
+                                            <?= htmlspecialchars((string) ($emp['full_name'] ?? '')) ?> - <?= htmlspecialchars((string) ($emp['employee_id'] ?? '')) ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -289,6 +289,23 @@
             });
         }
 
+        function getCycleDaysForPaydate(dateStr) {
+            const raw = String(dateStr || (document.getElementById('paydate') ? document.getElementById('paydate').value : '') || '').trim();
+            let y = new Date().getFullYear();
+            let m = new Date().getMonth() + 1;
+            const match = raw.match(/^(\d{4})-(\d{2})/);
+            if (match) {
+                y = parseInt(match[1], 10);
+                m = parseInt(match[2], 10);
+            }
+            const prevM = m === 1 ? 12 : (m - 1);
+            const prevY = m === 1 ? (y - 1) : y;
+            const d1 = new Date(prevY, prevM - 1, 26);
+            const d2 = new Date(y, m - 1, 25);
+            const diffDays = Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
+            return diffDays > 0 ? diffDays : 30;
+        }
+
         // ── Apply employee data from the selected <option> ──────────────────────
         function applyEmployeeData(selectEl) {
             const selected = selectEl.options[selectEl.selectedIndex];
@@ -301,7 +318,8 @@
             document.getElementById('basicSalary').value = selected.getAttribute('data-basic-salary') || 0;
             const grossSal = selected.getAttribute('data-gross-salary') || 0;
             document.getElementById('grossSalary').value = grossSal;
-            document.getElementById('perDaySalary').value = (parseFloat(grossSal) / 30).toFixed(2);
+            const cycleDays = getCycleDaysForPaydate(document.getElementById('paydate')?.value);
+            document.getElementById('perDaySalary').value = (parseFloat(grossSal) / cycleDays).toFixed(2);
             document.getElementById('mealCount').value = 0;
             document.getElementById('totalSubsidiaryLunch').value = 0;
             document.getElementById('perMealAmount').value = selected.getAttribute('data-per-meal-amount') || 0;
@@ -452,10 +470,11 @@
             applyEmployeeData(selectEl);
 
             // Override salary fields from saved data (in case DB value differs)
+            const restoredPaydate = data.paydate || new Date().toISOString().slice(0, 10);
+            document.getElementById('paydate').value = restoredPaydate;
             document.getElementById('basicSalary').value = data.basic_salary || 0;
             document.getElementById('grossSalary').value = data.gross_salary || 0;
-            document.getElementById('perDaySalary').value = (parseFloat(data.gross_salary || 0) / 30).toFixed(2);
-            document.getElementById('paydate').value = data.paydate || new Date().toISOString().slice(0, 10);
+            document.getElementById('perDaySalary').value = (parseFloat(data.gross_salary || 0) / getCycleDaysForPaydate(restoredPaydate)).toFixed(2);
             if (document.getElementById('joiningDate') && data.joining_date) {
                 document.getElementById('joiningDate').value = data.joining_date;
             }
@@ -480,7 +499,13 @@
         document.getElementById('perMealAmount').addEventListener('input', calculateNetSalary);
 
         // ── Paydate change ───────────────────────────────────────────────────────
-        document.getElementById('paydate').addEventListener('change', collectPayslipData);
+        document.getElementById('paydate').addEventListener('change', function () {
+            const gSal = parseFloat(document.getElementById('grossSalary').value || 0);
+            if (gSal > 0) {
+                document.getElementById('perDaySalary').value = (gSal / getCycleDaysForPaydate(this.value)).toFixed(2);
+            }
+            collectPayslipData();
+        });
 
         // ── Form submit — ensure payload is up to date ───────────────────────────
         document.getElementById('payslipForm').addEventListener('submit', function (e) {

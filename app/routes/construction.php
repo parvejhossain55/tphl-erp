@@ -2,6 +2,13 @@
 return [
 
     // =========================================================================
+    // Controller: Phase2\Con_CentralOversightController
+    // =========================================================================
+    'con-central-oversight' => ['controller' => 'Phase2\Con_CentralOversightController', 'method' => 'index'],
+    'api/con-oversight/project-materials' => ['controller' => 'Phase2\Con_CentralOversightController', 'method' => 'ajaxProjectMaterials'],
+    'api/con-oversight/approver-details' => ['controller' => 'Phase2\Con_CentralOversightController', 'method' => 'ajaxApproverDetails'],
+
+    // =========================================================================
     // Controller: QcAuditController
     // =========================================================================
     'qc-audit-dashboard' => ['controller' => 'QcAuditController', 'method' => 'dashboard'],
@@ -436,6 +443,7 @@ return [
     // =========================================================================
     'con-material-receivings' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'index'],
     'con-material-receiving-create/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'create'],
+    'con-material-receiving-replacement/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'createReplacement'],
     'con-material-receiving-store' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'store'],
     'con-material-receiving-qc/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'qcReview'],
     'con-material-receiving-pm/(\d+)' => ['controller' => 'Phase2\Con_MaterialReceivingController', 'method' => 'pmStore'],

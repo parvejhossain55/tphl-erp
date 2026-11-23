@@ -651,14 +651,14 @@ if ($viewerRole === 12 && $status === 'Draft'):
   <div class="boq-panel" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03);margin-bottom:20px">
     <div class="boq-panel-title" style="margin-bottom:14px">
       <div class="boq-dot" style="background:var(--boq-blue)"></div>
-      Submit for PM Approval
+      Submit for Dept. Head Approval
     </div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <form action="<?= $base ?>/con-boq-approve/<?= $boq['id'] ?>" method="POST">
         <input type="hidden" name="status" value="Submitted">
         <button type="submit" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;border:none;
           border-radius:10px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer"
-          onclick="return confirm('Submit this BOQ for PM approval?')">
+          onclick="return confirm('Submit this BOQ for Dept. Head approval?')">
           <i class="fal fa-paper-plane me-2"></i>Submit for Approval
         </button>
       </form>

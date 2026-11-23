@@ -171,11 +171,28 @@ class Dashboard extends Model
     /**
      * Get overview statistics
      */
-    public function getOverviewStatistics($period = 'all_time', $projectId = null)
+    public function getOverviewStatistics($period = 'all_time', $projectId = null, $strictMode = false)
     {
         $dateRange = $this->getDateRangeByPeriod($period);
         $startDate = $dateRange['start'];
         $endDate = $dateRange['end'];
+
+        $strictPaymentFilter = $strictMode ? "
+            AND lp.is_trashed = 0
+            AND COALESCE(lp.is_emi_discount, 0) = 0
+            AND lb.deleted_at IS NULL
+            AND lb.booking_status NOT IN ('refunded', 'cancelled')
+            AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+            AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+        " : "";
+
+        $strictBookingFilter = $strictMode ? "
+            AND lb.id IS NOT NULL
+            AND lb.deleted_at IS NULL
+            AND lb.booking_status NOT IN ('refunded', 'cancelled')
+            AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+            AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+        " : "";
 
         $stats = [
             'total_cashin' => 0,
@@ -207,6 +224,7 @@ class Dashboard extends Model
         AND lp.verification_status = 'verified'
         AND lp.payment_type = 'land_share'
         AND lp.payment_date BETWEEN ? AND ?
+        {$strictPaymentFilter}
     ";
 
         if ($projectId) {
@@ -235,6 +253,7 @@ class Dashboard extends Model
         AND lp.verification_status = 'verified'
         AND lp.payment_type = 'registration'
         AND lp.payment_date BETWEEN ? AND ?
+        {$strictPaymentFilter}
     ";
 
         if ($projectId) {
@@ -263,6 +282,7 @@ class Dashboard extends Model
         AND lp.verification_status = 'verified'
         AND lp.payment_type = 'development_charge'
         AND lp.payment_date BETWEEN ? AND ?
+        {$strictPaymentFilter}
     ";
 
         if ($projectId) {
@@ -317,6 +337,7 @@ class Dashboard extends Model
         AND lp.verification_status = 'verified'
         AND lp.payment_type = 'booking_money'
         AND lp.payment_date BETWEEN ? AND ?
+        {$strictPaymentFilter}
     ";
 
         if ($projectId) {
@@ -337,14 +358,16 @@ class Dashboard extends Model
         $stmt->close();
 
         // Get EMI amount (from lead_payments — same source as CentralStatement)
+        $emiTypeFilter = $strictMode ? "lp.payment_type IN ('emi', 'emi_due_settlement')" : "lp.payment_type = 'emi'";
         $sqlEmi = "
         SELECT COALESCE(SUM(lp.amount), 0) as total
         FROM lead_payments lp
         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
         WHERE lp.payment_status IN ('paid','partially_paid')
         AND lp.verification_status = 'verified'
-        AND lp.payment_type = 'emi'
+        AND {$emiTypeFilter}
         AND lp.payment_date BETWEEN ? AND ?
+        {$strictPaymentFilter}
     ";
 
         if ($projectId) {
@@ -371,6 +394,7 @@ class Dashboard extends Model
         LEFT JOIN lead_bookings lb ON es.lead_booking_id = lb.id
         WHERE es.due_date BETWEEN ? AND ?
         AND es.status = 'paid'
+        {$strictBookingFilter}
     ";
 
         if ($projectId) {
@@ -399,6 +423,7 @@ class Dashboard extends Model
         AND lp.verification_status = 'verified'
         AND lp.payment_type = 'shop_service_charge'
         AND lp.payment_date BETWEEN ? AND ?
+        {$strictPaymentFilter}
     ";
 
         if ($projectId) {
@@ -518,8 +543,14 @@ class Dashboard extends Model
         $stats['total_cashin'] = $stats['total_landshare'] + $stats['total_registration'] +
             $stats['total_booking_money'] + $stats['total_emi_amount'] + $stats['total_development_charge'] + $stats['total_shop_service_charge'] + $stats['management_cashin'];
 
-        // Calculate Total Revenue (Verified EMI 10% Service Fee + Land Share/Booking Money + Development Charge)
-        $stats['total_revenue'] = $stats['total_service_fees'] + $stats['total_landshare'] + $stats['total_development_charge'];
+        // Calculate Total Revenue
+        if ($strictMode) {
+            // Aligned with CentralStatement::calculateRevenue()
+            $stats['total_revenue'] = $stats['total_service_fees'] + $stats['total_shop_service_charge'] +
+                $stats['total_landshare'] + $stats['total_booking_money'] + $stats['total_development_charge'] + $stats['total_registration'];
+        } else {
+            $stats['total_revenue'] = $stats['total_service_fees'] + $stats['total_landshare'] + $stats['total_development_charge'];
+        }
 
         $peaUnion = $hasPeaTable ? "UNION ALL SELECT paid_amount as total_amount, paid_at as date, project_id FROM project_extra_assets WHERE payment_status = 'paid'" : "";
 
@@ -1682,7 +1713,7 @@ LIMIT ?
                 vp.id,
                 COALESCE(vp.updated_at, vp.created_at) as date,
                 'Vendor' as role_name,
-                v.name as person_name,
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as person_name,
                 'Vendor Payment' as paid_to,
                 vp.net_payable as amount,
                 vp.approved_amount as approved_amount,
@@ -1744,6 +1775,7 @@ LIMIT ?
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
                 WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
+                AND lp.is_trashed = 0 AND COALESCE(lp.is_emi_discount, 0) = 0
                 " . ($projectId ? " AND lb.project_id = ?" : "") . "
                 UNION ALL
                 SELECT mci.transaction_date as date, mci.amount 
@@ -1771,6 +1803,7 @@ LIMIT ?
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
                 WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
+                AND lp.is_trashed = 0 AND COALESCE(lp.is_emi_discount, 0) = 0
                 " . ($projectId ? " AND lb.project_id = ?" : "") . "
                 UNION ALL
                 SELECT mci.transaction_date as date, mci.amount 
@@ -1980,6 +2013,7 @@ LIMIT ?
                     FROM lead_payments lp
                     INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
                     WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
+                    AND lp.is_trashed = 0 AND COALESCE(lp.is_emi_discount, 0) = 0
                     " . ($projectId ? " AND lb.project_id = ?" : "") . "
                     UNION ALL
                     SELECT mci.transaction_date as date, mci.amount 
@@ -2098,6 +2132,7 @@ LIMIT ?
                         FROM lead_payments lp
                         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
                         WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
+                        AND lp.is_trashed = 0 AND COALESCE(lp.is_emi_discount, 0) = 0
                         " . ($projectId ? " AND lb.project_id = ?" : "") . "
                         UNION ALL
                         SELECT mci.transaction_date as date, mci.amount 
@@ -2187,6 +2222,7 @@ LIMIT ?
                         FROM lead_payments lp
                         INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
                         WHERE lp.payment_status IN ('paid','partially_paid') AND lp.verification_status = 'verified'
+                        AND lp.is_trashed = 0 AND COALESCE(lp.is_emi_discount, 0) = 0
                         " . ($projectId ? " AND lb.project_id = ?" : "") . "
                         UNION ALL
                         SELECT mci.transaction_date as date, mci.amount 

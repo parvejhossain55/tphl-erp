@@ -234,10 +234,14 @@ class Payslip extends Model
         if (!$payslip)
             return null;
 
-        // Ensure basic_salary is populated
+        // Ensure basic_salary is consistent with gross_salary (standard 50% Basic + 50% Core Allowances = 100% Gross)
+        $grossSalary = (float) ($payslip['gross_salary'] ?? 0);
         $basicSalary = (float) ($payslip['basic_salary'] ?? 0);
         $totalEarning = (float) ($payslip['total_earning'] ?? 0);
-        if ($basicSalary <= 0 && $totalEarning > 0) {
+        if ($grossSalary > 0 && ($basicSalary <= 0 || abs(($basicSalary * 2.0) - $grossSalary) > 1.0)) {
+            $basicSalary = round($grossSalary * 0.50, 2);
+            $payslip['basic_salary'] = $basicSalary;
+        } elseif ($basicSalary <= 0 && $totalEarning > 0) {
             $basicSalary = round($totalEarning * 0.50, 2);
             $payslip['basic_salary'] = $basicSalary;
         }
@@ -252,83 +256,178 @@ class Payslip extends Model
         $stmt2->bind_param("i", $id);
         $stmt2->execute();
         $itemsResult = $stmt2->get_result();
-        $items = $itemsResult->fetch_all(MYSQLI_ASSOC);
+        $dbItems = $itemsResult->fetch_all(MYSQLI_ASSOC);
         $stmt2->close();
 
-        // Helper to check if item is already present
-        $hasItemLike = function ($keyword, $type = null) use ($items) {
-            foreach ($items as $it) {
-                if ($type && ($it['item_type'] ?? '') !== $type) continue;
-                if (stripos($it['item_name'] ?? '', $keyword) !== false) return true;
+        $isProjectPayslip = !empty($payslip['payroll_project_id']) && (int) $payslip['payroll_project_id'] > 0;
+
+        if ($isProjectPayslip) {
+            // For project-based payslips (Workplace & Auto-Generator), `payslips` columns are the single source of truth
+            // (prevents stale `payslip_details` rows from causing mismatches with `payslip-lists` & `workspace`).
+            $items = [];
+
+            $colHr   = (float) ($payslip['house_rent_allowance'] ?? 0);
+            $colMed  = (float) ($payslip['medical_allowance'] ?? 0);
+            $colConv = (float) ($payslip['conveyance_allowance'] ?? 0);
+            $colRec  = (float) ($payslip['recreation_allowance'] ?? 0);
+            $colCoreSum = $basicSalary + $colHr + $colMed + $colConv + $colRec;
+
+            if ($grossSalary > 0 && (($colHr + $colMed + $colConv + $colRec) <= 0 || abs($colCoreSum - $grossSalary) > 1.0)) {
+                $colHr   = round($basicSalary * 0.50, 2);
+                $colMed  = round($basicSalary * 0.30, 2);
+                $colConv = round($basicSalary * 0.10, 2);
+                $colRec  = round($basicSalary * 0.10, 2);
             }
-            return false;
-        };
 
-        // 3 If core allowances are missing, add from payslip columns or calculate standard 50/30/10/10 of basic
-        $hasHouseRent = $hasItemLike('house rent', 'earning');
-        $hasMed = $hasItemLike('medical', 'earning');
-        $hasConv = $hasItemLike('conveyance', 'earning');
-        $hasRec = $hasItemLike('recreation', 'earning');
+            if ($colHr > 0) {
+                $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => $colHr];
+            }
+            if ($colMed > 0) {
+                $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => $colMed];
+            }
+            if ($colConv > 0) {
+                $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => $colConv];
+            }
+            if ($colRec > 0) {
+                $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => $colRec];
+            }
 
-        if (!$hasHouseRent && (float)($payslip['house_rent_allowance'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['house_rent_allowance']];
-        } elseif (!$hasHouseRent && $basicSalary > 0) {
-            $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.50, 2)];
-        }
+            if ((float) ($payslip['special_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Special Allowance', 'item_type' => 'earning', 'amount' => (float) $payslip['special_allowance']];
+            }
+            if ((float) ($payslip['punctuality_bonus'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Punctuality Bonus', 'item_type' => 'earning', 'amount' => (float) $payslip['punctuality_bonus']];
+            }
+            if ((float) ($payslip['overtime'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Overtime', 'item_type' => 'earning', 'amount' => (float) $payslip['overtime']];
+            }
+            if ((float) ($payslip['arrears_earning'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Arrears', 'item_type' => 'earning', 'amount' => (float) $payslip['arrears_earning']];
+            }
+            if ((float) ($payslip['duty_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Duty Allowance', 'item_type' => 'earning', 'amount' => (float) $payslip['duty_allowance']];
+            }
 
-        if (!$hasMed && (float)($payslip['medical_allowance'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['medical_allowance']];
-        } elseif (!$hasMed && $basicSalary > 0) {
-            $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.30, 2)];
-        }
+            if ((float) ($payslip['advance_salary'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Advance Salary', 'item_type' => 'deduction', 'amount' => (float) $payslip['advance_salary']];
+            }
+            if ((float) ($payslip['subsidized_lunch'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Subsidized Lunch', 'item_type' => 'deduction', 'amount' => (float) $payslip['subsidized_lunch']];
+            }
+            if ((float) ($payslip['unpaid_absent_amount'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'LWP / Unpaid Absent', 'item_type' => 'deduction', 'amount' => (float) $payslip['unpaid_absent_amount']];
+            }
+            if ((float) ($payslip['arrears_deduction'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Arrears Deduction', 'item_type' => 'deduction', 'amount' => (float) $payslip['arrears_deduction']];
+            }
+            if ((float) ($payslip['others_deduction'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Others Deduction', 'item_type' => 'deduction', 'amount' => (float) $payslip['others_deduction']];
+            }
+            if ((float) ($payslip['tax'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Tax Deduction', 'item_type' => 'deduction', 'amount' => (float) $payslip['tax']];
+            }
 
-        if (!$hasConv && (float)($payslip['conveyance_allowance'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['conveyance_allowance']];
-        } elseif (!$hasConv && $basicSalary > 0) {
-            $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.10, 2)];
-        }
+            // Preserve any custom payslip_details items not mapped to standard payslips columns
+            $standardKeywords = [
+                'basic', 'house rent', 'medical', 'conveyance', 'recreation',
+                'special allowance', 'punctual', 'overtime', 'arrear', 'duty', 'food', 'car',
+                'advance', 'lunch', 'meal', 'absent', 'lwp', 'other', 'tax'
+            ];
+            foreach ($dbItems as $dbIt) {
+                $itName = strtolower(trim((string) ($dbIt['item_name'] ?? '')));
+                $itAmt  = (float) ($dbIt['amount'] ?? 0);
+                if ($itName === '' || $itAmt <= 0) {
+                    continue;
+                }
+                $isStandard = false;
+                foreach ($standardKeywords as $kw) {
+                    if (strpos($itName, $kw) !== false) {
+                        $isStandard = true;
+                        break;
+                    }
+                }
+                if (!$isStandard) {
+                    $items[] = $dbIt;
+                }
+            }
+        } else {
+            $items = $dbItems;
 
-        if (!$hasRec && (float)($payslip['recreation_allowance'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['recreation_allowance']];
-        } elseif (!$hasRec && $basicSalary > 0) {
-            $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.10, 2)];
-        }
+            // Helper to check if item is already present
+            $hasItemLike = function ($keyword, $type = null) use (&$items) {
+                foreach ($items as $it) {
+                    if ($type && ($it['item_type'] ?? '') !== $type) continue;
+                    if (stripos($it['item_name'] ?? '', $keyword) !== false) return true;
+                }
+                return false;
+            };
 
-        // Additional earnings from payslip columns
-        if (!$hasItemLike('punctual', 'earning') && (float)($payslip['punctuality_bonus'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Punctuality Bonus', 'item_type' => 'earning', 'amount' => (float)$payslip['punctuality_bonus']];
-        }
-        if (!$hasItemLike('overtime', 'earning') && (float)($payslip['overtime'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Overtime', 'item_type' => 'earning', 'amount' => (float)$payslip['overtime']];
-        }
-        if (!$hasItemLike('arrear', 'earning') && (float)($payslip['arrears_earning'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Arrears', 'item_type' => 'earning', 'amount' => (float)$payslip['arrears_earning']];
-        }
-        if (!$hasItemLike('special allowance', 'earning') && (float)($payslip['special_allowance'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Special Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['special_allowance']];
-        }
-        if (!$hasItemLike('duty', 'earning') && (float)($payslip['duty_allowance'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Duty Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['duty_allowance']];
-        }
+            // 3 If core allowances are missing, add from payslip columns or calculate standard 50/30/10/10 of basic
+            $hasHouseRent = $hasItemLike('house rent', 'earning');
+            $hasMed = $hasItemLike('medical', 'earning');
+            $hasConv = $hasItemLike('conveyance', 'earning');
+            $hasRec = $hasItemLike('recreation', 'earning');
 
-        // Deductions from payslip columns
-        if (!$hasItemLike('advance', 'deduction') && (float)($payslip['advance_salary'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Advance Salary', 'item_type' => 'deduction', 'amount' => (float)$payslip['advance_salary']];
-        }
-        if (!$hasItemLike('lunch', 'deduction') && !$hasItemLike('meal', 'deduction') && (float)($payslip['subsidized_lunch'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Subsidized Lunch', 'item_type' => 'deduction', 'amount' => (float)$payslip['subsidized_lunch']];
-        }
-        if (!$hasItemLike('absent', 'deduction') && !$hasItemLike('lwp', 'deduction') && (float)($payslip['unpaid_absent_amount'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Unpaid Absent', 'item_type' => 'deduction', 'amount' => (float)$payslip['unpaid_absent_amount']];
-        }
-        if (!$hasItemLike('arrear', 'deduction') && (float)($payslip['arrears_deduction'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Arrears Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['arrears_deduction']];
-        }
-        if (!$hasItemLike('other', 'deduction') && (float)($payslip['others_deduction'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Others Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['others_deduction']];
-        }
-        if (!$hasItemLike('tax', 'deduction') && (float)($payslip['tax'] ?? 0) > 0) {
-            $items[] = ['item_name' => 'Tax Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['tax']];
+            if (!$hasHouseRent && (float)($payslip['house_rent_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['house_rent_allowance']];
+            } elseif (!$hasHouseRent && $basicSalary > 0) {
+                $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.50, 2)];
+            }
+
+            if (!$hasMed && (float)($payslip['medical_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['medical_allowance']];
+            } elseif (!$hasMed && $basicSalary > 0) {
+                $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.30, 2)];
+            }
+
+            if (!$hasConv && (float)($payslip['conveyance_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['conveyance_allowance']];
+            } elseif (!$hasConv && $basicSalary > 0) {
+                $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.10, 2)];
+            }
+
+            if (!$hasRec && (float)($payslip['recreation_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['recreation_allowance']];
+            } elseif (!$hasRec && $basicSalary > 0) {
+                $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.10, 2)];
+            }
+
+            // Additional earnings from payslip columns
+            if (!$hasItemLike('punctual', 'earning') && (float)($payslip['punctuality_bonus'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Punctuality Bonus', 'item_type' => 'earning', 'amount' => (float)$payslip['punctuality_bonus']];
+            }
+            if (!$hasItemLike('overtime', 'earning') && (float)($payslip['overtime'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Overtime', 'item_type' => 'earning', 'amount' => (float)$payslip['overtime']];
+            }
+            if (!$hasItemLike('arrear', 'earning') && (float)($payslip['arrears_earning'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Arrears', 'item_type' => 'earning', 'amount' => (float)$payslip['arrears_earning']];
+            }
+            if (!$hasItemLike('special allowance', 'earning') && (float)($payslip['special_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Special Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['special_allowance']];
+            }
+            if (!$hasItemLike('duty', 'earning') && (float)($payslip['duty_allowance'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Duty Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['duty_allowance']];
+            }
+
+            // Deductions from payslip columns
+            if (!$hasItemLike('advance', 'deduction') && (float)($payslip['advance_salary'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Advance Salary', 'item_type' => 'deduction', 'amount' => (float)$payslip['advance_salary']];
+            }
+            if (!$hasItemLike('lunch', 'deduction') && !$hasItemLike('meal', 'deduction') && (float)($payslip['subsidized_lunch'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Subsidized Lunch', 'item_type' => 'deduction', 'amount' => (float)$payslip['subsidized_lunch']];
+            }
+            if (!$hasItemLike('absent', 'deduction') && !$hasItemLike('lwp', 'deduction') && (float)($payslip['unpaid_absent_amount'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'LWP / Unpaid Absent', 'item_type' => 'deduction', 'amount' => (float)$payslip['unpaid_absent_amount']];
+            }
+            if (!$hasItemLike('arrear', 'deduction') && (float)($payslip['arrears_deduction'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Arrears Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['arrears_deduction']];
+            }
+            if (!$hasItemLike('other', 'deduction') && (float)($payslip['others_deduction'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Others Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['others_deduction']];
+            }
+            if (!$hasItemLike('tax', 'deduction') && (float)($payslip['tax'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Tax Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['tax']];
+            }
         }
 
         // 4 Attach items to payslip array
@@ -446,13 +545,19 @@ class Payslip extends Model
                     p.email_sent_at,
                     ar.approved_at AS approval_time,
                     ar.status AS approval_status,
-                    pd.amount AS lwp_amount,
+                    (SELECT SUM(pd.amount) FROM payslip_details AS pd WHERE pd.payslip_id = p.id AND pd.payslip_item_id = 4) AS lwp_amount,
+                    p.late_unpaid_absent_days,
+                    p.unpaid_absent_amount,
+                    p.effective_days,
+                    p.cycle_days,
+                    p.payroll_project_id,
+                    pp.name AS project_name,
                     e.gross_salary AS emp_gross_salary
                 FROM payslips AS p
+                LEFT JOIN payroll_projects AS pp ON p.payroll_project_id = pp.id
                 LEFT JOIN employees AS e ON p.employee_id = e.id
                 LEFT JOIN designations AS d ON e.designation_id = d.id
                 LEFT JOIN departments AS dept ON e.department_id = dept.id
-                LEFT JOIN payslip_details AS pd ON pd.payslip_id = p.id AND pd.payslip_item_id = 4
                 LEFT JOIN (
                     SELECT *
                     FROM (
@@ -516,13 +621,19 @@ class Payslip extends Model
                     p.email_sent_at,
                     ar.approved_at AS approval_time,
                     ar.status AS approval_status,
-                    pd.amount AS lwp_amount,
+                    (SELECT SUM(pd.amount) FROM payslip_details AS pd WHERE pd.payslip_id = p.id AND pd.payslip_item_id = 4) AS lwp_amount,
+                    p.late_unpaid_absent_days,
+                    p.unpaid_absent_amount,
+                    p.effective_days,
+                    p.cycle_days,
+                    p.payroll_project_id,
+                    pp.name AS project_name,
                     e.gross_salary AS emp_gross_salary
                 FROM employees AS e
                 LEFT JOIN designations AS desg ON e.designation_id = desg.id
                 LEFT JOIN departments AS dept ON e.department_id = dept.id
                 LEFT JOIN payslips AS p ON p.employee_id = e.id AND YEAR(p.payslip_month) = ? AND MONTH(p.payslip_month) = ?
-                LEFT JOIN payslip_details AS pd ON pd.payslip_id = p.id AND pd.payslip_item_id = 4
+                LEFT JOIN payroll_projects AS pp ON p.payroll_project_id = pp.id
                 LEFT JOIN (
                     SELECT *
                     FROM (
@@ -559,13 +670,19 @@ class Payslip extends Model
                     p.email_sent_at,
                     ar.approved_at AS approval_time,
                     ar.status AS approval_status,
-                    pd.amount AS lwp_amount,
+                    (SELECT SUM(pd.amount) FROM payslip_details AS pd WHERE pd.payslip_id = p.id AND pd.payslip_item_id = 4) AS lwp_amount,
+                    p.late_unpaid_absent_days,
+                    p.unpaid_absent_amount,
+                    p.effective_days,
+                    p.cycle_days,
+                    p.payroll_project_id,
+                    pp.name AS project_name,
                     e.gross_salary AS emp_gross_salary
                 FROM payslips AS p
+                LEFT JOIN payroll_projects AS pp ON p.payroll_project_id = pp.id
                 LEFT JOIN employees AS e ON p.employee_id = e.id
                 LEFT JOIN designations AS d ON e.designation_id = d.id
                 LEFT JOIN departments AS dept ON e.department_id = dept.id
-                LEFT JOIN payslip_details AS pd ON pd.payslip_id = p.id AND pd.payslip_item_id = 4
                 LEFT JOIN (
                     SELECT *
                     FROM (

@@ -61,6 +61,7 @@ $qsBase = array_filter([
     'from' => $filters['from'],
     'to' => $filters['to'],
     'project_id' => $filters['project_id'],
+    'sales_manager_id' => $filters['sales_manager_id'] ?? null,
     'team_id' => $filters['team_id'],
     'executive_id' => $filters['executive_id'],
 ]);
@@ -112,6 +113,8 @@ if ($filters['executive_id']) {
     }
 } elseif ($filters['team_id'] && isset($teams[$filters['team_id']])) {
     $scopeLabel = $teams[$filters['team_id']]['name'];
+} elseif (!empty($filters['sales_manager_id']) && isset($salesManagers[$filters['sales_manager_id']])) {
+    $scopeLabel = $salesManagers[$filters['sales_manager_id']]['name'] . ' (Cluster)';
 }
 
 $projectName = null;
@@ -287,6 +290,7 @@ $jsData = [
     /* Select2 integration for Sales Performance search filters */
     .sp-filters .select2-container { font-family: inherit; font-size: 13px; }
     .sp-filters #spProject + .select2-container { min-width: 175px; max-width: 220px; flex: 1 1 175px; }
+    .sp-filters #spManager + .select2-container { min-width: 185px; max-width: 230px; flex: 1 1 185px; }
     .sp-filters #spTeam + .select2-container { min-width: 165px; max-width: 200px; flex: 1 1 165px; }
     .sp-filters #spExec + .select2-container { min-width: 220px; max-width: 280px; flex: 1 1 220px; }
 
@@ -891,6 +895,7 @@ $jsData = [
         .sp-filters input[type=date],
         .sp-filters .select2-container,
         .sp-filters #spProject + .select2-container,
+        .sp-filters #spManager + .select2-container,
         .sp-filters #spTeam + .select2-container,
         .sp-filters #spExec + .select2-container {
             width: 100% !important;
@@ -2013,6 +2018,14 @@ $jsData = [
                     <option value="<?= (int) $p['id'] ?>" <?= (int) $filters['project_id'] === (int) $p['id'] ? 'selected' : '' ?>><?= sp_h($p['name']) ?></option>
                 <?php endforeach; ?>
             </select>
+            <select name="sales_manager_id" id="spManager" class="sp-select2" data-placeholder="All cluster heads">
+                <option value="">All cluster heads</option>
+                <?php foreach (($salesManagers ?? []) as $sm): ?>
+                    <option value="<?= (int) $sm['id'] ?>" data-teams="<?= sp_h(implode(',', $sm['team_ids'])) ?>" <?= (int) ($filters['sales_manager_id'] ?? 0) === (int) $sm['id'] ? 'selected' : '' ?>>
+                        <?= sp_h($sm['name']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
             <select name="team_id" id="spTeam" class="sp-select2" data-placeholder="All teams">
                 <option value="">All teams</option>
                 <?php foreach ($teams as $t): if (!$t['active']) continue; ?>
@@ -2301,42 +2314,6 @@ $jsData = [
                 </div>
                 <div class="sp-note">Click any team to view member-wise breakdown, visits, and unassigned leads.</div>
             </div>
-        </div>
-
-        <!-- AI Data Quality Checks -->
-        <div class="sp-card" style="margin-top:18px">
-            <div class="sp-card-head">
-                <div>
-                    <h3><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--sp-green);margin-right:6px"></i> AI Data Quality Checks</h3>
-                    <div class="sp-sub">Fix these to keep performance numbers exact. Click “Review” to see the affected records.</div>
-                </div>
-            </div>
-            <?php
-            $groups = [];
-            foreach ($checks as $c) $groups[$c['group']][] = $c;
-            foreach ($groups as $gName => $items): ?>
-                <div class="sp-dq-group">
-                    <h4><?= sp_h($gName) ?></h4>
-                    <div class="sp-dq-grid">
-                        <?php foreach ($items as $c): ?>
-                            <div class="sp-dq">
-                                <div class="top">
-                                    <span class="lbl"><?= sp_h($c['label']) ?></span>
-                                    <span class="cnt <?= $c['count'] === 0 ? 'zero' : '' ?>"><?= sp_n($c['count']) ?></span>
-                                </div>
-                                <div class="desc"><?= sp_h($c['description']) ?></div>
-                                <div class="foot">
-                                    <span>
-                                        <span class="sp-sev <?= $c['count'] === 0 ? 'ok' : $c['severity'] ?>"><?= $c['count'] === 0 ? 'Clean' : $c['severity'] ?></span>
-                                        <span class="impact">Affects: <?= sp_h($c['impact']) ?></span>
-                                    </span>
-                                    <?php if ($c['count'] > 0): ?><button type="button" class="sp-link" data-gap="<?= sp_h($c['key']) ?>">Review</button><?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endforeach; ?>
         </div>
 
     <?php elseif ($tab === 'team'): ?>

@@ -156,7 +156,8 @@ $public_routes = [
     'api/client-authenticate',
     'api/client-details',
     'run-restore-bookings-payments',
-    'restore-bookings-data'
+    'restore-bookings-data',
+    'todo/cron'
 ];
 
 $isPublicReceiptAccess = (
@@ -172,6 +173,7 @@ if (!in_array($route, $public_routes)
     && !$isPublicReceiptAccess
 ) {
     checkLogin();
+    checkDashboardAccess($route);
 } else {
     // logged in user cannot see login page
     if (!empty($_SESSION['user']['id']) && ($route === '' || $route === 'admin-login')) {

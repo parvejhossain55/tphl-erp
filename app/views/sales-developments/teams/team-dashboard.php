@@ -185,57 +185,101 @@ if (!function_exists('buildTeamUrl')) {
 <div class="main-content">
 
     <!-- TEAM OVERVIEW HERO / HEADER -->
-    <div class="card__wrapper shadow-sm p-3 mb-3" style="border-radius: 12px; background: #ffffff;">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pb-3 border-bottom">
+    <div class="card__wrapper shadow-sm p-3 mb-3" style="border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0;">
+        <!-- Top Row: Title, Badges & Metadata -->
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 pb-3">
             <div>
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <span class="badge bg-primary px-2.5 py-1 text-uppercase" style="letter-spacing: 0.05em; font-size: 11px;">
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                    <span class="badge bg-primary px-2.5 py-1 text-uppercase" style="letter-spacing: 0.05em; font-size: 10.5px; border-radius: 6px;">
                         <i class="fa-solid fa-users-rectangle me-1"></i> Team Overview
                     </span>
                     <?php if (!empty($selectedMemberId)): ?>
-                        <span class="badge bg-warning text-dark border px-2.5 py-1" style="font-size: 11px;">
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1" style="font-size: 11px; border-radius: 6px;">
                             <i class="fa-solid fa-user-check me-1"></i> Single Member View
                         </span>
                     <?php else: ?>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style="font-size: 11px;">
-                            <i class="fa-solid fa-chart-pie me-1"></i> Team Aggregate View
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style="font-size: 11px; border-radius: 6px;">
+                            <i class="fa-solid fa-chart-pie me-1"></i> <?= !empty($isAllTeamsMode) ? 'All Teams Aggregate' : 'Team Aggregate View' ?>
                         </span>
                     <?php endif; ?>
                 </div>
-                <h3 class="fw-bold mb-1" style="color: #0f172a; letter-spacing: -0.02em;">
+                <h3 class="fw-bold mb-2" style="color: #0f172a; letter-spacing: -0.02em; font-size: 1.45rem;">
                     <i class="fa-solid fa-shield-halved text-primary me-2"></i><?= htmlspecialchars($teamName) ?>
                 </h3>
-                <div class="d-flex flex-wrap align-items-center gap-2 text-muted" style="font-size: 13px;">
-                    <span>
-                        <i class="fa-solid fa-crown text-warning me-1"></i>
-                        <strong>Leader:</strong> <?= htmlspecialchars($teamLeader['full_name'] ?? 'Not Designated') ?>
+                <div class="d-flex flex-wrap align-items-center gap-3 text-muted" style="font-size: 12.5px;">
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <i class="fa-solid fa-crown text-warning"></i>
+                        <strong class="text-dark">Leader:</strong>
+                        <span><?= htmlspecialchars($teamLeader['full_name'] ?? 'Not Designated') ?></span>
                         <?= !empty($teamLeader['role_name']) ? '<span class="text-secondary">(' . htmlspecialchars($teamLeader['role_name']) . ')</span>' : '' ?>
                     </span>
-                    <span>&bull;</span>
-                    <span>
-                        <i class="fa-solid fa-users text-info me-1"></i>
-                        <strong><?= count($teamMembers) ?></strong> Active Members
-                    </span>
-                    <span>&bull;</span>
-                    <span>
-                        <i class="fa-solid fa-calendar-days text-primary me-1"></i>
-                        <strong>Cycle:</strong> <?= htmlspecialchars($titlePeriod) ?>
+                    <span class="text-secondary opacity-50">&bull;</span>
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <i class="fa-solid fa-users text-info"></i>
+                        <strong class="text-dark"><?= count($teamMembers) ?></strong> Active Members
                     </span>
                 </div>
             </div>
 
-            <!-- Team & Member Selectors -->
+            <!-- Active Cycle Indicator -->
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1.5" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; font-size: 12px;">
+                    <i class="fa-solid fa-calendar-days text-primary"></i>
+                    <span class="text-muted fw-semibold">Active Range:</span>
+                    <strong class="text-primary"><?= htmlspecialchars($titlePeriod) ?></strong>
+                    <?php if (!empty($hasFilter)): ?>
+                        <a href="<?= buildTeamUrl(['preset' => 'all_time', 'from_date' => null, 'to_date' => null]) ?>" class="text-danger text-decoration-none ms-1" title="Reset to All-Time">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unified Clean Filter Toolbar -->
+        <div class="p-2.5 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <!-- Left: Team & Member Selectors -->
             <div class="d-flex flex-wrap align-items-center gap-2">
-                
-                <!-- Team Switcher: Only for Management, Sales Team Head, SEAL CEO, Chief Officer -->
-                <?php if (!empty($canSwitchTeam)): ?>
-                    <div class="d-flex align-items-center gap-1">
-                        <label for="teamSelect" class="form-label mb-0 small text-muted fw-bold d-none d-sm-inline">
-                            <i class="fa-solid fa-building me-1"></i>Team:
-                        </label>
-                        <select id="teamSelect" class="form-select form-select-sm" style="min-width: 170px; border-radius: 8px;" onchange="window.location.href=this.value;">
+                <?php if (!empty($showAllTeamsBtn)): ?>
+                    <a href="<?= buildTeamUrl(['team_id' => 'all', 'sales_manager_id' => null, 'member_id' => null, 'assigned_user' => null]) ?>"
+                       class="btn btn-sm <?= (!empty($isAllTeamsMode) && empty($selectedSalesManagerId)) ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-primary' ?> text-nowrap d-inline-flex align-items-center gap-1"
+                       style="height: 34px; border-radius: 8px; font-size: 12.5px; font-weight: 600; padding: 0 12px;">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span>All Teams</span>
+                    </a>
+                <?php endif; ?>
+
+                <?php if (!empty($isGlobalTeamViewer) && !empty($salesManagers)): ?>
+                    <div class="input-group input-group-sm flex-nowrap" style="width: auto;">
+                        <span class="input-group-text bg-white text-muted fw-semibold text-nowrap" style="height: 34px; border-radius: 8px 0 0 8px; font-size: 12px; border-color: #cbd5e1;">
+                            <i class="fa-solid fa-user-tie text-primary me-1"></i> Sales Manager
+                        </span>
+                        <select id="managerSelect" class="form-select form-select-sm fw-semibold" style="height: 34px; min-width: 170px; max-width: 230px; border-radius: 0 8px 8px 0; font-size: 12.5px; border-color: #cbd5e1;" onchange="window.location.href=this.value;">
+                            <option value="<?= buildTeamUrl(['sales_manager_id' => null, 'team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>" <?= empty($selectedSalesManagerId) ? 'selected' : '' ?>>
+                                All Sales Managers
+                            </option>
+                            <?php foreach ($salesManagers as $sm): ?>
+                                <option value="<?= buildTeamUrl(['sales_manager_id' => $sm['id'], 'team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>" <?= (!empty($selectedSalesManagerId) && (int)$selectedSalesManagerId === (int)$sm['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($sm['name']) ?> (<?= count($sm['team_ids']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($allTeams)): ?>
+                    <div class="input-group input-group-sm flex-nowrap" style="width: auto;">
+                        <span class="input-group-text bg-white text-muted fw-semibold text-nowrap" style="height: 34px; border-radius: 8px 0 0 8px; font-size: 12px; border-color: #cbd5e1;">
+                            <i class="fa-solid fa-building text-primary me-1"></i> Team
+                        </span>
+                        <select id="teamSelect" class="form-select form-select-sm fw-semibold" style="height: 34px; min-width: 170px; max-width: 230px; border-radius: 0 8px 8px 0; font-size: 12.5px; border-color: #cbd5e1;" onchange="window.location.href=this.value;">
+                            <?php if (!empty($showAllTeamsBtn)): ?>
+                                <option value="<?= buildTeamUrl(['team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>" <?= !empty($isAllTeamsMode) ? 'selected' : '' ?>>
+                                    All Teams (<?= count($allTeams) ?>)
+                                </option>
+                            <?php endif; ?>
                             <?php foreach ($allTeams as $t): ?>
-                                <option value="<?= buildTeamUrl(['team_id' => $t['id'], 'member_id' => null, 'assigned_user' => null]) ?>" <?= (int)$t['id'] === (int)$teamId ? 'selected' : '' ?>>
+                                <option value="<?= buildTeamUrl(['team_id' => $t['id'], 'member_id' => null, 'assigned_user' => null]) ?>" <?= (empty($isAllTeamsMode) && (int)$t['id'] === (int)$teamId) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($t['name']) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -243,14 +287,13 @@ if (!function_exists('buildTeamUrl')) {
                     </div>
                 <?php endif; ?>
 
-                <!-- Member Switcher (All Members vs Specific Executive) -->
-                <div class="d-flex align-items-center gap-1">
-                    <label for="memberSelect" class="form-label mb-0 small text-muted fw-bold d-none d-sm-inline">
-                       Member:
-                    </label>
-                    <select id="memberSelect" class="form-select form-select-sm fw-semibold" style="min-width: 190px; border-radius: 8px; border-color: #3b82f6;" onchange="window.location.href=this.value;">
+                <div class="input-group input-group-sm flex-nowrap" style="width: auto;">
+                    <span class="input-group-text bg-white text-muted fw-semibold text-nowrap" style="height: 34px; border-radius: 8px 0 0 8px; font-size: 12px; border-color: #cbd5e1;">
+                        <i class="fa-solid fa-user text-info me-1"></i> Member
+                    </span>
+                    <select id="memberSelect" class="form-select form-select-sm fw-semibold" style="height: 34px; min-width: 190px; max-width: 260px; border-radius: 0 8px 8px 0; font-size: 12.5px; border-color: #cbd5e1;" onchange="window.location.href=this.value;">
                         <option value="<?= buildTeamUrl(['member_id' => null, 'assigned_user' => null]) ?>" <?= empty($selectedMemberId) ? 'selected' : '' ?>>
-                            All Members (Team Aggregate)
+                            All Members (Aggregate)
                         </option>
                         <optgroup label="Team Members">
                             <?php foreach ($teamMembers as $mem): ?>
@@ -261,17 +304,43 @@ if (!function_exists('buildTeamUrl')) {
                         </optgroup>
                     </select>
                 </div>
+            </div>
 
+            <!-- Right: Date Range Presets -->
+            <div class="d-flex flex-wrap align-items-center gap-1">
+                <a href="<?= buildTeamUrl(['preset' => 'today', 'from_date' => null, 'to_date' => null]) ?>" 
+                   class="btn btn-sm <?= ($activePreset === 'today') ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-secondary' ?> text-nowrap" 
+                   style="height: 34px; line-height: 24px; border-radius: 8px; font-size: 12px; padding: 4px 11px;">
+                    <i class="fa-solid fa-calendar-day me-1"></i> Today
+                </a>
+                <a href="<?= buildTeamUrl(['preset' => 'yesterday', 'from_date' => null, 'to_date' => null]) ?>" 
+                   class="btn btn-sm <?= ($activePreset === 'yesterday') ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-secondary' ?> text-nowrap" 
+                   style="height: 34px; line-height: 24px; border-radius: 8px; font-size: 12px; padding: 4px 11px;">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Yesterday
+                </a>
+                <a href="<?= buildTeamUrl(['preset' => 'this_month', 'from_date' => null, 'to_date' => null]) ?>" 
+                   class="btn btn-sm <?= ($activePreset === 'this_month') ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-secondary' ?> text-nowrap" 
+                   style="height: 34px; line-height: 24px; border-radius: 8px; font-size: 12px; padding: 4px 11px;">
+                    <i class="fa-solid fa-calendar-check me-1"></i> This Month
+                </a>
+                <a href="<?= buildTeamUrl(['preset' => 'all_time', 'from_date' => null, 'to_date' => null]) ?>" 
+                   class="btn btn-sm <?= ($activePreset === 'all_time') ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-secondary' ?> text-nowrap" 
+                   style="height: 34px; line-height: 24px; border-radius: 8px; font-size: 12px; padding: 4px 11px;">
+                    <i class="fa-solid fa-infinity me-1"></i> All Time
+                </a>
+                <button type="button" class="btn btn-sm <?= ($activePreset === 'custom') ? 'btn-primary shadow-sm' : 'btn-outline-primary bg-white' ?> text-nowrap" id="toggleCustomRange" style="height: 34px; border-radius: 8px; font-size: 12px; padding: 4px 11px;">
+                    <i class="fa-solid fa-sliders me-1"></i> Custom Range
+                </button>
             </div>
         </div>
 
         <!-- Feedback alert when individual executive is selected -->
         <?php if (!empty($selectedMemberId) && !empty($selectedMember)): ?>
-            <div class="alert alert-primary py-2 px-3 mt-3 mb-0 d-flex align-items-center justify-content-between flex-wrap gap-2" style="border-radius: 8px;">
+            <div class="alert alert-primary py-2 px-3 mt-2 mb-0 d-flex align-items-center justify-content-between flex-wrap gap-2" style="border-radius: 8px;">
                 <div class="d-flex align-items-center gap-2">
                     <div>
-                        <strong class=""><?= htmlspecialchars($selectedMember['full_name']) ?></strong>
-                        <span class="text-light ms-1" style="font-size: 12px;">(<?= htmlspecialchars($selectedMember['role_name'] ?? 'Team Member') ?>)</span>
+                        <strong><?= htmlspecialchars($selectedMember['full_name']) ?></strong>
+                        <span class="ms-1 opacity-75" style="font-size: 12px;">(<?= htmlspecialchars($selectedMember['role_name'] ?? 'Team Member') ?>)</span>
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">Executive Drill-Down</span>
                     </div>
                 </div>
@@ -281,53 +350,14 @@ if (!function_exists('buildTeamUrl')) {
             </div>
         <?php endif; ?>
 
-        <!-- Date Range Presets & Filter Buttons -->
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-3">
-            <div class="d-flex flex-wrap align-items-center gap-1">
-                <a href="<?= buildTeamUrl(['preset' => 'today', 'from_date' => null, 'to_date' => null]) ?>" 
-                   class="btn btn-sm <?= ($activePreset === 'today') ? 'btn-primary' : 'btn-outline-secondary' ?>" 
-                   style="border-radius: 6px; font-size: 12px; padding: 4px 12px;">
-                    <i class="fa-solid fa-calendar-day me-1"></i> Today
-                </a>
-                <a href="<?= buildTeamUrl(['preset' => 'yesterday', 'from_date' => null, 'to_date' => null]) ?>" 
-                   class="btn btn-sm <?= ($activePreset === 'yesterday') ? 'btn-primary' : 'btn-outline-secondary' ?>" 
-                   style="border-radius: 6px; font-size: 12px; padding: 4px 12px;">
-                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Yesterday
-                </a>
-                <a href="<?= buildTeamUrl(['preset' => 'this_month', 'from_date' => null, 'to_date' => null]) ?>" 
-                   class="btn btn-sm <?= ($activePreset === 'this_month') ? 'btn-primary' : 'btn-outline-secondary' ?>" 
-                   style="border-radius: 6px; font-size: 12px; padding: 4px 12px;">
-                    <i class="fa-solid fa-calendar-check me-1"></i> This Month
-                </a>
-                <a href="<?= buildTeamUrl(['preset' => 'all_time', 'from_date' => null, 'to_date' => null]) ?>" 
-                   class="btn btn-sm <?= ($activePreset === 'all_time') ? 'btn-primary' : 'btn-outline-secondary' ?>" 
-                   style="border-radius: 6px; font-size: 12px; padding: 4px 12px;">
-                    <i class="fa-solid fa-infinity me-1"></i> All Time
-                </a>
-                <button type="button" class="btn btn-sm <?= ($activePreset === 'custom') ? 'btn-primary' : 'btn-outline-primary' ?> ms-1" id="toggleCustomRange" style="border-radius: 6px; font-size: 12px; padding: 4px 12px;">
-                    <i class="fa-solid fa-sliders me-1"></i> Custom Range
-                </button>
-            </div>
-
-            <!-- Active Period Badge -->
-            <div class="d-flex align-items-center gap-2">
-                <span class="small text-muted fw-bold d-none d-md-inline"><i class="fa-solid fa-filter me-1 text-primary"></i> Active Range:</span>
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1" style="font-size: 12px; border-radius: 6px;">
-                    <?= htmlspecialchars($titlePeriod) ?>
-                </span>
-                <?php if (!empty($hasFilter)): ?>
-                    <a href="<?= buildTeamUrl(['preset' => 'all_time', 'from_date' => null, 'to_date' => null]) ?>" class="btn btn-sm btn-link text-decoration-none text-danger p-0 ms-1" style="font-size: 11.5px;" title="Reset to All-Time">
-                        <i class="fa-solid fa-circle-xmark"></i> Clear
-                    </a>
-                <?php endif; ?>
-            </div>
-        </div>
-
         <!-- Collapsible Custom Filter Bar: ONLY From Date and To Date -->
         <div id="customRangeSection" style="display: <?= ($activePreset === 'custom') ? 'block' : 'none' ?>;" class="border-top mt-3 pt-3">
             <form action="<?= $base ?>/team-dashboard" method="GET" class="row g-2 align-items-end">
                 <?php if (!empty($canSwitchTeam)): ?>
-                    <input type="hidden" name="team_id" value="<?= (int)$teamId ?>">
+                    <input type="hidden" name="team_id" value="<?= !empty($isAllTeamsMode) ? 'all' : (int)$teamId ?>">
+                <?php endif; ?>
+                <?php if (!empty($selectedSalesManagerId)): ?>
+                    <input type="hidden" name="sales_manager_id" value="<?= (int)$selectedSalesManagerId ?>">
                 <?php endif; ?>
                 <?php if (!empty($selectedMemberId)): ?>
                     <input type="hidden" name="member_id" value="<?= (int)$selectedMemberId ?>">

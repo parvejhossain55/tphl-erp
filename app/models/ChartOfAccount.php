@@ -132,7 +132,7 @@ class ChartOfAccount
                     jd.credit,
                     jd.party_type,
                     jd.party_id,
-                    COALESCE(v.name, v.company_name, u.full_name, l.full_name) as party_name,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, u.full_name, l.full_name) as party_name,
                     j.project_id,
                     p.name as project_name,
                     u_created.full_name as created_by_name,
@@ -197,7 +197,7 @@ class ChartOfAccount
             SELECT DISTINCT 
                 jd.party_type, 
                 jd.party_id,
-                COALESCE(v.name, v.company_name, u.full_name, l.full_name, CONCAT('Party #', jd.party_id)) as party_name
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, u.full_name, l.full_name, CONCAT('Party #', jd.party_id)) as party_name
             FROM journal_details jd
             LEFT JOIN vendors v ON (jd.party_type = 'vendor' AND jd.party_id = v.id)
             LEFT JOIN users u ON (jd.party_id = u.id)
@@ -220,7 +220,7 @@ class ChartOfAccount
         $code = $acc['account_code'] ?? '';
         $accName = strtolower($acc['account_name'] ?? '');
         if (strpos($code, '2110') === 0 || strpos($code, '5120') === 0 || strpos($accName, 'vendor') !== false) {
-            $vRes = $this->db->query("SELECT id, COALESCE(NULLIF(name, ''), company_name) as name FROM vendors ORDER BY name ASC");
+            $vRes = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) as name FROM vendors ORDER BY name ASC");
             if ($vRes) {
                 while ($v = $vRes->fetch_assoc()) {
                     $key = 'vendor_' . $v['id'];

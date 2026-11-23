@@ -99,8 +99,14 @@ class Con_PurchaseOrder extends Model
         $sql = "SELECT po.*, COALESCE(pr.project_id, vpr.project_id) AS project_id, pr.is_urgent AS pr_is_urgent, pr.urgent_reason AS pr_urgent_reason, pr.required_date AS pr_required_date, p.name AS project_name,
                        u.full_name AS created_by_name,
                        u.role_id AS creator_role_id,
-                       v.name AS vendor_name,
+                       COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
+                       v.company_name AS vendor_company_name,
                        (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount,
+                       (SELECT COALESCE(SUM(quantity), 0) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_qty,
+                       (SELECT COALESCE(SUM(mri.received_quantity), 0)
+                        FROM material_receiving_items mri
+                        JOIN {$this->itemTable} poi_rec ON poi_rec.id = mri.purchase_order_item_id
+                        WHERE poi_rec.purchase_order_id = po.id AND mri.status = 'Accepted') AS received_qty,
                        (SELECT u2.full_name FROM po_negotiation_notes n JOIN users u2 ON u2.id = n.user_id WHERE n.purchase_order_id = po.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note_author,
                        (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.purchase_order_id = po.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text,
                        vpr.id AS vpr_id,
@@ -164,7 +170,7 @@ class Con_PurchaseOrder extends Model
                     pr.urgent_reason AS pr_urgent_reason,
                     u.full_name AS created_by_name,
                     u.role_id AS creator_role_id,
-                    v.name AS vendor_name,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
                     v.company_name AS vendor_company,
                     apv.full_name AS pm_approver_name,
                     apv_r.name    AS pm_approver_role,
@@ -207,7 +213,7 @@ class Con_PurchaseOrder extends Model
     public function getItems($poId)
     {
         $stmt = $this->db->prepare(
-            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
+            "SELECT poi.*, m.name AS material_name, m.unit, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, v.company_name AS vendor_company_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     COALESCE(pri.current_stock, 0) AS current_stock,
                     COALESCE(pri.pr_quantity, 0) AS pr_quantity,
                     COALESCE(pri.next_3_months_requirement, 0) AS next_3_months_requirement,
@@ -376,7 +382,7 @@ class Con_PurchaseOrder extends Model
      */
     public function getPendingItems($poId)
     {
-        $sql = "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name,
+        $sql = "SELECT poi.*, m.name AS material_name, m.unit, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name, v.company_name AS vendor_company_name,
                        COALESCE(cat.name, 'Uncategorized') AS category_name,
                        COALESCE(recv.received_total, 0) AS received_total,
                        (poi.quantity - COALESCE(recv.received_total, 0)) AS pending_qty

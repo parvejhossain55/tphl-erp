@@ -3,30 +3,110 @@
 $disable_layout = true;
 
 // -------------------------------------------------------------
-// Project Resolution & The Nature (ID: 74) Custom Branding
+// Project & Category Resolution & Custom Branding
 // -------------------------------------------------------------
 $currentProjectId = !empty($clientDetails['project_id']) ? (int)$clientDetails['project_id'] : (!empty($payment['project_id']) ? (int)$payment['project_id'] : 0);
 $currentProjectName = !empty($clientDetails['project_name']) ? trim($clientDetails['project_name']) : (!empty($payment['project_name']) ? trim($payment['project_name']) : '');
+$currentCategoryId = !empty($clientDetails['category_id']) ? (int)$clientDetails['category_id'] : (!empty($payment['category_id']) ? (int)$payment['category_id'] : 0);
+$currentCategoryName = !empty($clientDetails['category_name']) ? trim($clientDetails['category_name']) : (!empty($payment['category_name']) ? trim($payment['category_name']) : '');
 
-// Fallback check from booking if project_id not set
-if ($currentProjectId <= 0 && !empty($payment['booking_id']) && isset($this) && isset($this->db)) {
+$dbConn = (isset($this) && isset($this->db)) ? $this->db : ($GLOBALS['db'] ?? (class_exists('Database') ? Database::getInstance()->getConnection() : null));
+
+// Fallback check from booking / project if project or category not resolved
+if ($dbConn) {
     try {
-        $pStmt = $this->db->prepare("SELECT project_id FROM lead_bookings WHERE id = ? LIMIT 1");
-        if ($pStmt) {
-            $pStmt->bind_param("i", $payment['booking_id']);
-            $pStmt->execute();
-            $pRes = $pStmt->get_result();
-            if ($pRow = $pRes->fetch_assoc()) {
-                $currentProjectId = (int)$pRow['project_id'];
+        if ($currentProjectId <= 0 && !empty($payment['booking_id'])) {
+            $pStmt = $dbConn->prepare("
+                SELECT lb.project_id, p.name AS project_name, p.category_id, pc.name AS category_name
+                FROM lead_bookings lb
+                LEFT JOIN projects p ON lb.project_id = p.id
+                LEFT JOIN project_categories pc ON p.category_id = pc.id
+                WHERE lb.id = ? LIMIT 1
+            ");
+            if ($pStmt) {
+                $pStmt->bind_param("i", $payment['booking_id']);
+                $pStmt->execute();
+                $pRes = $pStmt->get_result();
+                if ($pRow = $pRes->fetch_assoc()) {
+                    $currentProjectId = (int)($pRow['project_id'] ?? 0);
+                    if (empty($currentProjectName)) $currentProjectName = trim($pRow['project_name'] ?? '');
+                    if ($currentCategoryId <= 0) $currentCategoryId = (int)($pRow['category_id'] ?? 0);
+                    if (empty($currentCategoryName)) $currentCategoryName = trim($pRow['category_name'] ?? '');
+                }
+                $pStmt->close();
             }
-            $pStmt->close();
+        } elseif ($currentProjectId > 0 && ($currentCategoryId <= 0 || empty($currentCategoryName) || empty($currentProjectName))) {
+            $catStmt = $dbConn->prepare("
+                SELECT p.name AS project_name, p.category_id, pc.name AS category_name
+                FROM projects p
+                LEFT JOIN project_categories pc ON p.category_id = pc.id
+                WHERE p.id = ? LIMIT 1
+            ");
+            if ($catStmt) {
+                $catStmt->bind_param("i", $currentProjectId);
+                $catStmt->execute();
+                $catRes = $catStmt->get_result();
+                if ($catRow = $catRes->fetch_assoc()) {
+                    if (empty($currentProjectName)) $currentProjectName = trim($catRow['project_name'] ?? '');
+                    if ($currentCategoryId <= 0) $currentCategoryId = (int)($catRow['category_id'] ?? 0);
+                    if (empty($currentCategoryName)) $currentCategoryName = trim($catRow['category_name'] ?? '');
+                }
+                $catStmt->close();
+            }
         }
     } catch (Exception $e) {}
 }
 
-$isNatureProject = ($currentProjectId === 74) || (stripos($currentProjectName, 'The Nature') !== false) || (stripos($currentProjectName, 'Nature') !== false);
+$isNatureProject = ($currentProjectId === 74) 
+    || ($currentCategoryId === 9) 
+    || (stripos($currentProjectName, 'The Nature') !== false) 
+    || (stripos($currentProjectName, 'Nature') !== false);
 
-if ($isNatureProject) {
+$isOlympusProject = ($currentCategoryId === 10) 
+    || (stripos($currentCategoryName, 'Olympus') !== false) 
+    || (stripos($currentProjectName, 'Olympus') !== false);
+
+if ($isOlympusProject) {
+    // Olympus Logo: public/uploads/Olympus-logo.png (with safe fallback for .jpeg / lowercase on Linux)
+    $uploadsDir = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/';
+    $olympusCandidates = ['Olympus-logo.png', 'Olympus-logo.jpeg', 'olympus-logo.png', 'olympus-logo.jpeg'];
+    $olympusLogoFile = '';
+    $olympusLogoRel = 'Olympus-logo.png';
+    foreach ($olympusCandidates as $cand) {
+        if (file_exists($uploadsDir . $cand)) {
+            $olympusLogoFile = $uploadsDir . $cand;
+            $olympusLogoRel = $cand;
+            break;
+        }
+    }
+    if (!empty($olympusLogoFile)) {
+        $ext = strtolower(pathinfo($olympusLogoFile, PATHINFO_EXTENSION));
+        $mime = ($ext === 'jpg' || $ext === 'jpeg') ? 'image/jpeg' : 'image/png';
+        $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($olympusLogoFile));
+    } else {
+        $logoSrc = $GLOBALS['base_url'] . '/public/uploads/' . $olympusLogoRel;
+    }
+
+    $categoryBrandName = !empty($currentCategoryName) ? $currentCategoryName : "The Olympus Real Estate";
+    $companyTitle   = $categoryBrandName;
+    $brandDomain    = $categoryBrandName;
+    $brandSlogan    = "REAL ESTATE";
+    $companyAddress = "23/2, SEL HUQ Skypark, 4th floor, Opposite of Wonderland (Shyamoli), Dhaka";
+    $companyPhone   = "01958-253302";
+    $companyEmail   = "info@theolympusrealestate.com";
+    $companyWebsite = "www.theolympusrealestate.com";
+
+    // The Olympus Brand Palette (Exact Gold #d49b56 & Charcoal #3e3b42 from Olympus-logo.png)
+    $themePrimary   = "#c58b42"; // Rich amber gold (accessible contrast)
+    $themeDark      = "#3e3b42"; // Exact logo charcoal
+    $themeDeep      = "#2c2930"; // Deep charcoal
+    $themeLight     = "#d49b56"; // Exact emblem gold
+    $themeBgLight   = "#fdfbf7"; // Soft warm ivory/sand
+    $themeBadgeBg   = "#f7efe4"; // Soft golden badge background
+    $themeBorder    = "#ebd8c1"; // Warm golden border
+    $themeRgb       = [197, 139, 66];
+    $themeQrHex     = "197-139-66";
+} elseif ($isNatureProject) {
     // Nature Logo: public/uploads/nature-logo.png
     $natureLogoFile = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/nature-logo.png';
     if (file_exists($natureLogoFile)) {
@@ -37,6 +117,7 @@ if ($isNatureProject) {
 
     $companyTitle   = "The Nature";
     $brandDomain    = "The Nature";
+    $brandSlogan    = "A LUXURY RESORT COMMUNITY";
     $companyAddress = "Marine Drive, Cox's Bazar | Corporate Office: Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
     $companyPhone   = "+8801958253303";
     $companyEmail   = "accounts@dpremiumhomes.com";
@@ -69,6 +150,7 @@ if ($isNatureProject) {
 
     $companyTitle   = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
     $brandDomain    = "Real Estate & Property Management";
+    $brandSlogan    = "YOUR DREAM HOME AWAITS";
     $companyPhone   = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
     $companyEmail   = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
     $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
@@ -105,7 +187,7 @@ $createdByName = !empty($payment['created_by_name']) ? trim($payment['created_by
 $createdByEmpId = !empty($payment['created_by_employee_id']) ? trim($payment['created_by_employee_id']) : '';
 
 if (empty($createdByName) && !empty($payment['created_by'])) {
-    $dbConn = $this->db ?? ($GLOBALS['db'] ?? null);
+    $dbConn = (isset($this) && isset($this->db)) ? $this->db : ($GLOBALS['db'] ?? null);
     if ($dbConn) {
         try {
             $uStmt = $dbConn->prepare("

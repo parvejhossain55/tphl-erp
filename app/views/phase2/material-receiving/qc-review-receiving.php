@@ -447,7 +447,7 @@ $isPending = ($receiving['overall_status'] === 'Pending QC');
                     <?php endif; ?>
 
                     <!-- PM APPROVAL SECTION (Optional) -->
-                    <?php if ($receiving['overall_status'] === 'Pending PM'): ?>
+                    <?php if (empty($receiving['pm_approved_at']) && in_array($receiving['overall_status'], ['Pending PM', 'Accepted', 'Partially Accepted'])): ?>
                     <?php 
                         if (session_status() === PHP_SESSION_NONE) session_start();
                         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);

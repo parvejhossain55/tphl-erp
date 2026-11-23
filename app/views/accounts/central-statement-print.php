@@ -16,43 +16,59 @@ $summary = $statementData['summary'] ?? $overallStats ?? [];
 $calc_booking_money = (float)($summary['total_booking_money'] ?? 0);
 $calc_registration_fee = (float)($summary['total_registration_payments'] ?? $summary['total_registration'] ?? 0);
 $calc_landshare_money = (float)($summary['total_landshare_payments'] ?? $summary['total_landshare'] ?? 0);
+$calc_development_charge = (float)($summary['total_development_charge'] ?? 0);
 $calc_cashin = (float)($summary['total_cashin'] ?? 0);
 $calc_cashout = (float)($summary['total_cash_out'] ?? 0);
 
 // Fallback: Sum directly from displayed rows if summary totals are 0
 if (isset($statementData['daily_data']) && is_array($statementData['daily_data'])) {
-    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_dev = 0; $r_cashin = 0; $r_cashout = 0;
     foreach ($statementData['daily_data'] as $r) {
         $r_booking += (float)($r['booking_money'] ?? 0);
         $r_reg += (float)($r['registration'] ?? $r['registration_payments'] ?? 0);
         $r_land += (float)($r['landshare_payments'] ?? 0);
+        $r_dev += (float)($r['development_charge'] ?? 0);
         $r_cashin += (float)($r['total_cashin'] ?? 0);
         $r_cashout += (float)($r['cash_out'] ?? 0);
     }
     if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
     if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
     if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+    if ($calc_development_charge == 0) $calc_development_charge = $r_dev;
     if ($calc_cashin == 0) $calc_cashin = $r_cashin;
     if ($calc_cashout == 0) $calc_cashout = $r_cashout;
 } elseif (isset($statementData['monthly_data']) && is_array($statementData['monthly_data'])) {
-    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_cashin = 0; $r_cashout = 0;
+    $r_booking = 0; $r_reg = 0; $r_land = 0; $r_dev = 0; $r_cashin = 0; $r_cashout = 0;
     foreach ($statementData['monthly_data'] as $r) {
         $r_booking += (float)($r['booking_money'] ?? 0);
         $r_reg += (float)($r['registration_payments'] ?? $r['registration'] ?? 0);
         $r_land += (float)($r['landshare_payments'] ?? 0);
+        $r_dev += (float)($r['development_charge'] ?? 0);
         $r_cashin += (float)($r['total_cashin'] ?? 0);
         $r_cashout += (float)($r['cash_out'] ?? 0);
     }
     if ($calc_booking_money == 0) $calc_booking_money = $r_booking;
     if ($calc_registration_fee == 0) $calc_registration_fee = $r_reg;
     if ($calc_landshare_money == 0) $calc_landshare_money = $r_land;
+    if ($calc_development_charge == 0) $calc_development_charge = $r_dev;
     if ($calc_cashin == 0) $calc_cashin = $r_cashin;
     if ($calc_cashout == 0) $calc_cashout = $r_cashout;
 }
 
-// User Formula: Land Share Value = Booking Money + Registration Fee
-if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration_fee > 0)) {
-    $calc_landshare_money = $calc_booking_money + $calc_registration_fee;
+if (($category ?? '') === 'bank_cashin') {
+    $bankSum = 0;
+    foreach ($bank_transactions ?? [] as $bt) {
+        $bankSum += (float)($bt['amount'] ?? 0);
+    }
+    $calc_cashin = $bankSum;
+    $calc_cashout = 0;
+} elseif (($category ?? '') === 'bank_cashout') {
+    $bankSum = 0;
+    foreach ($bank_transactions ?? [] as $bt) {
+        $bankSum += (float)($bt['amount'] ?? 0);
+    }
+    $calc_cashout = $bankSum;
+    $calc_cashin = 0;
 }
 $calc_net_balance = $calc_cashin - $calc_cashout;
 
@@ -513,16 +529,22 @@ $statementModel = $statementModel ?? null;
                     elseif ($category === 'service_fee') $cashinLabel = "Total Service Fee";
                     elseif ($category === 'registration') $cashinLabel = "Total Registration";
                     elseif ($category === 'booking_money') $cashinLabel = "Total Booking Money";
+                    elseif ($category === 'development_charge') $cashinLabel = "Total Development Charge";
                     elseif ($category === 'management_cashin') $cashinLabel = "Total Management Cashin";
+                    elseif ($category === 'expense_adjustment_cashin') $cashinLabel = "Total Expense Adj. Returns";
+                    elseif ($category === 'procurement_returns_cashin') $cashinLabel = "Total Procurement Returns";
                     elseif ($category === 'bank_cashin') $cashinLabel = "Total Bank Cash In";
                     elseif ($category === 'bank_cashout') $cashinLabel = "Total Bank Cash Out";
                     elseif (in_array($category, ['cashout', 'utilities', 'other'])) $cashinLabel = "Total " . ucfirst($category);
                     elseif ($category === 'vendor_payment') $cashinLabel = "Total Vendor Payments";
                     elseif ($category === 'contractor_bill') $cashinLabel = "Total Contractor Bills";
+                    elseif ($category === 'office_procurement_assets') $cashinLabel = "Total Office Procurement";
+                    elseif ($category === 'assets_repairing') $cashinLabel = "Total Assets Repairing";
+                    elseif ($category === 'fund_requisitions') $cashinLabel = "Total Fund Requisitions";
                     echo $cashinLabel;
                     ?>
                 </div>
-                <div class="stat-value <?= (in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill'])) ? 'cash-out' : 'revenue' ?>">
+                <div class="stat-value <?= (in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])) ? 'cash-out' : 'revenue' ?>">
                     <?php
                     if (in_array($category, ['bank_cashin', 'bank_cashout'])) {
                         $bankTotal = 0;
@@ -530,7 +552,7 @@ $statementModel = $statementModel ?? null;
                             $bankTotal += (float)($bt['amount'] ?? 0);
                         }
                         $printStatVal = $bankTotal;
-                    } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])) {
+                    } elseif (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])) {
                         $printStatVal = $printTotalCashOut;
                     } else {
                         $printStatVal = $printTotalCashIn;
@@ -625,6 +647,7 @@ $statementModel = $statementModel ?? null;
                     <th class="text-right">EMI Payments (TK.)</th>
                     <th class="text-right">Landshare Payments (TK.)</th>
                     <th class="text-right">Registration (TK.)</th>
+                    <th class="text-right">Development Charge (TK.)</th>
                     <th class="text-right">Management Cashin (TK.)</th>
                     <th class="text-right">Total Cash IN (TK.)</th>
                     <th class="text-right">Cash Out (TK.)</th>
@@ -649,13 +672,22 @@ $statementModel = $statementModel ?? null;
                     <?php elseif ($category === 'booking_money'): ?>
                         <th class="text-right">Booking Money (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
+                    <?php elseif ($category === 'development_charge'): ?>
+                        <th class="text-right">Development Charge (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'agreement'): ?>
                         <th class="text-right">Agreement Value (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'management_cashin'): ?>
                         <th class="text-right">Management Cashin (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
-                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                    <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                        <th class="text-right">Expense Adjustment Returns (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
+                    <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                        <th class="text-right">Procurement Returns (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
+                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                         <th class="text-right">Cash Out (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                         <?php if ($category === 'cashout'): ?>
@@ -687,6 +719,7 @@ $statementModel = $statementModel ?? null;
                         <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['registration'] ?? $row['registration_payments'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['development_charge'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
@@ -715,13 +748,22 @@ $statementModel = $statementModel ?? null;
                         <?php elseif ($category === 'booking_money'): ?>
                             <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
                             <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                        <?php elseif ($category === 'development_charge'): ?>
+                            <td class="text-right positive">TK.<?= number_format($row['development_charge'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['development_charge'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'agreement'): ?>
                             <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                             <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'management_cashin'): ?>
                             <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                             <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
-                        <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                        <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                            <td class="text-right positive">TK.<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></td>
+                        <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                            <td class="text-right positive">TK.<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></td>
+                        <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                             <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                             <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                             <?php if ($category === 'cashout'): ?>
@@ -838,6 +880,7 @@ $statementModel = $statementModel ?? null;
                     <th class="text-right">EMI Payments (TK.)</th>
                     <th class="text-right">Landshare Payments (TK.)</th>
                     <th class="text-right">Registration (TK.)</th>
+                    <th class="text-right">Development Charge (TK.)</th>
                     <th class="text-right">Management Cashin (TK.)</th>
                     <th class="text-right">Total Cash IN (TK.)</th>
                     <th class="text-right">Cash Out (TK.)</th>
@@ -862,13 +905,22 @@ $statementModel = $statementModel ?? null;
                     <?php elseif ($category === 'booking_money'): ?>
                         <th class="text-right">Booking Money (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
+                    <?php elseif ($category === 'development_charge'): ?>
+                        <th class="text-right">Development Charge (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'agreement'): ?>
                         <th class="text-right">Agreement Value (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                     <?php elseif ($category === 'management_cashin'): ?>
                         <th class="text-right">Management Cashin (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
-                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                    <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                        <th class="text-right">Expense Adjustment Returns (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
+                    <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                        <th class="text-right">Procurement Returns (TK.)</th>
+                        <th class="text-right">Amount (TK.)</th>
+                    <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                         <th class="text-right">Cash Out (TK.)</th>
                         <th class="text-right">Amount (TK.)</th>
                         <?php if ($category === 'cashout'): ?>
@@ -897,6 +949,7 @@ $statementModel = $statementModel ?? null;
                         <td class="text-right positive">TK.<?= number_format($row['emi_payments'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['landshare_payments'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['registration_payments'] ?? $row['registration'] ?? 0, 2) ?></td>
+                        <td class="text-right positive">TK.<?= number_format($row['development_charge'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right positive">TK.<?= number_format($row['total_cashin'] ?? 0, 2) ?></td>
                         <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
@@ -925,13 +978,22 @@ $statementModel = $statementModel ?? null;
                         <?php elseif ($category === 'booking_money'): ?>
                             <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
                             <td class="text-right positive">TK.<?= number_format($row['booking_money'] ?? 0, 2) ?></td>
+                        <?php elseif ($category === 'development_charge'): ?>
+                            <td class="text-right positive">TK.<?= number_format($row['development_charge'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['development_charge'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'agreement'): ?>
                             <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                             <td class="text-right positive">TK.<?= number_format($row['agreement_value'] ?? 0, 2) ?></td>
                         <?php elseif ($category === 'management_cashin'): ?>
                             <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
                             <td class="text-right positive">TK.<?= number_format($row['management_cashin'] ?? 0, 2) ?></td>
-                        <?php elseif (in_array($category, ['cashout', 'utilities', 'other'])): ?>
+                        <?php elseif ($category === 'expense_adjustment_cashin'): ?>
+                            <td class="text-right positive">TK.<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['expense_adjustment_cashin'] ?? 0, 2) ?></td>
+                        <?php elseif ($category === 'procurement_returns_cashin'): ?>
+                            <td class="text-right positive">TK.<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></td>
+                            <td class="text-right positive">TK.<?= number_format($row['procurement_returns_cashin'] ?? 0, 2) ?></td>
+                        <?php elseif (in_array($category, ['cashout', 'utilities', 'other', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                             <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                             <td class="text-right negative">TK.<?= number_format($row['cash_out'] ?? 0, 2) ?></td>
                             <?php if ($category === 'cashout'): ?>
@@ -1029,17 +1091,26 @@ $statementModel = $statementModel ?? null;
                             elseif ($category === 'service_fee') $summaryLabel = "Total Service Fee";
                             elseif ($category === 'registration') $summaryLabel = "Total Registration";
                             elseif ($category === 'booking_money') $summaryLabel = "Total Booking Money";
+                            elseif ($category === 'development_charge') $summaryLabel = "Total Development Charge";
                             elseif ($category === 'management_cashin') $summaryLabel = "Total Management Cashin";
+                            elseif ($category === 'expense_adjustment_cashin') $summaryLabel = "Total Expense Adj. Returns";
+                            elseif ($category === 'procurement_returns_cashin') $summaryLabel = "Total Procurement Returns";
                             elseif ($category === 'bank_cashin') $summaryLabel = "Total Bank Cash In";
                             elseif ($category === 'bank_cashout') $summaryLabel = "Total Bank Cash Out";
+                            elseif ($category === 'vendor_payment') $summaryLabel = "Total Vendor Payments";
+                            elseif ($category === 'contractor_bill') $summaryLabel = "Total Contractor Bills";
+                            elseif ($category === 'office_procurement_assets') $summaryLabel = "Total Office Procurement";
+                            elseif ($category === 'assets_repairing') $summaryLabel = "Total Assets Repairing";
+                            elseif ($category === 'fund_requisitions') $summaryLabel = "Total Fund Requisitions";
+                            elseif (in_array($category, ['cashout', 'utilities', 'other'])) $summaryLabel = "Total " . ucfirst($category);
                             echo $summaryLabel;
                             ?>:
                         </span>
-                        <span class="summary-value <?= (in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill'])) ? 'cash-out' : 'revenue' ?>">
+                        <span class="summary-value <?= (in_array($category, ['cashout', 'utilities', 'other', 'bank_cashout', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])) ? 'cash-out' : 'revenue' ?>">
                             TK.<?= number_format($printStatVal ?? $printTotalCashIn, 2) ?>
                         </span>
                     </div>
-                    <?php if (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill'])): ?>
+                    <?php if (in_array($category, ['cashout', 'utilities', 'other', 'vendor_payment', 'contractor_bill', 'office_procurement_assets', 'assets_repairing', 'fund_requisitions'])): ?>
                         <div class="summary-row">
                             <span class="summary-label">Total Cash Out:</span>
                             <span class="summary-value cash-out">TK.<?= number_format($printTotalCashOut, 2) ?></span>

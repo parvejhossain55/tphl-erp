@@ -68,6 +68,7 @@ class AtsController extends Controller
         $defaultFilters = [
             'search' => '',
             'tab' => 'all',
+            'job_id' => '',
             'department' => [],
             'position' => [],
             'source' => '',
@@ -105,6 +106,7 @@ class AtsController extends Controller
             // Full filter form was submitted
             $savedFilters['search'] = trim($_GET['q'] ?? '');
             $savedFilters['tab'] = trim($_GET['tab'] ?? ($savedFilters['tab'] ?? 'all'));
+            $savedFilters['job_id'] = isset($_GET['job_id']) && $_GET['job_id'] !== '' ? (int)$_GET['job_id'] : '';
             $savedFilters['department'] = isset($_GET['department']) ? $normalizeMulti($_GET['department']) : [];
             $savedFilters['position'] = isset($_GET['position']) ? $normalizeMulti($_GET['position']) : [];
             $savedFilters['source'] = trim($_GET['source'] ?? '');
@@ -126,6 +128,11 @@ class AtsController extends Controller
         } else {
             // Check individual query params
             $hasAnyGet = false;
+            if (isset($_GET['job_id'])) {
+                $savedFilters = $defaultFilters;
+                $savedFilters['job_id'] = $_GET['job_id'] !== '' ? (int)$_GET['job_id'] : '';
+                $hasAnyGet = true;
+            }
             if (isset($_GET['tab'])) { $savedFilters['tab'] = trim($_GET['tab']); $hasAnyGet = true; }
             if (isset($_GET['q'])) { $savedFilters['search'] = trim($_GET['q']); $hasAnyGet = true; }
             if (isset($_GET['department'])) { $savedFilters['department'] = $normalizeMulti($_GET['department']); $hasAnyGet = true; }

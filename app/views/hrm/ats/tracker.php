@@ -467,6 +467,9 @@ $renderPaginationBar = function($position = 'bottom') use ($total, $currentPage,
                 <input type="hidden" name="filter_applied" value="1">
                 <input type="hidden" name="tab" value="<?= htmlspecialchars($filters['tab']) ?>">
                 <input type="hidden" name="per_page" value="<?= htmlspecialchars($rawPerPage ?? '20') ?>">
+                <?php if (!empty($filters['job_id'])): ?>
+                    <input type="hidden" name="job_id" value="<?= (int)$filters['job_id'] ?>">
+                <?php endif; ?>
                 
                 <!-- Primary Filter Row -->
                 <div class="row g-2 align-items-end">

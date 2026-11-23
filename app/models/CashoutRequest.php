@@ -273,7 +273,7 @@ public function createRequest($data)
                     vpr.created_by AS requested_by,
                     CAST(vpr.project_id AS CHAR) COLLATE utf8mb4_general_ci AS project_id,
                     CAST(NULL AS CHAR) COLLATE utf8mb4_general_ci AS office,
-                    v.name COLLATE utf8mb4_general_ci AS purpose_paid_to,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) COLLATE utf8mb4_general_ci AS purpose_paid_to,
                     'Bank/Cash' COLLATE utf8mb4_general_ci AS payment_method,
                     vpr.invoice_number COLLATE utf8mb4_general_ci AS transaction_ref,
                     vpr.payment_type COLLATE utf8mb4_general_ci AS description,

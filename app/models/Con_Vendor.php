@@ -4,10 +4,93 @@ class Con_Vendor extends Model
 {
     protected $table = 'vendors';
 
+    public function __construct($db)
+    {
+        $this->db = $db;
+        $this->ensureSchema();
+    }
+
+    /**
+     * Ensure required vendor document & license columns exist on vendors table.
+     */
+    protected function ensureSchema()
+    {
+        static $checked = false;
+        if ($checked || !$this->db) {
+            return;
+        }
+        $checked = true;
+
+        $columnsToAdd = [
+            'nid_number'           => "VARCHAR(100) NULL DEFAULT NULL AFTER `address`",
+            'trade_license_number' => "VARCHAR(100) NULL DEFAULT NULL AFTER `nid_number`",
+            'nid_file'             => "VARCHAR(255) NULL DEFAULT NULL AFTER `trade_license_number`",
+            'trade_license_file'   => "VARCHAR(255) NULL DEFAULT NULL AFTER `nid_file`",
+            'current_step'         => "VARCHAR(50) NULL DEFAULT 'approved'",
+            'dept_head_id'         => "INT NULL DEFAULT NULL",
+            'dept_head_status'     => "VARCHAR(30) NULL DEFAULT 'pending'",
+            'dept_head_by'         => "INT NULL DEFAULT NULL",
+            'dept_head_at'         => "DATETIME NULL DEFAULT NULL",
+            'dept_head_note'       => "TEXT NULL",
+            'purchase_head_status' => "VARCHAR(30) NULL DEFAULT 'pending'",
+            'purchase_head_by'     => "INT NULL DEFAULT NULL",
+            'purchase_head_at'     => "DATETIME NULL DEFAULT NULL",
+            'purchase_head_note'   => "TEXT NULL",
+            'role_20_status'       => "VARCHAR(30) NULL DEFAULT 'pending'",
+            'role_20_by'           => "INT NULL DEFAULT NULL",
+            'role_20_at'           => "DATETIME NULL DEFAULT NULL",
+            'role_20_note'         => "TEXT NULL",
+            'role_38_status'       => "VARCHAR(30) NULL DEFAULT 'pending'",
+            'role_38_by'           => "INT NULL DEFAULT NULL",
+            'role_38_at'           => "DATETIME NULL DEFAULT NULL",
+            'role_38_note'         => "TEXT NULL",
+            'management_status'    => "VARCHAR(30) NULL DEFAULT 'pending'",
+            'management_by'        => "INT NULL DEFAULT NULL",
+            'management_at'        => "DATETIME NULL DEFAULT NULL",
+            'management_note'      => "TEXT NULL",
+            'rejection_reason'     => "TEXT NULL",
+        ];
+
+        $existing = [];
+        $res = @$this->db->query("SHOW COLUMNS FROM `{$this->table}`");
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $existing[$row['Field']] = $row['Type'];
+            }
+        }
+
+        foreach ($columnsToAdd as $col => $def) {
+            if (!isset($existing[$col])) {
+                @$this->db->query("ALTER TABLE `{$this->table}` ADD COLUMN `{$col}` {$def}");
+            }
+        }
+
+        // Ensure status column supports pending_approval, rejected, inactive, active, blacklisted
+        if (isset($existing['status']) && stripos($existing['status'], 'enum(') !== false) {
+            @$this->db->query("ALTER TABLE `{$this->table}` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'active'");
+        }
+
+        // Contact person name should not be globally unique across different businesses
+        $idxRes = @$this->db->query("SHOW INDEX FROM `{$this->table}` WHERE Key_name = 'name' AND Non_unique = 0");
+        if ($idxRes && $idxRes->num_rows > 0) {
+            @$this->db->query("ALTER TABLE `{$this->table}` DROP INDEX `name`");
+        }
+    }
+
+    /**
+     * Return business name if present, otherwise fall back to contact person's name.
+     */
+    public static function displayName(array $vendor): string
+    {
+        $company = trim((string)($vendor['company_name'] ?? ''));
+        return $company !== '' ? $company : trim((string)($vendor['name'] ?? ''));
+    }
+
 public function getAll()
 {
     $sql = "SELECT 
                 v.*, 
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS display_name,
                 u.full_name AS created_by_name,
 
                 COUNT(DISTINCT po.id) AS total_orders,
@@ -32,7 +115,7 @@ public function getAll()
 
             GROUP BY v.id
 
-            ORDER BY v.name ASC";
+            ORDER BY COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) ASC";
 
     return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
 }
@@ -49,6 +132,7 @@ public function getPaginated($limit, $offset)
 {
     $sql = "SELECT 
                 v.*, 
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS display_name,
                 u.full_name AS created_by_name,
                 COUNT(DISTINCT po.id) AS total_orders,
                 COUNT(DISTINCT CASE 
@@ -60,7 +144,7 @@ public function getPaginated($limit, $offset)
             LEFT JOIN purchase_orders po ON po.id = poi.purchase_order_id
             LEFT JOIN vendor_penalties vp ON vp.vendor_id = v.id
             GROUP BY v.id
-            ORDER BY v.name ASC
+            ORDER BY COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) ASC
             LIMIT ? OFFSET ?";
     $stmt = $this->db->prepare($sql);
     $stmt->bind_param('ii', $limit, $offset);
@@ -78,33 +162,72 @@ public function getPaginated($limit, $offset)
 
     public function create($data)
     {
-        $companyName = $data['company_name'] ?? null;
-        $sql = "INSERT INTO {$this->table} (name, company_name, phone, email, address, rating, status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $companyName        = $data['company_name'] ?? null;
+        $nidNumber          = $data['nid_number'] ?? null;
+        $tradeLicenseNumber = $data['trade_license_number'] ?? null;
+        $nidFile            = $data['nid_file'] ?? null;
+        $tradeLicenseFile   = $data['trade_license_file'] ?? null;
+
+        $sql = "INSERT INTO {$this->table}
+                (name, company_name, phone, email, address, nid_number, trade_license_number, nid_file, trade_license_file, rating, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('sssssdsi',
+        if (!$stmt) {
+            error_log('[Con_Vendor::create] Prepare failed: ' . $this->db->error);
+            return 0;
+        }
+        $stmt->bind_param('sssssssssdsi',
             $data['name'],
             $companyName,
             $data['phone'],
             $data['email'],
             $data['address'],
+            $nidNumber,
+            $tradeLicenseNumber,
+            $nidFile,
+            $tradeLicenseFile,
             $data['rating'],
             $data['status'],
             $data['created_by']
         );
-        $stmt->execute();
-        return $stmt->insert_id;
+        try {
+            if (!$stmt->execute()) {
+                error_log('[Con_Vendor::create] Execute failed: ' . $stmt->error);
+                $stmt->close();
+                return 0;
+            }
+            $insertId = $stmt->insert_id;
+            $stmt->close();
+            return $insertId;
+        } catch (\Throwable $e) {
+            error_log('[Con_Vendor::create] Exception: ' . $e->getMessage());
+            $stmt->close();
+            return 0;
+        }
     }
 
     public function update($id, $data)
     {
-        $sql = "UPDATE {$this->table} SET name=?, phone=?, email=?, address=?, status=? WHERE id=?";
+        $companyName        = $data['company_name'] ?? null;
+        $nidNumber          = $data['nid_number'] ?? null;
+        $tradeLicenseNumber = $data['trade_license_number'] ?? null;
+        $nidFile            = $data['nid_file'] ?? null;
+        $tradeLicenseFile   = $data['trade_license_file'] ?? null;
+
+        $sql = "UPDATE {$this->table}
+                SET name=?, company_name=?, phone=?, email=?, address=?, nid_number=?, trade_license_number=?, nid_file=?, trade_license_file=?, status=?
+                WHERE id=?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('sssssi',
+        $stmt->bind_param('ssssssssssi',
             $data['name'],
+            $companyName,
             $data['phone'],
             $data['email'],
             $data['address'],
+            $nidNumber,
+            $tradeLicenseNumber,
+            $nidFile,
+            $tradeLicenseFile,
             $data['status'],
             $id
         );
@@ -225,8 +348,9 @@ public function getPaginated($limit, $offset)
         }
         if (!empty($filters['search'])) {
             $search = '%' . trim($filters['search']) . '%';
-            $poWhere[] = "(v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR po.id LIKE ?)";
-            $poTypes .= 'ssss';
+            $poWhere[] = "(v.company_name LIKE ? OR v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR po.id LIKE ?)";
+            $poTypes .= 'sssss';
+            $poParams[] = $search;
             $poParams[] = $search;
             $poParams[] = $search;
             $poParams[] = $search;
@@ -280,8 +404,9 @@ public function getPaginated($limit, $offset)
         }
         if (!empty($filters['search'])) {
             $search = '%' . trim($filters['search']) . '%';
-            $cftWhere[] = "(v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR cft.reference_number LIKE ?)";
-            $cftTypes .= 'ssss';
+            $cftWhere[] = "(v.company_name LIKE ? OR v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR cft.reference_number LIKE ?)";
+            $cftTypes .= 'sssss';
+            $cftParams[] = $search;
             $cftParams[] = $search;
             $cftParams[] = $search;
             $cftParams[] = $search;
@@ -373,8 +498,9 @@ public function getPaginated($limit, $offset)
 
         if (!empty($filters['search'])) {
             $term = '%' . trim($filters['search']) . '%';
-            $mainWhere[] = "(v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR v.address LIKE ?)";
-            $types .= 'ssss';
+            $mainWhere[] = "(v.company_name LIKE ? OR v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR v.address LIKE ?)";
+            $types .= 'sssss';
+            $params[] = $term;
             $params[] = $term;
             $params[] = $term;
             $params[] = $term;
@@ -392,6 +518,8 @@ public function getPaginated($limit, $offset)
             SELECT 
                 v.id,
                 v.name,
+                v.company_name,
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS display_name,
                 v.phone,
                 v.email,
                 v.address,
@@ -428,7 +556,7 @@ public function getPaginated($limit, $offset)
                 GROUP BY vpr.vendor_id
             ) AS paid_stat ON paid_stat.vendor_id = v.id
             {$whereClause}
-            ORDER BY COALESCE(po_stat.total_po_amount, 0) DESC, v.name ASC
+            ORDER BY COALESCE(po_stat.total_po_amount, 0) DESC, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) ASC
             LIMIT ? OFFSET ?
         ";
 
@@ -490,8 +618,9 @@ public function getPaginated($limit, $offset)
 
         if (!empty($filters['search'])) {
             $term = '%' . trim($filters['search']) . '%';
-            $mainWhere[] = "(v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR v.address LIKE ?)";
-            $types .= 'ssss';
+            $mainWhere[] = "(v.company_name LIKE ? OR v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR v.address LIKE ?)";
+            $types .= 'sssss';
+            $params[] = $term;
             $params[] = $term;
             $params[] = $term;
             $params[] = $term;

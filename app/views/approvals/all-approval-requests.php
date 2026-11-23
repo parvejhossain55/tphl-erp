@@ -661,8 +661,8 @@
                         <option value="paid" <?= ($filters['status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled History</option>
                         <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>All Approved & Paid</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
-                        <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
-                        <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
+                        <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending</option>
+                        <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests</option>
                     </select>
                 </div>
 
@@ -787,7 +787,7 @@
                                         $targetUrl = $base_url . '/ced-dashboard';
                                     }
                                 } elseif ($sourceTable === 'project_incentive_claims') {
-                                    $targetUrl = $base_url . '/incentive-management';
+                                    $targetUrl = $base_url . '/incentive-management?claim_id=' . (int)$req['source_id'];
                                 } elseif ($sourceTable === 'vendor_payment_requests') {
                                     $targetUrl = $base_url . '/con-vendor-payment-show/' . $req['source_id'];
                                 } elseif ($sourceTable === 'contractor_bill_requests') {
@@ -843,19 +843,38 @@
                                 $isPurchaseUser = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
                                 $isDeptHeadUser = in_array($userRoleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($sessionRoleName, 'head') !== false || strpos($sessionRoleName, 'manager') !== false;
 
+                                $userSecondaryRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+                                if ($userSecondaryRoleId === 0 && !empty($_SESSION['user']['id'])) {
+                                    static $secondaryRoleCache = [];
+                                    $uid = (int)$_SESSION['user']['id'];
+                                    if (!isset($secondaryRoleCache[$uid])) {
+                                        $conn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                        $secId = 0;
+                                        if ($conn) {
+                                            $res = $conn->query("SELECT secondary_role_id FROM users WHERE id = {$uid} LIMIT 1");
+                                            if ($res && $r = $res->fetch_assoc()) {
+                                                $secId = (int)($r['secondary_role_id'] ?? 0);
+                                            }
+                                        }
+                                        $secondaryRoleCache[$uid] = $secId;
+                                    }
+                                    $userSecondaryRoleId = $secondaryRoleCache[$uid];
+                                }
+                                $isSalesHeadUser = ($userRoleId === 9 || $userSecondaryRoleId === 9 || strpos($sessionRoleName, 'sales head') !== false || strpos($sessionRoleName, 'sales team head') !== false || strpos($sessionRoleName, 'head of sales') !== false || $isManagementUser || $isSiteOperator || in_array($userRoleId, [20, 32], true));
+
                                 $statusLower = strtolower($req['status'] ?? '');
                                 $isPendingStatus = in_array($statusLower, ['pending', 'partially_approved', '']);
                                 $reqAmount = (float)($req['request_amount'] ?? 0);
                                 $payoutStatus = $req['payout_status'] ?? '';
                                 $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
                                 $isFrPartialMgmt = ($sourceTable === 'fund_requisitions' && $statusLower === 'partially_approved');
-                                $isPendingAccountsHead = ($ahStatus !== 'approved') && (
+                                $isPendingAccountsHead = ($sourceTable !== 'project_incentive_claims') ? (($ahStatus !== 'approved') && (
                                     $reqApproveRole === 'accounts_head'
                                     || $statusLower === 'approved'
                                     || $req['status'] === 'approved'
                                     || $isFrPartialMgmt
                                     || ($sourceTable === 'payslips' && $isAccountsHeadUser && $isPendingStatus)
-                                );
+                                )) : ($reqApproveRole === 'accounts_head' && $isPendingStatus);
                                 $isAccountsHeadApproved = ($ahStatus === 'approved');
 
                                 // Determine whether this request is actionable by the logged-in user right now
@@ -865,6 +884,28 @@
                                     // Chief Officer has view-only access across all requests; strictly cannot approve or reject
                                     $isActionableByMe = false;
                                     $canUserApprove = false;
+                                } elseif ($sourceTable === 'project_incentive_claims') {
+                                    if ($reqApproveRole === 'sales_head' && $isPendingStatus) {
+                                        if ($isSalesHeadUser) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
+                                    } elseif ($reqApproveRole === 'accounts_head' && $isPendingStatus) {
+                                        if ($isAccountsHeadUser || $userRoleId === 1 || $isManagementUser) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
+                                    } elseif ($reqApproveRole === 'management' && $isPendingStatus) {
+                                        if ($isManagementUser) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
+                                    } elseif ($statusLower === 'approved') {
+                                        if ($isAccountsUser) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
+                                    }
                                 } elseif ($isPendingAccountsHead) {
                                     // Pending Accounts Head approval: Actionable by Accounts Head (Role 30) and Super Admin (Role 1)
                                     if ($isAccountsHeadUser || (int)($_SESSION['user']['role_id'] ?? 0) === 1) {
@@ -884,6 +925,34 @@
                                     if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || ($reqApproveRole === 'accounts' && in_array($statusLower, ['pending', 'approved', 'partially_approved', 'partially_paid']) && $isAccountsHeadApproved)) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
+                                    }
+                                } elseif ($sourceTable === 'client_refund_requests') {
+                                    if ($isPendingStatus) {
+                                        $rfSalesSt = strtolower($req['sales_head_status'] ?? 'pending');
+                                        $rfQcSt    = strtolower($req['qc_status'] ?? 'pending');
+                                        $rfOpSt    = strtolower($req['op_head_status'] ?? 'pending');
+                                        if ($rfSalesSt !== 'approved') {
+                                            $rfStage = 'sales_manager';
+                                        } elseif ($rfQcSt !== 'approved') {
+                                            $rfStage = 'qc';
+                                        } elseif ($rfOpSt !== 'approved') {
+                                            $rfStage = 'op_head';
+                                        } else {
+                                            $rfStage = 'management';
+                                        }
+                                        if ($rfStage === 'sales_manager' && ($userRoleId === 38 || $isSalesHeadUser || $userRoleId === 3)) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        } elseif ($rfStage === 'qc' && ($isQcUser || $userRoleId === 3)) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        } elseif ($rfStage === 'op_head' && ($isSiteOperator || $userRoleId === 3)) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        } elseif ($rfStage === 'management' && $userRoleId === 3) {
+                                            $isActionableByMe = true;
+                                            $canUserApprove = true;
+                                        }
                                     }
                                 } elseif ($isSiteOperator) {
                                     $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
@@ -947,7 +1016,7 @@
                                             value="<?= $req['id'] ?>" <?= ((!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && !($isPendingAccountsHead && ($isAccountsHeadUser || $isManagementUser))) || !$canUserApprove || $isChiefOfficer) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
                                     </td>
                                     <!-- Req # & Date -->
-                                    <td>
+                                    <td class="text-nowrap">
                                         <?php
                                         // Standardized Requisition / Bill ID for all modules
                                         $displayReqCode = '';
@@ -974,7 +1043,7 @@
                                         } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests') {
                                             $displayReqCode = 'PAY-' . (int)$req['source_id'];
                                         } elseif ($sourceTable === 'project_incentive_claims') {
-                                            $displayReqCode = 'INC-' . (int)$req['source_id'];
+                                            $displayReqCode = 'INC-' . date('Y', strtotime($req['requested_at'] ?? 'now')) . '-' . str_pad((int)$req['source_id'], 3, '0', STR_PAD_LEFT);
                                         } elseif ($sourceTable === 'advance_salaries') {
                                             $displayReqCode = 'ADV-' . (int)$req['source_id'];
                                         } elseif ($sourceTable === 'lead_bookings') {
@@ -1004,13 +1073,12 @@
                                     </td>
 
                                     <!-- Department & Module -->
-                                    <td>
-                                        <span
-                                            class="badge bg-success text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
-                                            <?= htmlspecialchars($req['department'] ?? 'General') ?>
-                                        </span>
-                                        <span class="badge bg-light text-muted border extra-small">
-                                            <?= htmlspecialchars($req['request_type'] ?? $req['source_table']) ?>
+                                    <td class="text-nowrap">
+                                        <div class="fw-semibold text-dark fs-12 mb-1">
+                                            <?= htmlspecialchars(ucwords(str_replace('_', ' ', $req['department'] ?? 'General'))) ?>
+                                        </div>
+                                        <span class="badge bg-light text-secondary border fw-normal extra-small px-2 py-0.5 rounded-pill">
+                                            <?= htmlspecialchars(ucwords(str_replace('_', ' ', $req['request_type'] ?? $req['source_table']))) ?>
                                         </span>
                                     </td>
 
@@ -1053,18 +1121,18 @@
                                                 </a>
                                             </div>
                                         <?php endif; ?>
-                                        <span class="text-muted extra-small">Source Table:
-                                            <code><?= htmlspecialchars($req['source_table']) ?></code></span>
                                     </td>
 
                                     <!-- Requested By -->
-                                    <td>
-                                        <div class="fw-bold text-dark extra-small">
+                                    <td class="text-nowrap">
+                                        <div class="fw-semibold text-dark fs-12">
                                             <?= htmlspecialchars($req['requester_name'] ?? 'N/A') ?>
                                         </div>
-                                        <span class="badge bg-light text-secondary border extra-small">
-                                            <?= !empty($req['requester_code']) ? htmlspecialchars($req['requester_code']) : 'null' ?>
-                                        </span>
+                                        <?php if (!empty($req['requester_code'])): ?>
+                                            <span class="text-muted extra-small">
+                                                ID: <?= htmlspecialchars($req['requester_code']) ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </td>
 
                                     <!-- Requested Amount -->
@@ -1186,39 +1254,149 @@
 
                                     <!-- Approval Status & Pending At -->
                                     <td class="text-center">
-                                        <?php if ($req['status'] === 'pending'): ?>
+                                        <?php if ($sourceTable === 'project_incentive_claims' && $statusLower === 'rejected'): ?>
+                                            <div class="d-flex flex-column gap-1 text-center" style="max-width: 190px; margin: 0 auto;">
+                                                <span class="badge bg-danger text-white rounded-pill px-2.5 py-1 extra-small fw-semibold">
+                                                    <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                                                </span>
+                                                <span class="extra-small text-muted fw-semibold">
+                                                    By: <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
+                                                </span>
+                                                <?php if (!empty($req['approved_at'])): ?>
+                                                    <span class="extra-small text-muted" style="font-size: 8.5px;"><?= date('d M, Y h:i A', strtotime($req['approved_at'])) ?></span>
+                                                <?php endif; ?>
+                                                <?php 
+                                                $rejReason = !empty($req['rejection_reason']) ? $req['rejection_reason'] : (!empty($req['approval_note']) ? $req['approval_note'] : (!empty($req['sales_head_note']) ? $req['sales_head_note'] : (!empty($req['accounts_head_note']) ? $req['accounts_head_note'] : '')));
+                                                ?>
+                                                <?php if (!empty($rejReason)): ?>
+                                                    <span class="badge bg-light text-danger border border-danger-subtle text-wrap extra-small mt-1 px-1.5 py-0.5 text-start" style="font-size: 9px;" title="Rejection Reason">
+                                                        <i class="fa-solid fa-comment-dots me-1"></i><?= htmlspecialchars($rejReason) ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php elseif ($sourceTable === 'project_incentive_claims'): ?>
+                                            <?php
+                                            $shDone = (strtolower($req['sales_head_status'] ?? '') === 'approved' || strtolower($req['op_head_status'] ?? '') === 'approved');
+                                            $shName = !empty($req['sales_head_name']) ? $req['sales_head_name'] : (!empty($req['op_head_name']) ? $req['op_head_name'] : 'Sales Head / Op Head');
+                                            $shDate = !empty($req['sales_head_at']) ? $req['sales_head_at'] : (!empty($req['op_head_at']) ? $req['op_head_at'] : null);
+                                            $shBadgeText = (!empty($req['op_head_status']) && strtolower($req['op_head_status']) === 'approved' && empty($req['sales_head_by'])) ? 'Op Head' : 'Sales Head / Op';
+
+                                            $ahDone = (strtolower($req['accounts_head_status'] ?? '') === 'approved');
+                                            $ahName = !empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Accounts Head';
+                                            $ahDate = !empty($req['accounts_head_at']) ? $req['accounts_head_at'] : null;
+
+                                            $mgmtDone = in_array(strtolower($req['status'] ?? ''), ['approved', 'paid']);
+                                            $mgmtName = !empty($req['approver_name']) ? $req['approver_name'] : 'Management';
+                                            $mgmtDate = !empty($req['approved_at']) ? $req['approved_at'] : null;
+                                            ?>
+                                            <div class="d-flex flex-column gap-1 text-start" style="min-width: 180px; max-width: 220px; margin: 0 auto;">
+                                                <!-- Step 1: Sales Head -->
+                                                <?php if ($shDone): ?>
+                                                    <div class="px-1.5 py-1 rounded bg-success-subtle border border-success-subtle d-flex align-items-center justify-content-between gap-1"
+                                                         title="Sales Head Approved • <?= htmlspecialchars($shName) ?><?= !empty($shDate) ? ' • ' . date('d M, Y h:i A', strtotime($shDate)) : '' ?>" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-check text-success flex-shrink-0" style="font-size: 9.5px;"></i>
+                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars($shName) ?>"><?= htmlspecialchars($shName) ?></span>
+                                                            <span class="badge bg-success text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;"><?= htmlspecialchars($shBadgeText ?? 'SH / Op') ?></span>
+                                                        </div>
+                                                        <?php if (!empty($shDate)): ?>
+                                                            <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($shDate)) ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="px-1.5 py-1 rounded bg-warning-subtle border border-warning-subtle d-flex align-items-center justify-content-between gap-1" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-hourglass-half text-warning flex-shrink-0" style="font-size: 9px;"></i>
+                                                            <span class="text-dark fw-semibold text-truncate">Pending Sales Head or Op Head</span>
+                                                        </div>
+                                                        <span class="badge bg-warning text-dark p-0 px-1 flex-shrink-0" style="font-size: 8px;">Step 1</span>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <!-- Step 2: Accounts Head -->
+                                                <?php if ($ahDone): ?>
+                                                    <div class="px-1.5 py-1 rounded bg-primary-subtle border border-primary-subtle d-flex align-items-center justify-content-between gap-1"
+                                                         title="Accounts Head Approved • <?= htmlspecialchars($ahName) ?><?= !empty($ahDate) ? ' • ' . date('d M, Y h:i A', strtotime($ahDate)) : '' ?>" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-check-double text-primary flex-shrink-0" style="font-size: 9.5px;"></i>
+                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars($ahName) ?>"><?= htmlspecialchars($ahName) ?></span>
+                                                            <span class="badge bg-primary text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">AH</span>
+                                                        </div>
+                                                        <?php if (!empty($ahDate)): ?>
+                                                            <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($ahDate)) ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php elseif ($shDone): ?>
+                                                    <div class="px-1.5 py-1 rounded bg-warning-subtle border border-warning-subtle d-flex align-items-center justify-content-between gap-1" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-hourglass-half text-warning flex-shrink-0" style="font-size: 9px;"></i>
+                                                            <span class="text-dark fw-semibold text-truncate">Pending Accts Head</span>
+                                                        </div>
+                                                        <span class="badge bg-warning text-dark p-0 px-1 flex-shrink-0" style="font-size: 8px;">Step 2</span>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="px-1.5 py-1 rounded bg-light border text-muted d-flex align-items-center justify-content-between gap-1" style="font-size: 9.5px; line-height: 1.2;">
+                                                        <span class="text-muted"><i class="fa-solid fa-lock text-muted me-1"></i>Accts Head (Locked)</span>
+                                                        <span class="badge bg-secondary-subtle text-muted p-0 px-1" style="font-size: 7.5px;">Step 2</span>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <!-- Step 3: Management -->
+                                                <?php if ($mgmtDone): ?>
+                                                    <div class="px-1.5 py-1 rounded bg-success-subtle border border-success-subtle d-flex align-items-center justify-content-between gap-1"
+                                                         title="Management Approved • <?= htmlspecialchars($mgmtName) ?><?= !empty($mgmtDate) ? ' • ' . date('d M, Y h:i A', strtotime($mgmtDate)) : '' ?>" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-circle-check text-success flex-shrink-0" style="font-size: 9.5px;"></i>
+                                                            <span class="fw-bold text-dark text-truncate" style="max-width: 105px;" title="<?= htmlspecialchars($mgmtName) ?>"><?= htmlspecialchars($mgmtName) ?></span>
+                                                            <span class="badge bg-success text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Mgmt</span>
+                                                        </div>
+                                                        <?php if (!empty($mgmtDate)): ?>
+                                                            <span class="text-muted flex-shrink-0" style="font-size: 8.5px; white-space: nowrap;"><?= date('d M, h:i A', strtotime($mgmtDate)) ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php elseif ($ahDone): ?>
+                                                    <div class="px-1.5 py-1 rounded bg-info-subtle border border-info-subtle d-flex align-items-center justify-content-between gap-1" style="font-size: 10px; line-height: 1.2;">
+                                                        <div class="d-flex align-items-center gap-1 text-truncate me-1">
+                                                            <i class="fa-solid fa-hourglass-half text-info flex-shrink-0" style="font-size: 9px;"></i>
+                                                            <span class="text-dark fw-semibold text-truncate">Pending Mgmt</span>
+                                                        </div>
+                                                        <span class="badge bg-info text-white p-0 px-1 flex-shrink-0" style="font-size: 8px;">Step 3</span>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="px-1.5 py-1 rounded bg-light border text-muted d-flex align-items-center justify-content-between gap-1" style="font-size: 9.5px; line-height: 1.2;">
+                                                        <span class="text-muted"><i class="fa-solid fa-lock text-muted me-1"></i>Management (Locked)</span>
+                                                        <span class="badge bg-secondary-subtle text-muted p-0 px-1" style="font-size: 7.5px;">Step 3</span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php elseif ($req['status'] === 'pending'): ?>
                                             <?php
                                             $stageLabel = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_stage_label'] ?? 'Pending Review');
                                             $pendingFor = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? 'Management');
                                             $pendingFor = trim(preg_replace('/\s*\(Role[^\)]*\)/i', '', $pendingFor));
 
-                                            $badgeClass = 'bg-warning text-dark';
+                                            $badgeStyle = 'background: #fef3c7; color: #92400e;';
                                             if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
-                                                $badgeClass = 'bg-info text-dark';
-                                            } elseif (stripos($stageLabel, 'Dept') !== false) {
-                                                $badgeClass = 'bg-secondary text-white';
-                                            } elseif (stripos($stageLabel, 'HR') !== false) {
-                                                $badgeClass = 'bg-primary text-white';
-                                            } elseif (stripos($stageLabel, 'Purchase') !== false) {
-                                                $badgeClass = 'bg-secondary text-white';
-                                            } elseif (stripos($stageLabel, 'PM') !== false) {
-                                                $badgeClass = 'bg-info text-white';
-                                            } elseif (stripos($stageLabel, 'Management') !== false) {
-                                                $badgeClass = 'bg-warning text-dark';
+                                                $badgeStyle = 'background: #e0f2fe; color: #075985;';
+                                            } elseif (stripos($stageLabel, 'Dept') !== false || stripos($stageLabel, 'Purchase') !== false) {
+                                                $badgeStyle = 'background: #f1f5f9; color: #334155;';
+                                            } elseif (stripos($stageLabel, 'HR') !== false || stripos($stageLabel, 'PM') !== false) {
+                                                $badgeStyle = 'background: #ede9fe; color: #5b21b6;';
                                             } elseif (stripos($stageLabel, 'Accounts') !== false) {
-                                                $badgeClass = 'bg-success text-white';
+                                                $badgeStyle = 'background: #dcfce7; color: #166534;';
                                             }
                                             ?>
                                             <div class="d-flex flex-column gap-1 text-center" style="max-width: 210px; margin: 0 auto;">
                                                 <div>
-                                                    <span class="badge <?= $badgeClass ?> rounded-pill px-2.5 py-1 extra-small fw-semibold">
+                                                    <span class="badge rounded-pill px-2.5 py-1 extra-small fw-semibold" style="<?= $badgeStyle ?>">
                                                         <i class="fa-solid fa-clock me-1"></i><?= htmlspecialchars($stageLabel) ?>
                                                     </span>
                                                 </div>
-                                                <div class="extra-small text-dark" style="font-size: 11px;">
-                                                    <i class="fa-solid fa-hourglass-half text-warning me-1"></i><span class="text-muted">Pending:</span>
-                                                    <span class="text-primary fw-semibold"><?= htmlspecialchars($pendingFor) ?></span>
+                                                <?php if (!empty($pendingFor) && strcasecmp(str_replace('Pending ', '', $stageLabel), $pendingFor) !== 0): ?>
+                                                <div class="text-muted" style="font-size: 11px;">
+                                                    <?= htmlspecialchars($pendingFor) ?>
                                                 </div>
+                                                <?php endif; ?>
                                                 <?php if (strtolower($req['op_head_status'] ?? '') === 'approved' || !empty($req['op_head_by'])): ?>
                                                     <div class="p-1 px-2 rounded-2 bg-secondary-subtle border border-secondary-subtle text-start d-flex align-items-center justify-content-between"
                                                          title="<?= htmlspecialchars(($req['op_head_name'] ?? 'Admin & Operation Head') . (!empty($req['op_head_at']) ? ' • ' . date('d M, Y h:i A', strtotime($req['op_head_at'])) : '')) ?>">
@@ -1458,7 +1636,102 @@
                                         $isPartiallyPaid = ($payoutStatus === 'Partially Paid') || strtolower($req['status']) === 'partially_paid';
                                         ?>
 
-                                        <?php if ($isVoucherSupported && !$isPaidOrSettled): ?>
+                                        <?php if ($sourceTable === 'project_incentive_claims'): ?>
+                                            <?php
+                                            $shDone = (strtolower($req['sales_head_status'] ?? '') === 'approved' || strtolower($req['op_head_status'] ?? '') === 'approved');
+                                            $ahDone = (strtolower($req['accounts_head_status'] ?? '') === 'approved');
+                                            $mgmtDone = in_array(strtolower($req['status'] ?? ''), ['approved', 'paid']);
+                                            $isPaid = in_array(strtolower($req['status'] ?? ''), ['paid']) || ($req['payout_status'] === 'Paid & Settled');
+                                            ?>
+                                            <?php if ($statusLower === 'rejected'): ?>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-2 px-2 py-1 extra-small me-1">
+                                                    <i class="fa-solid fa-ban me-1"></i>Rejected
+                                                </span>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Incentive Management">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($isPaid): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-2 px-2 py-1 extra-small me-1">
+                                                    <i class="fa-solid fa-check-circle me-1"></i>Settled
+                                                </span>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Incentive Management">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($mgmtDone): ?>
+                                                <?php if ($isAccountsUser): ?>
+                                                    <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm fw-semibold me-1" title="Disburse Incentive Payout">
+                                                        <i class="fa-solid fa-money-check-dollar me-1"></i>Disburse Payout
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-2 px-2 py-1 extra-small me-1">
+                                                        <i class="fa-solid fa-clock me-1"></i>Ready for Disbursement
+                                                    </span>
+                                                <?php endif; ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Incentive Management">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($reqApproveRole === 'sales_head'): ?>
+                                                <?php if ($canUserApprove): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary rounded-2 px-2.5 shadow-sm fw-semibold me-1"
+                                                        onclick="approveSalesHead(<?= (int)$req['id'] ?>, '<?= htmlspecialchars(addslashes($req['title'] ?? 'Sales Incentive Claim')) ?>', '<?= number_format($req['request_amount'], 2) ?>')"
+                                                        title="Approve as Sales Head or Operation Head">
+                                                        <i class="fa-solid fa-check me-1"></i>Approve (Sales Head / Op Head)
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-2 px-2 shadow-sm fw-semibold me-1"
+                                                        onclick="rejectSalesHead(<?= (int)$req['id'] ?>)"
+                                                        title="Reject Claim">
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Awaiting Sales Team Head or Operation Head review">
+                                                        <i class="fa-solid fa-lock text-warning me-1"></i>Pending Sales Head or Operation Head
+                                                    </span>
+                                                <?php endif; ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Incentive Management">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($reqApproveRole === 'accounts_head'): ?>
+                                                <?php if ($canUserApprove): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary rounded-2 px-2.5 shadow-sm fw-semibold me-1"
+                                                        onclick="openAccountsHeadApprovalModal(<?= (int)$req['id'] ?>, '<?= htmlspecialchars(addslashes($req['title'] ?? '')) ?>', '<?= number_format($req['approved_amount'] > 0 ? $req['approved_amount'] : $req['request_amount'], 2) ?>', 'project_incentive_claims')"
+                                                        title="Approve as Accounts Head">
+                                                        <i class="fa-solid fa-stamp me-1"></i>Approve (Accounts Head)
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Awaiting Accounts Head verification">
+                                                        <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Accounts Head
+                                                    </span>
+                                                <?php endif; ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Incentive Management">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($reqApproveRole === 'management'): ?>
+                                                <?php if ($canUserApprove): ?>
+                                                    <button type="button" class="btn btn-sm btn-success rounded-2 px-2.5 shadow-sm fw-semibold me-1"
+                                                        onclick="approveManagement(<?= (int)$req['id'] ?>, '<?= htmlspecialchars(addslashes($req['title'] ?? 'Sales Incentive Claim')) ?>', '<?= number_format($req['approved_amount'] > 0 ? $req['approved_amount'] : $req['request_amount'], 2) ?>')"
+                                                        title="Approve as Management">
+                                                        <i class="fa-solid fa-circle-check me-1"></i>Approve (Management)
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-2 px-2 shadow-sm fw-semibold me-1"
+                                                        onclick="rejectManagement(<?= (int)$req['id'] ?>)"
+                                                        title="Reject Claim">
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Awaiting Management approval">
+                                                        <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Management
+                                                    </span>
+                                                <?php endif; ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Incentive Management">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Incentive Management">
+                                                    <i class="fa-solid fa-eye me-1"></i>View Module Page
+                                                </a>
+                                            <?php endif; ?>
+
+                                        <?php elseif ($isVoucherSupported && !$isPaidOrSettled): ?>
                                             <a href="<?= $voucherUrl ?>&is_approval=1" target="_blank" class="btn btn-sm btn-outline-info rounded-2 px-2 shadow-sm fw-semibold mb-1" title="View & Print Approval Voucher">
                                                 <i class="fa-solid fa-file-signature me-1"></i>Approval Voucher
                                             </a>
@@ -1551,6 +1824,19 @@
                                                         title="Review & Process Booking Discount">
                                                         <i class="fa-solid fa-stamp me-1"></i>Review / Process
                                                     </button>
+                                                <?php elseif ($sourceTable === 'client_refund_requests'): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold"
+                                                        onclick="openRefundApprovalModal(<?= htmlspecialchars(json_encode([
+                                                            'id'         => (int)$req['id'],
+                                                            'source_id'  => (int)$req['source_id'],
+                                                            'title'      => $req['title'] ?? 'Client Refund Approval',
+                                                            'amount'     => (float)$req['request_amount'],
+                                                            'stage'      => $req['approve_role'] ?? 'sales_manager',
+                                                            'detail_url' => $targetUrl
+                                                        ]), ENT_QUOTES, 'UTF-8') ?>)"
+                                                        title="Approve or Reject Refund Request">
+                                                        <i class="fa-solid fa-stamp me-1"></i>Review / Approve
+                                                    </button>
                                                 <?php else: ?>
                                                     <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
                                                         <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
@@ -1569,8 +1855,8 @@
                                                     $pfShort = mb_substr($pfShort, 0, 28) . '…';
                                                 }
                                                 $ahDone = ($ahStatus === 'approved');
-                                                $awaitOpHead = ($reqAmount > 10000.01 && !$opHeadDone && $isManagementUser);
-                                                $awaitAh = ($reqAmount > 10000.01 && $opHeadDone && !$ahDone && $isManagementUser);
+                                                $awaitOpHead = ($sourceTable !== 'client_refund_requests' && $reqAmount > 10000.01 && !$opHeadDone && $isManagementUser);
+                                                $awaitAh = ($sourceTable !== 'client_refund_requests' && $reqAmount > 10000.01 && $opHeadDone && !$ahDone && $isManagementUser);
                                                 if ($awaitOpHead) {
                                                     $lockLabel = 'Awaiting Op Head';
                                                     $lockTitle = 'Amount exceeds ৳10,000 - Admin & Operation Head approval required first';
@@ -1692,6 +1978,12 @@
                 </div>
 
                 <input type="hidden" id="ahModalReqId" value="">
+                
+                <div class="mb-3" id="ahModalAmountContainer">
+                    <label for="ahModalApprovedAmount" class="form-label extra-small fw-bold text-muted text-uppercase">Approved Amount (৳)</label>
+                    <input type="number" step="0.01" min="0" class="form-control form-control-sm fw-bold text-success" id="ahModalApprovedAmount" placeholder="Enter approved amount">
+                    <div class="form-text extra-small text-muted">You may adjust this amount for partial approval if required.</div>
+                </div>
                 
                 <div class="mb-3" id="ahModalCoaContainer">
                     <label for="ahModalCoaId" class="form-label extra-small fw-bold text-muted text-uppercase">Chart of Accounts Category (Required for Posting)</label>
@@ -1986,11 +2278,22 @@
             });
     }
 
-    function openAccountsHeadApprovalModal(reqId, title, amount) {
+    function openAccountsHeadApprovalModal(reqId, title, amount, sourceTable = '') {
         document.getElementById('ahModalReqId').value = reqId;
         document.getElementById('ahModalReqTitle').innerText = title;
         document.getElementById('ahModalReqAmount').innerText = '৳ ' + amount;
+        const rawAmt = parseFloat(amount.toString().replace(/,/g, '')) || 0;
+        const amtInput = document.getElementById('ahModalApprovedAmount');
+        if (amtInput) amtInput.value = rawAmt > 0 ? rawAmt.toFixed(2) : '';
         document.getElementById('ahModalNote').value = '';
+        const coaContainer = document.getElementById('ahModalCoaContainer');
+        if (coaContainer) {
+            if (sourceTable === 'project_incentive_claims') {
+                coaContainer.style.display = 'none';
+            } else {
+                coaContainer.style.display = '';
+            }
+        }
         const modal = new bootstrap.Modal(document.getElementById('accountsHeadApprovalModal'));
         modal.show();
     }
@@ -2030,14 +2333,19 @@
             ? '<?= $base_url ?>/approval-requests/reject-accounts-head' 
             : '<?= $base_url ?>/approval-requests/approve-accounts-head';
 
+        const coaContainer = document.getElementById('ahModalCoaContainer');
+        const isCoaVisible = coaContainer && coaContainer.style.display !== 'none';
         const coaId = document.getElementById('ahModalCoaId') ? document.getElementById('ahModalCoaId').value : null;
 
-        if (action === 'approve' && !coaId) {
+        if (action === 'approve' && isCoaVisible && !coaId) {
             alert('Please select a Chart of Accounts category before approving.');
             return;
         }
 
         if (btn) btn.disabled = true;
+
+        const approvedAmtInput = document.getElementById('ahModalApprovedAmount');
+        const approvedAmt = (action === 'approve' && approvedAmtInput && approvedAmtInput.value) ? parseFloat(approvedAmtInput.value) : null;
 
         fetch(endpoint, {
             method: 'POST',
@@ -2045,7 +2353,8 @@
             body: JSON.stringify({
                 approval_request_id: reqId,
                 note: note || (action === 'reject' ? 'Rejected by Accounts Head' : 'Approved by Accounts Head'),
-                coa_id: coaId
+                coa_id: coaId,
+                approved_amount: approvedAmt
             })
         })
         .then(res => res.json())
@@ -2097,6 +2406,245 @@
             } else {
                 console.error('Error:', err);
             }
+        });
+    }
+
+    // =========================================================================
+    // Sales Incentive Multi-Stage Approval Handlers (Sales Head & Management)
+    // =========================================================================
+    function approveSalesHead(reqId, title, amount) {
+        const rawAmt = parseFloat(amount.toString().replace(/,/g, '')) || 0;
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Approve Claim (Sales Head)',
+                html: `<div class="text-start">
+                    <p class="mb-2">Are you sure you want to approve this sales incentive claim as <strong>Sales Team Head</strong>?</p>
+                    <div class="p-2 bg-light rounded border mb-2">
+                        <strong>Request:</strong> #${String(reqId).padStart(5, '0')}<br>
+                        <strong>Title:</strong> ${title}<br>
+                        <strong>Claimed Amount:</strong> ৳ ${amount}
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label extra-small fw-bold">Approved Amount (৳):</label>
+                        <input type="number" step="0.01" min="0" id="swalSalesHeadApprovedAmount" class="form-control form-control-sm fw-bold text-success" value="${rawAmt.toFixed(2)}" placeholder="Enter approved amount">
+                        <div class="extra-small text-muted mt-1">Adjust if approving a partial amount.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label extra-small fw-bold">Approval Note (Optional):</label>
+                        <textarea id="swalSalesHeadNote" class="form-control form-control-sm" rows="2" placeholder="e.g. Sales performance verified and approved"></textarea>
+                    </div>
+                </div>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fa-solid fa-check me-1"></i> Approve & Forward to Accounts Head',
+                preConfirm: () => {
+                    const note = document.getElementById('swalSalesHeadNote') ? document.getElementById('swalSalesHeadNote').value : '';
+                    const appAmt = document.getElementById('swalSalesHeadApprovedAmount') ? document.getElementById('swalSalesHeadApprovedAmount').value : rawAmt;
+                    return { note: note, approved_amount: appAmt };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const finalAmt = result.value ? result.value.approved_amount : rawAmt;
+                    executeSalesHeadAction(reqId, result.value ? result.value.note : '', 'approve', finalAmt);
+                }
+            });
+        } else {
+            const note = prompt('Approve as Sales Head? Enter note (optional):', 'Approved by Sales Team Head');
+            if (note !== null) {
+                executeSalesHeadAction(reqId, note, 'approve', rawAmt);
+            }
+        }
+    }
+
+    function rejectSalesHead(reqId) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Reject Claim (Sales Head)',
+                text: 'Are you sure you want to reject this sales incentive claim?',
+                input: 'textarea',
+                inputPlaceholder: 'Enter reason for rejection...',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Reject',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Please enter a rejection reason!';
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    executeSalesHeadAction(reqId, result.value, 'reject');
+                }
+            });
+        } else {
+            const note = prompt('Enter rejection reason:');
+            if (note) {
+                executeSalesHeadAction(reqId, note, 'reject');
+            }
+        }
+    }
+
+    function executeSalesHeadAction(reqId, note, action, amount = null) {
+        const endpoint = action === 'reject'
+            ? '<?= $base_url ?>/approval-requests/reject-sales-head'
+            : '<?= $base_url ?>/approval-requests/approve-sales-head';
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                approval_request_id: reqId,
+                note: note || (action === 'reject' ? 'Rejected by Sales Team Head' : 'Approved by Sales Team Head'),
+                approved_amount: amount ? parseFloat(amount.toString().replace(/,/g, '')) : null
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: (action === 'reject') ? 'Rejected!' : 'Approved!',
+                        text: data.message || 'Action completed successfully.',
+                        timer: 1200,
+                        showConfirmButton: false
+                    }).then(() => window.location.reload());
+                } else {
+                    alert(data.message || 'Action completed successfully.');
+                    window.location.reload();
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Operation failed' });
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            }
+        })
+        .catch(err => {
+            alert('Network or server error: ' + err);
+        });
+    }
+
+    function approveManagement(reqId, title, amount) {
+        const rawAmt = parseFloat(amount.toString().replace(/,/g, '')) || 0;
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Approve Claim (Management)',
+                html: `<div class="text-start">
+                    <p class="mb-2">Confirm final Management sign-off for this sales incentive claim:</p>
+                    <div class="p-2 bg-light rounded border mb-2">
+                        <strong>Request:</strong> #${String(reqId).padStart(5, '0')}<br>
+                        <strong>Title:</strong> ${title}<br>
+                        <strong>Current Approved / Requested:</strong> ৳ ${amount}
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label extra-small fw-bold">Approved Amount (৳):</label>
+                        <input type="number" step="0.01" min="0" id="swalMgmtApprovedAmount" class="form-control form-control-sm fw-bold text-success" value="${rawAmt.toFixed(2)}" placeholder="Enter approved amount">
+                        <div class="extra-small text-muted mt-1">Adjust if approving a partial amount.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label extra-small fw-bold">Management Note (Optional):</label>
+                        <textarea id="swalMgmtNote" class="form-control form-control-sm" rows="2" placeholder="e.g. Final approval granted. Ready for disbursement."></textarea>
+                    </div>
+                </div>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fa-solid fa-check-double me-1"></i> Final Management Approval',
+                preConfirm: () => {
+                    const note = document.getElementById('swalMgmtNote') ? document.getElementById('swalMgmtNote').value : '';
+                    const appAmt = document.getElementById('swalMgmtApprovedAmount') ? document.getElementById('swalMgmtApprovedAmount').value : rawAmt;
+                    return { note: note, approved_amount: appAmt };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const finalAmt = result.value ? result.value.approved_amount : rawAmt;
+                    executeManagementAction(reqId, result.value ? result.value.note : '', 'approve', finalAmt);
+                }
+            });
+        } else {
+            const note = prompt('Approve as Management? Enter note (optional):', 'Approved by Management');
+            if (note !== null) {
+                executeManagementAction(reqId, note, 'approve', rawAmt);
+            }
+        }
+    }
+
+    function rejectManagement(reqId) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Reject Claim (Management)',
+                text: 'Are you sure you want to reject this claim?',
+                input: 'textarea',
+                inputPlaceholder: 'Enter reason for rejection...',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Reject',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Please enter a rejection reason!';
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    executeManagementAction(reqId, result.value, 'reject');
+                }
+            });
+        } else {
+            const note = prompt('Enter rejection reason:');
+            if (note) {
+                executeManagementAction(reqId, note, 'reject');
+            }
+        }
+    }
+
+    function executeManagementAction(reqId, note, action, amount) {
+        const endpoint = action === 'reject'
+            ? '<?= $base_url ?>/approval-requests/reject-management'
+            : '<?= $base_url ?>/approval-requests/approve-management';
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                approval_request_id: reqId,
+                note: note || (action === 'reject' ? 'Rejected by Management' : 'Approved by Management'),
+                approved_amount: amount ? parseFloat(amount.toString().replace(/,/g, '')) : null
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: (action === 'reject') ? 'Rejected!' : 'Approved!',
+                        text: data.message || 'Action completed successfully.',
+                        timer: 1200,
+                        showConfirmButton: false
+                    }).then(() => window.location.reload());
+                } else {
+                    alert(data.message || 'Action completed successfully.');
+                    window.location.reload();
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Operation failed' });
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            }
+        })
+        .catch(err => {
+            alert('Network or server error: ' + err);
         });
     }
 
@@ -2311,6 +2859,117 @@
             }
         });
     }
+</script>
+
+<!-- Client Refund Direct Approval Modal -->
+<div class="modal fade" id="refundApprovalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header bg-light border-bottom py-2.5">
+                <h6 class="modal-title fw-bold mb-0">
+                    <i class="fa-solid fa-rotate-left text-danger me-2"></i>Client Refund Approval
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="mb-2">
+                    <div class="text-muted fs-11">Request Title</div>
+                    <div class="fw-semibold text-dark fs-13" id="rfModTitle">—</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded-2 bg-light border mb-3">
+                    <div>
+                        <div class="text-muted fs-11">Current Stage</div>
+                        <span class="badge bg-warning text-dark fs-11" id="rfModStage">—</span>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted fs-11">Refund Amount</div>
+                        <strong class="text-success fs-16 font-monospace" id="rfModAmount">৳ 0.00</strong>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fs-12 fw-semibold text-muted mb-1">Approval / Rejection Note</label>
+                    <textarea id="rfModNote" class="form-control form-control-sm" rows="2" placeholder="Optional remarks..."></textarea>
+                </div>
+                <div class="text-end">
+                    <a href="#" id="rfModDetailLink" class="fs-12 text-primary text-decoration-none" target="_blank">
+                        <i class="fa-light fa-up-right-from-square me-1"></i>View Full Refund Details
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top py-2">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="rfBtnReject" onclick="submitRefundApproval('reject')">
+                    <i class="fa-solid fa-xmark me-1"></i> Reject
+                </button>
+                <button type="button" class="btn btn-sm btn-success fw-semibold" id="rfBtnApprove" onclick="submitRefundApproval('approve')">
+                    <i class="fa-solid fa-check me-1"></i> Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRefundApproval = null;
+const rfStageMap = {
+    'sales_manager': 'Stage 1: Related Sales Manager',
+    'qc':            'Stage 2: QC Verification',
+    'op_head':       'Stage 3: Operation Head',
+    'management':    'Stage 4: Super Admin Final Approval'
+};
+
+function openRefundApprovalModal(data) {
+    currentRefundApproval = data;
+    document.getElementById('rfModTitle').innerText = data.title || 'Client Refund';
+    document.getElementById('rfModStage').innerText = rfStageMap[data.stage] || data.stage;
+    document.getElementById('rfModAmount').innerText = '৳ ' + parseFloat(data.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('rfModNote').value = '';
+    document.getElementById('rfModDetailLink').href = data.detail_url || ('<?= $base_url ?>/client-refund/' + data.source_id);
+    const modalEl = document.getElementById('refundApprovalModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+}
+
+function submitRefundApproval(action) {
+    if (!currentRefundApproval) return;
+    const btn = document.getElementById(action === 'approve' ? 'rfBtnApprove' : 'rfBtnReject');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+
+    const fd = new FormData();
+    fd.append('ajax', '1');
+    fd.append('note', document.getElementById('rfModNote').value.trim());
+
+    const endpoint = action === 'approve'
+        ? '<?= $base_url ?>/client-refund-approve/' + currentRefundApproval.source_id + '?ajax=1'
+        : '<?= $base_url ?>/client-refund-reject/' + currentRefundApproval.source_id + '?ajax=1';
+
+    fetch(endpoint, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json())
+        .then(res => {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            if (res.success) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'success', title: 'Done', text: res.message }).then(() => window.location.reload());
+                } else {
+                    alert(res.message);
+                    window.location.reload();
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Not Allowed', text: res.message });
+                } else {
+                    alert(res.message);
+                }
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            alert('Network error: ' + err);
+        });
+}
 </script>
 
 <style>

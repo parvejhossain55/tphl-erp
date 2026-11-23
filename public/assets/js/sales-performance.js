@@ -276,6 +276,7 @@
         const toInput    = document.getElementById('spTo');
         const presetInput= document.getElementById('spPreset');
         const projInput  = document.getElementById('spProject');
+        const mgrInput   = document.getElementById('spManager');
         const teamInput  = document.getElementById('spTeam');
         const execInput  = document.getElementById('spExec');
 
@@ -291,6 +292,7 @@
             }
         }
         const projVal  = (projInput && projInput.value) ? projInput.value : (D.filters && D.filters.project_id || '');
+        const mgrVal   = (mgrInput && mgrInput.value) ? mgrInput.value : (D.filters && D.filters.sales_manager_id || '');
         const teamVal  = (teamInput && teamInput.value) ? teamInput.value : (D.filters && D.filters.team_id || '');
         const execVal  = btn.dataset.execId || ((execInput && execInput.value) ? execInput.value : (D.filters && D.filters.executive_id || ''));
         const teamKeyVal = btn.dataset.teamKey || '';
@@ -300,6 +302,7 @@
         if (toVal) params.set('to', toVal);
         if (presetVal) params.set('preset', presetVal);
         if (projVal) params.set('project_id', projVal);
+        if (mgrVal) params.set('sales_manager_id', mgrVal);
         if (teamVal) params.set('team_id', teamVal);
         if (execVal) params.set('executive_id', execVal);
         if (teamKeyVal) params.set('team_key', teamKeyVal);
@@ -1550,12 +1553,19 @@
         };
 
         const $project = $jq('#spProject');
+        const $manager = $jq('#spManager');
         const $team = $jq('#spTeam');
         const $exec = $jq('#spExec');
 
         if ($project.length) {
             $project.select2(Object.assign({}, select2BaseConfig, {
                 placeholder: 'All projects'
+            }));
+        }
+
+        if ($manager.length) {
+            $manager.select2(Object.assign({}, select2BaseConfig, {
+                placeholder: 'All cluster heads'
             }));
         }
 
@@ -1571,42 +1581,96 @@
             }));
         }
 
-        // Sync Executive list with Team selection
-        if ($team.length && $exec.length) {
-            const syncExecOptions = () => {
-                const selectedTeam = $team.val();
-                const currentExec = $exec.val();
-                let isCurrentValid = false;
+        const getSelectedManagerTeams = () => {
+            if (!$manager.length || !$manager.val()) return null;
+            const raw = $manager.find('option:selected').attr('data-teams') || '';
+            return raw ? raw.split(',').filter(Boolean) : [];
+        };
 
-                $exec.find('option').each(function () {
-                    const $opt = $jq(this);
-                    const optVal = $opt.val();
-                    const optTeam = $opt.attr('data-team');
+        // Sync Executive list with Team & Cluster Head selection
+        const syncExecOptions = () => {
+            if (!$exec.length) return;
+            const selectedTeam = $team.length ? $team.val() : '';
+            const managerTeams = getSelectedManagerTeams();
+            const currentExec = $exec.val();
+            let isCurrentValid = false;
 
-                    if (!optVal) {
-                        $opt.prop('disabled', false); // "All executives" option
-                        $opt.prop('hidden', false);
-                        return;
-                    }
+            $exec.find('option').each(function () {
+                const $opt = $jq(this);
+                const optVal = $opt.val();
+                const optTeam = $opt.attr('data-team');
 
-                    const isMatch = !selectedTeam || optTeam === selectedTeam;
-                    $opt.prop('disabled', !isMatch);
-                    $opt.prop('hidden', !isMatch);
-
-                    if (optVal === currentExec && isMatch) {
-                        isCurrentValid = true;
-                    }
-                });
-
-                if (currentExec && !isCurrentValid) {
-                    $exec.val('').trigger('change.select2');
-                } else {
-                    $exec.trigger('change.select2');
+                if (!optVal) {
+                    $opt.prop('disabled', false); // "All executives" option
+                    $opt.prop('hidden', false);
+                    return;
                 }
-            };
 
+                let isMatch = true;
+                if (selectedTeam) {
+                    isMatch = optTeam === selectedTeam;
+                } else if (managerTeams !== null) {
+                    isMatch = managerTeams.includes(optTeam);
+                }
+                $opt.prop('disabled', !isMatch);
+                $opt.prop('hidden', !isMatch);
+
+                if (optVal === currentExec && isMatch) {
+                    isCurrentValid = true;
+                }
+            });
+
+            if (currentExec && !isCurrentValid) {
+                $exec.val('').trigger('change.select2');
+            } else {
+                $exec.trigger('change.select2');
+            }
+        };
+
+        // Sync Team list with Cluster Head selection
+        const syncTeamOptions = () => {
+            if (!$team.length) return;
+            const managerTeams = getSelectedManagerTeams();
+            const currentTeam = $team.val();
+            let isCurrentValid = false;
+
+            $team.find('option').each(function () {
+                const $opt = $jq(this);
+                const optVal = $opt.val();
+
+                if (!optVal) {
+                    $opt.prop('disabled', false); // "All teams" option
+                    $opt.prop('hidden', false);
+                    return;
+                }
+
+                const isMatch = managerTeams === null || managerTeams.includes(optVal);
+                $opt.prop('disabled', !isMatch);
+                $opt.prop('hidden', !isMatch);
+
+                if (optVal === currentTeam && isMatch) {
+                    isCurrentValid = true;
+                }
+            });
+
+            if (currentTeam && !isCurrentValid) {
+                $team.val('').trigger('change.select2');
+            } else {
+                $team.trigger('change.select2');
+            }
+            syncExecOptions();
+        };
+
+        if ($manager.length) {
+            $manager.on('change', syncTeamOptions);
+            if ($manager.val()) {
+                syncTeamOptions();
+            }
+        }
+
+        if ($team.length && $exec.length) {
             $team.on('change', syncExecOptions);
-            if ($team.val()) {
+            if ($team.val() && !($manager.length && $manager.val())) {
                 syncExecOptions();
             }
         }

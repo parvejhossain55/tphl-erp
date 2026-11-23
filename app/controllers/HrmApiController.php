@@ -355,16 +355,22 @@ class HrmApiController extends Controller
         if ($projectId > 0 && (empty($fromDateStr) || empty($toDateStr))) {
             $projQuery = $this->db->query("SELECT * FROM payroll_projects WHERE id = $projectId");
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
-                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
-                    $fromDateStr = $projData['start_date'];
-                    $toDateStr = $projData['end_date'];
+                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && $projData['start_date'] !== '0000-00-00' && !empty($projData['end_date']) && $projData['end_date'] !== '0000-00-00') {
+                    $fromDateStr = substr(trim($projData['start_date']), 0, 10);
+                    $toDateStr = substr(trim($projData['end_date']), 0, 10);
                 } elseif (!empty($projData['date'])) {
                     $parts = explode('-', $projData['date']);
                     if (count($parts) >= 2) {
                         $y = (int)$parts[0];
                         $m = (int)$parts[1];
-                        $fromDateStr = sprintf('%04d-%02d-01', $y, $m);
-                        $toDateStr = date('Y-m-t', strtotime($fromDateStr));
+                        $prevM = $m - 1;
+                        $prevY = $y;
+                        if ($prevM <= 0) {
+                            $prevM = 12;
+                            $prevY = $y - 1;
+                        }
+                        $fromDateStr = sprintf('%04d-%02d-26', $prevY, $prevM);
+                        $toDateStr = sprintf('%04d-%02d-25', $y, $m);
                     }
                 }
             }
@@ -402,18 +408,39 @@ class HrmApiController extends Controller
             $localIds = [];
             $localEmails = [];
             
-            // Join with departments and designations and filter by project/effective dates
+            // Join with departments and designations and filter by project/effective dates (MySQL 8.0 NO_ZERO_DATE safe)
             $escapedToDate = $this->db->real_escape_string($toDateStr);
             $escapedFromDate = $this->db->real_escape_string($fromDateStr);
-            
-            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.department_id, d.name as department_name, des.name as designation_name 
-                                            FROM employees e 
-                                            LEFT JOIN departments d ON e.department_id = d.id 
-                                            LEFT JOIN designations des ON e.designation_id = des.id
-                                            WHERE e.employee_status = 'active'
-                                              AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
-                                              AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedFromDate')
-                                            ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
+
+            $localQuery = false;
+            try {
+                $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.department_id, d.name as department_name, des.name as designation_name 
+                                                FROM employees e 
+                                                LEFT JOIN departments d ON e.department_id = d.id 
+                                                LEFT JOIN designations des ON e.designation_id = des.id
+                                                WHERE e.deleted_at IS NULL
+                                                  AND (LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active' OR (e.resign_date IS NOT NULL AND CAST(e.resign_date AS CHAR) != '0000-00-00' AND e.resign_date >= '$escapedFromDate'))
+                                                  AND (e.joining_date IS NULL OR CAST(e.joining_date AS CHAR) = '0000-00-00' OR e.joining_date <= '$escapedToDate')
+                                                  AND (e.resign_date IS NULL OR CAST(e.resign_date AS CHAR) = '0000-00-00' OR e.resign_date >= '$escapedFromDate')
+                                                ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
+            } catch (\Throwable $qe) {
+                error_log('HrmApiController::getAttendanceReport primary localQuery error: ' . $qe->getMessage());
+                $localQuery = false;
+            }
+
+            if (!$localQuery) {
+                try {
+                    $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, NULL as resign_date, e.department_id, d.name as department_name, des.name as designation_name
+                                                    FROM employees e
+                                                    LEFT JOIN departments d ON e.department_id = d.id
+                                                    LEFT JOIN designations des ON e.designation_id = des.id
+                                                    WHERE LOWER(TRIM(COALESCE(e.employee_status, ''))) = 'active'
+                                                      AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
+                                                    ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
+                } catch (\Throwable $fqe) {
+                    error_log('HrmApiController::getAttendanceReport fallback localQuery error: ' . $fqe->getMessage());
+                }
+            }
 
             if ($localQuery) {
                 while ($row = $localQuery->fetch_assoc()) {
@@ -422,6 +449,7 @@ class HrmApiController extends Controller
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
                     $empJoin = trim($row['joining_date'] ?? '');
+                    $empResign = trim($row['resign_date'] ?? '');
 
                     $localEmployees[] = [
                         'id' => $pid,
@@ -429,6 +457,7 @@ class HrmApiController extends Controller
                         'email' => strtolower($empEmail),
                         'full_name' => $empName,
                         'joining_date' => $empJoin,
+                        'resign_date' => ($empResign !== '0000-00-00') ? $empResign : '',
                         'department_id' => (int) ($row['department_id'] ?? 0),
                         'department_name' => $row['department_name'] ?? 'N/A',
                         'designation_name' => $row['designation_name'] ?? 'N/A'
@@ -1606,31 +1635,11 @@ class HrmApiController extends Controller
     public function triggerLoginReminder()
     {
         header('Content-Type: application/json');
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $userEmail = $_SESSION['user']['email'] ?? null;
-        if (!$userEmail) {
-            echo json_encode(['success' => false, 'message' => 'No active user session.']);
-            exit;
-        }
-
-        try {
-            require_once dirname(__DIR__) . '/services/TipsoiReminderService.php';
-            $service = new \TipsoiReminderService($this->db);
-            $result = $service->handleUserLogin($userEmail);
-
-            echo json_encode([
-                'success' => true,
-                'message' => 'Login reminder check completed.',
-                'data' => $result
-            ]);
-        } catch (\Exception $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-        }
+        echo json_encode([
+            'success' => false,
+            'message' => 'Login reminder trigger is disabled. Pending emails are sent strictly via scheduled cron job at 5:00 PM.'
+        ]);
+        exit;
     }
 
     /**
@@ -1657,6 +1666,7 @@ class HrmApiController extends Controller
                         'name' => $d['name'],
                         'email' => $em,
                         'pending_count' => count($d['requests']),
+                        'requests' => $d['requests'],
                         'should_send' => $elig['should_send'],
                         'reason' => $elig['reason'],
                         'last_sent' => $elig['last_sent'] ?? null
@@ -1670,6 +1680,7 @@ class HrmApiController extends Controller
                         'name' => $d['name'],
                         'email' => $em,
                         'pending_count' => count($d['requests']),
+                        'requests' => $d['requests'],
                         'should_send' => $elig['should_send'],
                         'reason' => $elig['reason'],
                         'last_sent' => $elig['last_sent'] ?? null
@@ -1679,6 +1690,7 @@ class HrmApiController extends Controller
                 echo json_encode([
                     'success' => true,
                     'mode' => 'preview',
+                    'cycle_range' => $pending['cycle_range'] ?? null,
                     'total_pending' => $pending['total_pending'],
                     'approvers_count' => count($approvers),
                     'requesters_count' => count($requesters),
@@ -1870,6 +1882,58 @@ class HrmApiController extends Controller
         }
     
         echo json_encode(['success' => true, 'logs' => $logs]);
+    }
+
+    /**
+     * GET/POST /api/hrm/tipsoi-late-alerts
+     * Dispatch late notification emails to all employees who punched late today
+     */
+    public function sendTipsoiLateAlerts()
+    {
+        header('Content-Type: application/json');
+
+        try {
+            require_once dirname(__DIR__) . '/services/TipsoiLateAlertService.php';
+            $service = new \TipsoiLateAlertService($this->db);
+
+            $isDryRun = isset($_GET['dry_run']) && ($_GET['dry_run'] == '1' || $_GET['dry_run'] == 'true');
+            $targetDate = isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date']) ? $_GET['date'] : null;
+            $testEmail = isset($_GET['email']) && filter_var($_GET['email'], FILTER_VALIDATE_EMAIL) ? trim($_GET['email']) : null;
+
+            $result = $service->processDailyLateAlerts($targetDate, $isDryRun, 'admin_manual', $testEmail);
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Late alerts processed: {$result['dispatched_count']} sent, {$result['skipped_count']} skipped.",
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * GET /api/hrm/tipsoi-late-email-logs
+     * Returns logs of sent late arrival email notifications
+     */
+    public function getTipsoiLateEmailLogs()
+    {
+        header('Content-Type: application/json');
+
+        $query = "SELECT * FROM tipsoi_late_email_logs ORDER BY sent_at DESC LIMIT 500";
+        $result = $this->db->query($query);
+        $logs = [];
+
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $logs[] = $row;
+            }
+        }
+
+        echo json_encode(['success' => true, 'logs' => $logs]);
+        exit;
     }
 
     /**

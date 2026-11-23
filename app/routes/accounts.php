@@ -86,11 +86,25 @@ return [
     'ced-collection-statement' => ['controller' => 'CedCollectionStatementController', 'method' => 'index'],
     'ced-collection-statement-print' => ['controller' => 'CedCollectionStatementController', 'method' => 'printStatement'],
     'ced-collection-statement-export' => ['controller' => 'CedCollectionStatementController', 'method' => 'exportCSV'],
+    'ced-project-dashboard' => ['controller' => 'CedProjectDashboardController', 'method' => 'index'],
+    'ced-project-dashboard/client-drilldown' => ['controller' => 'CedProjectDashboardController', 'method' => 'clientDrilldown'],
     'manage-projects-for-ced' => ['controller' => 'CedProjectManageController', 'method' => 'manageProjects'],
+    'manage-project-emi' => ['controller' => 'CedProjectManageController', 'method' => 'manageProjectEmi'],
+    'manage-project-emi/save' => ['controller' => 'CedProjectManageController', 'method' => 'saveProjectEmiAjax'],
+    'manage-project-emi/items/(\d+)' => ['controller' => 'CedProjectManageController', 'method' => 'getProjectEmiItemsAjax'],
+    'manage-project-emi/items/save' => ['controller' => 'CedProjectManageController', 'method' => 'saveProjectEmiItemsAjax'],
     'ced-project-assignments/save' => ['controller' => 'CedProjectManageController', 'method' => 'saveAssignmentsAjax'],
     'ced-project-assignments/agent-projects/(\d+)' => ['controller' => 'CedProjectManageController', 'method' => 'getAgentProjectsAjax'],
     'my-projects-history' => ['controller' => 'CedProjectManageController', 'method' => 'myProjectsHistory'],
     'ced-projects-history' => ['controller' => 'CedProjectManageController', 'method' => 'myProjectsHistory'],
+    'ced-client-broadcast' => ['controller' => 'CedClientBroadcastController', 'method' => 'index'],
+    'ced-client-broadcast/clients' => ['controller' => 'CedClientBroadcastController', 'method' => 'fetchClientsAjax'],
+    'ced-client-broadcast/create' => ['controller' => 'CedClientBroadcastController', 'method' => 'createCampaignAjax'],
+    'ced-client-broadcast/process-batch' => ['controller' => 'CedClientBroadcastController', 'method' => 'processBatchAjax'],
+    'ced-client-broadcast/retry-failed' => ['controller' => 'CedClientBroadcastController', 'method' => 'retryFailedAjax'],
+    'ced-client-broadcast/history' => ['controller' => 'CedClientBroadcastController', 'method' => 'historyAjax'],
+    'ced-client-broadcast/details' => ['controller' => 'CedClientBroadcastController', 'method' => 'campaignDetailsAjax'],
+    'ced-client-broadcast/mark-manual' => ['controller' => 'CedClientBroadcastController', 'method' => 'markManualContactedAjax'],
 
     'payment-invoice' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
     'payment-invoice/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
@@ -243,6 +257,14 @@ return [
     'central-statement-get' => ['controller' => 'CentralStatementController', 'method' => 'getStatement'],
 
     // =========================================================================
+    // Controller: CentralStatementV2Controller
+    // =========================================================================
+    'central-statement-v2' => ['controller' => 'CentralStatementV2Controller', 'method' => 'index'],
+    'central-statement-v2-drilldown' => ['controller' => 'CentralStatementV2Controller', 'method' => 'drilldown'],
+    'central-statement-v2-export' => ['controller' => 'CentralStatementV2Controller', 'method' => 'exportExcel'],
+    'central-statement-v2-print' => ['controller' => 'CentralStatementV2Controller', 'method' => 'printView'],
+
+    // =========================================================================
     // Controller: CashoutRequestController
     // =========================================================================
     'cashout-requests' => ['controller' => 'CashoutRequestController', 'method' => 'index'],
@@ -268,6 +290,7 @@ return [
     // Controller: ClientRefundController
     // =========================================================================
     'client-refunds' => ['controller' => 'ClientRefundController', 'method' => 'index'],
+    'team-refunds'   => ['controller' => 'ClientRefundController', 'method' => 'teamRefunds'],
     'client-refund-create/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'create'],
     'client-refund-store' => ['controller' => 'ClientRefundController', 'method' => 'store'],
     'client-refund/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'show'],

@@ -33,6 +33,36 @@ class PaymentBookingController extends Controller
             exit;
         }
 
+        $currentUserId = (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0);
+        $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? $_SESSION['user']['primary_role_id'] ?? 0);
+        $secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userName = strtolower(trim($_SESSION['user']['full_name'] ?? $_SESSION['user']['user_name'] ?? ''));
+
+        $isManagement = in_array($currentUserRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        in_array($secondaryRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        (strpos($userRoleName, 'admin') !== false) ||
+                        (strpos($userRoleName, 'management') !== false) ||
+                        (strpos($userRoleName, 'ceo') !== false) ||
+                        (strpos($userRoleName, 'chief') !== false) ||
+                        (strpos($userName, 'management') !== false);
+
+        $isSalesHead = in_array($currentUserRoleId, [5, 9]) ||
+                       in_array($secondaryRoleId, [5, 9]) ||
+                       (strpos($userRoleName, 'sales head') !== false) ||
+                       (strpos($userRoleName, 'team head') !== false);
+
+        $isAssignedSalesPerson = (
+            (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === $currentUserId) ||
+            (empty($booking['sales_by_id']) && !empty($booking['assigned_id']) && (int)$booking['assigned_id'] === $currentUserId)
+        );
+
+        if (!$isManagement && !$isSalesHead && !$isAssignedSalesPerson) {
+            setError("You are not authorized to view or enter payments for this booking. Only the assigned salesperson for this sale or Management/Sales Head can access it.");
+            header("Location: {$GLOBALS['base_url']}/booking-leads/" . ($booking['lead_id'] ?? ''));
+            exit;
+        }
+
         // All payments for this booking
         $payments = $this->paymentModel->getByBooking($booking_id);
 
@@ -103,6 +133,41 @@ class PaymentBookingController extends Controller
         $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
 
         $bookingLead = $this->bookingModel->getById($data['booking_id']);
+        if (!$bookingLead) {
+            setError("Booking not found!");
+            header("Location: {$GLOBALS['base_url']}/onboard-leads");
+            exit;
+        }
+
+        $currentUserId = (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0);
+        $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? $_SESSION['user']['primary_role_id'] ?? 0);
+        $secondaryRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userName = strtolower(trim($_SESSION['user']['full_name'] ?? $_SESSION['user']['user_name'] ?? ''));
+
+        $isManagement = in_array($currentUserRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        in_array($secondaryRoleId, [1, 3, 20, 32, 33, 35]) ||
+                        (strpos($userRoleName, 'admin') !== false) ||
+                        (strpos($userRoleName, 'management') !== false) ||
+                        (strpos($userRoleName, 'ceo') !== false) ||
+                        (strpos($userRoleName, 'chief') !== false) ||
+                        (strpos($userName, 'management') !== false);
+
+        $isSalesHead = in_array($currentUserRoleId, [5, 9]) ||
+                       in_array($secondaryRoleId, [5, 9]) ||
+                       (strpos($userRoleName, 'sales head') !== false) ||
+                       (strpos($userRoleName, 'team head') !== false);
+
+        $isAssignedSalesPerson = (
+            (!empty($bookingLead['sales_by_id']) && (int)$bookingLead['sales_by_id'] === $currentUserId) ||
+            (empty($bookingLead['sales_by_id']) && !empty($bookingLead['assigned_id']) && (int)$bookingLead['assigned_id'] === $currentUserId)
+        );
+
+        if (!$isManagement && !$isSalesHead && !$isAssignedSalesPerson) {
+            setError("You are not authorized to submit payments for this unit. Only the assigned salesperson or Management/Sales Head can enter payments.");
+            header("Location: {$GLOBALS['base_url']}/booking-leads/" . ($bookingLead['lead_id'] ?? ''));
+            exit;
+        }
         $clientPhone = !empty($bookingLead['phone']) ? trim($bookingLead['phone']) : (!empty($bookingLead['phone_number']) ? trim($bookingLead['phone_number']) : '');
 
         if ($sendSms && !$isTestingMode) {

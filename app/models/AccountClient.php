@@ -645,6 +645,7 @@ class AccountClient extends Model
                     AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
                     AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
                 LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN (
                     SELECT 
@@ -864,6 +865,7 @@ class AccountClient extends Model
             INNER JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             $whereClause
             GROUP BY lb.id
@@ -1346,8 +1348,8 @@ class AccountClient extends Model
                                        AND lp.verification_status = 'verified' 
                                   THEN lp.amount ELSE 0 END), 0) AS total_verified_collected,
                 COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                       AND lp.verification_status != 'rejected' 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                       AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                   THEN lp.amount ELSE 0 END), 0) AS total_unverified_collected,
 
                 COALESCE(SUM(CASE WHEN (lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0) 
@@ -1368,8 +1370,8 @@ class AccountClient extends Model
                                   THEN lp.amount ELSE 0 END), 0) AS total_verified_emi_collected,
                 COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
                                        AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                       AND lp.verification_status != 'rejected' 
+                                       AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                       AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                   THEN lp.amount ELSE 0 END), 0) AS total_unverified_emi_collected
             FROM lead_payments lp
             INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
@@ -1437,8 +1439,8 @@ class AccountClient extends Model
                                       AND lp.verification_status = 'verified' 
                                  THEN lp.amount ELSE 0 END), 0) AS verified_collected,
                 COALESCE(SUM(CASE WHEN (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                      AND lp.verification_status != 'rejected' 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                      AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                  THEN lp.amount ELSE 0 END), 0) AS unverified_collected,
                 COALESCE(SUM(CASE WHEN (lp.payment_type IN ('land_share', 'booking_money') OR IFNULL(lp.land_share_amount, 0) > 0) 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
@@ -1458,8 +1460,8 @@ class AccountClient extends Model
                                  THEN lp.amount ELSE 0 END), 0) AS verified_emi_collected,
                 COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') 
                                       AND (lp.payment_status IN ('paid', 'partially_paid', 'pending')) 
-                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'verified') 
-                                      AND lp.verification_status != 'rejected' 
+                                      AND (lp.verification_status IS NULL OR lp.verification_status != 'rejected')
+                                      AND NOT (lp.payment_status IN ('paid', 'partially_paid') AND COALESCE(lp.verification_status, '') = 'verified')
                                  THEN lp.amount ELSE 0 END), 0) AS unverified_emi_collected
             FROM projects p
             LEFT JOIN lead_bookings lb ON lb.project_id = p.id 
@@ -1500,6 +1502,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
             WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
@@ -1593,6 +1596,8 @@ class AccountClient extends Model
                 l.designation,
                 p.id as project_id,
                 p.name as project_name,
+                p.category_id,
+                pc.name as category_name,
                 p.types as project_type,
                 COALESCE(p.service_charge_per_emi, 0) as service_charge_per_emi,
                 f.id as flat_id,
@@ -1810,6 +1815,7 @@ class AccountClient extends Model
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
             LEFT JOIN employees e1 ON e1.user_id = u.id
@@ -2194,24 +2200,31 @@ class AccountClient extends Model
         }
         $paidEmiStmt->close();
 
-        // 2. Fetch custom fixed dates set by CED
+        // 2. Fetch custom fixed dates set by CED (excluding deactivated unpaid project EMIs)
+        $projectId = (int)($clientDetails['project_id'] ?? 0);
         $fixedDates = [];
         $fixedStmt = $this->db->prepare("
             SELECT cef.emi_no, cef.due_date, cef.notes, cef.fixed_by, cef.fixed_at,
                    u.full_name as fixed_by_name,
-                   COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as fixed_by_code
+                   COALESCE(NULLIF(e.employee_id, ''), NULLIF(u.employee_id, '')) as fixed_by_code,
+                   pesi.is_active as project_emi_active
             FROM client_emi_fixed_dates cef
             LEFT JOIN users u ON u.id = cef.fixed_by
             LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN project_emi_schedule_items pesi ON (pesi.project_id = ? AND pesi.emi_no = cef.emi_no)
             WHERE cef.booking_id = ?
         ");
         if ($fixedStmt) {
-            $fixedStmt->bind_param("i", $bookingId);
+            $fixedStmt->bind_param("ii", $projectId, $bookingId);
             $fixedStmt->execute();
             $fRes = $fixedStmt->get_result();
             if ($fRes) {
                 while ($frow = $fRes->fetch_assoc()) {
-                    $fixedDates[(int)$frow['emi_no']] = $frow;
+                    $emiNo = (int)$frow['emi_no'];
+                    if ($frow['project_emi_active'] !== null && (int)$frow['project_emi_active'] === 0 && !isset($paidEmis[$emiNo])) {
+                        continue;
+                    }
+                    $fixedDates[$emiNo] = $frow;
                 }
             }
             $fixedStmt->close();
@@ -3577,6 +3590,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
@@ -3743,6 +3757,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
@@ -4145,6 +4160,8 @@ class AccountClient extends Model
             SELECT lp.*,
                    l.full_name as client_name,
                    p.name as project_name,
+                   p.category_id,
+                   pc.name as category_name,
                    f.floor_no as flat_no,
                    f.flat_name as unit_name,
                    es.emi_no,
@@ -4246,6 +4263,7 @@ class AccountClient extends Model
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN emi_schedules parent_es ON parent_es.lead_payment_id = lp.parent_payment_id
@@ -4542,13 +4560,70 @@ class AccountClient extends Model
             }
         }
 
+        $projectId      = (int)($clientDetails['project_id'] ?? 0);
+        $landShareAsk   = (float)($clientDetails['total_land_share'] ?? 0);
+        $devChargeAsk   = (float)($clientDetails['flat_development_charges'] ?? 0)
+            + (!empty($clientDetails['is_shop']) && (int)$clientDetails['is_shop'] === 1 ? (float)($clientDetails['shop_service_charge'] ?? 0) : 0.0);
+        $activeEmiAsked = 0.0;
+        $activeEmiCount = 0;
+        $todayStr       = date('Y-m-d');
+
+        $emiAskStmt = $this->db->prepare("
+            SELECT
+                COALESCE(SUM(
+                    CASE
+                        WHEN es.status != 'cancelled'
+                             AND (
+                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND pesi.is_active = 1)
+                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND es.due_date <= ?)
+                             )
+                        THEN es.emi_amount
+                        ELSE 0
+                    END
+                ), 0) AS active_emi_asked,
+                SUM(
+                    CASE
+                        WHEN es.status != 'cancelled'
+                             AND (
+                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND pesi.is_active = 1)
+                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND es.due_date <= ?)
+                             )
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS active_emi_count
+            FROM emi_schedules es
+            LEFT JOIN project_emi_schedule_items pesi ON (pesi.project_id = ? AND pesi.emi_no = es.emi_no)
+            WHERE es.lead_booking_id = ?
+        ");
+        if ($emiAskStmt) {
+            $emiAskStmt->bind_param("iisiisii", $projectId, $projectId, $todayStr, $projectId, $projectId, $todayStr, $projectId, $bookingId);
+            $emiAskStmt->execute();
+            $emiAskRow = $emiAskStmt->get_result()->fetch_assoc();
+            if ($emiAskRow) {
+                $activeEmiAsked = round((float)($emiAskRow['active_emi_asked'] ?? 0), 2);
+                $activeEmiCount = (int)($emiAskRow['active_emi_count'] ?? 0);
+            }
+            $emiAskStmt->close();
+        }
+
+        $askedAmount = round($landShareAsk + $devChargeAsk + $activeEmiAsked, 2);
+        $totalDue    = max(0.0, round($totalPrice - ($grandTotalPaid + $grandTotalDiscount), 2));
+        $currentDue  = max(0.0, round($askedAmount - ($grandTotalPaid + $grandTotalDiscount), 2));
+
         return [
             'client_details'        => $clientDetails,
             'total_agreement_value' => $totalPrice,
             'total_price'           => $totalPrice,
             'total_paid'            => $grandTotalPaid,
             'total_discount'        => $grandTotalDiscount,
-            'current_due'           => max(0, $totalPrice - ($grandTotalPaid + $grandTotalDiscount)),
+            'total_due'             => $totalDue,
+            'asked_amount'          => $askedAmount,
+            'land_share_ask'        => round($landShareAsk, 2),
+            'dev_charge_ask'        => round($devChargeAsk, 2),
+            'active_emi_asked'      => $activeEmiAsked,
+            'active_emi_count'      => $activeEmiCount,
+            'current_due'           => $currentDue,
             'batches'               => array_values($batches),
             'batch_map'             => $batchMap
         ];
@@ -7136,6 +7211,7 @@ class AccountClient extends Model
             JOIN lead_bookings lb ON lp.booking_id = lb.id
             JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON lp.trashed_by = u.id
             LEFT JOIN roles r ON u.role_id = r.id
@@ -7806,6 +7882,7 @@ class AccountClient extends Model
                 FROM lead_bookings lb
                 INNER JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
                 LEFT JOIN (
@@ -8040,6 +8117,7 @@ class AccountClient extends Model
                 FROM lead_bookings lb
                 INNER JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
                 LEFT JOIN flats f ON lb.flat_id = f.id
                 LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
                 LEFT JOIN (
@@ -8588,6 +8666,7 @@ class AccountClient extends Model
             INNER JOIN lead_bookings lb ON c.booking_id = lb.id
             INNER JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN project_categories pc ON pc.id = p.category_id
             LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
             LEFT JOIN (

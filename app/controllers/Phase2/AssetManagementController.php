@@ -480,7 +480,7 @@ class AssetManagementController extends Controller
         }
 
         $vendors = [];
-        $vRes = $this->db->query("SELECT id, name, company_name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
+        $vRes = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name, company_name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
         if ($vRes) {
             $vendors = $vRes->fetch_all(MYSQLI_ASSOC);
         }
@@ -742,6 +742,53 @@ class AssetManagementController extends Controller
             }
             $status = $_POST['approval_status'] ?? $_POST['status'] ?? 'approved';
             $note = $_POST['approval_note'] ?? $_POST['note'] ?? '';
+            $approveMode = $_POST['approve_mode'] ?? 'override';
+
+            // Management Single-Stage Approval (approve ONLY current pending stage)
+            if ($isMgmtUser && $status === 'approved' && $approveMode === 'single') {
+                $arCheckEp = $this->db->query("SELECT id, op_head_status, accounts_head_status FROM approval_requests WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id} ORDER BY id DESC LIMIT 1");
+                $arRowEp = $arCheckEp ? $arCheckEp->fetch_assoc() : null;
+                $opHeadEp = strtolower($arRowEp['op_head_status'] ?? 'pending');
+                $ahEp     = strtolower($arRowEp['accounts_head_status'] ?? 'pending');
+                $escSingleNote = $this->db->real_escape_string($note ?: 'Approved by Management');
+
+                if (($req['dept_head_status'] ?? '') === 'pending') {
+                    $this->model->approveStep($id, 'dept_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Dept. Head)');
+                    setSuccess('Department Head stage approved by Management.');
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                } elseif (($req['it_head_status'] ?? '') === 'pending') {
+                    $this->model->approveStep($id, 'it_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of IT Head)');
+                    setSuccess('IT Head stage approved by Management.');
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                } elseif (($req['operations_status'] ?? '') === 'pending') {
+                    $this->model->approveStep($id, 'operations', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Admin & Ops)');
+                    setSuccess('Admin & Operation stage approved by Management.');
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                } elseif (($req['purchase_head_status'] ?? '') === 'pending') {
+                    $this->model->approveStep($id, 'purchase_head', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of Purchase Head)');
+                    setSuccess('Purchase Head stage approved by Management.');
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                } elseif (($req['qc_audit_status'] ?? '') === 'pending') {
+                    $this->model->approveStep($id, 'qc_audit', 'approved', $userId, ($note ?: 'Approved') . ' (On behalf of QC)');
+                    setSuccess('QC & Audit stage approved by Management.');
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                } elseif ($opHeadEp !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)', approve_role = 'accounts_head' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                    setSuccess('Operation Head stage approved by Management. Forwarded to Accounts Head.');
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                } elseif ($ahEp !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$userId}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)', approve_role = 'management' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                    setSuccess('Accounts Head stage approved by Management. Ready for Final Management Approval.');
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
+            }
 
             // When Management (DCEO / CEO / Director / Super Admin) approves at any stage, auto-fill all bypassed stages with Management's identity and perform final approval
             if ($isMgmtUser && $status === 'approved') {

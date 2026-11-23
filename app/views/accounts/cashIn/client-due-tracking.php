@@ -935,9 +935,9 @@ $show_breadcrumb = true;
                 </div>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2 no-print">
-                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#projectBreakdownModal">
-                    <i class="fa-solid fa-layer-group me-1"></i> Project Breakdown
-                </button>
+                <a href="<?= $GLOBALS['base_url'] ?>/ced-project-dashboard<?= !empty($selectedProjectId) ? '?project_id=' . (int)$selectedProjectId : '' ?>" class="btn btn-sm btn-primary fw-semibold">
+                    <i class="fa-solid fa-chart-pie me-1"></i> Project Dashboard
+                </a>
                 <a href="<?= $GLOBALS['base_url'] ?>/client-wise-due-tracking-export?<?= http_build_query($_GET) ?>" id="exportDueCsvBtn" class="btn btn-sm btn-success fw-semibold">
                     <i class="fa-solid fa-file-excel me-1"></i> Export to CSV
                 </a>
@@ -1250,9 +1250,9 @@ $show_breadcrumb = true;
                     <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2 fs-12" id="clearProjectFilterBtn" onclick="selectProjectFilter('')" style="<?= empty($selectedProjectId) ? 'display:none;' : '' ?>">
                         <i class="fa-solid fa-filter-circle-xmark me-1"></i> Show All Projects
                     </button>
-                    <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2 fs-12" data-bs-toggle="modal" data-bs-target="#projectBreakdownModal">
-                        <i class="fa-solid fa-table me-1"></i> View Full Table
-                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/ced-project-dashboard<?= !empty($selectedProjectId) ? '?project_id=' . (int)$selectedProjectId : '' ?>" class="btn btn-xs btn-primary py-1 px-2 fs-12">
+                        <i class="fa-solid fa-table me-1"></i> Project Dashboard
+                    </a>
                 </div>
             </div>
             <div class="card-body p-3">

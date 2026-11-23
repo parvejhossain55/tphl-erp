@@ -147,7 +147,7 @@ class Con_FinancialTransaction extends Model
                     vpr.id            AS ref_id,
                     vpr.project_id,
                     p.name            AS project_name,
-                    CONCAT(vpr.payment_type, ' Payment — ', v.name) AS description,
+                    CONCAT(vpr.payment_type, ' Payment — ', COALESCE(NULLIF(TRIM(v.company_name), ''), v.name)) AS description,
                     COALESCE(vpr.approved_amount, vpr.net_payable) AS amount,
                     vpr.due_amount,
                     vpr.payment_type  AS payment_type,

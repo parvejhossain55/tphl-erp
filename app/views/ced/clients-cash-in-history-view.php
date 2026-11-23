@@ -680,14 +680,17 @@ if (!isset($discountApprovalReq)) {
             </div>
         </div>
         <!-- 7. Remaining Land Share -->
+        <?php $remLandShare = (float)($paymentSummary['remaining_land_share'] ?? 0); ?>
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-scale-balanced"></i></span></div>
+                    <div class="card__icon">
+                        <span style="color:<?= $remLandShare > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-scale-balanced"></i></span>
+                    </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title" style="color:<?= $remLandShare > 0 ? '#e74c3c' : '#27ae60' ?>;">TK.<?= number_format($remLandShare, 2) ?></h4>
                             <?php 
                                 $pendingLandShare = max(0, (float)($paymentSummary['total_land_share_paid_total'] ?? 0) - (float)($paymentSummary['landshare_paid'] ?? 0));
                                 if ($pendingLandShare > 0): 
@@ -1394,11 +1397,24 @@ if (!isset($discountApprovalReq)) {
                     </button>
                     <?php endif; ?>
                     <?php
-                        $canRefund = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 8]);
+                        $canRefund = !empty($isCedUser)
+                            || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 7, 9, 30, 37, 39], true)
+                            || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [6, 7, 9, 30, 37, 39], true)
+                            || (function_exists('isClientsCommunicated') && isClientsCommunicated());
                         $bookingIsActive = in_array($clientDetails['booking_status'] ?? '', ['booked', 'completed']);
+                        $cedFlatLabel = trim('UNIT ' . ($clientDetails['unit_name'] ?? '') . (!empty($clientDetails['flat_no']) ? ' - FLOOR ' . $clientDetails['flat_no'] : ''));
                     ?>
                     <?php if ($canRefund && $bookingIsActive && !$hasRefund): ?>
-                    <button type="button" class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#refundRequestModal">
+                    <button type="button"
+                        class="btn btn-danger mb-3 quickRefundBtn"
+                        data-bs-toggle="modal"
+                        data-bs-target="#quickRefundModal"
+                        data-id="<?= (int)$clientDetails['booking_id'] ?>"
+                        data-paid="<?= (float)($paymentSummary['total_paid'] ?? 0) ?>"
+                        data-flat="<?= htmlspecialchars($cedFlatLabel) ?>"
+                        data-project="<?= htmlspecialchars($clientDetails['project_name'] ?? '') ?>"
+                        data-agreement="<?= number_format((float)($paymentSummary['total_price'] ?? ($clientDetails['agreement_value'] ?? 0)), 2) ?>"
+                        data-client="<?= htmlspecialchars(trim($clientDetails['client_name'] ?? '')) ?>">
                         <i class="fa-light fa-rotate-left me-2"></i> Refund
                     </button>
                     <?php endif; ?>
@@ -1816,11 +1832,26 @@ if (!isset($discountApprovalReq)) {
                             </small>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
+                    <?php
+                    $dwTotalPaidDisplay = (float)($datewiseSummary['total_paid'] ?? 0) + (float)($datewiseSummary['total_discount'] ?? 0);
+                    $currentDueBreakdown = sprintf(
+                        'Asked: ৳%s (Land Share: ৳%s + DC: ৳%s + %d Active EMI: ৳%s) − Paid: ৳%s',
+                        number_format((float)($datewiseSummary['asked_amount'] ?? 0), 2),
+                        number_format((float)($datewiseSummary['land_share_ask'] ?? 0), 2),
+                        number_format((float)($datewiseSummary['dev_charge_ask'] ?? 0), 2),
+                        (int)($datewiseSummary['active_emi_count'] ?? 0),
+                        number_format((float)($datewiseSummary['active_emi_asked'] ?? 0), 2),
+                        number_format($dwTotalPaidDisplay, 2)
+                    );
+                    ?>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
                             <i class="fa-solid fa-sack-dollar me-1"></i> Total Paid: ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
                         </span>
                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> Total Due: ৳<?= number_format($datewiseSummary['total_due'] ?? 0, 2) ?>
+                        </span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fw-bold" style="font-size: 12px;" title="<?= htmlspecialchars($currentDueBreakdown) ?>">
                             <i class="fa-solid fa-clock-rotate-left me-1"></i> Current Due: ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
                         </span>
                         <a href="<?= $GLOBALS['base_url'] ?>/client-datewise-statement/<?= (int)$clientDetails['booking_id'] ?>" target="_blank" class="btn btn-sm btn-primary shadow-sm" style="font-weight: 600;">
@@ -1956,7 +1987,7 @@ if (!isset($discountApprovalReq)) {
                                     ৳<?= number_format($datewiseSummary['total_paid'] ?? 0, 2) ?>
                                 </td>
                                 <td class="text-end text-nowrap font-monospace text-danger fs-14">
-                                    ৳<?= number_format($datewiseSummary['current_due'] ?? 0, 2) ?>
+                                    ৳<?= number_format($datewiseSummary['total_due'] ?? 0, 2) ?>
                                 </td>
                                 <td colspan="2"></td>
                             </tr>
@@ -2489,40 +2520,7 @@ if (!isset($discountApprovalReq)) {
     </script>
 
 <!-- ===== REFUND REQUEST MODAL ===== -->
-<div class="modal fade" id="refundRequestModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form action="<?= $GLOBALS['base_url'] ?>/client-refund-store" method="POST" enctype="multipart/form-data">
-                <div class="modal-header" style="background: linear-gradient(135deg, #dc2626, #b91c1c); color:#fff; border:0;">
-                    <h5 class="modal-title">
-                        <i class="fa-light fa-rotate-left me-2"></i>Request Refund
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" name="booking_id" value="<?= $clientDetails['booking_id'] ?>">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Refund Amount (৳) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" min="1" name="refund_amount" class="form-control" required placeholder="Enter refund amount">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
-                        <textarea name="reason" class="form-control" rows="3" required placeholder="Provide reason for refund..."></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Upload Document <span class="text-muted">(Optional)</span></label>
-                        <input type="file" name="document" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
-                        <small class="text-muted">Allowed types: jpg, png, pdf, doc, docx. Max size: 5MB.</small>
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top: 1px solid #f0f0f0;">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger btn-sm">Submit Request</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<?php include __DIR__ . '/../components/quick-refund-modal.php'; ?>
 
     <style>
         .card__icon span {

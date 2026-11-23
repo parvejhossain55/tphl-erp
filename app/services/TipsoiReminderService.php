@@ -31,6 +31,40 @@ class TipsoiReminderService
     }
 
     /**
+     * Get Tipsoi API bearer token
+     */
+    public function getToken(): ?string
+    {
+        return $this->token;
+    }
+
+    /**
+     * Get TPHL company attendance/payroll cycle date range
+     * (Counts from 26th of last month to 25th of current month)
+     */
+    public function getAttendanceCycleRange(): array
+    {
+        $today = new \DateTime();
+        $day = (int)$today->format('j');
+
+        if ($day >= 26) {
+            $start = new \DateTime($today->format('Y-m-26 00:00:00'));
+            $nextMonth = (clone $today)->modify('+1 month');
+            $end = new \DateTime($nextMonth->format('Y-m-25 23:59:59'));
+        } else {
+            $prevMonth = (clone $today)->modify('-1 month');
+            $start = new \DateTime($prevMonth->format('Y-m-26 00:00:00'));
+            $end = new \DateTime($today->format('Y-m-25 23:59:59'));
+        }
+
+        return [
+            'start_date' => $start->format('Y-m-d'),
+            'end_date' => $end->format('Y-m-d'),
+            'label' => $start->format('d M Y') . ' to ' . $end->format('d M Y')
+        ];
+    }
+
+    /**
      * Ensure database table exists
      */
     public function ensureTable()
@@ -57,7 +91,8 @@ class TipsoiReminderService
     }
 
     /**
-     * Check if email should be sent based on 7-day rule and 23rd of month rule
+     * Check if email should be sent based on Daily Once rule
+     * (Ensures each recipient receives at most 1 email per calendar day)
      */
     public function shouldSendReminder(string $email, bool $force = false): array
     {
@@ -84,7 +119,6 @@ class TipsoiReminderService
         $lastRow = $res->fetch_assoc();
         $stmt->close();
 
-        $todayDay = date('d');
         $todayDate = date('Y-m-d');
 
         if ($lastRow) {
@@ -96,35 +130,16 @@ class TipsoiReminderService
             if ($lastSentDate === $todayDate) {
                 return [
                     'should_send' => false,
-                    'reason' => "Already sent today ($lastSentAt)",
+                    'reason' => "Already sent today ($lastSentAt), next due tomorrow",
                     'last_sent' => $lastSentAt,
                     'days_since' => $daysSince
                 ];
             }
 
-            // Attendance cut-off date: 23rd of each month
-            if ($todayDay === '23') {
-                return [
-                    'should_send' => true,
-                    'reason' => "Today is 23rd (Cut-off date), not sent today (last sent: $lastSentAt)",
-                    'last_sent' => $lastSentAt,
-                    'days_since' => $daysSince
-                ];
-            }
-
-            // 7-day (1 week) rule
-            if ($daysSince >= 7) {
-                return [
-                    'should_send' => true,
-                    'reason' => "7 or more days passed ($daysSince days) since last reminder ($lastSentAt)",
-                    'last_sent' => $lastSentAt,
-                    'days_since' => $daysSince
-                ];
-            }
-
+            // New calendar day reached: eligible for daily reminder
             return [
-                'should_send' => false,
-                'reason' => "Cooldown active: sent $daysSince days ago ($lastSentAt), next due in " . (7 - $daysSince) . " days",
+                'should_send' => true,
+                'reason' => "Daily reminder due for today (last sent: $lastSentAt)",
                 'last_sent' => $lastSentAt,
                 'days_since' => $daysSince
             ];
@@ -133,7 +148,7 @@ class TipsoiReminderService
         // Never received a reminder before
         return [
             'should_send' => true,
-            'reason' => 'No previous reminder record found',
+            'reason' => 'First time reminder (due today)',
             'last_sent' => null,
             'days_since' => null
         ];
@@ -179,27 +194,56 @@ class TipsoiReminderService
 
     /**
      * Fetch all pending requests across the company from Tipsoi
+     * Filtered to TPHL attendance cycle (26th of last month to 25th of current month)
      */
-    public function fetchAllPendingRequests(): array
+    public function fetchAllPendingRequests(bool $filterByCycle = true): array
     {
+        $cycleRange = $this->getAttendanceCycleRange();
         $empMapData = $this->getEmployeesMap();
         $empById = $empMapData['by_id'];
+
+        // Load local ERP employees for fallback email resolution
+        $localQuery = $this->db->query("SELECT employee_id, email, full_name FROM employees WHERE email IS NOT NULL AND email != ''");
+        $localOfficeIdToEmail = [];
+        $localNameToEmail = [];
+        if ($localQuery) {
+            while ($row = $localQuery->fetch_assoc()) {
+                $eid = trim($row['employee_id'] ?? '');
+                $em = strtolower(trim($row['email'] ?? ''));
+                $fn = strtolower(trim($row['full_name'] ?? ''));
+                if ($eid && $em) $localOfficeIdToEmail[$eid] = $em;
+                if ($fn && $em) $localNameToEmail[$fn] = $em;
+            }
+        }
 
         $pendingByApprover = [];
         $pendingByRequester = [];
         $allRequests = [];
 
         // Helper to resolve email of an employee/approver
-        $resolveEmail = function($tid) use ($empById) {
+        $resolveEmail = function($tid, $name = null, $officeId = null) use ($empById, $localOfficeIdToEmail, $localNameToEmail) {
             if ($tid && isset($empById[$tid])) {
+                $oid = trim((string)($empById[$tid]['employeeOfficeId'] ?? $empById[$tid]['officeId'] ?? ''));
+                if ($oid && isset($localOfficeIdToEmail[$oid])) {
+                    return $localOfficeIdToEmail[$oid];
+                }
                 $em = strtolower(trim($empById[$tid]['email'] ?? ''));
                 if ($em) return $em;
+            }
+            if ($officeId && isset($localOfficeIdToEmail[$officeId])) {
+                return $localOfficeIdToEmail[$officeId];
+            }
+            if ($name) {
+                $cleanName = strtolower(trim($name));
+                if (isset($localNameToEmail[$cleanName])) {
+                    return $localNameToEmail[$cleanName];
+                }
             }
             return '';
         };
 
-        // 1. Fetch Global Leaves
-        $ch = curl_init($this->baseUrl . "leave-management/leave-history?page=0&count=1000&status=0");
+        // 1. Fetch Global Leaves (requires keyword=%20 to return all pending leaves in Tipsoi)
+        $ch = curl_init($this->baseUrl . "leave-management/leave-history?page=0&count=2000&status=0&keyword=%20");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $this->token, 'Accept: application/json']);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -210,23 +254,33 @@ class TipsoiReminderService
         $leaves = $d['leaveLogList'] ?? [];
 
         foreach ($leaves as $l) {
+            $sDate = isset($l['startDate']) ? (is_numeric($l['startDate']) ? date('Y-m-d', (int)($l['startDate'] / 1000)) : date('Y-m-d', strtotime($l['startDate']))) : null;
+            $eDate = isset($l['endDate']) ? (is_numeric($l['endDate']) ? date('Y-m-d', (int)($l['endDate'] / 1000)) : date('Y-m-d', strtotime($l['endDate']))) : $sDate;
+            
+            // Check cycle boundaries (26th of last month to 25th of current month)
+            if ($filterByCycle) {
+                $checkDate = $eDate ?: $sDate;
+                if ($checkDate && ($checkDate < $cycleRange['start_date'] || ($sDate && $sDate > $cycleRange['end_date']))) {
+                    continue;
+                }
+            }
+
             $appTid = $l['appliedBy'] ?? $l['employeeId'] ?? null;
-            $appEmail = $resolveEmail($appTid);
             $appName = $l['employeeName'] ?? ($empById[$appTid]['name'] ?? 'Unknown');
-            $sDate = isset($l['startDate']) ? (is_numeric($l['startDate']) ? date('Y-m-d', (int)($l['startDate'] / 1000)) : $l['startDate']) : '—';
-            $eDate = isset($l['endDate']) ? (is_numeric($l['endDate']) ? date('Y-m-d', (int)($l['endDate'] / 1000)) : $l['endDate']) : $sDate;
-            $dateStr = ($sDate === $eDate) ? $sDate : "$sDate to $eDate";
+            $appEmail = $resolveEmail($appTid, $appName, $l['employeeOfficeId'] ?? null);
+            $dateStr = ($sDate && $eDate && $sDate === $eDate) ? $sDate : (($sDate && $eDate) ? "$sDate to $eDate" : ($sDate ?: ($eDate ?: '—')));
 
             $firstAppId = $l['firstApproverId'] ?? null;
             $firstAppName = $l['firstApproverName'] ?? ($empById[$firstAppId]['name'] ?? '1st Approver');
             $firstAppStatus = (int)($l['firstApprovalStatus'] ?? 0);
-            $firstAppEmail = $resolveEmail($firstAppId);
+            $firstAppEmail = $resolveEmail($firstAppId, $firstAppName);
 
             $secondAppId = $l['secondApproverId'] ?? null;
             $secondAppName = $l['secondApproverName'] ?? ($empById[$secondAppId]['name'] ?? '2nd Approver');
             $secondAppStatus = (int)($l['secondApprovalStatus'] ?? 0);
-            $secondAppEmail = $resolveEmail($secondAppId);
+            $secondAppEmail = $resolveEmail($secondAppId, $secondAppName);
 
+            $flow = strtolower(trim($l['approval_flow'] ?? 'sequential'));
             $currentPendingLevel = ($firstAppStatus === 0) ? '1st Approval' : '2nd Approval';
             $targetApproverName = ($firstAppStatus === 0) ? $firstAppName : $secondAppName;
             $targetApproverEmail = ($firstAppStatus === 0) ? $firstAppEmail : $secondAppEmail;
@@ -249,21 +303,36 @@ class TipsoiReminderService
             ];
             $allRequests[] = $item;
 
-            if ($targetApproverEmail) {
-                if (!isset($pendingByApprover[$targetApproverEmail])) {
-                    $pendingByApprover[$targetApproverEmail] = [
-                        'name' => $targetApproverName,
-                        'email' => $targetApproverEmail,
+            // Route to currently pending approver(s)
+            if ($firstAppStatus === 0 && $firstAppEmail) {
+                if (!isset($pendingByApprover[$firstAppEmail])) {
+                    $pendingByApprover[$firstAppEmail] = [
+                        'name' => $firstAppName,
+                        'approver_name' => $firstAppName,
+                        'email' => $firstAppEmail,
                         'requests' => []
                     ];
                 }
-                $pendingByApprover[$targetApproverEmail]['requests'][] = $item;
+                $pendingByApprover[$firstAppEmail]['requests'][] = $item;
+            }
+
+            if ($secondAppStatus === 0 && $secondAppEmail && ($flow === 'parallel' || $firstAppStatus === 1)) {
+                if (!isset($pendingByApprover[$secondAppEmail])) {
+                    $pendingByApprover[$secondAppEmail] = [
+                        'name' => $secondAppName,
+                        'approver_name' => $secondAppName,
+                        'email' => $secondAppEmail,
+                        'requests' => []
+                    ];
+                }
+                $pendingByApprover[$secondAppEmail]['requests'][] = $item;
             }
 
             if ($appEmail) {
                 if (!isset($pendingByRequester[$appEmail])) {
                     $pendingByRequester[$appEmail] = [
                         'name' => $appName,
+                        'applicant_name' => $appName,
                         'email' => $appEmail,
                         'requests' => []
                     ];
@@ -293,27 +362,33 @@ class TipsoiReminderService
 
         foreach ($allManual as $m) {
             $appTid = $m['employeeId'] ?? null;
-            $appEmail = $resolveEmail($appTid);
             $appName = $m['employeeName'] ?? ($empById[$appTid]['name'] ?? 'Unknown');
+            $appEmail = $resolveEmail($appTid, $appName, $m['employeeOfficeId'] ?? null);
             $typeVal = (int)($m['manualEntryType'] ?? ($m['type'] ?? 1));
             $reqType = ($typeVal === 1) ? 'Manual Entry' : (($typeVal === 2) ? 'Missing Punch' : 'Field Visit');
 
             $sDateVal = $m['startDate'] ?? $m['entryTime'] ?? null;
+            $dateYmd = null;
             $dateStr = '—';
             if ($sDateVal) {
-                $dateStr = is_numeric($sDateVal) ? (($sDateVal > 10000000000) ? date('Y-m-d', (int)($sDateVal / 1000)) : date('Y-m-d', (int)$sDateVal)) : date('Y-m-d', strtotime($sDateVal));
+                $dateYmd = is_numeric($sDateVal) ? (($sDateVal > 10000000000) ? date('Y-m-d', (int)($sDateVal / 1000)) : date('Y-m-d', (int)$sDateVal)) : date('Y-m-d', strtotime($sDateVal));
+                $dateStr = $dateYmd;
+            }
+            if ($filterByCycle && $dateYmd && ($dateYmd < $cycleRange['start_date'] || $dateYmd > $cycleRange['end_date'])) {
+                continue;
             }
 
             $firstAppId = $m['firstManualEntryApproverId'] ?? null;
             $firstAppName = $m['firstManualApproverName'] ?? ($empById[$firstAppId]['name'] ?? '1st Approver');
             $firstAppStatus = (int)($m['firstManualEntryApprovalStatus'] ?? 0);
-            $firstAppEmail = $resolveEmail($firstAppId);
+            $firstAppEmail = $resolveEmail($firstAppId, $firstAppName);
 
             $secondAppId = $m['secondManualEntryApproverId'] ?? null;
             $secondAppName = $m['secondManualApproverName'] ?? ($empById[$secondAppId]['name'] ?? '2nd Approver');
             $secondAppStatus = (int)($m['secondManualEntryApprovalStatus'] ?? 0);
-            $secondAppEmail = $resolveEmail($secondAppId);
+            $secondAppEmail = $resolveEmail($secondAppId, $secondAppName);
 
+            $flow = strtolower(trim($m['approval_flow'] ?? 'sequential'));
             $currentPendingLevel = ($firstAppStatus === 0) ? '1st Approval' : '2nd Approval';
             $targetApproverName = ($firstAppStatus === 0) ? $firstAppName : $secondAppName;
             $targetApproverEmail = ($firstAppStatus === 0) ? $firstAppEmail : $secondAppEmail;
@@ -336,21 +411,35 @@ class TipsoiReminderService
             ];
             $allRequests[] = $item;
 
-            if ($targetApproverEmail) {
-                if (!isset($pendingByApprover[$targetApproverEmail])) {
-                    $pendingByApprover[$targetApproverEmail] = [
-                        'name' => $targetApproverName,
-                        'email' => $targetApproverEmail,
+            if ($firstAppStatus === 0 && $firstAppEmail) {
+                if (!isset($pendingByApprover[$firstAppEmail])) {
+                    $pendingByApprover[$firstAppEmail] = [
+                        'name' => $firstAppName,
+                        'approver_name' => $firstAppName,
+                        'email' => $firstAppEmail,
                         'requests' => []
                     ];
                 }
-                $pendingByApprover[$targetApproverEmail]['requests'][] = $item;
+                $pendingByApprover[$firstAppEmail]['requests'][] = $item;
+            }
+
+            if ($secondAppStatus === 0 && $secondAppEmail && ($flow === 'parallel' || $firstAppStatus === 1)) {
+                if (!isset($pendingByApprover[$secondAppEmail])) {
+                    $pendingByApprover[$secondAppEmail] = [
+                        'name' => $secondAppName,
+                        'approver_name' => $secondAppName,
+                        'email' => $secondAppEmail,
+                        'requests' => []
+                    ];
+                }
+                $pendingByApprover[$secondAppEmail]['requests'][] = $item;
             }
 
             if ($appEmail) {
                 if (!isset($pendingByRequester[$appEmail])) {
                     $pendingByRequester[$appEmail] = [
                         'name' => $appName,
+                        'applicant_name' => $appName,
                         'email' => $appEmail,
                         'requests' => []
                     ];
@@ -391,24 +480,31 @@ class TipsoiReminderService
                 foreach ($logs as $l) {
                     if (($l['status'] ?? -1) === 0) {
                         $appTid = $tid;
-                        $appEmail = $resolveEmail($appTid);
                         $appName = $empById[$appTid]['name'] ?? ($l['employeeName'] ?? 'Unknown');
+                        $appEmail = $resolveEmail($appTid, $appName);
                         $rawDate = $l['attendanceDate'] ?? $l['date'] ?? null;
+                        $dateYmd = null;
                         $dateStr = '—';
                         if ($rawDate) {
-                            $dateStr = is_numeric($rawDate) ? (($rawDate > 10000000000) ? date('Y-m-d', (int)($rawDate / 1000)) : date('Y-m-d', (int)$rawDate)) : date('Y-m-d', strtotime($rawDate));
+                            $dateYmd = is_numeric($rawDate) ? (($rawDate > 10000000000) ? date('Y-m-d', (int)($rawDate / 1000)) : date('Y-m-d', (int)$rawDate)) : date('Y-m-d', strtotime($rawDate));
+                            $dateStr = $dateYmd;
+                        }
+
+                        if ($filterByCycle && $dateYmd && ($dateYmd < $cycleRange['start_date'] || $dateYmd > $cycleRange['end_date'])) {
+                            continue;
                         }
 
                         $firstAppId = $l['firstApproverId'] ?? null;
                         $firstAppName = $l['firstApproverName'] ?? ($empById[$firstAppId]['name'] ?? '1st Approver');
                         $firstAppStatus = (int)($l['firstApprovalStatus'] ?? 0);
-                        $firstAppEmail = $resolveEmail($firstAppId);
+                        $firstAppEmail = $resolveEmail($firstAppId, $firstAppName);
 
                         $secondAppId = $l['secondApproverId'] ?? null;
                         $secondAppName = $l['secondApproverName'] ?? ($empById[$secondAppId]['name'] ?? '2nd Approver');
                         $secondAppStatus = (int)($l['secondApprovalStatus'] ?? 0);
-                        $secondAppEmail = $resolveEmail($secondAppId);
+                        $secondAppEmail = $resolveEmail($secondAppId, $secondAppName);
 
+                        $flow = strtolower(trim($l['approval_flow'] ?? 'sequential'));
                         $currentPendingLevel = ($firstAppStatus === 0) ? '1st Approval' : '2nd Approval';
                         $targetApproverName = ($firstAppStatus === 0) ? $firstAppName : $secondAppName;
                         $targetApproverEmail = ($firstAppStatus === 0) ? $firstAppEmail : $secondAppEmail;
@@ -433,21 +529,35 @@ class TipsoiReminderService
                         ];
                         $allRequests[] = $item;
 
-                        if ($targetApproverEmail) {
-                            if (!isset($pendingByApprover[$targetApproverEmail])) {
-                                $pendingByApprover[$targetApproverEmail] = [
-                                    'name' => $targetApproverName,
-                                    'email' => $targetApproverEmail,
+                        if ($firstAppStatus === 0 && $firstAppEmail) {
+                            if (!isset($pendingByApprover[$firstAppEmail])) {
+                                $pendingByApprover[$firstAppEmail] = [
+                                    'name' => $firstAppName,
+                                    'approver_name' => $firstAppName,
+                                    'email' => $firstAppEmail,
                                     'requests' => []
                                 ];
                             }
-                            $pendingByApprover[$targetApproverEmail]['requests'][] = $item;
+                            $pendingByApprover[$firstAppEmail]['requests'][] = $item;
+                        }
+
+                        if ($secondAppStatus === 0 && $secondAppEmail && ($flow === 'parallel' || $firstAppStatus === 1)) {
+                            if (!isset($pendingByApprover[$secondAppEmail])) {
+                                $pendingByApprover[$secondAppEmail] = [
+                                    'name' => $secondAppName,
+                                    'approver_name' => $secondAppName,
+                                    'email' => $secondAppEmail,
+                                    'requests' => []
+                                ];
+                            }
+                            $pendingByApprover[$secondAppEmail]['requests'][] = $item;
                         }
 
                         if ($appEmail) {
                             if (!isset($pendingByRequester[$appEmail])) {
                                 $pendingByRequester[$appEmail] = [
                                     'name' => $appName,
+                                    'applicant_name' => $appName,
                                     'email' => $appEmail,
                                     'requests' => []
                                 ];
@@ -464,6 +574,7 @@ class TipsoiReminderService
 
         return [
             'total_pending' => count($allRequests),
+            'cycle_range' => $cycleRange,
             'all_requests' => $allRequests,
             'by_approver' => $pendingByApprover,
             'by_requester' => $pendingByRequester

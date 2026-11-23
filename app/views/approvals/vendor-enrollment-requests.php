@@ -263,15 +263,25 @@ $base_url = $GLOBALS['base_url'];
                             $step = $r['current_step'] ?? 'dept_head';
                             $status = $r['status'] ?? 'pending_approval';
                             $isAct = !empty($r['is_actionable']);
+                            $hasCompany = !empty(trim($r['company_name'] ?? ''));
+                            $displayVendorName = $hasCompany ? trim($r['company_name']) : $r['name'];
                             ?>
                             <tr class="<?= $isAct ? 'table-warning-subtle' : '' ?>">
                                 <td class="ps-3 fw-bold text-muted"><?= ($offset ?? 0) + $idx + 1 ?></td>
                                 <td>
-                                    <div class="fw-bold text-dark"><?= htmlspecialchars($r['name']) ?></div>
-                                    <?php if (!empty($r['company_name'])): ?>
-                                        <div class="small text-muted"><i class="bi bi-building me-1"></i><?= htmlspecialchars($r['company_name']) ?></div>
+                                    <div class="fw-bold text-dark"><?= htmlspecialchars($displayVendorName) ?></div>
+                                    <?php if ($hasCompany && !empty($r['name'])): ?>
+                                        <div class="small text-muted"><i class="bi bi-person me-1"></i><?= htmlspecialchars($r['name']) ?></div>
                                     <?php endif; ?>
-                                    <div class="small text-muted">ID: #<?= $r['id'] ?> &bull; Rating: <?= number_format((float)$r['rating'], 1) ?> <i class="bi bi-star-fill text-warning"></i></div>
+                                    <div class="small text-muted">
+                                        ID: #<?= $r['id'] ?>
+                                        <?php if (!empty($r['nid_file'])): ?>
+                                            &bull; <a href="<?= $base_url ?>/<?= htmlspecialchars($r['nid_file']) ?>" target="_blank" class="text-success text-decoration-none"><i class="bi bi-file-earmark-check me-1"></i>NID</a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($r['trade_license_file'])): ?>
+                                            &bull; <a href="<?= $base_url ?>/<?= htmlspecialchars($r['trade_license_file']) ?>" target="_blank" class="text-success text-decoration-none"><i class="bi bi-file-earmark-check me-1"></i>Trade License</a>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td>
                                     <?php if (!empty($r['phone'])): ?>
@@ -387,17 +397,17 @@ $base_url = $GLOBALS['base_url'];
                                 </td>
                                 <td class="text-end pe-3" style="white-space: nowrap;">
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-action-review" 
-                                            data-id="<?= $r['id'] ?>" data-name="<?= htmlspecialchars($r['name']) ?>" title="Review & View Details">
+                                            data-id="<?= $r['id'] ?>" data-name="<?= htmlspecialchars($displayVendorName) ?>" title="Review & View Details">
                                         <i class="bi bi-eye me-1"></i> Review
                                     </button>
 
                                     <?php if ($isAct): ?>
                                         <button type="button" class="btn btn-sm btn-success ms-1 btn-quick-approve"
-                                                data-id="<?= $r['id'] ?>" data-name="<?= htmlspecialchars($r['name']) ?>" title="Quick Approve">
+                                                data-id="<?= $r['id'] ?>" data-name="<?= htmlspecialchars($displayVendorName) ?>" title="Quick Approve">
                                             <i class="bi bi-check-lg"></i>
                                         </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger ms-1 btn-quick-reject"
-                                                data-id="<?= $r['id'] ?>" data-name="<?= htmlspecialchars($r['name']) ?>" title="Reject">
+                                                data-id="<?= $r['id'] ?>" data-name="<?= htmlspecialchars($displayVendorName) ?>" title="Reject">
                                             <i class="bi bi-x-lg"></i>
                                         </button>
                                     <?php endif; ?>
@@ -582,12 +592,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="card-body p-3">
                             <table class="table table-sm table-borderless mb-0">
                                 <tr>
-                                    <td class="text-muted" style="width: 140px;">Vendor Name:</td>
-                                    <td class="fw-bold fs-6">${escapeHtml(v.name)}</td>
+                                    <td class="text-muted" style="width: 150px;">Business Name:</td>
+                                    <td class="fw-bold fs-6">${escapeHtml((v.company_name && v.company_name.trim()) ? v.company_name : v.name)}</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Company:</td>
-                                    <td class="fw-semibold">${escapeHtml(v.company_name || '—')}</td>
+                                    <td class="text-muted">Contact Person:</td>
+                                    <td class="fw-semibold">${escapeHtml(v.name || '—')}</td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Phone:</td>
@@ -600,6 +610,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <tr>
                                     <td class="text-muted">Address:</td>
                                     <td>${escapeHtml(v.address || '—')}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">NID:</td>
+                                    <td>
+                                        ${escapeHtml(v.nid_number || '—')}
+                                        ${v.nid_file ? `<a href="<?= $base_url ?>/${escapeHtml(v.nid_file)}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2 ms-2" style="font-size: 11px;"><i class="bi bi-file-earmark-text me-1"></i>View NID Doc</a>` : '<span class="badge bg-secondary ms-1">No Doc</span>'}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Trade License:</td>
+                                    <td>
+                                        ${escapeHtml(v.trade_license_number || '—')}
+                                        ${v.trade_license_file ? `<a href="<?= $base_url ?>/${escapeHtml(v.trade_license_file)}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2 ms-2" style="font-size: 11px;"><i class="bi bi-file-earmark-text me-1"></i>View Trade License</a>` : '<span class="badge bg-secondary ms-1">No Doc</span>'}
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Current Status:</td>

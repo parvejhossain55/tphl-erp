@@ -1165,10 +1165,19 @@ class MealRecord extends Model
         if (!empty($fromDate) && !empty($toDate)) {
             $escF = $this->db->real_escape_string($fromDate);
             $escT = $this->db->real_escape_string($toDate);
+            $monthlyDateMatchSql = '';
+            if (substr($fromDate, 8, 2) === '26' && substr($toDate, 8, 2) === '25') {
+                // Standard 26th–25th payroll cycle belongs to the ending month (e.g. Sep 26 – Oct 25 => YYYY-10)
+                $escMonth = $this->db->real_escape_string(substr($toDate, 0, 7));
+                $monthlyDateMatchSql = " OR (is_custom_date = 0 AND date = '{$escMonth}')";
+            } elseif (substr($fromDate, 8, 2) === '01' && substr($fromDate, 0, 7) === substr($toDate, 0, 7)) {
+                // Legacy 1st–end-of-month range
+                $escMonth = $this->db->real_escape_string(substr($fromDate, 0, 7));
+                $monthlyDateMatchSql = " OR (is_custom_date = 0 AND date = '{$escMonth}')";
+            }
             $ppRes = $this->db->query("
                 SELECT id FROM payroll_projects
-                WHERE (start_date = '{$escF}' AND end_date = '{$escT}')
-                   OR (is_custom_date = 0 AND date = SUBSTRING('{$escF}', 1, 7))
+                WHERE (start_date = '{$escF}' AND end_date = '{$escT}'){$monthlyDateMatchSql}
             ");
             if ($ppRes) {
                 while ($pp = $ppRes->fetch_assoc()) {
@@ -1191,7 +1200,7 @@ class MealRecord extends Model
             SELECT p.*, e.per_meal_percentage, e.per_meal_amount, e.account_number
             FROM payslips p
             LEFT JOIN employees e ON p.employee_id = e.id
-            WHERE p.payroll_project_id IN ({$inSql})
+            WHERE p.payroll_project_id IN ({$inSql}) AND p.status != 'paid'
         ");
         if (!$pRes) {
             return;

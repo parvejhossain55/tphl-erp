@@ -12,9 +12,6 @@
         <a href="<?= $base_url ?>/con-vendor-create" class="btn btn-primary btn-sm">
             <i class="bi bi-plus-circle me-1"></i> Add Vendor
         </a>
-        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#importVendorCsvModal">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
-        </button>
     </div>
 </div>
 
@@ -39,9 +36,18 @@
                     <tbody>
                         <?php if (!empty($vendors)): ?>
                             <?php foreach ($vendors as $i => $v): ?>
+                            <?php
+                            $hasCompany = !empty(trim($v['company_name'] ?? ''));
+                            $displayName = $hasCompany ? trim($v['company_name']) : $v['name'];
+                            ?>
                             <tr>
                                 <td><?= ($offset ?? 0) + $i + 1 ?></td>
-                                <td class="fw-bold"><?= htmlspecialchars($v['name']) ?></td>
+                                <td>
+                                    <div class="fw-bold"><?= htmlspecialchars($displayName) ?></div>
+                                    <?php if ($hasCompany && !empty($v['name'])): ?>
+                                        <div class="small text-muted"><i class="bi bi-person me-1"></i><?= htmlspecialchars($v['name']) ?></div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($v['phone'] ?? '—') ?></td>
                                 <td><?= htmlspecialchars($v['email'] ?? '—') ?></td>
                                 <td class="text-center">
@@ -91,7 +97,7 @@
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-sm btn-outline-danger ms-1"
-                                            title="Delete" onclick="confirmDeleteVendor(<?= $v['id'] ?>, '<?= htmlspecialchars(addslashes($v['name'])) ?>')">
+                                            title="Delete" onclick="confirmDeleteVendor(<?= $v['id'] ?>, '<?= htmlspecialchars(addslashes($displayName)) ?>')">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </td>
@@ -149,112 +155,5 @@ function confirmDeleteVendor(id, name) {
     document.getElementById('deleteVendorName').textContent = name;
     var modal = new bootstrap.Modal(document.getElementById('deleteVendorModal'));
     modal.show();
-}
-</script>
-
-<!-- Import CSV Modal: Import Vendors -->
-<div class="modal fade" id="importVendorCsvModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Import Vendors</h5>
-                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-xmark-large"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-
-                <!-- Column Guide -->
-                <div class="mb-3">
-                    <p class="fw-semibold mb-2" style="font-size:13px;">📋 CSV Column Reference</p>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Column Header</th>
-                                    <th>Required?</th>
-                                    <th>Allowed Values</th>
-                                    <th>Example</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>Vendor_Name</code></td>
-                                    <td><span class="badge bg-danger">Required</span></td>
-                                    <td>Unique Vendor Name</td>
-                                    <td><em>ABC Suppliers</em></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Phone</code></td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                    <td>Phone Number</td>
-                                    <td><em>01700000000</em></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Email</code></td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                    <td>Valid Email</td>
-                                    <td><em>contact@abc.com</em></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Address</code></td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                    <td>Text</td>
-                                    <td><em>Dhaka, BD</em></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="mt-2 d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadVendorSampleCsv()">
-                            <i class="bi bi-download me-1"></i> Download Sample CSV
-                        </button>
-                        <span style="font-size:11px;color:#888">ডাউনলোড করে সঠিক format অনুযায়ী ফিলআপ করুন</span>
-                    </div>
-                </div>
-
-                <hr class="my-3">
-
-                <!-- Upload Form -->
-                <form action="<?= $GLOBALS['base_url'] ?>/con-vendor-import" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Upload CSV File <span class="text-danger">*</span></label>
-                        <input type="file" name="csv_file" class="form-control" accept=".csv" required>
-                        <div class="form-text">শুধুমাত্র <strong>.csv</strong> ফাইল। Excel থেকে "Save As → CSV UTF-8" করে export করুন।</div>
-                    </div>
-                    <div class="d-flex justify-content-end gap-2">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm">
-                            <i class="bi bi-upload me-1"></i> Import Now
-                        </button>
-                    </div>
-                </form>
-
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-function downloadVendorSampleCsv() {
-    const headers = [
-        'Vendor_Name', 'Phone', 'Email', 'Address'
-    ];
-    const sampleRow = [
-        'ABC Suppliers Ltd', '01711223344', 'contact@abc.com', 'Dhaka, Bangladesh'
-    ];
-    
-    const csvContent = [
-        headers.join(','),
-        sampleRow.map(v => '"' + v + '"').join(',')
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = 'vendors_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
 }
 </script>

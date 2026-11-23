@@ -479,7 +479,7 @@ class Report extends Model
                 c.root_type,
                 jd.party_type,
                 jd.party_id,
-                COALESCE(v.name, v.company_name, u.full_name, l.full_name, 'General / Direct Entry') as party_name,
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, u.full_name, l.full_name, 'General / Direct Entry') as party_name,
                 COALESCE(SUM(jd.debit), 0) as total_debit,
                 COALESCE(SUM(jd.credit), 0) as total_credit
             FROM journal_details jd
@@ -534,7 +534,7 @@ class Report extends Model
                 c.account_name,
                 jd.party_type,
                 jd.party_id,
-                COALESCE(v.name, v.company_name, u.full_name, 'General Accounts Payable') as party_name,
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, u.full_name, 'General Accounts Payable') as party_name,
                 j.date as journal_date,
                 DATEDIFF('" . $this->db->real_escape_string($asOfDate) . "', j.date) as age_days,
                 COALESCE(SUM(jd.credit), 0) - COALESCE(SUM(jd.debit), 0) as net_payable
@@ -662,7 +662,7 @@ class Report extends Model
         }
 
         // 3. Management Approved Vendor Payment Requests (Pending Payment)
-        $vprSql = "SELECT vpr.id, vpr.vpr_no, vpr.net_payable_amount, vpr.created_at as req_date, p.name as project_name, v.name as vendor_name
+        $vprSql = "SELECT vpr.id, vpr.vpr_no, vpr.net_payable_amount, vpr.created_at as req_date, p.name as project_name, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) as vendor_name
                    FROM con_vendor_payment_requests vpr
                    LEFT JOIN projects p ON p.id = vpr.project_id
                    LEFT JOIN vendors v ON v.id = vpr.vendor_id

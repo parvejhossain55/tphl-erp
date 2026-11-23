@@ -318,7 +318,7 @@ class Con_Material extends Model
             COALESCE(cat.id, 0) AS category_id,
             COALESCE(cat.name, 'Uncategorized') AS category_name,
             COALESCE(v.id, 0) AS vendor_id,
-            COALESCE(v.name, 'Not Selected') AS vendor_name,
+            COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, 'Not Selected') AS vendor_name,
             poi.quantity AS order_quantity,
             poi.unit_price,
             COALESCE(poi.total_price, poi.quantity * poi.unit_price) AS total_amount,

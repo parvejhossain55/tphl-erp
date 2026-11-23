@@ -39,11 +39,12 @@ class SalesActivityReportController extends Controller
         $month = isset($_GET['month']) ? (int)$_GET['month'] : $defaultMonth;
         $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
         $teamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
+        [$salesManagerId, $effectiveTeamFilter, $isGlobalViewer, $salesManagers] = $this->resolveManagerTeamScope($teamId);
         
         $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
-        // Monthly Data (pass teamId for filtering)
-        $monthlyData = $this->trackerService->getTrackerReport($year, $month, $loggedInUser, null, null, $teamId);
+        // Monthly Data (pass teamId or manager team_ids array for filtering)
+        $monthlyData = $this->trackerService->getTrackerReport($year, $month, $loggedInUser, null, null, $effectiveTeamFilter);
         
         // Custom Sorting for Tables: Branch -> Team Name -> Rank
         $sortForTables = function($a, $b) {
@@ -78,7 +79,7 @@ class SalesActivityReportController extends Controller
         // Daily Data (only query when daily tab is active to optimize speed and clean up requests)
         $dailyData = [];
         if ($activeTab === 'daily') {
-            $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser, $teamId);
+            $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser, $effectiveTeamFilter);
             usort($dailyData, $sortForTables);
         }
 
@@ -109,9 +110,8 @@ class SalesActivityReportController extends Controller
         });
         $monthlyData['teams'] = $teamsArray;
 
-        // Fetch all active teams for dropdown filter
-        $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
-        $teams = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];
+        // Fetch teams for dropdown filter scoped by role (Team Leader = own team, Sales Manager = managed teams, Head/Admin = all)
+        $teams = $this->getScopedTeamsForDropdown();
 
         // Check if Export requested
         if (isset($_GET['export'])) {
@@ -124,14 +124,17 @@ class SalesActivityReportController extends Controller
         }
 
         $this->view('sales-activity-report/index', [
-            'monthlyData'    => $monthlyData,
-            'dailyData'      => $dailyData,
-            'year'           => $year,
-            'month'          => $month,
-            'date'           => $date,
-            'selectedTeamId' => $teamId,
-            'teams'          => $teams,
-            'activeTab'      => $activeTab
+            'monthlyData'            => $monthlyData,
+            'dailyData'              => $dailyData,
+            'year'                   => $year,
+            'month'                  => $month,
+            'date'                   => $date,
+            'selectedTeamId'         => $teamId,
+            'selectedSalesManagerId' => $salesManagerId,
+            'salesManagers'          => $salesManagers,
+            'isGlobalViewer'         => $isGlobalViewer,
+            'teams'                  => $teams,
+            'activeTab'              => $activeTab
         ]);
     }
 
@@ -725,25 +728,28 @@ class SalesActivityReportController extends Controller
         $dateFrom = !empty($_GET['date_from']) ? trim($_GET['date_from']) : null;
         $dateTo   = !empty($_GET['date_to']) ? trim($_GET['date_to']) : null;
         $teamId   = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
+        [$salesManagerId, $effectiveTeamFilter, $isGlobalViewer, $salesManagers] = $this->resolveManagerTeamScope($teamId);
 
         // Check if export requested
         if (isset($_GET['export']) && strtolower(trim($_GET['export'])) === 'excel') {
-            $this->exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom, $dateTo, $teamId);
+            $this->exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom, $dateTo, $effectiveTeamFilter);
             return;
         }
 
-        // Fetch Team Performance Data (with teamId filter)
-        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo, $teamId);
+        // Fetch Team Performance Data (with teamId or manager team_ids filter)
+        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo, $effectiveTeamFilter);
 
-        $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
-        $teamsList = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];
+        $teamsList = $this->getScopedTeamsForDropdown();
 
         $this->view('sales-activity-report/team-performance', [
-            'current_route' => 'team-performance',
-            'reportData'    => $reportData,
-            'teams'         => $reportData['teams'] ?? [],
-            'allTeams'      => $teamsList,
-            'selectedTeamId'=> $teamId,
+            'current_route'          => 'team-performance',
+            'reportData'             => $reportData,
+            'teams'                  => $reportData['teams'] ?? [],
+            'allTeams'               => $teamsList,
+            'selectedTeamId'         => $teamId,
+            'selectedSalesManagerId' => $salesManagerId,
+            'salesManagers'          => $salesManagers,
+            'isGlobalViewer'         => $isGlobalViewer,
             'kpis'          => $reportData['kpis'] ?? [],
             'period'        => $reportData['period'] ?? [],
             'year'          => $year,
@@ -876,5 +882,66 @@ class SalesActivityReportController extends Controller
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('php://output');
         exit;
+    }
+
+    /**
+     * Return teams list for dropdown filters scoped to current user's hierarchy:
+     * - Sales Team Leader (Role 5): own team only
+     * - Sales Manager: assigned teams only
+     * - Head of Sales / Admin / Management: all teams
+     */
+    private function getScopedTeamsForDropdown(): array
+    {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $sessionTeamId = (int)($_SESSION['user']['team_id'] ?? 0);
+        $scope = function_exists('getSalesFilterScope')
+            ? getSalesFilterScope($this->db, $roleId, $sessionTeamId)
+            : ['is_global' => true, 'team_ids' => []];
+
+        if (!empty($scope['is_global'])) {
+            $res = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
+            return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        }
+
+        $allowedIds = array_values(array_unique(array_filter(array_map('intval', $scope['team_ids'] ?? []))));
+        if (empty($allowedIds)) {
+            return [];
+        }
+        $inList = implode(',', $allowedIds);
+        $res = $this->db->query("SELECT id, name FROM teams WHERE id IN ({$inList}) ORDER BY name ASC");
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Resolve optional sales_manager_id filter for global viewers without relaxing non-global scopes.
+     * Returns [$salesManagerId, $effectiveTeamFilter, $isGlobalViewer, $salesManagers].
+     */
+    private function resolveManagerTeamScope(?int $teamId): array
+    {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $sessionTeamId = (int)($_SESSION['user']['team_id'] ?? 0);
+        $scope = function_exists('getSalesFilterScope')
+            ? getSalesFilterScope($this->db, $roleId, $sessionTeamId)
+            : ['is_global' => true, 'team_ids' => []];
+
+        $isGlobalViewer = !empty($scope['is_global']);
+        if (!$isGlobalViewer) {
+            return [null, $teamId, false, []];
+        }
+
+        $salesManagers = function_exists('getSalesManagersWithTeams') ? getSalesManagersWithTeams($this->db) : [];
+        $salesManagerId = !empty($_GET['sales_manager_id']) ? (int)$_GET['sales_manager_id'] : null;
+
+        if ($salesManagerId) {
+            $mgrTeamIds = $salesManagers[$salesManagerId]['team_ids'] ?? [];
+            if ($teamId) {
+                $effective = in_array($teamId, $mgrTeamIds, true) ? $teamId : [-1];
+            } else {
+                $effective = !empty($mgrTeamIds) ? $mgrTeamIds : [-1];
+            }
+            return [$salesManagerId, $effective, true, $salesManagers];
+        }
+
+        return [null, $teamId, true, $salesManagers];
     }
 }

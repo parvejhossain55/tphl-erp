@@ -361,6 +361,7 @@ $contractor_bill_details = $contractor_bill_details ?? [];
                                     <option value="emi" <?= ($category ?? '') === 'emi' ? 'selected' : '' ?>>EMI Only</option>
                                     <option value="registration" <?= ($category ?? '') === 'registration' ? 'selected' : '' ?>>Registration Only</option>
                                     <option value="booking_money" <?= ($category ?? '') === 'booking_money' ? 'selected' : '' ?>>Booking Money Only</option>
+                                    <option value="development_charge" <?= ($category ?? '') === 'development_charge' ? 'selected' : '' ?>>Development Charge Only</option>
                                     <option value="management_cashin" <?= ($category ?? '') === 'management_cashin' ? 'selected' : '' ?>>Management Cashin Only</option>
                                     <option value="expense_adjustment_cashin" <?= ($category ?? '') === 'expense_adjustment_cashin' ? 'selected' : '' ?>>Expense Adjustment Returns</option>
                                     <option value="procurement_returns_cashin" <?= ($category ?? '') === 'procurement_returns_cashin' ? 'selected' : '' ?>>Procurement Returns</option>
@@ -449,9 +450,20 @@ if (isset($statement_data['daily_data']) && is_array($statement_data['daily_data
     if ($calc_cashout == 0) $calc_cashout = $r_cashout;
 }
 
-// User Formula: Land Share Value = Booking Money + Registration Fee
-if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration_fee > 0)) {
-    $calc_landshare_money = $calc_booking_money + $calc_registration_fee;
+if (($category ?? '') === 'bank_cashin') {
+    $bankSum = 0;
+    foreach ($bank_transactions ?? [] as $bt) {
+        $bankSum += (float)($bt['amount'] ?? 0);
+    }
+    $calc_cashin = $bankSum;
+    $calc_cashout = 0;
+} elseif (($category ?? '') === 'bank_cashout') {
+    $bankSum = 0;
+    foreach ($bank_transactions ?? [] as $bt) {
+        $bankSum += (float)($bt['amount'] ?? 0);
+    }
+    $calc_cashout = $bankSum;
+    $calc_cashin = 0;
 }
 ?>
 
@@ -613,6 +625,7 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                     <th>EMI Payments (TK.)</th>
                                     <th>Landshare Payments (TK.)</th>
                                     <th>Registration (TK.)</th>
+                                    <th>Development Charge (TK.)</th>
                                     <th>Management Cashin (TK.)</th>
                                     <th>Total Cash IN (TK.)</th>
                                     <th>Cash Out (TK.)</th>
@@ -641,6 +654,10 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                 <?php elseif ($category === 'booking_money'): ?>
                                     <!-- For booking money only -->
                                     <th>Booking Money (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                <?php elseif ($category === 'development_charge'): ?>
+                                    <!-- For development charge only -->
+                                    <th>Development Charge (TK.)</th>
                                     <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'agreement'): ?>
                                     <!-- For agreement value only -->
@@ -691,6 +708,7 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                         <td class="positive"><strong>৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['registration'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['development_charge'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
@@ -725,6 +743,10 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                         <!-- Show only booking money data -->
                                         <td class="positive"><strong>৳<?= number_format($row['booking_money'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['booking_money'] ?? 0, 2) ?></strong></td>
+                                    <?php elseif ($category === 'development_charge'): ?>
+                                        <!-- Show only development charge data -->
+                                        <td class="positive"><strong>৳<?= number_format($row['development_charge'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['development_charge'] ?? 0, 2) ?></strong></td>
                                     <?php elseif ($category === 'agreement'): ?>
                                         <!-- Show only agreement data -->
                                         <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></strong></td>
@@ -846,6 +868,7 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                     <th>EMI Payments (TK.)</th>
                                     <th>Landshare Payments (TK.)</th>
                                     <th>Registration (TK.)</th>
+                                    <th>Development Charge (TK.)</th>
                                     <th>Management Cashin (TK.)</th>
                                     <th>Total Cash IN (TK.)</th>
                                     <th>Cash Out (TK.)</th>
@@ -874,6 +897,10 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                 <?php elseif ($category === 'booking_money'): ?>
                                     <!-- For booking money only -->
                                     <th>Booking Money (TK.)</th>
+                                    <th>Amount (TK.)</th>
+                                <?php elseif ($category === 'development_charge'): ?>
+                                    <!-- For development charge only -->
+                                    <th>Development Charge (TK.)</th>
                                     <th>Amount (TK.)</th>
                                 <?php elseif ($category === 'agreement'): ?>
                                     <!-- For agreement value only -->
@@ -921,6 +948,7 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                         <td class="positive"><strong>৳<?= number_format($row['emi_payments'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['landshare_payments'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['registration_payments'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['development_charge'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['management_cashin'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['total_cashin'] ?? 0, 2) ?></strong></td>
                                         <td class="negative"><strong>৳<?= number_format($row['cash_out'] ?? 0, 2) ?></strong></td>
@@ -955,6 +983,10 @@ if ($calc_landshare_money == 0 && ($calc_booking_money > 0 || $calc_registration
                                         <!-- Show only booking money data -->
                                         <td class="positive"><strong>৳<?= number_format($row['booking_money'] ?? 0, 2) ?></strong></td>
                                         <td class="positive"><strong>৳<?= number_format($row['booking_money'] ?? 0, 2) ?></strong></td>
+                                    <?php elseif ($category === 'development_charge'): ?>
+                                        <!-- Show only development charge data -->
+                                        <td class="positive"><strong>৳<?= number_format($row['development_charge'] ?? 0, 2) ?></strong></td>
+                                        <td class="positive"><strong>৳<?= number_format($row['development_charge'] ?? 0, 2) ?></strong></td>
                                     <?php elseif ($category === 'agreement'): ?>
                                         <!-- Show only agreement data -->
                                         <td class="positive"><strong>৳<?= number_format($row['agreement_value'] ?? 0, 2) ?></strong></td>
@@ -1213,6 +1245,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php ?>
 
 
+    <?php
+    $clientReceiptCategories = ['all', 'total_cashin', 'landshare', 'service_fee', 'emi', 'registration', 'booking_money', 'development_charge', 'bank_cashin'];
+    if (in_array($category ?? 'all', $clientReceiptCategories, true)):
+    ?>
     <!-- DEDICATED CLIENT RECEIPTS & FLAT BREAKDOWN CARD -->
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
@@ -1253,6 +1289,26 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                 }
                             }
+                        }
+
+                        // Filter client receipts if a specific client receipt category is selected
+                        $catToPaymentType = [
+                            'landshare' => 'land_share',
+                            'service_fee' => 'shop_service_charge',
+                            'emi' => 'emi',
+                            'registration' => 'registration',
+                            'booking_money' => 'booking_money',
+                            'development_charge' => 'development_charge',
+                        ];
+                        if (isset($catToPaymentType[$category ?? ''])) {
+                            $targetType = $catToPaymentType[$category];
+                            $allDetails = array_values(array_filter($allDetails, function($cp) use ($targetType) {
+                                return ($cp['payment_type'] ?? '') === $targetType;
+                            }));
+                        } elseif (($category ?? '') === 'bank_cashin') {
+                            $allDetails = array_values(array_filter($allDetails, function($cp) {
+                                return strtolower($cp['payment_method'] ?? '') === 'bank';
+                            }));
                         }
                         ?>
                         <?php if (!empty($allDetails)): ?>
@@ -1300,3 +1356,4 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
     </div>
+    <?php endif; ?>

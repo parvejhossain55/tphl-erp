@@ -29,11 +29,14 @@ class TeamFollowUpComparisonController extends Controller
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         return in_array($roleId, self::ALLOWED_ROLE_IDS, true)
+            || (function_exists('isSalesManager') && isSalesManager())
             || str_contains($roleName, 'chief')
             || str_contains($roleName, 'ceo')
             || str_contains($roleName, 'management')
             || str_contains($roleName, 'sales manager')
+            || str_contains($roleName, 'sales team leader')
             || str_contains($roleName, 'sales head')
+            || str_contains($roleName, 'head of sales')
             || str_contains($roleName, 'admin');
     }
 
@@ -74,6 +77,8 @@ class TeamFollowUpComparisonController extends Controller
         $to = !empty($_GET['to']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['to']) ? $_GET['to'] : null;
 
         $teamId = !empty($_GET['team_id']) ? (int) $_GET['team_id'] : null;
+        $scope = function_exists('getSalesFilterScope') ? getSalesFilterScope($this->db) : ['is_global' => true];
+        $salesManagerId = (!empty($scope['is_global']) && !empty($_GET['sales_manager_id'])) ? (int) $_GET['sales_manager_id'] : null;
         $projectId = !empty($_GET['project_id']) ? (int) $_GET['project_id'] : null;
         $executiveId = !empty($_GET['executive_id']) ? (int) $_GET['executive_id'] : null;
 
@@ -85,6 +90,7 @@ class TeamFollowUpComparisonController extends Controller
             'month' => $month,
             'from' => $from,
             'to' => $to,
+            'sales_manager_id' => $salesManagerId,
             'team_id' => $teamId,
             'project_id' => $projectId,
             'executive_id' => $executiveId,
@@ -115,6 +121,14 @@ class TeamFollowUpComparisonController extends Controller
 
         $comparisonData = $this->service->build($period, $filters);
 
+        // Scope dropdowns for Sales Team Leader (5) & Sales Manager
+        [$scopedTeams, $scopedProjects, $scopedUsers, $scope] = filterSalesDropdowns(
+            $this->db,
+            $this->service->getTeams(),
+            $this->service->getProjects(),
+            $this->service->getSalesUsers()
+        );
+
         // CSV export
         if (($_GET['export'] ?? '') === 'csv') {
             $this->exportCsv($period, $filters, $comparisonData);
@@ -129,9 +143,11 @@ class TeamFollowUpComparisonController extends Controller
             'filters' => $filters,
             'data' => $comparisonData,
             'cycleOptions' => $this->service->cycleOptions(6),
-            'teams' => $this->service->getTeams(),
-            'salesUsers' => $this->service->getSalesUsers(),
-            'projects' => $this->service->getProjects(),
+            'teams' => $scopedTeams,
+            'salesUsers' => $scopedUsers,
+            'projects' => $scopedProjects,
+            'isGlobalViewer' => !empty($scope['is_global']),
+            'salesManagers' => !empty($scope['is_global']) ? getSalesManagersWithTeams($this->db) : [],
         ]);
     }
 
@@ -153,6 +169,7 @@ class TeamFollowUpComparisonController extends Controller
         );
 
         $drillFilters = [
+            'sales_manager_id' => $filters['sales_manager_id'],
             'team_id' => !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null,
             'executive_id' => !empty($_GET['executive_id']) ? (int)$_GET['executive_id'] : null,
             'project_id' => !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null,

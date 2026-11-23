@@ -151,13 +151,10 @@ if (!empty($outstandingDues)) {
                                 <option value="">-- Select Payment Type --</option>
 
                                 <!-- Booking Money -->
-                                <?php if (!$isLandShareCompleted && $formRemainingBooking > 0): ?>
+                                <!-- Booking Money -->
+                                <?php if ($formRemainingBooking > 0 && !$isBookingFullyPaid && !$isLandShareCompleted): ?>
                                     <option value="booking_money">
                                         Booking Money (Remaining: TK.<?= number_format($formRemainingBooking, 2) ?>)
-                                    </option>
-                                <?php else: ?>
-                                    <option value="booking_money" disabled>
-                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyTotal, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
@@ -169,36 +166,21 @@ if (!empty($outstandingDues)) {
                                     <option value="mutation_cost">
                                         Mutation Cost
                                     </option>
-                                <?php else: ?>
-                                    <option value="registration" disabled>Registration (Completed ✓)</option>
-                                    <option value="mutation_cost" disabled>Mutation Cost (Completed ✓)</option>
                                 <?php endif; ?>
 
                                 <!-- Development Charge -->
                                 <?php if (!$isDevChargeCompleted): ?>
-                                    <?php if ($devChargePaid >= $flatDevCharges && $flatDevCharges > 0): ?>
-                                        <option value="development_charge" disabled>
-                                            Development Charges (Pending Verification — TK.<?= number_format($devChargePaid, 2) ?>)
-                                        </option>
-                                    <?php else: ?>
+                                    <?php if ($devChargePaid < $flatDevCharges && $flatDevCharges > 0): ?>
                                         <option value="development_charge">
                                             Development Charges (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
                                         </option>
                                     <?php endif; ?>
-                                <?php else: ?>
-                                    <option value="development_charge" disabled>
-                                        Development Charges (Fully Paid ✓ — TK.<?= number_format($devChargePaid, 2) ?>)
-                                    </option>
                                 <?php endif; ?>
 
                                 <!-- EMI -->
                                 <?php if ($remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
                                         <?= !empty($nextEmiStr) ? $nextEmiStr . " " : "" ?>EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?= $dueEmiStr ?><?php endif; ?>
-                                    </option>
-                                <?php else: ?>
-                                    <option value="emi" disabled>
-                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
@@ -232,7 +214,17 @@ if (!empty($outstandingDues)) {
                             </small>
                         </div>
 
-
+                        <!-- Total Booking Money (shown for Booking Money ONLY) -->
+                        <?php if (!$isBookingFullyPaid): ?>
+                        <div class="col-md-6" id="totalBookingMoneyContainer" style="display:none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title">Total Booking Money Target <span>*</span></label>
+                                <input type="number" name="total_booking_money" id="totalBookingMoney" class="form-control" step="1"
+                                    min="0" placeholder="Enter target amount" value="<?= $effectiveBookingTarget ?>" required>
+                                <small class="text-muted">Remaining amounts will auto-calculate based on this</small>
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                         <!-- Other Purpose (shown when Others is selected) -->
                         <div class="col-md-6" id="otherPurposeContainer" style="display:none;">
@@ -494,18 +486,23 @@ if (!empty($outstandingDues)) {
                                 </div>
                             <?php endif; ?>
 
-                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="send_sms" id="sendSms" value="true" checked>
-                                <label class="form-check-label fw-semibold text-success" for="sendSms">
-                                    <i class="fa-solid fa-envelope me-1"></i> Send SMS Notification
-                                </label>
-                            </div>
-                            
-                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
-                                <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
-                                    <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
-                                </label>
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-6">
+                                    <div class="p-2 border rounded d-flex align-items-center bg-white shadow-sm" style="border-color: #dee2e6;">
+                                        <input class="form-check-input mt-0 me-2" type="checkbox" name="send_sms" id="sendSms" value="true" checked style="width: 20px; height: 20px; cursor: pointer; accent-color: #198754;">
+                                        <label class="form-check-label fw-semibold text-dark mb-0 user-select-none" for="sendSms" style="cursor: pointer;">
+                                            <i class="fa-solid fa-square-check text-success me-1"></i> Send SMS Notification <span class="text-muted fw-normal small">(Client Mobile)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="p-2 border rounded d-flex align-items-center bg-white shadow-sm" style="border-color: #dee2e6;">
+                                        <input class="form-check-input mt-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1" style="width: 20px; height: 20px; cursor: pointer; accent-color: #ffc107;">
+                                        <label class="form-check-label fw-semibold text-dark mb-0 user-select-none" for="isTestingMode" style="cursor: pointer;">
+                                            <i class="fa-solid fa-flask text-secondary me-1"></i> Testing Mode <span class="text-muted fw-normal small">(Skip SMS & Email)</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -588,12 +585,31 @@ if (!empty($outstandingDues)) {
         const bookingMoneyTotalPaid  = <?= json_encode((float)($clientDetails['booking_money_total'] ?? 0)) ?>;
         const formRemainingRegistrationPHP = <?= json_encode((float)($formRemainingRegistration ?? 0)) ?>;
 
+        // SMS Notification & Testing Mode Switch Synchronization
+        const sendSmsSwitch = document.getElementById('sendSms');
+        const isTestingModeSwitch = document.getElementById('isTestingMode');
+        if (sendSmsSwitch && isTestingModeSwitch) {
+            sendSmsSwitch.addEventListener('change', function() {
+                if (this.checked) {
+                    isTestingModeSwitch.checked = false;
+                }
+            });
+            isTestingModeSwitch.addEventListener('change', function() {
+                if (this.checked) {
+                    sendSmsSwitch.checked = false;
+                }
+            });
+        }
+
+        const totalBookingMoneyInput = document.getElementById('totalBookingMoney');
+        const totalBookingMoneyContainer = document.getElementById('totalBookingMoneyContainer');
+
         // Function to calculate dynamic remaining amounts
         function getDynamicBalances() {
             const effectiveLSTarget = Math.max(0, totalLandShare - discountAmount);
             const totalLSPaid = bookingMoneyTotalPaid + allRegistrationAndLandshare;
             const remainingLandShareTotal = Math.max(0, effectiveLSTarget - totalLSPaid);
-            const target = <?= json_encode((float)$effectiveBookingTarget) ?>;
+            const target = totalBookingMoneyInput ? (parseFloat(totalBookingMoneyInput.value) || 0) : <?= json_encode((float)$effectiveBookingTarget) ?>;
             const remainingBooking = (remainingLandShareTotal <= 0) ? 0 : Math.min(remainingLandShareTotal, Math.max(0, target - bookingMoneyTotalPaid));
             const bookingDeduction = Math.max(target, bookingMoneyTotalPaid);
             const remainingReg = (remainingLandShareTotal <= 0) ? 0 : Math.min(remainingLandShareTotal, Math.max(0, effectiveLSTarget - bookingDeduction - allRegistrationAndLandshare));
@@ -647,6 +663,14 @@ if (!empty($outstandingDues)) {
             
             const { remainingBooking, remainingReg } = getDynamicBalances();
 
+            // Show Total Booking Money input for Booking Money ONLY
+            if (totalBookingMoneyContainer) {
+                if (paymentTypeValue === 'booking_money') {
+                    totalBookingMoneyContainer.style.display = 'block';
+                } else {
+                    totalBookingMoneyContainer.style.display = 'none';
+                }
+            }
             // Show Other Purpose input when Others is selected
             const otherPurposeContainer = document.getElementById('otherPurposeContainer');
             const otherPurposeInput = document.getElementById('otherPurpose');
@@ -1000,6 +1024,8 @@ if (!empty($outstandingDues)) {
                                     };
                                 }
                             });
+                        } else {
+                            $cBank.next('.select2-container').css('width', '100%');
                         }
                     }
                 } else if (method === 'online') {
@@ -1058,15 +1084,9 @@ if (!empty($outstandingDues)) {
                     return false;
                 }
 
-                // Validation for registration (which now includes land share remaining check)
+                // Validation for registration (surplus cascades to EMI/construction)
                 if (paymentTypeValue === 'registration') {
-                    const { remainingReg } = getDynamicBalances();
-                    if (amount > remainingReg + 0.01) {
-                        e.preventDefault();
-                        alert('Registration amount cannot exceed remaining: TK.' + remainingReg.toFixed(2));
-                        amountField.focus();
-                        return false;
-                    }
+                    // Allowed to enter amount greater than remaining; backend cascades excess
                 }
 
                 // Validation for others
@@ -1194,5 +1214,28 @@ if (!empty($outstandingDues)) {
         display: block;
         margin-top: 5px;
         font-size: 12px;
+    }
+
+    /* Fix Select2 width & height in bank fields to prevent 0px collapse */
+    .bank-fields .select2-container,
+    .bank-fields .select2-container--default {
+        width: 100% !important;
+        display: block !important;
+    }
+    .bank-fields .select2-container .select2-selection--single {
+        height: 48px !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 6px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 48px !important;
+        padding-left: 14px !important;
+        color: #495057 !important;
+    }
+    .bank-fields .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 46px !important;
+        right: 10px !important;
     }
 </style>

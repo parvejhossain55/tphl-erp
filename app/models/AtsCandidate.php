@@ -126,6 +126,13 @@ class AtsCandidate extends Model
         // 3. Department Filter (Multi or Single)
         $addMultiOrSingleCondition('department', $filters['department'] ?? null);
 
+        // 3b. Job Posting Filter
+        if (!empty($filters['job_id'])) {
+            $conditions[] = "`job_id` = ?";
+            $params[] = (int)$filters['job_id'];
+            $types .= "i";
+        }
+
         // 4. Position Filter (Multi or Single)
         $addMultiOrSingleCondition('position', $filters['position'] ?? null);
 
@@ -372,7 +379,7 @@ class AtsCandidate extends Model
 
         $stmt = $this->db->prepare("
             INSERT INTO {$this->table} (
-                name, phone, email, position, department, source,
+                job_id, name, phone, email, position, department, source,
                 invitation_status, referred_by, remarks,
                 interview_call_date, interview_date, interview_time, interview_location,
                 email_sent, sms_sent, interview_attendance,
@@ -380,7 +387,7 @@ class AtsCandidate extends Model
                 current_salary, expected_salary, bottom_line_salary, notice_period, notice_period_days,
                 hired, joining_date, onboarding_salary, entry_mode, created_by
             ) VALUES (
-                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?,
@@ -395,6 +402,7 @@ class AtsCandidate extends Model
             return false;
         }
 
+        $jobId = !empty($data['job_id']) ? (int) $data['job_id'] : null;
         $name = trim($data['name']);
         $phone = trim($data['phone']);
         $email = !empty($data['email']) ? trim($data['email']) : '';
@@ -437,12 +445,12 @@ class AtsCandidate extends Model
         $hired = in_array($data['hired'] ?? '', $allowedHired, true) ? $data['hired'] : 'Decision Pending';
         $joiningDate = !empty($data['joining_date']) ? $data['joining_date'] : null;
         $onboardingSalary = !empty($data['onboarding_salary']) ? (float) $data['onboarding_salary'] : null;
-        $entryMode = in_array($data['entry_mode'] ?? '', ['single', 'csv', 'ai']) ? $data['entry_mode'] : 'single';
+        $entryMode = in_array($data['entry_mode'] ?? '', ['single', 'csv', 'ai', 'website']) ? $data['entry_mode'] : 'single';
         $createdBy = !empty($data['created_by']) ? (int) $data['created_by'] : null;
 
         $stmt->bind_param(
-            "sssssssssssssiissssdddsissdsi",
-            $name, $phone, $email, $position, $department, $source,
+            "isssssssssssssiissssdddsissdsi",
+            $jobId, $name, $phone, $email, $position, $department, $source,
             $invitationStatus, $referredBy, $remarks,
             $interviewCallDate, $interviewDate, $interviewTime, $interviewLocation,
             $emailSent, $smsSent, $interviewAttendance,
@@ -481,6 +489,7 @@ class AtsCandidate extends Model
             return false;
         }
 
+        $jobId = !empty($data['job_id']) ? (int) $data['job_id'] : null;
         $name = trim($data['name']);
         $phone = trim($data['phone']);
         $email = !empty($data['email']) ? trim($data['email']) : '';

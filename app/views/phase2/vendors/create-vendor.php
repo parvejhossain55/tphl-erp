@@ -24,37 +24,37 @@
                     </h6>
                 </div>
                 <div class="card__body p-4">
-                    <div class="alert alert-info py-2 px-3 mb-4 d-flex align-items-center">
-                        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-                        <small>
+                    <div class="alert alert-info py-2 px-3 mb-4 d-flex align-items-start gap-2">
+                        <i class="bi bi-info-circle-fill fs-5 flex-shrink-0" style="position: static !important; transform: none !important; line-height: 1.2;"></i>
+                        <small class="lh-base">
                             <strong>Multi-Step Approval Process:</strong> Once submitted, this vendor request will progress through required approvals (Dept Head &rarr; Purchase Head &rarr; Admin & Operation Head &rarr; Board of Director &rarr; Management) before becoming active.
                         </small>
                     </div>
 
-                    <form action="<?= $base_url ?>/con-vendor-store" method="POST">
+                    <form action="<?= $base_url ?>/con-vendor-store" method="POST" enctype="multipart/form-data">
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Vendor / Contact Person Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" class="form-control" required
-                                       placeholder="e.g., Mohammad Rahim">
+                                <label class="form-label fw-bold">Business / Company Name <span class="text-danger">*</span></label>
+                                <input type="text" name="company_name" class="form-control" required
+                                       placeholder="e.g., ABC Enterprise Ltd.">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Company / Business Name</label>
-                                <input type="text" name="company_name" class="form-control"
-                                       placeholder="e.g., ABC Enterprise Ltd.">
+                                <label class="form-label fw-bold">Contact Person / Designated Person Name <span class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control" required
+                                       placeholder="e.g., Mohammad Rahim">
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Phone Number</label>
-                                <input type="text" name="phone" class="form-control"
+                                <label class="form-label fw-bold">Phone Number <span class="text-danger">*</span></label>
+                                <input type="text" name="phone" class="form-control" required
                                        placeholder="e.g., +880 1711-000000">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Email Address</label>
-                                <input type="email" name="email" class="form-control"
+                                <label class="form-label fw-bold">Email Address <span class="text-danger">*</span></label>
+                                <input type="email" name="email" class="form-control" required
                                        placeholder="vendor@example.com">
                             </div>
                         </div>
@@ -64,6 +64,37 @@
                                 <label class="form-label fw-bold">Office / Business Address</label>
                                 <textarea name="address" class="form-control" rows="2"
                                        placeholder="Full business address..."></textarea>
+                            </div>
+                        </div>
+
+                        <hr class="my-3">
+                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-file-earmark-check me-2"></i>Required Verification Documents</h6>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">NID Document (Image / PDF) <span class="text-danger">*</span></label>
+                                <input type="file" name="nid_file" class="form-control" required
+                                       accept=".jpg,.jpeg,.png,.webp,.pdf">
+                                <div class="form-text">Accepted: JPG, JPEG, PNG, WEBP, PDF (Max 10MB)</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">NID Number <span class="text-muted fw-normal small">(Optional)</span></label>
+                                <input type="text" name="nid_number" class="form-control"
+                                       placeholder="e.g., 1990123456789">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Trade License Document (Image / PDF) <span class="text-danger">*</span></label>
+                                <input type="file" name="trade_license_file" class="form-control" required
+                                       accept=".jpg,.jpeg,.png,.webp,.pdf">
+                                <div class="form-text">Accepted: JPG, JPEG, PNG, WEBP, PDF (Max 10MB)</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Trade License Number <span class="text-muted fw-normal small">(Optional)</span></label>
+                                <input type="text" name="trade_license_number" class="form-control"
+                                       placeholder="e.g., TRAD/DSCC/001234">
                             </div>
                         </div>
 

@@ -54,12 +54,43 @@ class SalesDashboardController extends Controller
             $trendMode = 'cycle';
         }
 
-        // Access scoping
-        // Admin, Super Admin, Sales Team Head, Management, Chief Officer, SEAL CEO can filter any team
-        if (in_array($roleId, [1, 3, 9, 32, 33, 34, 35], true)) {
+        // Access scoping & dropdown filtering
+        // Head of Sales (9) & Management (1, 3, 20, 32, 33, 34, 35, 38) -> all teams, projects, executives
+        // Sales Manager -> only their assigned teams, those teams' executives & assigned projects
+        // Sales Team Leader (5) / Team Leader -> locked to own team, own team's executives & assigned projects
+        $rawTeamsList = $this->performanceService->getTeams();
+        $rawProjectsList = $this->performanceService->getProjects();
+        $rawSalesUsers = $this->performanceService->getSalesUsers();
+        [$teamsList, $projectsList, $salesUsers, $scope] = filterSalesDropdowns($this->db, $rawTeamsList, $rawProjectsList, $rawSalesUsers);
+
+        $managedTeamIds = $scope['team_ids'] ?? [];
+        $filterManagerId = (!empty($scope['is_global']) && !empty($_GET['sales_manager_id'])) ? (int) $_GET['sales_manager_id'] : null;
+        $selectedManagerTeamIds = $filterManagerId ? getManagedTeamIds($this->db, $filterManagerId) : [];
+        if ($scope['is_global']) {
             $effectiveTeamId = $filterTeamId;
+        } elseif ($scope['is_manager']) {
+            if ($filterTeamId && in_array($filterTeamId, $managedTeamIds, true)) {
+                $effectiveTeamId = $filterTeamId;
+            } else {
+                $effectiveTeamId = null; // Will be scoped to $managedTeamIds below
+            }
         } else {
-            $effectiveTeamId = $sessionTeamId ?: $filterTeamId;
+            $effectiveTeamId = !empty($managedTeamIds) ? (int) $managedTeamIds[0] : $sessionTeamId;
+        }
+
+        if (!$scope['is_global']) {
+            if ($filterProjectId) {
+                $allowedPids = array_map(fn($p) => (int) ($p['id'] ?? 0), $projectsList);
+                if (!in_array($filterProjectId, $allowedPids, true)) {
+                    $filterProjectId = null;
+                }
+            }
+            if ($filterExecutiveId) {
+                $allowedUids = array_map(fn($u) => (int) ($u['id'] ?? 0), $salesUsers);
+                if (!in_array($filterExecutiveId, $allowedUids, true)) {
+                    $filterExecutiveId = null;
+                }
+            }
         }
 
         // Quick Preset: Last cycle
@@ -98,15 +129,30 @@ class SalesDashboardController extends Controller
 
         // Core aggregated data from SalesPerformanceService
         $filters = [
-            'project_id'   => $filterProjectId,
-            'team_id'      => $effectiveTeamId,
-            'executive_id' => $filterExecutiveId,
+            'project_id'       => $filterProjectId,
+            'sales_manager_id' => $filterManagerId,
+            'team_id'          => $effectiveTeamId,
+            'executive_id'     => $filterExecutiveId,
         ];
         $serviceData = $this->performanceService->build($period, $filters);
         $overall = $serviceData['overall'];
 
         // Scope SQL conditions for secondary queries
-        $teamB = $effectiveTeamId ? " AND COALESCE(lb.team_id, l.team_id) = {$effectiveTeamId}" : "";
+        if ($effectiveTeamId) {
+            if ($filterManagerId && !in_array($effectiveTeamId, $selectedManagerTeamIds, true)) {
+                $teamB = " AND COALESCE(lb.team_id, l.team_id) IN (-1)";
+            } else {
+                $teamB = " AND COALESCE(lb.team_id, l.team_id) = {$effectiveTeamId}";
+            }
+        } elseif ($filterManagerId) {
+            $inTeams = !empty($selectedManagerTeamIds) ? implode(',', array_map('intval', $selectedManagerTeamIds)) : '-1';
+            $teamB = " AND COALESCE(lb.team_id, l.team_id) IN ({$inTeams})";
+        } elseif ($scope['is_manager']) {
+            $inTeams = !empty($managedTeamIds) ? implode(',', array_map('intval', $managedTeamIds)) : '-1';
+            $teamB = " AND COALESCE(lb.team_id, l.team_id) IN ({$inTeams})";
+        } else {
+            $teamB = "";
+        }
         $projB = $filterProjectId ? " AND lb.project_id = {$filterProjectId}" : "";
         $execB = $filterExecutiveId ? " AND (lb.sales_by_id = {$filterExecutiveId} OR (COALESCE(lb.sales_by_id, 0) = 0 AND l.assigned_id = {$filterExecutiveId}))" : "";
         $refundExclude = " AND lb.id NOT IN (SELECT booking_id FROM client_refund_requests WHERE status IN ('pending', 'approved', 'refunded'))";
@@ -262,7 +308,18 @@ class SalesDashboardController extends Controller
             $shortLabel = date('M', mktime(0, 0, 0, $m, 1, $y));
 
             $projCond = $filterProjectId ? " AND lb.project_id = {$filterProjectId}" : "";
-            $teamCond = $effectiveTeamId ? " AND (l.team_id = {$effectiveTeamId} OR l.assigned_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}))" : "";
+            if ($effectiveTeamId) {
+                if ($filterManagerId && !in_array($effectiveTeamId, $selectedManagerTeamIds, true)) {
+                    $teamCond = " AND 1=0";
+                } else {
+                    $teamCond = " AND (l.team_id = {$effectiveTeamId} OR l.assigned_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id = {$effectiveTeamId}))";
+                }
+            } elseif ($filterManagerId) {
+                $inTeams = !empty($selectedManagerTeamIds) ? implode(',', array_map('intval', $selectedManagerTeamIds)) : '-1';
+                $teamCond = " AND (l.team_id IN ({$inTeams}) OR l.assigned_id IN (SELECT id FROM users WHERE team_id IN ({$inTeams})) OR lb.sales_by_id IN (SELECT id FROM users WHERE team_id IN ({$inTeams})))";
+            } else {
+                $teamCond = "";
+            }
             $execCond = $filterExecutiveId ? " AND (lb.sales_by_id = {$filterExecutiveId} OR (COALESCE(lb.sales_by_id, 0) = 0 AND l.assigned_id = {$filterExecutiveId}))" : "";
 
             $trendRes = $this->db->query("
@@ -925,11 +982,8 @@ class SalesDashboardController extends Controller
             $drilldown['collections'][] = $cp;
         }
 
-        // Dropdowns data
+        // Dropdowns data (already scoped by filterSalesDropdowns above)
         $cycleOptions = $this->performanceService->cycleOptions(12);
-        $teamsList = $this->performanceService->getTeams();
-        $projectsList = $this->performanceService->getProjects();
-        $salesUsers = $this->performanceService->getSalesUsers();
 
         // Pass everything to view
         $this->view("sales-developments/sales-dashboard", [
@@ -941,8 +995,9 @@ class SalesDashboardController extends Controller
                 "preset"       => $period['preset'] ?? 'cycle',
                 "from"         => $startD,
                 "to"           => $endD,
-                "project_id"   => $filterProjectId,
-                "team_id"      => $effectiveTeamId,
+                "project_id"       => $filterProjectId,
+                "sales_manager_id" => $filterManagerId,
+                "team_id"          => $effectiveTeamId,
                 "executive_id" => $filterExecutiveId,
                 "product_type" => $productType,
                 "trend_horizon"=> $trendHorizon,
@@ -1021,6 +1076,8 @@ class SalesDashboardController extends Controller
             "teamsList"              => $teamsList,
             "projectsList"           => $projectsList,
             "salesUsers"             => $salesUsers,
+            "isGlobalViewer"         => !empty($scope['is_global']),
+            "salesManagers"          => !empty($scope['is_global']) ? getSalesManagersWithTeams($this->db) : [],
         ]);
     }
 
@@ -1116,6 +1173,29 @@ class SalesDashboardController extends Controller
         }
 
         $user = $this->userModel->find($id);
+        $empInfo = $this->db->query("
+            SELECT 
+                e.id AS emp_id,
+                e.employee_id,
+                e.full_name AS emp_full_name,
+                e.phone AS emp_phone,
+                e.email AS emp_email,
+                e.photo,
+                e.is_team_leader,
+                des.name AS designation_name,
+                dept.name AS department_name,
+                COALESCE(t_emp.name, t_user.name) AS team_name,
+                COALESCE(t_emp.id, t_user.id) AS team_id
+            FROM users u
+            LEFT JOIN employees e ON u.id = e.user_id
+            LEFT JOIN designations des ON e.designation_id = des.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN teams t_user ON u.team_id = t_user.id
+            LEFT JOIN teams t_emp ON e.team_id = t_emp.id
+            WHERE u.id = $id
+            LIMIT 1
+        ")->fetch_assoc();
+
         $targets = $this->salesTargetModel->getAllTargets($id);
         $projects = $this->db->query("
             SELECT p.id, p.name, p.category_id, pc.name as cat_name, pc.main_category 
@@ -1125,13 +1205,14 @@ class SalesDashboardController extends Controller
             ORDER BY p.name ASC
         ")->fetch_all(MYSQLI_ASSOC);
         $team = $this->db->query("SELECT t.name FROM users u JOIN teams t ON u.team_id = t.id WHERE u.id = $id LIMIT 1")->fetch_assoc();
-        $teamName = $team['name'] ?? 'No Team';
+        $teamName = !empty($empInfo['team_name']) ? $empInfo['team_name'] : ($team['name'] ?? 'No Team');
         
         $categories = $this->db->query("SELECT id, name AS category_name, main_category FROM project_categories ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view("sales-developments/set-sales-target", [
             "current_route" => "sales-executive-teams",
             'user' => $user,
+            'empInfo' => $empInfo,
             'targets' => $targets,
             'projects' => $projects,
             'categories' => $categories,

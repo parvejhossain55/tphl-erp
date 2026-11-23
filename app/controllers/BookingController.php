@@ -450,7 +450,7 @@ class BookingController extends Controller
             setError($res['message'] ?? "Failed to update booking!");
         }
 
-        header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+        header("Location: {$redirectTarget}");
         exit;
     }
 
@@ -533,19 +533,33 @@ class BookingController extends Controller
 
         $leadId = (int)$booking['lead_id'];
 
-        // Authorization check: Salesperson who made the sale (sales_by_id) OR roles [1, 3, 9, 20, 33]
-        $isSalesperson = (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === (int)$userId);
-        $hasBackupRole = in_array($userRole, [1, 3, 9, 20, 33]);
+        $secRole  = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $priRole  = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $allRoles = array_values(array_unique(array_filter([$userRole, $secRole, $priRole])));
 
-        if (!$isSalesperson && !$hasBackupRole) {
-            setError("You are not authorized to initiate refund for this booking. Only the assigned salesperson or authorized management can initiate.");
-            header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+        $rawRedirect = trim($_POST['redirect_url'] ?? '');
+        $redirectTarget = (!empty($rawRedirect) && str_starts_with($rawRedirect, '/') && !str_starts_with($rawRedirect, '//'))
+            ? $rawRedirect
+            : ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/booking-leads/{$leadId}");
+
+        // Authorization check: Related Team Leader (Role 5), Sales Head (9), Sales Manager (38), Accounts (6,10,30,36), CED (7,37,39), Operation (20), Admin/SuperAdmin (1,3)
+        // Pure Sales Executives (Role 8 without authorized secondary/primary role) cannot create refund requests directly
+        require_once __DIR__ . '/../models/ClientRefund.php';
+        $crModel = new ClientRefund($this->db);
+        $isRelatedLeader = $crModel->isRelatedTeamLeader($userId, $userRole, $bookingId)
+            || ($secRole === 5 && $crModel->isRelatedTeamLeader($userId, 5, $bookingId));
+        $allowedRoles = [1, 3, 6, 7, 9, 10, 20, 30, 36, 37, 38, 39];
+        $hasAllowedRole = count(array_intersect($allRoles, $allowedRoles)) > 0;
+
+        if ((!$isRelatedLeader && !$hasAllowedRole) || ($userRole === 8 && !$hasAllowedRole && !$isRelatedLeader)) {
+            setError("Only authorized leaders, CED, or Accounts can create refund request.");
+            header("Location: {$redirectTarget}");
             exit;
         }
 
         if (in_array($booking['booking_status'], ['refunded', 'cancelled'])) {
             setError("This booking has already been " . $booking['booking_status'] . ".");
-            header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+            header("Location: {$redirectTarget}");
             exit;
         }
 
@@ -589,6 +603,7 @@ class BookingController extends Controller
             $clientBankRoutingNo   = trim($_POST['client_bank_routing_no'] ?? '');
             $preferredMethod       = trim($_POST['preferred_payment_method'] ?? 'bank');
             $expectedRefundDate    = !empty($_POST['expected_refund_date']) ? $_POST['expected_refund_date'] : null;
+            $isRegistrationCompleted = !empty($_POST['is_registration_completed']) ? 1 : 0;
 
             // Handle optional client refund attachment (PDF, Image: JPG, JPEG, PNG)
             $documentPath = null;
@@ -597,12 +612,12 @@ class BookingController extends Controller
                 $fileExt = strtolower(pathinfo($_FILES['refund_attachment']['name'], PATHINFO_EXTENSION));
                 if (!in_array($fileExt, $allowedTypes)) {
                     setError("Invalid attachment format. Allowed formats: PDF, JPG, JPEG, PNG.");
-                    header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+                    header("Location: {$redirectTarget}");
                     exit;
                 }
                 if ($_FILES['refund_attachment']['size'] > 10 * 1024 * 1024) {
                     setError("Attachment file size must not exceed 10MB.");
-                    header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+                    header("Location: {$redirectTarget}");
                     exit;
                 }
                 $newFileName = 'client_refund_req_' . $bookingId . '_' . time() . '.' . $fileExt;
@@ -620,6 +635,12 @@ class BookingController extends Controller
             $retentionAmount = 0.0;
             $refundAmount    = $totalPaid;
 
+            // Ensure is_registration_completed column exists on client_refund_requests
+            $colChk = $this->db->query("SHOW COLUMNS FROM client_refund_requests LIKE 'is_registration_completed'");
+            if ($colChk && $colChk->num_rows === 0) {
+                $this->db->query("ALTER TABLE client_refund_requests ADD COLUMN is_registration_completed TINYINT(1) NOT NULL DEFAULT 0 AFTER reason");
+            }
+
             // Check if active refund already exists
             $checkRefund = $this->db->prepare("SELECT id FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' LIMIT 1");
             $checkRefund->bind_param("i", $bookingId);
@@ -634,6 +655,7 @@ class BookingController extends Controller
                     retention_amount = ?, 
                     refund_amount = ?, 
                     reason = ?, 
+                    is_registration_completed = ?, 
                     expected_refund_date = ?, 
                     client_bank_name = ?, 
                     client_bank_branch = ?, 
@@ -645,11 +667,12 @@ class BookingController extends Controller
                     requested_by = ?, 
                     status = 'pending' 
                     WHERE id = ?");
-                $rfUpdate->bind_param("dddssssssssssii", 
+                $rfUpdate->bind_param("dddsissssssssii", 
                     $totalPaid, 
                     $retentionAmount, 
                     $refundAmount, 
                     $reason, 
+                    $isRegistrationCompleted, 
                     $expectedRefundDate, 
                     $clientBankName, 
                     $clientBankBranch, 
@@ -664,11 +687,11 @@ class BookingController extends Controller
                 $rfUpdate->execute();
             } else {
                 $rfInsert = $this->db->prepare("INSERT INTO client_refund_requests 
-                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, expected_refund_date, client_bank_name, client_bank_branch, client_bank_account_name, client_bank_account_no, client_bank_routing_no, preferred_payment_method, document, requested_by, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, is_registration_completed, expected_refund_date, client_bank_name, client_bank_branch, client_bank_account_name, client_bank_account_no, client_bank_routing_no, preferred_payment_method, document, requested_by, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
                 $flatId = (int)($booking['flat_id'] ?? 0);
                 $projId = (int)($booking['project_id'] ?? 0);
-                $rfInsert->bind_param("iiiidddsssssssssi", 
+                $rfInsert->bind_param("iiiidddsissssssssi", 
                     $bookingId, 
                     $leadId, 
                     $projId, 
@@ -677,6 +700,7 @@ class BookingController extends Controller
                     $retentionAmount, 
                     $refundAmount, 
                     $reason, 
+                    $isRegistrationCompleted, 
                     $expectedRefundDate, 
                     $clientBankName, 
                     $clientBankBranch, 
@@ -705,7 +729,7 @@ class BookingController extends Controller
                     'source_id'      => $refundId,
                     'requested_days' => 0,
                     'requested_by'   => $userId,
-                    'approve_role'   => 'accounts_retention',
+                    'approve_role'   => 'sales_manager',
                     'meta_data'      => null,
                     'request_amount' => $refundAmount,
                 ]);
@@ -725,7 +749,7 @@ class BookingController extends Controller
             setError("Failed to process refund: " . $e->getMessage());
         }
 
-        header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+        header("Location: {$redirectTarget}");
         exit;
     }
 

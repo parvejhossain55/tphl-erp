@@ -15,119 +15,302 @@ $userRole            = $userRole ?? ($_SESSION['user']['role_id'] ?? 0);
 $currentUserId       = $_SESSION['user']['id'] ?? 0;
 
 $statusMap = [
-    'pending'  => ['label' => 'Pending Approval', 'class' => 'bg-warning text-dark', 'icon' => 'fa-clock'],
-    'approved' => ['label' => 'Approved (Awaiting Payout)', 'class' => 'bg-info text-white', 'icon' => 'fa-badge-check'],
-    'refunded' => ['label' => 'Refund Paid', 'class' => 'bg-success text-white', 'icon' => 'fa-check-double'],
-    'rejected' => ['label' => 'Rejected', 'class' => 'bg-danger text-white', 'icon' => 'fa-circle-xmark'],
+    'pending'  => ['label' => 'Pending',  'class' => 'refund-badge refund-badge-pending',  'icon' => 'fa-clock'],
+    'approved' => ['label' => 'Approved', 'class' => 'refund-badge refund-badge-approved', 'icon' => 'fa-badge-check'],
+    'refunded' => ['label' => 'Paid',     'class' => 'refund-badge refund-badge-refunded', 'icon' => 'fa-check-double'],
+    'rejected' => ['label' => 'Rejected', 'class' => 'refund-badge refund-badge-rejected', 'icon' => 'fa-circle-xmark'],
 ];
 ?>
 
 <style>
-/* Client Refund Report Styling */
+/* Client Refund Report — Clean & Minimal UI */
+.refund-kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    width: 100% !important;
+}
+.refund-kpi-grid::before,
+.refund-kpi-grid::after {
+    display: none !important;
+    content: none !important;
+}
+.refund-kpi-grid > div {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+@media (max-width: 1199.98px) {
+    .refund-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+@media (max-width: 575.98px) {
+    .refund-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
 .refund-kpi-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border-radius: 10px;
-    border: 1px solid rgba(0,0,0,0.06);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
     background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 .refund-kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+.refund-kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #64748b;
+}
+.refund-kpi-value {
+    font-size: 21px;
+    font-weight: 700;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.3px;
+}
+.refund-kpi-meta {
+    font-size: 11.5px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .kpi-icon-wrap {
-    width: 48px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
-    font-size: 20px;
+    border-radius: 10px;
+    font-size: 17px;
     flex-shrink: 0;
 }
+.kpi-icon-amber  { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+.kpi-icon-green  { background: rgba(16, 185, 129, 0.12); color: #059669; }
+.kpi-icon-blue   { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
+.kpi-icon-purple { background: rgba(139, 92, 246, 0.12); color: #7c3aed; }
+.kpi-icon-red    { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+
+/* Minimal Soft Status Badges */
+.refund-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.refund-badge-pending  { background: #fef3c7; color: #92400e; }
+.refund-badge-approved { background: #e0f2fe; color: #075985; }
+.refund-badge-refunded { background: #dcfce7; color: #166534; }
+.refund-badge-rejected { background: #fee2e2; color: #991b1b; }
+
+.kpi-mini-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Project-Wise Horizontal Strip */
+.project-track-strip {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+.project-track-strip.expanded {
+    flex-wrap: wrap;
+    overflow-x: visible;
+}
+.project-track-strip::-webkit-scrollbar { height: 5px; }
+.project-track-strip::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
 .project-track-pill {
     cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid #dee2e6;
-    background: #f8f9fa;
+    transition: all 0.16s ease;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
     border-radius: 8px;
-    padding: 8px 14px;
-    min-width: 170px;
+    padding: 7px 11px;
+    min-width: 175px;
+    flex-shrink: 0;
     text-decoration: none;
     display: inline-block;
-    color: #212529;
+    color: #1e293b;
 }
-.project-track-pill:hover,
+.project-track-pill:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+    color: #0f172a;
+}
 .project-track-pill.active {
-    background: #0d6efd;
+    background: #0f172a;
     color: #fff !important;
-    border-color: #0d6efd;
-    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.25);
+    border-color: #0f172a;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
 }
 .project-track-pill.active .text-muted,
 .project-track-pill.active small,
-.project-track-pill:hover .text-muted,
-.project-track-pill:hover small {
+.project-track-pill.active .proj-ret,
+.project-track-pill.active .proj-ref {
     color: rgba(255,255,255,0.85) !important;
 }
-.project-track-pill.active .badge-sub,
-.project-track-pill:hover .badge-sub {
-    background: rgba(255,255,255,0.25) !important;
+.project-track-pill.active .badge-sub {
+    background: rgba(255,255,255,0.2) !important;
     color: #fff !important;
 }
 .badge-sub {
-    font-size: 11px;
-    background: #e9ecef;
-    color: #495057;
-    border-radius: 4px;
-    padding: 2px 6px;
+    font-size: 10.5px;
+    background: #e2e8f0;
+    color: #475569;
+    border-radius: 999px;
+    padding: 1px 7px;
     font-weight: 600;
 }
-.table-report th {
-    font-size: 12px;
+
+/* Clean Minimal Table */
+.refund-card-surface {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+.refund-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.8fr) minmax(160px, 1.4fr) minmax(130px, 1fr) minmax(230px, 1.4fr) 76px auto;
+    gap: 10px;
+    align-items: end;
+}
+.refund-filter-bar .rf-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 4px;
+    display: block;
+}
+.refund-filter-bar .form-control,
+.refund-filter-bar .form-select,
+.refund-filter-bar .input-group-text,
+.refund-filter-bar .btn {
+    height: 34px;
+    font-size: 12.5px;
+    border-color: #e2e8f0;
+}
+.refund-filter-bar .form-control:focus,
+.refund-filter-bar .form-select:focus {
+    border-color: #94a3b8;
+    box-shadow: none;
+}
+@media (max-width: 1199.98px) {
+    .refund-filter-bar {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+@media (max-width: 767.98px) {
+    .refund-filter-bar {
+        grid-template-columns: 1fr;
+    }
+}
+.table-report {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.table-report thead th {
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    background-color: #f8f9fa;
-    color: #495057;
+    background-color: #f8fafc;
+    color: #64748b;
     font-weight: 600;
     vertical-align: middle;
-    padding: 10px 12px;
+    padding: 11px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    border-top: none;
+    white-space: nowrap;
 }
-.table-report td {
+.table-report tbody td {
     font-size: 13px;
     vertical-align: middle;
-    padding: 10px 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+.table-report tbody tr:hover td {
+    background-color: #f8fafc;
+}
+.table-report tfoot td {
+    padding: 12px 14px;
+    background-color: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    font-size: 12.5px;
 }
 .loading-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.7);
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 255, 255, 0.75);
     z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 12px;
     backdrop-filter: blur(1px);
 }
 .client-name-cell {
-    max-width: 260px;
-    word-break: break-word;
+    max-width: 250px;
+}
+.client-reason-text {
+    font-size: 11.5px;
+    color: #64748b;
+    max-width: 235px;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.amount-cell {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 .retention-highlight {
-    background: rgba(220, 53, 69, 0.08);
-    padding: 3px 6px;
-    border-radius: 4px;
-    font-weight: 700;
-    color: #dc3545;
+    background: rgba(220, 38, 38, 0.07);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    color: #dc2626;
+    white-space: nowrap;
 }
 .refund-highlight {
-    background: rgba(25, 135, 84, 0.08);
-    padding: 3px 6px;
-    border-radius: 4px;
+    background: rgba(5, 150, 105, 0.08);
+    padding: 3px 8px;
+    border-radius: 6px;
     font-weight: 700;
-    color: #198754;
+    color: #059669;
+    white-space: nowrap;
+}
+.proj-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    background: #eff6ff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-bottom: 3px;
 }
 
 /* ========================================================================= */
@@ -330,197 +513,120 @@ $statusMap = [
     <!-- ========================================================================= -->
     <!-- 1. SUMMARY KPI STATS (WEB VIEW ONLY) -->
     <!-- ========================================================================= -->
-    <div class="row  mb-3 d-print-none" id="kpiStatsRow">
-        <!-- 1. Total Retention (Company Cut/Profit) - EMPHASIZED AS REQUESTED -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
-            <div class="card refund-kpi-card shadow-sm h-100" style="border-left: 4px solid #fd7e14 !important;">
+    <div class="d-print-none mb-3">
+        <div class="refund-kpi-grid" id="kpiStatsRow">
+        <!-- 1. Total Refund Amount -->
+        <div>
+            <div class="card refund-kpi-card h-100 mb-0">
                 <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="fs-11 text-uppercase fw-bold text-muted d-block">
-                                <i class="fa-solid fa-shield-halved me-1 text-warning"></i> Total Retention Amount
-                            </span>
-                            <h3 class="fw-bold mb-1 fs-20 mt-1" id="kpiTotalRetention">
-                                ৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?>
-                            </h3>
-                            <div class="fs-11 text-muted" id="kpiRetentionSubtitle">
-                                Realized (Paid): <strong class="text-danger" id="kpiRealizedRetention">৳ <?= number_format($summaryStats['refunded_retention'] ?? 0, 2) ?></strong>
-                                <span class="ms-1 text-muted">(Pending: <span id="kpiPendingRetention">৳ <?= number_format($summaryStats['pending_retention'] ?? 0, 2) ?></span>)</span>
-                            </div>
-                        </div>
-                        <div class="kpi-icon-wrap bg-warning bg-opacity-10">
-                            <i class="fa-solid fa-piggy-bank fs-4 text-warning"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. Total Net Refund Volume (Payable / Paid) -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
-            <div class="card refund-kpi-card shadow-sm h-100" style="border-left: 4px solid #198754 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="fs-11 text-uppercase fw-bold text-muted d-block">
-                                <i class="fa-solid fa-money-bill-transfer me-1 text-success"></i> Total Net Refund
-                            </span>
-                            <h3 class="fw-bold mb-1 fs-20 mt-1" id="kpiTotalRefund">
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="min-w-0">
+                            <div class="refund-kpi-label">Total Refund</div>
+                            <div class="refund-kpi-value mt-1 mb-1" id="kpiTotalRefund">
                                 ৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?>
-                            </h3>
-                            <div class="fs-11 text-muted" id="kpiRefundSubtitle">
-                                Paid Disbursed: <strong class="text-success" id="kpiTotalDisbursed">৳ <?= number_format($summaryStats['total_refunded_paid'] ?? 0, 2) ?></strong>
-                                <span class="ms-1 text-muted">(Pending: <span id="kpiPendingRefund">৳ <?= number_format($summaryStats['pending_refund_amount'] ?? 0, 2) ?></span>)</span>
+                            </div>
+                            <div class="refund-kpi-meta">
+                                <span class="fw-semibold text-primary" id="kpiTotalRefundCount"><?= number_format($summaryStats['active_count'] ?? 0) ?> Cases</span>
                             </div>
                         </div>
-                        <div class="kpi-icon-wrap bg-success bg-opacity-10">
-                            <i class="fa-solid fa-money-check-dollar fs-4 text-success"></i>
+                        <div class="kpi-icon-wrap kpi-icon-blue">
+                            <i class="fa-solid fa-money-bill-transfer"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 3. Total Client Cash-In Verified -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
-            <div class="card refund-kpi-card shadow-sm h-100" style="border-left: 4px solid #0d6efd !important;">
+        <!-- 2. Total Retention Amount -->
+        <div>
+            <div class="card refund-kpi-card h-100 mb-0">
                 <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="fs-11 text-uppercase fw-bold d-block text-muted">
-                                <i class="fa-solid fa-wallet me-1 text-primary"></i> Total Verified Paid
-                            </span>
-                            <h3 class="fw-bold mb-1 fs-20 mt-1" id="kpiTotalPaid">
-                                ৳ <?= number_format($summaryStats['total_verified_paid'] ?? 0, 2) ?>
-                            </h3>
-                            <div class="fs-11 text-muted" id="kpiPaidSubtitle">
-                                Disbursed Cases: <strong class="text-primary" id="kpiDisbursedPaid">৳ <?= number_format($summaryStats['refunded_total_paid'] ?? 0, 2) ?></strong>
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="min-w-0">
+                            <div class="refund-kpi-label">Total Retention</div>
+                            <div class="refund-kpi-value mt-1 mb-1" id="kpiTotalRetention">
+                                ৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?>
+                            </div>
+                            <div class="refund-kpi-meta">
+                                <span class="fw-semibold text-warning" id="kpiRetentionCount"><?= number_format($summaryStats['retention_count'] ?? 0) ?> Cases</span>
                             </div>
                         </div>
-                        <div class="kpi-icon-wrap bg-primary bg-opacity-10">
-                            <i class="fa-solid fa-receipt fs-4 text-primary"></i>
+                        <div class="kpi-icon-wrap kpi-icon-amber">
+                            <i class="fa-solid fa-piggy-bank"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 4. Total Requests Count & Status Breakdown -->
-        <div class="col-xxl-3 col-xl-6 col-md-6">
-            <div class="card refund-kpi-card shadow-sm h-100" style="border-left: 4px solid #6f42c1 !important;">
+        <!-- 3. Total Refunded / Paid Amount -->
+        <div>
+            <div class="card refund-kpi-card h-100 mb-0">
                 <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div>
-                            <span class="fs-11 text-uppercase fw-bold  d-block">
-                                <i class="fa-solid fa-list-check  me-1"></i> Refund Requests
-                            </span>
-                            <h3 class="fw-bold mb-0 text-dark fs-20" id="kpiTotalRequests">
-                                <?= number_format($summaryStats['total_requests'] ?? 0) ?> Cases
-                            </h3>
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="min-w-0">
+                            <div class="refund-kpi-label">Total Paid</div>
+                            <div class="refund-kpi-value mt-1 mb-1" id="kpiTotalDisbursed">
+                                ৳ <?= number_format($summaryStats['total_refunded_paid'] ?? 0, 2) ?>
+                            </div>
+                            <div class="refund-kpi-meta">
+                                <span class="fw-semibold text-success" id="kpiPaidCount"><?= number_format($summaryStats['refunded_count'] ?? 0) ?> Cases</span>
+                            </div>
                         </div>
-                        <div class="kpi-icon-wrap bg-purple bg-opacity-10 " style="background: rgba(111, 66, 193, 0.1); color: #6f42c1;">
-                            <i class="fa-solid fa-file-invoice fs-4"></i>
+                        <div class="kpi-icon-wrap kpi-icon-green">
+                            <i class="fa-solid fa-money-check-dollar"></i>
                         </div>
-                    </div>
-                    <div class="d-flex flex-wrap gap-1 mt-1">
-                        <span class="badge bg-warning text-dark fs-10" id="badgePendingCount" title="Pending Management/Accounts Approval">
-                            <i class="fa-regular fa-clock me-1"></i><?= $summaryStats['pending_count'] ?? 0 ?> Pending
-                        </span>
-                        <span class="badge bg-info text-white fs-10" id="badgeApprovedCount" title="Approved, ready for payout">
-                            <i class="fa-solid fa-check me-1"></i><?= $summaryStats['approved_count'] ?? 0 ?> Approved
-                        </span>
-                        <span class="badge bg-success text-white fs-10" id="badgeRefundedCount" title="Payment Disbursed">
-                            <i class="fa-solid fa-check-double me-1"></i><?= $summaryStats['refunded_count'] ?? 0 ?> Paid
-                        </span>
-                        <?php if (!empty($summaryStats['rejected_count'])): ?>
-                        <span class="badge bg-danger text-white fs-10" id="badgeRejectedCount">
-                            <i class="fa-solid fa-xmark me-1"></i><?= $summaryStats['rejected_count'] ?> Rejected
-                        </span>
-                        <?php endif; ?>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- 4. Total Rejected Amount -->
+        <div>
+            <div class="card refund-kpi-card h-100 mb-0">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="min-w-0">
+                            <div class="refund-kpi-label">Total Rejected</div>
+                            <div class="refund-kpi-value mt-1 mb-1" id="kpiRejectedAmount">
+                                ৳ <?= number_format($summaryStats['rejected_amount'] ?? 0, 2) ?>
+                            </div>
+                            <div class="refund-kpi-meta">
+                                <span class="fw-semibold text-danger" id="kpiRejectedCount"><?= number_format($summaryStats['rejected_count'] ?? 0) ?> Cases</span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-wrap kpi-icon-red">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
     </div>
 
     <!-- ========================================================================= -->
-    <!-- 2. PROJECT-WISE REFUND TRACKING (WEB VIEW ONLY) -->
+    <!-- 2. CLEAN MINIMAL SEARCH & FILTER BAR (WEB VIEW ONLY) -->
     <!-- ========================================================================= -->
-    <div class="card custom-card border-0 shadow-sm mb-3 d-print-none" id="projectTrackCard">
-        <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between">
-            <h6 class="card-title mb-0 fw-bold fs-13 text-dark">
-                <i class="fa-solid fa-city text-primary me-2"></i>Project-Wise Refund Tracking
-            </h6>
-            <span class="text-muted fs-11">Click any project to filter table</span>
-        </div>
-        <div class="card-body p-2.5">
-            <div class="d-flex flex-wrap gap-2 align-items-center" id="projectTrackContainer">
-                <a href="javascript:void(0);" class="project-track-pill <?= (empty($filters['project_id']) || $filters['project_id'] === 'all') ? 'active' : '' ?>" onclick="filterByProject('all', this)">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <strong class="fs-12">All Projects</strong>
-                        <span class="badge-sub"><?= $summaryStats['total_requests'] ?? 0 ?></span>
-                    </div>
-                    <div class="d-flex justify-content-between fs-11 text-muted">
-                        <span>Ret: <strong class="text-danger me-2">৳<?= number_format($summaryStats['total_retention'] ?? 0) ?></strong></span>
-                        <span>Ref: <strong class="text-success">৳<?= number_format($summaryStats['total_refund_amount'] ?? 0) ?></strong></span>
-                    </div>
-                </a>
-
-                <?php if (!empty($summaryStats['project_breakdown'])): ?>
-                    <?php foreach ($summaryStats['project_breakdown'] as $pb): 
-                        $isActive = (!empty($filters['project_id']) && (int)$filters['project_id'] === (int)$pb['project_id']);
-                    ?>
-                    <a href="javascript:void(0);" 
-                       class="project-track-pill <?= $isActive ? 'active' : '' ?>" 
-                       onclick="filterByProject(<?= (int)$pb['project_id'] ?>, this)"
-                       title="<?= htmlspecialchars($pb['project_name']) ?>">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <strong class="fs-12 text-truncate" style="max-width: 130px;"><?= htmlspecialchars($pb['project_name']) ?></strong>
-                            <span class="badge-sub"><?= $pb['total_refunds'] ?></span>
-                        </div>
-                        <div class="d-flex justify-content-between fs-11 text-muted">
-                            <span>Ret: <strong class="text-danger me-2">৳<?= number_format($pb['total_retention']) ?></strong></span>
-                            <span>Ref: <strong class="text-success">৳<?= number_format($pb['total_refund']) ?></strong></span>
-                        </div>
-                    </a>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <span class="text-muted fs-12 fst-italic">No project refund history found yet.</span>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-
-    <!-- ========================================================================= -->
-    <!-- 3. ADVANCED SEARCH & FILTER BAR (WEB VIEW ONLY) -->
-    <!-- ========================================================================= -->
-    <div class="card custom-card border-0 shadow-sm mb-3 d-print-none" id="filterCard">
-        <div class="card-header bg-white py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
-            <h6 class="card-title mb-0 fw-semibold fs-13 text-secondary">
-                <i class="fa-light fa-filter me-2 text-primary"></i>Filters & Search Criteria
-            </h6>
-            <button type="button" class="btn btn-outline-danger btn-sm py-0.5 px-2 fs-11" onclick="resetFilters()">
-                <i class="fa-light fa-rotate-left me-1"></i> Reset Filters
-            </button>
-        </div>
-        <div class="card-body p-3">
-            <form id="refundFilterForm" class="row g-2 align-items-end" onsubmit="event.preventDefault(); applyFilters(1);">
+    <div class="refund-card-surface mb-3 d-print-none" id="filterCard">
+        <div class="p-2 px-3 py-2">
+            <form id="refundFilterForm" class="refund-filter-bar" onsubmit="event.preventDefault(); applyFilters(1);">
                 <!-- Search Keyword -->
-                <div class="col-xl-3 col-l col-md-6">
-                    <label class="form-label fs-11 fw-semibold text-muted mb-1">Search Client / Phone / Flat</label>
+                <div>
+                    <label class="rf-label" for="filterSearch">Search</label>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light"><i class="fa-light fa-magnifying-glass"></i></span>
-                        <input type="text" id="filterSearch" name="search" class="form-control" 
-                               placeholder="Client, phone, flat, reason..." 
+                        <span class="input-group-text bg-white border-end-0 text-muted pe-1"><i class="fa-light fa-magnifying-glass"></i></span>
+                        <input type="text" id="filterSearch" name="search" class="form-control border-start-0 ps-1"
+                               placeholder="Client, phone, flat, reason..."
                                value="<?= htmlspecialchars($filters['search'] ?? '') ?>">
                     </div>
                 </div>
 
                 <!-- Project Select -->
-                <div class="col-xl-3 col-l col-md-6">
-                    <label class="form-label fs-11 fw-semibold text-muted mb-1">Project</label>
-                    <select id="filterProject" name="project_id" class="form-select form-select-sm">
-                        <option value="all">-- All Projects --</option>
+                <div>
+                    <label class="rf-label" for="filterProject">Project</label>
+                    <select id="filterProject" name="project_id" class="form-select form-select-sm" onchange="applyFilters(1)">
+                        <option value="all">All Projects</option>
                         <?php foreach ($projects as $pr): ?>
                             <option value="<?= $pr['id'] ?>" <?= (!empty($filters['project_id']) && $filters['project_id'] == $pr['id']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($pr['name']) ?>
@@ -530,29 +636,30 @@ $statusMap = [
                 </div>
 
                 <!-- Status Select -->
-                <div class="col-xl-2 col-lg-2 col-md-4">
-                    <label class="form-label fs-11 fw-semibold text-muted mb-1">Status</label>
-                    <select id="filterStatus" name="status" class="form-select form-select-sm">
-                        <option value="all">-- All Statuses --</option>
-                        <option value="pending" <?= (!empty($filters['status']) && $filters['status'] === 'pending') ? 'selected' : '' ?>>Pending Approval</option>
-                        <option value="approved" <?= (!empty($filters['status']) && $filters['status'] === 'approved') ? 'selected' : '' ?>>Approved (Awaiting Payout)</option>
-                        <option value="refunded" <?= (!empty($filters['status']) && $filters['status'] === 'refunded') ? 'selected' : '' ?>>Refund Paid</option>
+                <div>
+                    <label class="rf-label" for="filterStatus">Status</label>
+                    <select id="filterStatus" name="status" class="form-select form-select-sm" onchange="applyFilters(1)">
+                        <option value="all">All Statuses</option>
+                        <option value="pending" <?= (!empty($filters['status']) && $filters['status'] === 'pending') ? 'selected' : '' ?>>Pending</option>
+                        <option value="approved" <?= (!empty($filters['status']) && $filters['status'] === 'approved') ? 'selected' : '' ?>>Approved</option>
+                        <option value="refunded" <?= (!empty($filters['status']) && $filters['status'] === 'refunded') ? 'selected' : '' ?>>Paid</option>
                         <option value="rejected" <?= (!empty($filters['status']) && $filters['status'] === 'rejected') ? 'selected' : '' ?>>Rejected</option>
                     </select>
                 </div>
 
-                <!-- Date Range From -->
-                <div class="col-xl-2 col-lg-2 col-md-4">
-                    <label class="form-label fs-11 fw-semibold text-muted mb-1">Date Range</label>
-                    <div class="input-group input-group-sm">
-                        <input type="date" id="filterDateFrom" name="date_from" class="form-control" value="<?= htmlspecialchars($filters['date_from'] ?? '') ?>" title="From Date">
-                        <input type="date" id="filterDateTo" name="date_to" class="form-control" value="<?= htmlspecialchars($filters['date_to'] ?? '') ?>" title="To Date">
+                <!-- Date Range -->
+                <div>
+                    <label class="rf-label">Date Range</label>
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="date" id="filterDateFrom" name="date_from" class="form-control form-control-sm" value="<?= htmlspecialchars($filters['date_from'] ?? '') ?>" title="From Date" onchange="applyFilters(1)">
+                        <span class="text-muted fs-11">–</span>
+                        <input type="date" id="filterDateTo" name="date_to" class="form-control form-control-sm" value="<?= htmlspecialchars($filters['date_to'] ?? '') ?>" title="To Date" onchange="applyFilters(1)">
                     </div>
                 </div>
 
                 <!-- Per Page -->
-                <div class="col-xl-1 col-lg-1 col-md-2">
-                    <label class="form-label fs-11 fw-semibold text-muted mb-1">Per Page</label>
+                <div>
+                    <label class="rf-label" for="filterPerPage">Show</label>
                     <select id="filterPerPage" name="per_page" class="form-select form-select-sm" onchange="applyFilters(1)">
                         <option value="10" <?= $perPage == 10 ? 'selected' : '' ?>>10</option>
                         <option value="15" <?= $perPage == 15 ? 'selected' : '' ?>>15</option>
@@ -563,9 +670,12 @@ $statusMap = [
                 </div>
 
                 <!-- Actions -->
-                <div class="col-xl-1 col-lg-1 col-md-2 d-flex gap-1">
-                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold" title="Apply Filter">
-                        <i class="fa-light fa-filter"></i> Filter
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary btn-sm px-3 fw-semibold" title="Apply Filter">
+                        <i class="fa-light fa-filter me-1"></i> Filter
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="resetFilters()" title="Reset Filters">
+                        <i class="fa-light fa-rotate-left"></i>
                     </button>
                 </div>
             </form>
@@ -575,43 +685,43 @@ $statusMap = [
     <!-- ========================================================================= -->
     <!-- 4. REFUND REPORT DATA TABLE (PRINT & WEB) -->
     <!-- ========================================================================= -->
-    <div class="card custom-card border-0 shadow-sm position-relative">
+    <div class="refund-card-surface position-relative overflow-hidden">
         <!-- Spinner Overlay -->
         <div id="tableLoadingOverlay" class="loading-overlay d-print-none" style="display:none;">
-            <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
+            <div class="spinner-border text-primary" role="status" style="width: 2.2rem; height: 2.2rem;">
                 <span class="visually-hidden">Loading...</span>
             </div>
         </div>
 
-        <div class="card-header bg-white py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between d-print-none">
+        <div class="px-3 py-2.5 border-bottom d-flex align-items-center justify-content-between d-print-none">
             <div class="d-flex align-items-center gap-2">
-                <h6 class="card-title mb-0 fw-bold fs-14 text-dark">
-                    <i class="fa-light fa-table-list text-primary me-2"></i>Refund Transactions & Status Registry
+                <h6 class="mb-0 fw-semibold fs-14 text-dark">
+                    Refund Transactions
                 </h6>
-                <span class="badge bg-light text-dark border font-monospace fs-11" id="recordCountBadge">
-                    <?= $totalRecords ?> Records
+                <span class="badge-sub" id="recordCountBadge">
+                    <?= $totalRecords ?>
                 </span>
             </div>
             <div class="fs-12 text-muted" id="paginationSummaryText">
-                Showing <?= min(1, $totalRecords) ?> to <?= min($perPage, $totalRecords) ?> of <?= $totalRecords ?> entries
+                Showing <?= min(1, $totalRecords) ?>–<?= min($perPage, $totalRecords) ?> of <?= $totalRecords ?>
             </div>
         </div>
 
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover table-bordered table-report mb-0" id="refundTable">
+                <table class="table table-report mb-0" id="refundTable">
                     <thead>
                         <tr>
-                            <th style="width: 40px;" class="text-center">#</th>
-                            <th style="min-width: 180px;">Client & Contact</th>
-                            <th style="min-width: 150px;">Project & Flat</th>
-                            <th style="min-width: 110px;" class="text-end">Total Paid (৳)</th>
-                            <th style="min-width: 110px;" class="text-end text-danger">Retention (৳)</th>
-                            <th style="min-width: 115px;" class="text-end text-success">Net Refund (৳)</th>
-                            <th style="min-width: 100px;" class="text-center">Status</th>
-                            <th style="min-width: 130px;">Requested By</th>
+                            <th style="width: 44px;" class="text-center">#</th>
+                            <th style="min-width: 210px;">Client &amp; Note</th>
+                            <th style="min-width: 170px;">Project &amp; Flat</th>
+                            <th style="min-width: 115px;" class="text-end">Total Paid</th>
+                            <th style="min-width: 110px;" class="text-end">Retention</th>
+                            <th style="min-width: 120px;" class="text-end">Net Refund</th>
+                            <th style="min-width: 110px;" class="text-center">Status</th>
+                            <th style="min-width: 140px;">Requested By</th>
                             <th style="min-width: 130px;">Approved By</th>
-                            <th style="width: 100px;" class="text-center col-action d-print-none">Action</th>
+                            <th style="width: 130px;" class="text-center col-action d-print-none">Action</th>
                         </tr>
                     </thead>
                     <tbody id="refundTableBody">
@@ -627,65 +737,62 @@ $statusMap = [
                             </tr>
                         <?php else: ?>
                             <?php foreach ($refunds as $idx => $r): 
-                                $sInfo = $statusMap[$r['status']] ?? ['label' => ucfirst($r['status']), 'class' => 'bg-secondary text-white', 'icon' => 'fa-circle-info'];
+                                $sInfo = $statusMap[$r['status']] ?? ['label' => ucfirst($r['status']), 'class' => 'refund-badge bg-light text-secondary', 'icon' => 'fa-circle-info'];
                                 $rowNum = ($page - 1) * $perPage + $idx + 1;
                             ?>
                             <tr id="refund-row-<?= $r['id'] ?>">
-                                <td class="text-center text-muted font-monospace"><?= $rowNum ?></td>
+                                <td class="text-center text-muted font-monospace fs-12"><?= $rowNum ?></td>
                                 <td class="client-name-cell">
-                                    <div class="fw-bold text-dark fs-13"><?= htmlspecialchars($r['client_name'] ?? '—') ?></div>
+                                    <div class="fw-semibold text-dark fs-13"><?= htmlspecialchars($r['client_name'] ?? '—') ?></div>
                                     <?php if (!empty($r['client_phone'])): ?>
-                                        <div class="text-muted small fs-11">
+                                        <div class="text-muted fs-11 mt-0.5">
                                             <i class="fa-light fa-phone me-1"></i><?= htmlspecialchars($r['client_phone']) ?>
                                         </div>
                                     <?php endif; ?>
                                     <?php if (!empty($r['reason'])): ?>
-                                        <div class="mt-1" style="max-width: 260px;">
-                                            <span class="badge bg-warning bg-opacity-25 text-dark border border-warning px-1 py-0 me-1" style="font-size: 10px;">
-                                                <i class="fa-solid fa-comment-dots text-primary me-1"></i>Note:
-                                            </span>
-                                            <span class="text-muted small fst-italic" style="font-size: 11.5px;"><?= htmlspecialchars($r['reason']) ?></span>
-                                        </div>
+                                        <span class="client-reason-text mt-1" title="<?= htmlspecialchars($r['reason']) ?>">
+                                            <?= htmlspecialchars($r['reason']) ?>
+                                        </span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-1 fs-11">
-                                        <i class="fa-light fa-city me-1"></i><?= htmlspecialchars($r['project_name'] ?? '—') ?>
+                                    <span class="proj-tag">
+                                        <?= htmlspecialchars($r['project_name'] ?? '—') ?>
                                     </span>
-                                    <div class="fw-semibold text-dark fs-12">
+                                    <div class="fw-medium text-dark fs-12">
                                         <?= htmlspecialchars($r['flat_name'] ?? '—') ?>
                                         <?php if (!empty($r['floor_no'])): ?>
-                                            <span class="text-muted small">(Floor <?= $r['floor_no'] ?>)</span>
+                                            <span class="text-muted fs-11">(Floor <?= $r['floor_no'] ?>)</span>
                                         <?php endif; ?>
                                     </div>
                                 </td>
-                                <td class="text-end fw-semibold text-dark font-monospace">
+                                <td class="text-end fw-semibold text-dark font-monospace amount-cell">
                                     ৳ <?= number_format($r['total_paid'], 2) ?>
                                 </td>
-                                <td class="text-end font-monospace">
+                                <td class="text-end font-monospace amount-cell">
                                     <span class="retention-highlight">
                                         ৳ <?= number_format($r['retention_amount'], 2) ?>
                                     </span>
                                 </td>
-                                <td class="text-end font-monospace">
+                                <td class="text-end font-monospace amount-cell">
                                     <span class="refund-highlight fs-13">
                                         ৳ <?= number_format($r['refund_amount'], 2) ?>
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge <?= $sInfo['class'] ?> fs-10 px-2 py-1">
-                                        <i class="fa-solid <?= $sInfo['icon'] ?> me-1"></i><?= $sInfo['label'] ?>
+                                    <span class="<?= $sInfo['class'] ?>">
+                                        <i class="fa-solid <?= $sInfo['icon'] ?>"></i><?= $sInfo['label'] ?>
                                     </span>
                                 </td>
                                 <td class="fs-12">
-                                    <div class="fw-semibold text-dark"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></div>
+                                    <div class="fw-medium text-dark"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></div>
                                     <span class="text-muted fs-11 d-block">
                                         <?= !empty($r['created_at']) ? date('d M Y, h:i A', strtotime($r['created_at'])) : '—' ?>
                                     </span>
                                 </td>
                                 <td class="fs-12">
                                     <?php if (!empty($r['approved_by_name'])): ?>
-                                        <div class="fw-semibold text-dark"><?= htmlspecialchars($r['approved_by_name']) ?></div>
+                                        <div class="fw-medium text-dark"><?= htmlspecialchars($r['approved_by_name']) ?></div>
                                         <span class="text-muted fs-11 d-block">
                                             <?= !empty($r['approved_at']) ? date('d M Y, h:i A', strtotime($r['approved_at'])) : '—' ?>
                                         </span>
@@ -694,43 +801,54 @@ $statusMap = [
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center text-nowrap col-action d-print-none">
-                                    <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-xs btn-outline-primary py-1 px-2" title="View Details">
-                                        <i class="fa-light fa-eye me-1"></i> View
-                                    </a>
-                                    <?php if ($r['status'] === 'pending' && in_array($userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37])): ?>
-                                        <button type="button" class="btn btn-xs btn-outline-warning py-1 px-2 text-dark ms-1 fw-semibold" 
-                                                onclick="openQuickRetentionModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
-                                                title="Cut Retention Amount or %">
-                                            <i class="fa-light fa-scissors text-warning me-1"></i> Retention
-                                        </button>
-                                    <?php endif; ?>
-                                    <?php if ($r['status'] === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
-                                        <button type="button" class="btn btn-xs btn-success py-1 px-2 text-white ms-1" 
-                                                onclick="openQuickPayModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
-                                                title="Disburse Payment">
-                                            <i class="fa-light fa-money-bill-wave me-1"></i> Pay
-                                        </button>
-                                    <?php endif; ?>
-                                    <?php if ($r['status'] === 'pending' && $r['requested_by'] == $currentUserId): ?>
-                                        <form action="<?= $base_url ?>/client-refund-delete/<?= $r['id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Delete this refund request?');">
-                                            <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5 ms-1" title="Delete">
-                                                <i class="fa-light fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    <?php endif; ?>
+                                    <div class="d-inline-flex flex-column gap-1 align-items-stretch" style="min-width: 110px;">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-xs btn-outline-primary py-1 px-2 flex-grow-1" title="View Details">
+                                                <i class="fa-light fa-eye"></i> View
+                                            </a>
+                                            <?php if ($r['status'] === 'pending' && in_array($userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37])): ?>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" 
+                                                        onclick="openQuickRetentionModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
+                                                        title="Cut Retention Amount or %">
+                                                    <i class="fa-light fa-scissors"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if ($r['status'] === 'approved' && in_array($userRole, [1, 3, 6, 10, 30, 36])): ?>
+                                                <button type="button" class="btn btn-xs btn-success py-1 px-2 text-white" 
+                                                        onclick="openQuickPayModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
+                                                        title="Disburse Payment">
+                                                    <i class="fa-light fa-money-bill-wave me-1"></i> Pay
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if ($r['status'] === 'pending' && $r['requested_by'] == $currentUserId): ?>
+                                                <form action="<?= $base_url ?>/client-refund-delete/<?= $r['id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Delete this refund request?');">
+                                                    <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5" title="Delete">
+                                                        <i class="fa-light fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if (!empty($r['booking_id'])): ?>
+                                            <a href="<?= $base_url ?>/clients-cash-in-history/<?= (int)$r['booking_id'] ?>" target="_blank"
+                                               class="btn btn-xs btn-outline-dark py-1 px-2"
+                                               title="Open Client Ledger & Verify Pending Payments">
+                                                <i class="fa-light fa-book-open me-1"></i> Ledger
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
-                    <tfoot class="table-light fw-bold font-monospace">
+                    <tfoot class="fw-bold font-monospace">
                         <tr>
-                            <td colspan="3" class="text-end text-uppercase fs-11">Total:</td>
-                            <td class="text-end" id="tfootTotalPaid">৳ <?= number_format($summaryStats['total_verified_paid'] ?? 0, 2) ?></td>
-                            <td class="text-end text-danger" id="tfootTotalRetention">৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?></td>
-                            <td class="text-end text-success" id="tfootTotalRefund">৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?></td>
-                            <td colspan="3" class="text-center font-sans-serif fs-11">
-                                <?= $summaryStats['total_requests'] ?? 0 ?> Cases (<?= $summaryStats['pending_count'] ?? 0 ?> Pending, <?= $summaryStats['approved_count'] ?? 0 ?> Approved, <?= $summaryStats['refunded_count'] ?? 0 ?> Paid)
+                            <td colspan="3" class="text-end text-uppercase fs-11 text-muted">Total:</td>
+                            <td class="text-end amount-cell" id="tfootTotalPaid">৳ <?= number_format($summaryStats['total_verified_paid'] ?? 0, 2) ?></td>
+                            <td class="text-end text-danger amount-cell" id="tfootTotalRetention">৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?></td>
+                            <td class="text-end text-success amount-cell" id="tfootTotalRefund">৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?></td>
+                            <td colspan="3" class="text-center font-sans-serif fs-11 text-muted fw-normal">
+                                <?= $summaryStats['total_requests'] ?? 0 ?> Cases (<?= $summaryStats['pending_count'] ?? 0 ?> Pending · <?= $summaryStats['approved_count'] ?? 0 ?> Approved · <?= $summaryStats['refunded_count'] ?? 0 ?> Paid)
                             </td>
                             <td class="col-action d-print-none"></td>
                         </tr>
@@ -975,11 +1093,22 @@ let currentUserId = <?= (int)$currentUserId ?>;
 let baseUrl = '<?= $base_url ?>';
 
 const statusMapJs = {
-    'pending':  { label: 'Pending Approval', class: 'bg-warning text-dark', icon: 'fa-clock' },
-    'approved': { label: 'Approved (Awaiting Payout)', class: 'bg-info text-white', icon: 'fa-badge-check' },
-    'refunded': { label: 'Refund Paid', class: 'bg-success text-white', icon: 'fa-check-double' },
-    'rejected': { label: 'Rejected', class: 'bg-danger text-white', icon: 'fa-circle-xmark' }
+    'pending':  { label: 'Pending',  class: 'refund-badge refund-badge-pending',  icon: 'fa-clock' },
+    'approved': { label: 'Approved', class: 'refund-badge refund-badge-approved', icon: 'fa-badge-check' },
+    'refunded': { label: 'Paid',     class: 'refund-badge refund-badge-refunded', icon: 'fa-check-double' },
+    'rejected': { label: 'Rejected', class: 'refund-badge refund-badge-rejected', icon: 'fa-circle-xmark' }
 };
+
+function toggleProjectStrip() {
+    const strip = document.getElementById('projectTrackContainer');
+    const btn   = document.getElementById('toggleProjectsBtn');
+    if (!strip || !btn) return;
+    const isExpanded = strip.classList.toggle('expanded');
+    const count = strip.querySelectorAll('.project-track-pill').length - 1;
+    btn.innerHTML = isExpanded
+        ? `<i class="fa-light fa-chevrons-up me-1"></i> Collapse`
+        : `<i class="fa-light fa-chevrons-down me-1"></i> Expand all (${count})`;
+}
 
 function formatMoney(amount) {
     let num = parseFloat(amount || 0);
@@ -1088,41 +1217,35 @@ function renderTableRows(rows, page, perPage) {
     }
 
     let html = '';
-    const accountsRoles = [1, 3, 6, 10, 30];
+    const accountsRoles = [1, 3, 6, 10, 30, 36];
 
     rows.forEach((r, idx) => {
         const rowNum = (page - 1) * perPage + idx + 1;
         const sInfo = statusMapJs[r.status] || { label: r.status, class: 'bg-secondary text-white', icon: 'fa-circle-info' };
         
-        let clientPhoneHtml = r.client_phone ? `<div class="text-muted small fs-11"><i class="fa-light fa-phone me-1"></i>${escapeHtml(r.client_phone)}</div>` : '';
-        let noteHtml = r.reason ? `
-            <div class="mt-1" style="max-width: 260px;">
-                <span class="badge bg-warning bg-opacity-25 text-dark border border-warning px-1 py-0 me-1" style="font-size: 10px;">
-                    <i class="fa-solid fa-comment-dots text-primary me-1"></i>Note:
-                </span>
-                <span class="text-muted small fst-italic" style="font-size: 11.5px;">${escapeHtml(r.reason)}</span>
-            </div>` : '';
+        let clientPhoneHtml = r.client_phone ? `<div class="text-muted fs-11 mt-0.5"><i class="fa-light fa-phone me-1"></i>${escapeHtml(r.client_phone)}</div>` : '';
+        let noteHtml = r.reason ? `<span class="client-reason-text mt-1" title="${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</span>` : '';
 
-        let floorHtml = r.floor_no ? `<span class="text-muted small">(Floor ${escapeHtml(r.floor_no)})</span>` : '';
+        let floorHtml = r.floor_no ? `<span class="text-muted fs-11">(Floor ${escapeHtml(r.floor_no)})</span>` : '';
         let approverHtml = r.approved_by_name ? `
-            <div class="fw-semibold text-dark">${escapeHtml(r.approved_by_name)}</div>
+            <div class="fw-medium text-dark">${escapeHtml(r.approved_by_name)}</div>
             <span class="text-muted fs-11 d-block">${r.approved_at || '—'}</span>` : '<span class="text-muted">—</span>';
 
         let retentionBtnHtml = '';
         const retentionRoles = [1, 3, 6, 7, 9, 10, 20, 30, 33, 37];
         if (r.status === 'pending' && retentionRoles.includes(userRole)) {
             retentionBtnHtml = `
-                <button type="button" class="btn btn-xs btn-outline-warning py-1 px-2 text-dark ms-1 fw-semibold" 
+                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" 
                         onclick='openQuickRetentionModal(${JSON.stringify(r)})' 
                         title="Cut Retention Amount or %">
-                    <i class="fa-light fa-scissors text-warning me-1"></i> Retention
+                    <i class="fa-light fa-scissors"></i>
                 </button>`;
         }
 
         let payBtnHtml = '';
         if (r.status === 'approved' && accountsRoles.includes(userRole)) {
             payBtnHtml = `
-                <button type="button" class="btn btn-xs btn-success py-1 px-2 text-white ms-1" 
+                <button type="button" class="btn btn-xs btn-success py-1 px-2 text-white" 
                         onclick='openQuickPayModal(${JSON.stringify(r)})' 
                         title="Disburse Payment">
                     <i class="fa-light fa-money-bill-wave me-1"></i> Pay
@@ -1133,52 +1256,64 @@ function renderTableRows(rows, page, perPage) {
         if (r.status === 'pending' && r.requested_by == currentUserId) {
             deleteBtnHtml = `
                 <form action="${baseUrl}/client-refund-delete/${r.id}" method="POST" class="d-inline" onsubmit="return confirm('Delete this refund request?');">
-                    <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5 ms-1" title="Delete">
+                    <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5" title="Delete">
                         <i class="fa-light fa-trash"></i>
                     </button>
                 </form>`;
         }
 
+        let ledgerBtnHtml = r.booking_id ? `
+            <a href="${baseUrl}/clients-cash-in-history/${r.booking_id}" target="_blank"
+               class="btn btn-xs btn-outline-dark py-1 px-2"
+               title="Open Client Ledger & Verify Pending Payments">
+                <i class="fa-light fa-book-open me-1"></i> Ledger
+            </a>` : '';
+
         html += `
             <tr id="refund-row-${r.id}">
-                <td class="text-center text-muted font-monospace">${rowNum}</td>
+                <td class="text-center text-muted font-monospace fs-12">${rowNum}</td>
                 <td class="client-name-cell">
-                    <div class="fw-bold text-dark fs-13">${escapeHtml(r.client_name || '—')}</div>
+                    <div class="fw-semibold text-dark fs-13">${escapeHtml(r.client_name || '—')}</div>
                     ${clientPhoneHtml}
                     ${noteHtml}
                 </td>
                 <td>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-1 fs-11">
-                        <i class="fa-light fa-city me-1"></i>${escapeHtml(r.project_name || '—')}
+                    <span class="proj-tag">
+                        ${escapeHtml(r.project_name || '—')}
                     </span>
-                    <div class="fw-semibold text-dark fs-12">
+                    <div class="fw-medium text-dark fs-12">
                         ${escapeHtml(r.flat_name || '—')} ${floorHtml}
                     </div>
                 </td>
-                <td class="text-end fw-semibold text-dark font-monospace">৳ ${formatMoney(r.total_paid)}</td>
-                <td class="text-end font-monospace">
+                <td class="text-end fw-semibold text-dark font-monospace amount-cell">৳ ${formatMoney(r.total_paid)}</td>
+                <td class="text-end font-monospace amount-cell">
                     <span class="retention-highlight">৳ ${formatMoney(r.retention_amount)}</span>
                 </td>
-                <td class="text-end font-monospace">
+                <td class="text-end font-monospace amount-cell">
                     <span class="refund-highlight fs-13">৳ ${formatMoney(r.refund_amount)}</span>
                 </td>
                 <td class="text-center">
-                    <span class="badge ${sInfo.class} fs-10 px-2 py-1">
-                        <i class="fa-solid ${sInfo.icon} me-1"></i>${sInfo.label}
+                    <span class="${sInfo.class}">
+                        <i class="fa-solid ${sInfo.icon}"></i>${sInfo.label}
                     </span>
                 </td>
                 <td class="fs-12">
-                    <div class="fw-semibold text-dark">${escapeHtml(r.requested_by_name || '—')}</div>
+                    <div class="fw-medium text-dark">${escapeHtml(r.requested_by_name || '—')}</div>
                     <span class="text-muted fs-11 d-block">${r.created_at || '—'}</span>
                 </td>
                 <td class="fs-12">${approverHtml}</td>
                 <td class="text-center text-nowrap col-action d-print-none">
-                    <a href="${baseUrl}/client-refund/${r.id}" class="btn btn-xs btn-outline-primary py-1 px-2" title="View Details">
-                        <i class="fa-light fa-eye me-1"></i> View
-                    </a>
-                    ${retentionBtnHtml}
-                    ${payBtnHtml}
-                    ${deleteBtnHtml}
+                    <div class="d-inline-flex flex-column gap-1 align-items-stretch" style="min-width: 110px;">
+                        <div class="d-flex justify-content-center gap-1">
+                            <a href="${baseUrl}/client-refund/${r.id}" class="btn btn-xs btn-outline-primary py-1 px-2 flex-grow-1" title="View Details">
+                                <i class="fa-light fa-eye"></i> View
+                            </a>
+                            ${retentionBtnHtml}
+                            ${payBtnHtml}
+                            ${deleteBtnHtml}
+                        </div>
+                        ${ledgerBtnHtml}
+                    </div>
                 </td>
             </tr>`;
     });
@@ -1191,7 +1326,7 @@ function renderPagination(page, totalPgs, totalRecs) {
     totalPages  = Math.max(1, totalPgs);
 
     const badge = document.getElementById('recordCountBadge');
-    if (badge) badge.innerText = `${totalRecs} Records`;
+    if (badge) badge.innerText = `${totalRecs}`;
 
     const curPageSpan = document.getElementById('curPageNum');
     if (curPageSpan) curPageSpan.innerText = page;
@@ -1246,41 +1381,29 @@ function renderPagination(page, totalPgs, totalRecs) {
 
 function updateSummaryKpis(stats) {
     if (!stats) return;
+    if (document.getElementById('kpiTotalRefund')) {
+        document.getElementById('kpiTotalRefund').innerText = '৳ ' + formatMoney(stats.total_refund_amount);
+    }
+    if (document.getElementById('kpiTotalRefundCount')) {
+        document.getElementById('kpiTotalRefundCount').innerText = (stats.active_count || 0) + ' Cases';
+    }
     if (document.getElementById('kpiTotalRetention')) {
         document.getElementById('kpiTotalRetention').innerText = '৳ ' + formatMoney(stats.total_retention);
     }
-    if (document.getElementById('kpiRealizedRetention')) {
-        document.getElementById('kpiRealizedRetention').innerText = '৳ ' + formatMoney(stats.refunded_retention || 0);
-    }
-    if (document.getElementById('kpiPendingRetention')) {
-        document.getElementById('kpiPendingRetention').innerText = '৳ ' + formatMoney(stats.pending_retention || 0);
-    }
-    if (document.getElementById('kpiTotalRefund')) {
-        document.getElementById('kpiTotalRefund').innerText = '৳ ' + formatMoney(stats.total_refund_amount);
+    if (document.getElementById('kpiRetentionCount')) {
+        document.getElementById('kpiRetentionCount').innerText = (stats.retention_count || 0) + ' Cases';
     }
     if (document.getElementById('kpiTotalDisbursed')) {
         document.getElementById('kpiTotalDisbursed').innerText = '৳ ' + formatMoney(stats.total_refunded_paid || 0);
     }
-    if (document.getElementById('kpiPendingRefund')) {
-        document.getElementById('kpiPendingRefund').innerText = '৳ ' + formatMoney(stats.pending_refund_amount || 0);
+    if (document.getElementById('kpiPaidCount')) {
+        document.getElementById('kpiPaidCount').innerText = (stats.refunded_count || 0) + ' Cases';
     }
-    if (document.getElementById('kpiTotalPaid')) {
-        document.getElementById('kpiTotalPaid').innerText = '৳ ' + formatMoney(stats.total_verified_paid);
+    if (document.getElementById('kpiRejectedAmount')) {
+        document.getElementById('kpiRejectedAmount').innerText = '৳ ' + formatMoney(stats.rejected_amount || 0);
     }
-    if (document.getElementById('kpiDisbursedPaid')) {
-        document.getElementById('kpiDisbursedPaid').innerText = '৳ ' + formatMoney(stats.refunded_total_paid || 0);
-    }
-    if (document.getElementById('kpiTotalRequests')) {
-        document.getElementById('kpiTotalRequests').innerText = (stats.total_requests || 0) + ' Cases';
-    }
-    if (document.getElementById('badgePendingCount')) {
-        document.getElementById('badgePendingCount').innerHTML = `<i class="fa-regular fa-clock me-1"></i>${stats.pending_count || 0} Pending`;
-    }
-    if (document.getElementById('badgeApprovedCount')) {
-        document.getElementById('badgeApprovedCount').innerHTML = `<i class="fa-solid fa-check me-1"></i>${stats.approved_count || 0} Approved`;
-    }
-    if (document.getElementById('badgeRefundedCount')) {
-        document.getElementById('badgeRefundedCount').innerHTML = `<i class="fa-solid fa-check-double me-1"></i>${stats.refunded_count || 0} Paid`;
+    if (document.getElementById('kpiRejectedCount')) {
+        document.getElementById('kpiRejectedCount').innerText = (stats.rejected_count || 0) + ' Cases';
     }
 
     // Also update tfoot totals

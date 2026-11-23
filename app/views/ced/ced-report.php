@@ -271,29 +271,31 @@
         <?php endif; ?>
 
         <!-- Summary Section -->
-        <div class="card report-card print-summary-card mb-3" style="background: #0e5013; border: none;">
-            <div class="card-body p-3">
-                <div class="row align-items-center">
-                    <div class="col-6 border-end border-light border-opacity-25">
-                        <div class="d-flex align-items-center justify-content-between pe-2">
-                            <div>
-                                <h6 class="mb-1 -50 text-uppercase fw-bold" style="letter-spacing: 1px; font-size: 11px;">Total Clients Followed Up</h6>
-                                <h2 class="mb-0 fw-bold " style="font-size: 2rem;"><?= $summary['total_clients'] ?></h2>
-                            </div>
-                            <div class="summary-icon  opacity-50 fs-2" style="width: 40px; height: 40px;">
-                                <i class="bi bi-people"></i>
-                            </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card report-card print-summary-card h-100 mb-0" style="border-left: 4px solid #0e5013;">
+                    <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="mb-1 text-muted text-uppercase fw-bold" style="letter-spacing: 0.8px; font-size: 11px;">Total Clients Followed Up</h6>
+                            <h2 class="mb-0 fw-bold text-dark" style="font-size: 2rem;"><?= number_format((int)($summary['total_clients'] ?? 0)) ?></h2>
+                            <small class="text-muted" style="font-size: 11px;">Unique clients contacted in selected range</small>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 52px; height: 52px; background: rgba(14, 80, 19, 0.1); color: #0e5013; font-size: 24px;">
+                            <i class="bi bi-people"></i>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-center justify-content-between ps-2">
-                            <div>
-                                <h6 class="mb-1 -50 text-uppercase fw-bold" style="letter-spacing: 1px; font-size: 11px;">Total Follow-up Notes</h6>
-                                <h2 class="mb-0 fw-bold " style="font-size: 2rem;"><?= $summary['total_notes'] ?></h2>
-                            </div>
-                            <div class="summary-icon  opacity-50 fs-2" style="width: 40px; height: 40px;">
-                                <i class="bi bi-journal-check"></i>
-                            </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card report-card print-summary-card h-100 mb-0" style="border-left: 4px solid #1d4ed8;">
+                    <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="mb-1 text-muted text-uppercase fw-bold" style="letter-spacing: 0.8px; font-size: 11px;">Total Follow-up Notes</h6>
+                            <h2 class="mb-0 fw-bold text-dark" style="font-size: 2rem;"><?= number_format((int)($summary['total_notes'] ?? 0)) ?></h2>
+                            <small class="text-muted" style="font-size: 11px;">Total follow-up entries (Lead + EMI)</small>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 52px; height: 52px; background: rgba(29, 78, 216, 0.1); color: #1d4ed8; font-size: 24px;">
+                            <i class="bi bi-journal-check"></i>
                         </div>
                     </div>
                 </div>
@@ -301,11 +303,31 @@
         </div>
 
         <!-- Details Table -->
+        <?php
+            $pgPage = (int)($pagination['page'] ?? 1);
+            $pgPerPage = (int)($pagination['per_page'] ?? 50);
+            $pgTotal = (int)($pagination['total_records'] ?? count($details));
+            $pgTotalPages = (int)($pagination['total_pages'] ?? 1);
+            $pgStart = $pgTotal > 0 ? (($pgPage - 1) * $pgPerPage) + 1 : 0;
+            $pgEnd = min($pgTotal, $pgPage * $pgPerPage);
+            $baseQueryParams = array_filter([
+                'agent_id' => $agentId ?: null,
+                'report_mode' => $reportMode ?? null,
+                'report_month' => $reportMonth ?? null,
+                'report_year' => $reportYear ?? null,
+                'start_date' => $startDate ?? null,
+                'end_date' => $endDate ?? null,
+                'per_page' => $pgPerPage,
+            ], static fn($v) => $v !== null && $v !== '');
+        ?>
         <div class="card report-card">
-            <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0">
+            <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div class="card-title fw-bold text-dark fs-16">
                     <i class="bi bi-list-columns-reverse text-primary me-2"></i> 
                     Activity Footprints (<?= htmlspecialchars($startDate ?? '') ?> to <?= htmlspecialchars($endDate ?? '') ?>)
+                </div>
+                <div class="text-muted fs-13">
+                    Showing <strong><?= number_format($pgStart) ?>–<?= number_format($pgEnd) ?></strong> of <strong><?= number_format($pgTotal) ?></strong> records
                 </div>
             </div>
             <div class="card-body">
@@ -332,7 +354,7 @@
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php $i = 1; foreach ($details as $row): ?>
+                                <?php $i = $pgStart; foreach ($details as $row): ?>
                                     <tr>
                                         <td class="fw-bold text-muted align-middle"><?= $i++ ?></td>
                                         <td class="align-middle">
@@ -381,6 +403,42 @@
                         </tbody>
                     </table>
                 </div>
+
+                <?php if ($pgTotalPages > 1): ?>
+                    <nav class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-3 border-top no-print gap-2" aria-label="CED report pagination">
+                        <div class="text-muted fs-13">
+                            Page <strong><?= $pgPage ?></strong> of <strong><?= $pgTotalPages ?></strong>
+                        </div>
+                        <ul class="pagination pagination-sm mb-0">
+                            <?php
+                                $buildPageUrl = static function ($targetPage) use ($baseQueryParams) {
+                                    return '?' . http_build_query(array_merge($baseQueryParams, ['page' => $targetPage]));
+                                };
+                                $winStart = max(1, $pgPage - 2);
+                                $winEnd = min($pgTotalPages, $pgPage + 2);
+                            ?>
+                            <li class="page-item <?= ($pgPage <= 1) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= ($pgPage > 1) ? htmlspecialchars($buildPageUrl($pgPage - 1)) : '#' ?>">Prev</a>
+                            </li>
+                            <?php if ($winStart > 1): ?>
+                                <li class="page-item"><a class="page-link" href="<?= htmlspecialchars($buildPageUrl(1)) ?>">1</a></li>
+                                <?php if ($winStart > 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                            <?php endif; ?>
+                            <?php for ($p = $winStart; $p <= $winEnd; $p++): ?>
+                                <li class="page-item <?= ($p === $pgPage) ? 'active' : '' ?>">
+                                    <a class="page-link" href="<?= htmlspecialchars($buildPageUrl($p)) ?>"><?= $p ?></a>
+                                </li>
+                            <?php endfor; ?>
+                            <?php if ($winEnd < $pgTotalPages): ?>
+                                <?php if ($winEnd < $pgTotalPages - 1): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?>
+                                <li class="page-item"><a class="page-link" href="<?= htmlspecialchars($buildPageUrl($pgTotalPages)) ?>"><?= $pgTotalPages ?></a></li>
+                            <?php endif; ?>
+                            <li class="page-item <?= ($pgPage >= $pgTotalPages) ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= ($pgPage < $pgTotalPages) ? htmlspecialchars($buildPageUrl($pgPage + 1)) : '#' ?>">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                <?php endif; ?>
             </div>
         </div>
 

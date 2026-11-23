@@ -139,6 +139,36 @@ class ApiController extends Controller
     }
 
     /**
+     * Check if two client names represent the same person
+     */
+    private function isSameClientName($name1, $name2)
+    {
+        if (empty($name1) || empty($name2)) return false;
+        
+        // Clean strings: remove parentheses content like (TPSS-2,4L), lowercase, alphanumeric only
+        $c1 = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $name1)));
+        $c2 = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $name2)));
+        
+        // Remove common honorifics/prefixes
+        $c1 = preg_replace('/^(md\.?|dr\.?|engr\.?|mr\.?|mrs\.?|ms\.?)\s+/i', '', $c1);
+        $c2 = preg_replace('/^(md\.?|dr\.?|engr\.?|mr\.?|mrs\.?|ms\.?)\s+/i', '', $c2);
+        
+        $c1 = preg_replace('/[^a-z0-9]/', '', $c1);
+        $c2 = preg_replace('/[^a-z0-9]/', '', $c2);
+        
+        if (empty($c1) || empty($c2)) return false;
+        if ($c1 === $c2) return true;
+        
+        if (strlen($c1) >= 6 && strlen($c2) >= 6) {
+            if (strpos($c1, $c2) !== false || strpos($c2, $c1) !== false) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
      * GET /api/client-payment-info
      * Accepts phone, project_name, flat_name via GET or POST parameters
      * Authenticates with x-api-key header
@@ -198,7 +228,36 @@ class ApiController extends Controller
             }
         }
 
-        // A. Match by phone
+        // A1. Match by project/flat first if provided and erpClient not yet found
+        if (!$erpClient && $projectName && $flatName) {
+            $cleanProject = $this->db->real_escape_string($projectName);
+            $pRes = $this->db->query("SELECT * FROM projects WHERE name LIKE '%$cleanProject%' LIMIT 1");
+            if ($pRes && $pRes->num_rows > 0) {
+                $erpProj = $pRes->fetch_assoc();
+                $cleanPropFlatNo = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $flatName));
+                $fRes = $this->db->query("SELECT * FROM flats WHERE project_id = " . (int)$erpProj['id']);
+                if ($fRes) {
+                    while ($f = $fRes->fetch_assoc()) {
+                        $cleanErpFlatNo = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $f['flat_name']));
+                        if ($cleanErpFlatNo === $cleanPropFlatNo) {
+                            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE project_id = " . (int)$erpProj['id'] . " AND flat_id = " . (int)$f['id'] . " AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
+                            if ($bRes && $bRes->num_rows > 0) {
+                                $fb = $bRes->fetch_assoc();
+                                $cRes = $this->db->query("SELECT * FROM leads WHERE id = " . (int)$fb['lead_id'] . " LIMIT 1");
+                                if ($cRes && $cRes->num_rows > 0) {
+                                    $erpClient = $cRes->fetch_assoc();
+                                    $matchingLeadIds[] = (int)$erpClient['id'];
+                                    $leadRows[] = $erpClient;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // A2. Match by phone (only group leads that belong to the SAME client)
         if ($phone) {
             $cleanDigits = preg_replace('/[^0-9]/', '', $phone);
             $searchSuffix = strlen($cleanDigits) >= 8 ? substr($cleanDigits, -8) : $cleanDigits;
@@ -207,16 +266,26 @@ class ApiController extends Controller
             $res = $this->db->query("SELECT * FROM leads WHERE phone LIKE '%$searchEscaped%' OR phone_number LIKE '%$searchEscaped%' ORDER BY id DESC");
             if ($res && $res->num_rows > 0) {
                 while ($row = $res->fetch_assoc()) {
-                    if (!in_array((int)$row['id'], $matchingLeadIds)) {
-                        $matchingLeadIds[] = (int)$row['id'];
-                        $leadRows[] = $row;
+                    if ($erpClient) {
+                        // Only add if name matches erpClient
+                        if ($this->isSameClientName($row['full_name'], $erpClient['full_name'])) {
+                            if (!in_array((int)$row['id'], $matchingLeadIds)) {
+                                $matchingLeadIds[] = (int)$row['id'];
+                                $leadRows[] = $row;
+                            }
+                        }
+                    } else {
+                        if (!in_array((int)$row['id'], $matchingLeadIds)) {
+                            $matchingLeadIds[] = (int)$row['id'];
+                            $leadRows[] = $row;
+                        }
                     }
                 }
             }
         }
 
         // Prioritize lead that actually has active bookings
-        if (!empty($matchingLeadIds)) {
+        if (!$erpClient && !empty($matchingLeadIds)) {
             $idsStr = implode(',', $matchingLeadIds);
             $bLeadRes = $this->db->query("SELECT lead_id FROM lead_bookings WHERE lead_id IN ($idsStr) AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
             if ($bLeadRes && $bLeadRes->num_rows > 0) {
@@ -228,9 +297,23 @@ class ApiController extends Controller
                     }
                 }
             }
+            if (!$erpClient && !empty($leadRows)) {
+                $erpClient = $leadRows[0];
+            }
         }
-        if (!$erpClient && !empty($leadRows)) {
-            $erpClient = $leadRows[0];
+
+        // CRITICAL: Ensure matchingLeadIds only contains leads belonging to the same client name
+        if ($erpClient && !empty($matchingLeadIds)) {
+            $filteredIds = [];
+            $filteredRows = [];
+            foreach ($leadRows as $lr) {
+                if ($this->isSameClientName($lr['full_name'], $erpClient['full_name'])) {
+                    $filteredIds[] = (int)$lr['id'];
+                    $filteredRows[] = $lr;
+                }
+            }
+            $matchingLeadIds = $filteredIds;
+            $leadRows = $filteredRows;
         }
 
         // Fetch active bookings for matching leads
@@ -292,7 +375,8 @@ class ApiController extends Controller
 
                             // Fetch ALL OTHER bookings for this client so multiple flats show up!
                             if ($erpClient) {
-                                $allBRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$erpClient['id'] . " AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL");
+                                $leadIn = !empty($matchingLeadIds) ? implode(',', $matchingLeadIds) : (int)$erpClient['id'];
+                                $allBRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id IN ($leadIn) AND booking_status NOT IN ('cancelled', 'refunded') AND (landshare_status IS NULL OR landshare_status != 'cancelled') AND deleted_at IS NULL");
                                 if ($allBRes) {
                                     while ($ab = $allBRes->fetch_assoc()) {
                                         if (!in_array($ab['id'], $processedBookingIds)) {
@@ -424,36 +508,37 @@ class ApiController extends Controller
                     }
 
                     $isEmiDiscount = (!empty($p['is_emi_discount']) && (int)$p['is_emi_discount'] === 1);
+                    $payStatus = strtolower($p['payment_status'] ?? '');
 
-                    if ($vStatus !== 'rejected') {
-                        if ($isEmiDiscount) {
-                            $bulkEmiDiscount += $amt;
-                        } else {
-                            // Verified payments contribute to confirmed totalPaid
-                            if ($vStatus === 'verified') {
-                                $totalPaid += $amt;
+                    // Skip rejected, cancelled, failed, refunded, or trashed payments
+                    if ($vStatus === 'rejected' || in_array($payStatus, ['cancelled', 'failed', 'refunded'], true) || !empty($p['is_trashed'])) {
+                        continue;
+                    }
 
-                                if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
-                                else if ($ptype === 'registration') $registrationPaid += $amt;
-                                else if ($ptype === 'mutation_cost') $mutationCostPaid += $amt;
-                                else if ($ptype === 'development_charge') $devChargePaid += $amt;
-                                else if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
-                                    $emiPaid += $amt;
-                                    $totalServiceFee += (float)$p['service_fee'];
-                                }
-                                else if ($ptype === 'land_share') $additionalLandSharePaid += $amt;
-                            } else {
-                                // Pending/unverified payments tracked separately
-                                if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
-                                    $unverifiedEmiPaid += $amt;
-                                }
+                    if ($isEmiDiscount) {
+                        $bulkEmiDiscount += $amt;
+                    } else {
+                        // Verified and unverified (pending) payments both contribute to totalPaid
+                        $totalPaid += $amt;
+
+                        if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
+                        else if ($ptype === 'registration') $registrationPaid += $amt;
+                        else if ($ptype === 'mutation_cost') $mutationCostPaid += $amt;
+                        else if ($ptype === 'development_charge') $devChargePaid += $amt;
+                        else if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
+                            $emiPaid += $amt;
+                            $totalServiceFee += (float)$p['service_fee'];
+
+                            if ($vStatus !== 'verified') {
+                                $unverifiedEmiPaid += $amt;
                             }
                         }
-
-                        $totalDueEmi += (float)$p['due_emi_amount'];
-                        $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
-                        $penaltyCharged += (float)$p['penalty_amount'];
+                        else if ($ptype === 'land_share') $additionalLandSharePaid += $amt;
                     }
+
+                    $totalDueEmi += (float)$p['due_emi_amount'];
+                    $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
+                    $penaltyCharged += (float)$p['penalty_amount'];
                     $penaltyPaid += (float)$p['penalty_paid'];
                     $penaltyWaived += (float)$p['penalty_waived'];
                 }
@@ -645,11 +730,11 @@ class ApiController extends Controller
                         "number_of_emis_paid" => ($completedEmiCount + $unverifiedEmiCount),
                         "per_emi_amount" => $perEmiAmount,
                         "current_running_emi_number" => ($completedEmiCount + $unverifiedEmiCount) + 1,
-                        "total_emi_amount_paid" => ($emiPaid + $unverifiedEmiPaid),
+                        "total_emi_amount_paid" => $emiPaid,
 
                         "total_verified_emi_count" => $completedEmiCount,
                         "total_unverified_emi_count" => $unverifiedEmiCount,
-                        "verified_emi_amount_paid" => $emiPaid,
+                        "verified_emi_amount_paid" => ($emiPaid - $unverifiedEmiPaid),
                         "unverified_emi_amount_paid" => $unverifiedEmiPaid,
                         "due_emi_amount" => $totalDueEmi,
                         "approved_emi_discount" => $bulkEmiDiscount,
@@ -921,9 +1006,15 @@ class ApiController extends Controller
                     $isDiscount = (!empty($p['is_emi_discount']) && (int)$p['is_emi_discount'] === 1);
                     $vStatus = $p['verification_status'] ?? 'pending';
 
+                    $payStatus = strtolower($p['payment_status'] ?? '');
+                    if ($vStatus === 'rejected' || in_array($payStatus, ['cancelled', 'failed', 'refunded'], true) || !empty($p['is_trashed'])) {
+                        continue;
+                    }
+
                     if ($isDiscount) {
                         $bulkEmiDiscount += $amt;
-                    } else if ($vStatus === 'verified') {
+                    } else {
+                        // Both verified and unverified (pending) payments contribute to totalPaid
                         $totalPaid += $amt;
                         if ($p['payment_type'] === 'booking_money') $bookingMoneyPaid += $amt;
                         if (in_array($p['payment_type'], ['booking_money', 'registration', 'mutation_cost', 'land_share'])) {

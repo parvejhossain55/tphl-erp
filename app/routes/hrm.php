@@ -21,7 +21,7 @@ return [
     'team-performance/member/(\d+)' => ['controller' => 'TaskController', 'method' => 'teamMemberTasks'],
     'team-performance/assign-task' => ['controller' => 'TaskController', 'method' => 'assignTeamTask'],
     'team-performance/create-project' => ['controller' => 'TaskController', 'method' => 'createTodoProject'],
-    'management-task-overview' => ['controller' => 'TaskController', 'method' => 'managementTaskOverview'],
+    'management-task-overview' => ['controller' => 'TaskV2Controller', 'method' => 'managementTaskOverview'],
     'create-task' => ['controller' => 'TaskController', 'method' => 'create'],
     'store-task' => ['controller' => 'TaskController', 'method' => 'store'],
     'task-dashboard' => ['controller' => 'TaskController', 'method' => 'taskDashboard'],
@@ -32,6 +32,15 @@ return [
     'edit-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'edit'],
     'update-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'update'],
     'delete-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'delete'],
+
+    // =========================================================================
+    // Controller: TaskV2Controller (Task Manage V2)
+    // =========================================================================
+    'team-performance-v2' => ['controller' => 'TaskV2Controller', 'method' => 'teamPerformance'],
+    'team-performance-v2/member/(\d+)' => ['controller' => 'TaskV2Controller', 'method' => 'teamMemberTasks'],
+    'team-performance-v2/assign-task' => ['controller' => 'TaskV2Controller', 'method' => 'assignTeamTask'],
+    'team-performance-v2/create-project' => ['controller' => 'TaskV2Controller', 'method' => 'createTodoProject'],
+    'management-task-overview-v2' => ['controller' => 'TaskV2Controller', 'method' => 'managementTaskOverview'],
 
     // =========================================================================
     // Controller: MyWorkController (Personal Workspace)
@@ -50,6 +59,8 @@ return [
     'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
     'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
     'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
+    'my-work/send-reminder/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'sendReminder'],
+    'my-work/previous-task-sheet/add-note' => ['controller' => 'MyWorkController', 'method' => 'addPreviousTaskSheetNote'],
 
     // =========================================================================
     // Controller: EmployeeController
@@ -365,6 +376,8 @@ return [
     'api/hrm/tipsoi-connect' => ['controller' => 'HrmApiController', 'method' => 'connectTipsoiAccount'],
     'tipsoi-email-logs' => ['controller' => 'LeaveController', 'method' => 'tipsoiEmailLogsView'],
     'api/hrm/tipsoi-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiEmailLogs'],
+    'api/hrm/tipsoi-late-alerts' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiLateAlerts'],
+    'api/hrm/tipsoi-late-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateEmailLogs'],
     'api/hrm/send-tipsoi-reminders' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiReminders'],
     'api/tipsoi/trigger-login-reminder' => ['controller' => 'HrmApiController', 'method' => 'triggerLoginReminder'],
     'api/tipsoi/send-reminders-test' => ['controller' => 'HrmApiController', 'method' => 'testTipsoiReminders'],
@@ -472,5 +485,15 @@ return [
     'api/ats/bulk-force-delete' => ['controller' => 'AtsController', 'method' => 'bulkForceDelete'],
     'api/ats/empty-trash' => ['controller' => 'AtsController', 'method' => 'emptyTrash'],
     'ats-activity-logs' => ['controller' => 'AtsController', 'method' => 'activityLogs'],
+
+    // HR ATS Job Postings & Public Career Page APIs
+    'ats-jobs' => ['controller' => 'AtsJobController', 'method' => 'index'],
+    'api/ats/jobs/store' => ['controller' => 'AtsJobController', 'method' => 'store'],
+    'api/ats/jobs/details/(\d+)' => ['controller' => 'AtsJobController', 'method' => 'getDetails'],
+    'api/ats/jobs/update/(\d+)' => ['controller' => 'AtsJobController', 'method' => 'update'],
+    'api/ats/jobs/status' => ['controller' => 'AtsJobController', 'method' => 'updateStatus'],
+    'api/ats/jobs/delete' => ['controller' => 'AtsJobController', 'method' => 'delete'],
+    'api/jobs' => ['controller' => 'AtsJobController', 'method' => 'publicJobs'],
+    'api/jobs/apply' => ['controller' => 'AtsJobController', 'method' => 'publicApply'],
 ];
 

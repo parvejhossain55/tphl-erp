@@ -306,7 +306,7 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         $vendorsList = [];
-        $resVend = $this->db->query("SELECT id, name, company_name FROM vendors ORDER BY name ASC");
+        $resVend = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name, company_name FROM vendors ORDER BY name ASC");
         if ($resVend && $resVend->num_rows > 0) {
             while ($row = $resVend->fetch_assoc()) {
                 $vendorsList[] = $row;
@@ -465,7 +465,7 @@ class Con_VendorPaymentRequestController extends Controller
         if ($id) {
             // Fetch project and vendor names for approval title
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
-            $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
+            $vendor  = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
 
             // Set approve_role: if submitted by Purchase Head (17) or Management (1, 3), go directly to QC ('qc'); else 'purchase_head'
             $approveRole = in_array((int)$this->userRole, [1, 3, 17], true) ? 'qc' : 'purchase_head';
@@ -1030,6 +1030,35 @@ class Con_VendorPaymentRequestController extends Controller
                 exit;
             }
 
+            // Management Single-Stage Approval (approve ONLY current pending stage)
+            $approveMode = $_POST['approve_mode'] ?? 'override';
+            if ($isMgmtUser && $approveMode === 'single') {
+                $escSingleNote = $this->db->real_escape_string($mgtNote ?: 'Approved by Management');
+                if (empty($request['purchase_head_approved_by_id']) && in_array($request['status'], ['Pending', 'Submitted'])) {
+                    $this->model->approvePurchaseHead($id, $this->userId, ($mgtNote ?: 'Approved') . ' (On behalf of Purchase Head)');
+                    $this->db->query("UPDATE approval_requests SET approve_role = 'qc', status = 'pending', approval_note = '{$escSingleNote} (On behalf of Purchase Head)' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                    setSuccess('Purchase Head stage approved by Management. Forwarded to QC & Internal Audit.');
+                    header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                    exit;
+                } elseif (empty($request['qc_approved_by_id']) && $request['status'] !== 'QC Approved') {
+                    $this->db->query("UPDATE vendor_payment_requests SET status = 'QC Approved', qc_approved_by_id = {$this->userId}, qc_approved_at = NOW(), qc_verified = 1, qc_approved_amount = {$approvedAmount}, qc_note = '{$escSingleNote} (On behalf of QC)' WHERE id = {$id}");
+                    $this->db->query("UPDATE approval_requests SET approve_role = 'operations', status = 'pending', request_amount = {$approvedAmount}, approval_note = '{$escSingleNote} (On behalf of QC)' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                    setSuccess('QC & Audit stage approved by Management. Forwarded to Head of Operation.');
+                    header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                    exit;
+                } elseif ($request['status'] === 'QC Approved' && $opHeadStatus !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escSingleNote} (On behalf of Operation Head)', approve_role = 'accounts_head' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                    setSuccess('Operation Head stage approved by Management. Forwarded to Accounts Head.');
+                    header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                    exit;
+                } elseif ($request['status'] === 'QC Approved' && $opHeadStatus === 'approved' && $ahStatus !== 'approved') {
+                    $this->db->query("UPDATE approval_requests SET accounts_head_status = 'approved', accounts_head_by = {$this->userId}, accounts_head_at = NOW(), accounts_head_note = '{$escSingleNote} (On behalf of Accounts Head)', approve_role = 'management' WHERE source_table = 'vendor_payment_requests' AND source_id = {$id}");
+                    setSuccess('Accounts Head stage approved by Management. Ready for Final Management Approval.');
+                    header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+                    exit;
+                }
+            }
+
             if ($this->model->approve($id, $this->userId, $approvedAmount)) {
                 $escMgtNote = $this->db->real_escape_string($mgtNote ?: 'Approved by Management');
 
@@ -1093,7 +1122,7 @@ class Con_VendorPaymentRequestController extends Controller
                     $updatedRequest = $this->model->find($id);
                     if ($updatedRequest) {
                         // Fetch vendor name for the email
-                        $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                        $vendor = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
                         $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
                         $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
                         $updatedRequest['project_name'] = $project['name'] ?? '';
@@ -1200,7 +1229,7 @@ class Con_VendorPaymentRequestController extends Controller
                 if ($stmtAr->affected_rows === 0) {
                     $checkAr = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = " . (int)$id)->fetch_assoc();
                     if (!$checkAr) {
-                        $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                        $vendor = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
                         $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
                         $this->approvalModel->create([
                             'department'     => 'construction',
@@ -1223,7 +1252,7 @@ class Con_VendorPaymentRequestController extends Controller
             try {
                 $updatedRequest = $this->model->find($id);
                 if ($updatedRequest) {
-                    $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                    $vendor = $this->db->query("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
                     $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
                     $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
                     $updatedRequest['project_name'] = $project['name'] ?? '';

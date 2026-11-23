@@ -207,7 +207,16 @@
                                             <option value="">All Vendors</option>
                                             <?php if (!empty($vendors)): ?>
                                                 <?php foreach ($vendors as $v): ?>
-                                                    <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['name']) ?><?= !empty($v['company_name']) ? ' (' . htmlspecialchars($v['company_name']) . ')' : '' ?></option>
+                                                    <?php
+                                                    $vComp = trim($v['company_name'] ?? '');
+                                                    $vName = trim($v['name'] ?? '');
+                                                    if (!empty($vComp) && !empty($vName) && strcasecmp($vComp, $vName) !== 0) {
+                                                        $vLabel = $vComp . ' (' . $vName . ')';
+                                                    } else {
+                                                        $vLabel = !empty($vComp) ? $vComp : $vName;
+                                                    }
+                                                    ?>
+                                                    <option value="<?= $v['id'] ?>"><?= htmlspecialchars($vLabel) ?></option>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
                                         </select>

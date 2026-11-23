@@ -48,6 +48,34 @@ class Department extends Model
         return $data;
     }
 
+    /**
+     * Get active departments (id and name) for public/dropdown consumption.
+     */
+    public function getActive()
+    {
+        $stmt = $this->db->prepare("SELECT id, name FROM departments WHERE status = 1 ORDER BY name ASC");
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->execute();
+        $data = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
+    }
+
+    public function getById(int $id): ?array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM departments WHERE id = ? LIMIT 1");
+        if (!$stmt) {
+            return null;
+        }
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ?: null;
+    }
+
 
 
 

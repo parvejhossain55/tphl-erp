@@ -1015,14 +1015,6 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                            <?php if ($displayedCount === 0): ?>
-                                <tr>
-                                    <td colspan="8" class="text-center py-4 text-muted">
-                                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                                        No leads found matching the selected filter.
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
