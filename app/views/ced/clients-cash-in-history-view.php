@@ -680,14 +680,17 @@ if (!isset($discountApprovalReq)) {
             </div>
         </div>
         <!-- 7. Remaining Land Share -->
+        <?php $remLandShare = (float)($paymentSummary['remaining_land_share'] ?? 0); ?>
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-scale-balanced"></i></span></div>
+                    <div class="card__icon">
+                        <span style="color:<?= $remLandShare > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-scale-balanced"></i></span>
+                    </div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?></h4>
+                            <h4 class="card__title" style="color:<?= $remLandShare > 0 ? '#e74c3c' : '#27ae60' ?>;">TK.<?= number_format($remLandShare, 2) ?></h4>
                             <?php 
                                 $pendingLandShare = max(0, (float)($paymentSummary['total_land_share_paid_total'] ?? 0) - (float)($paymentSummary['landshare_paid'] ?? 0));
                                 if ($pendingLandShare > 0): 
