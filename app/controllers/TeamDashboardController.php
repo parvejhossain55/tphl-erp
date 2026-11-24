@@ -158,8 +158,8 @@ class TeamDashboardController extends Controller
         $teamLeader = null;
         if ($isAllTeamsMode) {
             $teamLeader = [
-                'full_name' => $isSalesManagerUser ? ($_SESSION['user']['full_name'] ?? 'Sales Manager') : 'Head of Sales / All Leaders',
-                'role_name' => $isSalesManagerUser ? 'Sales Manager' : 'Overall Sales',
+                'full_name' => $isSalesManagerUser ? ($_SESSION['user']['full_name'] ?? 'Cluster Head') : 'Head of Sales / All Leaders',
+                'role_name' => $isSalesManagerUser ? 'Cluster Head' : 'Overall Sales',
             ];
         } else {
             foreach ($teamMembers as $m) {

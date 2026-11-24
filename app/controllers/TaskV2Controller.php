@@ -1576,8 +1576,8 @@ class TaskV2Controller extends Controller
         if (in_array($roleTier, ['management', 'head_of_sales', 'dept_head'], true)) {
             $smRoleId = function_exists('getSalesManagerRoleId') ? getSalesManagerRoleId($this->db) : 0;
             $smRoleCond = $smRoleId > 0
-                ? "(u.role_id = $smRoleId OR u.secondary_role_id = $smRoleId OR LOWER(TRIM(r.name)) LIKE '%sales manager%')"
-                : "LOWER(TRIM(r.name)) LIKE '%sales manager%'";
+                ? "(u.role_id = $smRoleId OR u.secondary_role_id = $smRoleId OR LOWER(TRIM(r.name)) LIKE '%cluster head%' OR LOWER(TRIM(r.name)) LIKE '%sales manager%')"
+                : "(LOWER(TRIM(r.name)) LIKE '%cluster head%' OR LOWER(TRIM(r.name)) LIKE '%sales manager%')";
             $smListRes = $this->db->query("
                 SELECT DISTINCT u.id AS user_id, u.full_name, e.department_id
                 FROM users u

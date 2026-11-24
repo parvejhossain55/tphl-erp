@@ -49,8 +49,37 @@ class SalesPerformanceController extends Controller
         die('<div style="font-family:sans-serif;padding:40px;text-align:center"><h3>Access denied</h3><p>Sales Performance is available to Management and Chief Executive roles only.</p></div>');
     }
 
-    protected function readFilters(): array
+    /**
+     * Resolve whether the current user is restricted to their own Cluster Head teams.
+     */
+    protected function getClusterHeadScope(): array
     {
+        $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $secRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+        $isSuperGlobal = in_array($roleId, [1, 3, 9, 20, 32, 33, 34, 35], true)
+            || in_array($secRoleId, [1, 3, 9, 20, 32, 33, 34, 35], true);
+
+        if (!$isSuperGlobal && function_exists('isSalesManager') && isSalesManager()) {
+            $userId = (int) ($_SESSION['user']['id'] ?? 0);
+            $teamIds = function_exists('getManagedTeamIds') ? getManagedTeamIds($this->db, $userId) : [];
+            return [
+                'restricted' => true,
+                'user_id' => $userId,
+                'team_ids' => $teamIds,
+            ];
+        }
+
+        return [
+            'restricted' => false,
+            'user_id' => 0,
+            'team_ids' => [],
+        ];
+    }
+
+    protected function readFilters(?array $clusterScope = null): array
+    {
+        $clusterScope = $clusterScope ?? $this->getClusterHeadScope();
+
         $tab = $_GET['tab'] ?? 'overview';
         if (!in_array($tab, ['overview', 'team', 'executive', 'inactive-executive'], true)) {
             $tab = 'overview';
@@ -84,6 +113,30 @@ class SalesPerformanceController extends Controller
             $month = (int) $m[2];
         }
 
+        $salesManagerId = !empty($_GET['sales_manager_id']) ? (int) $_GET['sales_manager_id'] : null;
+        $teamId = !empty($_GET['team_id']) ? (int) $_GET['team_id'] : null;
+        $executiveId = !empty($_GET['executive_id']) ? (int) $_GET['executive_id'] : null;
+
+        if (!empty($clusterScope['restricted'])) {
+            $salesManagerId = $clusterScope['user_id'] > 0 ? $clusterScope['user_id'] : -1;
+            $allowedTeams = $clusterScope['team_ids'];
+            if ($teamId && !in_array($teamId, $allowedTeams, true)) {
+                $teamId = null;
+            }
+            if ($executiveId) {
+                $execAllowed = false;
+                foreach ($this->service->getSalesUsers() as $su) {
+                    if ((int) $su['id'] === $executiveId && in_array((int) $su['team_id'], $allowedTeams, true)) {
+                        $execAllowed = true;
+                        break;
+                    }
+                }
+                if (!$execAllowed) {
+                    $executiveId = null;
+                }
+            }
+        }
+
         return [
             'tab' => $tab,
             'preset' => $preset,
@@ -93,9 +146,9 @@ class SalesPerformanceController extends Controller
             'from' => $from,
             'to' => $to,
             'project_id' => !empty($_GET['project_id']) ? (int) $_GET['project_id'] : null,
-            'sales_manager_id' => !empty($_GET['sales_manager_id']) ? (int) $_GET['sales_manager_id'] : null,
-            'team_id' => !empty($_GET['team_id']) ? (int) $_GET['team_id'] : null,
-            'executive_id' => !empty($_GET['executive_id']) ? (int) $_GET['executive_id'] : null,
+            'sales_manager_id' => $salesManagerId,
+            'team_id' => $teamId,
+            'executive_id' => $executiveId,
             'focus_team' => $_GET['focus_team'] ?? null,
         ];
     }
@@ -103,7 +156,8 @@ class SalesPerformanceController extends Controller
     public function index()
     {
         $this->guard();
-        $f = $this->readFilters();
+        $clusterScope = $this->getClusterHeadScope();
+        $f = $this->readFilters($clusterScope);
 
         $period = $this->service->resolvePeriod($f['cycle'] ?: null, $f['year'], $f['month'], $f['from'], $f['to'], $f['preset']);
         if (!empty($period['preset'])) {
@@ -121,6 +175,26 @@ class SalesPerformanceController extends Controller
         $quality = $f['tab'] === 'overview' ? $this->service->dataQuality() : null;
         $data['current_route'] = 'sales-performance';
 
+        $salesManagers = $this->service->getSalesManagers();
+        $teams = $this->service->getTeams();
+        $salesUsers = $this->service->getSalesUsers();
+
+        if (!empty($clusterScope['restricted'])) {
+            $uid = $clusterScope['user_id'];
+            $allowedTeams = $clusterScope['team_ids'];
+            if (isset($salesManagers[$uid])) {
+                $salesManagers = [$uid => $salesManagers[$uid]];
+            } else {
+                $salesManagers = [$uid => [
+                    'id' => $uid,
+                    'name' => trim((string) ($_SESSION['user']['full_name'] ?? '')) ?: 'Cluster Head',
+                    'team_ids' => $allowedTeams,
+                ]];
+            }
+            $teams = array_filter($teams, fn($t) => in_array((int) $t['id'], $allowedTeams, true));
+            $salesUsers = array_values(array_filter($salesUsers, fn($su) => in_array((int) $su['team_id'], $allowedTeams, true)));
+        }
+
         return $this->view('sales-performance/index', [
             'current_route' => 'sales-performance',
             'current_page' => 'sales-performance',
@@ -131,10 +205,11 @@ class SalesPerformanceController extends Controller
             'data' => $data,
             'quality' => $quality,
             'cycleOptions' => $this->service->cycleOptions(12),
-            'salesManagers' => $this->service->getSalesManagers(),
-            'teams' => $this->service->getTeams(),
-            'salesUsers' => $this->service->getSalesUsers(),
+            'salesManagers' => $salesManagers,
+            'teams' => $teams,
+            'salesUsers' => $salesUsers,
             'projects' => $this->service->getProjects(),
+            'isClusterHeadRestricted' => !empty($clusterScope['restricted']),
         ]);
     }
 
@@ -143,9 +218,15 @@ class SalesPerformanceController extends Controller
     {
         $this->guard(true);
         $key = preg_replace('/[^a-z0-9_]/', '', $_GET['key'] ?? '');
-        $f = $this->readFilters();
+        $clusterScope = $this->getClusterHeadScope();
+        $f = $this->readFilters($clusterScope);
         if (!empty($_GET['team_key'])) {
-            $f['team_key'] = $_GET['team_key'];
+            $reqTeamKey = (string) $_GET['team_key'];
+            if (empty($clusterScope['restricted'])) {
+                $f['team_key'] = $reqTeamKey;
+            } elseif (preg_match('/^team_(\d+)$/', $reqTeamKey, $tm) && in_array((int) $tm[1], $clusterScope['team_ids'], true)) {
+                $f['team_key'] = $reqTeamKey;
+            }
         }
         $period = $this->service->resolvePeriod($f['cycle'] ?: null, $f['year'], $f['month'], $f['from'], $f['to'], $f['preset']);
         if (!empty($period['preset'])) {

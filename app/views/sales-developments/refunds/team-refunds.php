@@ -8,7 +8,7 @@ $isTeamLeader = $isTeamLeader ?? false;
 $isSalesExec  = $isSalesExec ?? false;
 
 $stageLabels = [
-    'sales_manager' => '1. Sales Manager',
+    'sales_manager' => '1. Cluster Head',
     'qc'            => '2. QC Review',
     'op_head'       => '3. Operation Head',
     'management'    => '4. Super Admin',

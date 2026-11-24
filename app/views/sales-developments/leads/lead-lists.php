@@ -384,8 +384,8 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <?php if (!empty($canFilterBySalesManager) && !empty($salesManagers)): ?>
                     <!-- Sales Manager (Cluster Head) Filter (Super Admin & Head of Sales only) -->
                     <div class="col-6 col-md-2">
-                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Sales Manager</label>
-                        <select class="form-select form-select-sm filter-select select2" name="sales_manager_id" id="leadListManagerSelect" data-placeholder="Sales Manager: All">
+                        <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Cluster Head</label>
+                        <select class="form-select form-select-sm filter-select select2" name="sales_manager_id" id="leadListManagerSelect" data-placeholder="Cluster Head: All">
                             <option value=""></option>
                             <?php foreach ($salesManagers as $sm): ?>
                                 <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= ((int)($selectedSalesManagerId ?? 0) === (int)$sm['id']) ? 'selected' : '' ?>>

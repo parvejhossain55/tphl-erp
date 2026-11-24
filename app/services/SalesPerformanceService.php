@@ -429,7 +429,7 @@ class SalesPerformanceService
             $roleId = (int) $r['role_id'];
             $isSales = in_array($roleId, self::SALES_ROLE_IDS, true) 
                 || in_array((int) $r['secondary_role_id'], self::SALES_ROLE_IDS, true)
-                || strtolower(trim((string) ($r['role_name'] ?? ''))) === 'sales manager'
+                || in_array(strtolower(trim((string) ($r['role_name'] ?? ''))), ['cluster head', 'sales manager'], true)
                 || (int) ($r['department_id'] ?? 0) === 1;
 
             $hasEmp = !empty($r['has_emp_record']);
@@ -655,6 +655,7 @@ class SalesPerformanceService
         $lastActionCol   = isset($lCols['last_lead_action']) ? "l.last_lead_action" : "NULL AS last_lead_action";
         $callStatusCol   = isset($lCols['call_status']) ? "l.call_status" : "'not_called' AS call_status";
         $leadTypeCol     = isset($lCols['lead_type']) ? "l.lead_type" : "NULL AS lead_type";
+        $leadTeamCol     = isset($lCols['team_id']) ? "l.team_id" : "NULL AS team_id";
 
         $leadsDeleted    = isset($lCols['deleted_at']) ? "l.deleted_at IS NULL" : "1=1";
         $fuDeleted       = isset($fuCols['deleted_at']) ? "WHERE deleted_at IS NULL" : "";
@@ -673,7 +674,7 @@ class SalesPerformanceService
         $dateSqlL = ($isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'") . $autoSqlL;
 
         $sql = "
-            SELECT l.id, l.assigned_id, l.assigned_at, l.created_at,
+            SELECT l.id, l.assigned_id, $leadTeamCol, l.assigned_at, l.created_at,
                    $firstContactCol,
                    $callStatusCol,
                    $commTypeCol,
@@ -722,7 +723,7 @@ class SalesPerformanceService
         if (!$res) {
             error_log("SalesPerformanceService cohort query error: " . $this->db->error . " | Falling back to safe query");
             // Ultra safe fallback: guarantees lead numbers are never 0
-            $fallbackSql = "SELECT l.id, l.assigned_id, l.created_at, l.assigned_at, 'not_called' AS call_status,
+            $fallbackSql = "SELECT l.id, l.assigned_id, $leadTeamCol, l.created_at, l.assigned_at, 'not_called' AS call_status,
                                    NULL AS first_contacted_at, NULL AS communication_type, NULL AS lead_type, NULL AS last_lead_action,
                                    0 AS fu_count, 0 AS f_valid, 0 AS f_qual, 0 AS f_vsched, 0 AS f_vdone, 0 AS f_nego, 0 AS f_no_resp,
                                    NULL AS first_fu_at, 0 AS booked, 0 AS confirmed
@@ -733,7 +734,8 @@ class SalesPerformanceService
         $cohortGaps = ['booked_without_visit' => 0, 'contacted_no_timestamp' => 0, 'no_assigned_at' => 0];
         while ($res && $r = $res->fetch_assoc()) {
             $uid = $r['assigned_id'] ? (int) $r['assigned_id'] : null;
-            if (!$passes($uid)) {
+            $fallbackTeamId = (!$uid && !empty($r['team_id'])) ? (int) $r['team_id'] : null;
+            if (!$passes($uid, $fallbackTeamId)) {
                 continue;
             }
 
@@ -757,22 +759,22 @@ class SalesPerformanceService
             if ($isBooked) $stage = 5;
 
             for ($s = 1; $s <= $stage; $s++) {
-                $add($uid, 'stage_' . $s);
+                $add($uid, 'stage_' . $s, 1, $fallbackTeamId);
             }
             if (!$isContacted) {
-                $add($uid, 'uncontacted');
+                $add($uid, 'uncontacted', 1, $fallbackTeamId);
             }
             $isNoResponse = ($leadType === 'No Response')
                 || ($r['call_status'] === 'not_received')
                 || ((int) $r['f_no_resp'] === 1);
             if ($isNoResponse) {
-                $add($uid, 'no_response');
+                $add($uid, 'no_response', 1, $fallbackTeamId);
             }
             if ($uid) {
                 $add($uid, 'assigned_leads');
             }
             if ((int) $r['fu_count'] > 0 && (int) $r['f_valid'] === 0) {
-                $add($uid, 'invalid_numbers');
+                $add($uid, 'invalid_numbers', 1, $fallbackTeamId);
             }
             if ($booked && !$vdone) {
                 $cohortGaps['booked_without_visit']++;
@@ -1615,6 +1617,7 @@ class SalesPerformanceService
         }
 
         // Scope SQL conditions
+        $lCols = $this->getTableColumns('leads');
         $scopeL = "";
         $scopeB = "";
         $scopeF = "";
@@ -1622,21 +1625,20 @@ class SalesPerformanceService
             $scopeL = " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
             $scopeB = " AND (COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) IS NULL OR COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) = 0)";
             $scopeF = " AND (f.created_by IS NULL OR f.created_by = 0)";
-        } elseif ($teamFilter) {
-            $uidCsv = implode(',', array_map('intval', $targetUids));
-            $scopeL = " AND l.assigned_id IN ($uidCsv)";
-            $scopeB = " AND COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) IN ($uidCsv)";
-            $scopeF = " AND f.created_by IN ($uidCsv)";
         } elseif ($targetUids !== null) {
             $uidCsv = implode(',', array_map('intval', $targetUids));
-            $scopeL = " AND l.assigned_id IN ($uidCsv)";
+            $leadTeamFallbackSql = "";
+            if (!$execFilter && $allowedTeamIds !== null && isset($lCols['team_id'])) {
+                $teamCsv = !empty($allowedTeamIds) ? implode(',', array_map('intval', $allowedTeamIds)) : '-999';
+                $leadTeamFallbackSql = " OR ((l.assigned_id IS NULL OR l.assigned_id = 0) AND l.team_id IN ($teamCsv))";
+            }
+            $scopeL = " AND (l.assigned_id IN ($uidCsv){$leadTeamFallbackSql})";
             $scopeB = " AND COALESCE(NULLIF(b.sales_by_id, 0), l.assigned_id) IN ($uidCsv)";
             $scopeF = " AND f.created_by IN ($uidCsv)";
         }
 
         $isOverviewScope = empty($filters['executive_id']);
         $dateColL = 'l.created_at';
-        $lCols = $this->getTableColumns('leads');
         $autoSqlL = (isset($lCols['is_automated']) && isset($lCols['distribute'])) ? " AND NOT (l.is_automated = 1 AND l.distribute = 0)" : "";
         $autoSqlL2 = (isset($lCols['is_automated']) && isset($lCols['distribute'])) ? " AND NOT (l2.is_automated = 1 AND l2.distribute = 0)" : "";
         $dateSqlL = ($isAllTime ? "" : " AND $dateColL BETWEEN '$start' AND '$end'") . $autoSqlL;

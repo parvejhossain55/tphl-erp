@@ -2594,7 +2594,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                   placeholder="Please explain in detail why this lead should be deleted (e.g. invalid number, fake lead, duplicate, testing, etc.)..." required></textarea>
                     </div>
                     <div class="alert alert-info py-2 px-3 small mb-0">
-                        <i class="fa-solid fa-circle-info me-1"></i> Your deletion request will be reviewed by your Team Sales Manager / Head / Management.
+                        <i class="fa-solid fa-circle-info me-1"></i> Your deletion request will be reviewed by your Team Cluster Head / Head / Management.
                     </div>
                 </div>
                 <div class="modal-footer bg-light">

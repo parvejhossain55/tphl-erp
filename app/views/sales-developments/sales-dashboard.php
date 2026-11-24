@@ -580,9 +580,9 @@ body.dark-mode {
                     <?php if (!empty($isGlobalViewer)): ?>
                     <!-- Sales Manager (Cluster Head) -->
                     <div class="col-12 col-sm-6 col-lg-2">
-                        <label class="form-label text-muted mb-1" style="font-size: 10.5px; font-weight: 600;">Sales manager (Cluster)</label>
+                        <label class="form-label text-muted mb-1" style="font-size: 10.5px; font-weight: 600;">Cluster Head</label>
                         <select name="sales_manager_id" id="sdManagerSelect" class="form-select sd-form-select">
-                            <option value="">All sales managers</option>
+                            <option value="">All cluster heads</option>
                             <?php foreach (($salesManagers ?? []) as $sm): ?>
                                 <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= ((int)($f['sales_manager_id'] ?? 0) === (int)$sm['id']) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($sm['name']) ?>

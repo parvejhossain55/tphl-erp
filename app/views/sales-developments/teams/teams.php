@@ -299,7 +299,7 @@ $show_breadcrumb = true;
                         <!-- Sales Manager Box -->
                         <div class="d-flex align-items-center justify-content-between px-2 py-2 mb-2 rounded-2" style="background: <?= $managerName ? '#eef6ff' : '#f8f9fa' ?>; border: 1px <?= $managerName ? 'solid #cfe2ff' : 'dashed #dee2e6' ?>;">
                             <div class="overflow-hidden me-2">
-                                <span class="text-muted text-uppercase fw-semibold d-block" style="font-size: 9.5px; letter-spacing: 0.5px;">Sales Manager</span>
+                                <span class="text-muted text-uppercase fw-semibold d-block" style="font-size: 9.5px; letter-spacing: 0.5px;">Cluster Head</span>
                                 <?php if ($managerName): ?>
                                     <strong class="text-primary d-block text-truncate small" title="<?= htmlspecialchars($managerName) ?>">
                                         <i class="fa-solid fa-user-tie me-1"></i><?= htmlspecialchars($managerName) ?>
@@ -313,7 +313,7 @@ $show_breadcrumb = true;
                                 data-bs-target="#managerHistoryModal"
                                 data-team-id="<?= $team['id'] ?>"
                                 data-team-name="<?= htmlspecialchars($team['name']) ?>"
-                                title="View Sales Manager History"
+                                title="View Cluster Head History"
                                 style="font-size: 11px; flex-shrink: 0;">
                                 <i class="fa-solid fa-clock-rotate-left"></i> History
                             </button>
@@ -426,7 +426,7 @@ $show_breadcrumb = true;
                         <tr class="table__title table__sort">
                             <th>S/L</th>
                             <th>Team Name</th>
-                            <th>Sales Manager</th>
+                            <th>Cluster Head</th>
                             <th>Team Leader</th>
                             <th>Assigned Members</th>
                             <th>Status</th>
@@ -565,7 +565,7 @@ $show_breadcrumb = true;
                     <?php if (!empty($canAssignSalesManager)): ?>
                     <div class="row g-3 mb-4">
                         <div class="col-md-7">
-                            <label class="form-label fw-semibold text-dark">Assign Sales Manager <small class="text-muted fw-normal">(Optional)</small></label>
+                            <label class="form-label fw-semibold text-dark">Assign Cluster Head <small class="text-muted fw-normal">(Optional)</small></label>
                             <select class="form-select" name="manager_user_id" id="add_manager_user_id">
                                 <option value="0">-- Unassigned --</option>
                                 <?php foreach (($salesManagers ?? []) as $sm): ?>
@@ -726,7 +726,7 @@ $show_breadcrumb = true;
                     <?php if (!empty($canAssignSalesManager)): ?>
                     <div class="row g-3 mb-4">
                         <div class="col-md-7">
-                            <label class="form-label fw-semibold text-dark">Assigned Sales Manager</label>
+                            <label class="form-label fw-semibold text-dark">Assigned Cluster Head</label>
                             <select class="form-select" name="manager_user_id" id="edit_manager_user_id">
                                 <option value="0">-- Unassigned --</option>
                                 <?php foreach (($salesManagers ?? []) as $sm): ?>
@@ -1325,7 +1325,7 @@ $show_breadcrumb = true;
             <div class="modal-header border-bottom px-4 py-3">
                 <h5 class="modal-title fw-bold text-dark">
                     <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>
-                    Sales Manager History — <span id="historyModalTeamName"></span>
+                    Cluster Head History — <span id="historyModalTeamName"></span>
                 </h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
                     <i class="fa-solid fa-xmark-large"></i>
@@ -1336,7 +1336,7 @@ $show_breadcrumb = true;
                     <table class="table table-sm table-bordered align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Sales Manager</th>
+                                <th>Cluster Head</th>
                                 <th>Status</th>
                                 <th>Assigned</th>
                                 <th>Unassigned</th>
@@ -1467,7 +1467,7 @@ $show_breadcrumb = true;
                     <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; background: #ecfdf5; color: #16a34a;">
                         <i class="fa-solid fa-user-tie" style="font-size: 14px;"></i>
                     </span>
-                    <span>Assign Sales Manager</span>
+                    <span>Assign Cluster Head</span>
                 </h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
                     <i class="fa-solid fa-xmark-large"></i>
@@ -1477,9 +1477,9 @@ $show_breadcrumb = true;
                 <div class="modal-body p-4">
                     <div class="row g-3 mb-3">
                         <div class="col-md-7">
-                            <label for="bulk_manager_user_id" class="form-label fw-semibold text-secondary small text-uppercase mb-1">Select Sales Manager</label>
+                            <label for="bulk_manager_user_id" class="form-label fw-semibold text-secondary small text-uppercase mb-1">Select Cluster Head</label>
                             <select class="form-select" name="manager_user_id" id="bulk_manager_user_id" required style="border-radius: 8px; border-color: #cbd5e1;">
-                                <option value="">-- Select Sales Manager --</option>
+                                <option value="">-- Select Cluster Head --</option>
                                 <?php foreach (($salesManagers ?? []) as $sm): ?>
                                     <option value="<?= (int)$sm['id'] ?>">
                                         <?= htmlspecialchars($sm['full_name']) ?><?= !empty($sm['employee_code']) ? ' (' . htmlspecialchars($sm['employee_code']) . ')' : '' ?>

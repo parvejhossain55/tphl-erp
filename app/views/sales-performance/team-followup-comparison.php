@@ -1031,17 +1031,28 @@ $baseUrl = $GLOBALS['base_url'];
                     <input type="date" name="to" value="<?= tfu_h($filters['to']) ?>" class="form-control form-control-sm" style="width:130px; border-radius:8px;" placeholder="To date">
                 </div>
 
-                <?php if (!empty($isGlobalViewer)): ?>
-                <!-- Sales Manager (Cluster Head) Select -->
+                <?php if (!empty($isGlobalViewer) || !empty($isClusterHeadRestricted)): ?>
+                <!-- Cluster Head Select -->
                 <div style="min-width: 190px; max-width: 230px;">
-                    <select name="sales_manager_id" id="filterManagerSelect" class="form-select form-select-sm select2" data-placeholder="All Sales Managers">
-                        <option value="">All Sales Managers</option>
-                        <?php foreach (($salesManagers ?? []) as $sm): ?>
-                            <option value="<?= (int)$sm['id'] ?>" data-teams="<?= tfu_h(implode(',', $sm['team_ids'])) ?>" <?= ((int)($filters['sales_manager_id'] ?? 0) === (int)$sm['id']) ? 'selected' : '' ?>>
-                                <?= tfu_h($sm['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php if (!empty($isClusterHeadRestricted)): ?>
+                        <input type="hidden" name="sales_manager_id" value="<?= (int)($filters['sales_manager_id'] ?? 0) ?>">
+                        <select id="filterManagerSelect" class="form-select form-select-sm select2" data-placeholder="Cluster Head" disabled>
+                            <?php foreach (($salesManagers ?? []) as $sm): ?>
+                                <option value="<?= (int)$sm['id'] ?>" data-teams="<?= tfu_h(implode(',', $sm['team_ids'])) ?>" selected>
+                                    <?= tfu_h($sm['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php else: ?>
+                        <select name="sales_manager_id" id="filterManagerSelect" class="form-select form-select-sm select2" data-placeholder="All Cluster Heads">
+                            <option value="">All Cluster Heads</option>
+                            <?php foreach (($salesManagers ?? []) as $sm): ?>
+                                <option value="<?= (int)$sm['id'] ?>" data-teams="<?= tfu_h(implode(',', $sm['team_ids'])) ?>" <?= ((int)($filters['sales_manager_id'] ?? 0) === (int)$sm['id']) ? 'selected' : '' ?>>
+                                    <?= tfu_h($sm['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
@@ -1690,8 +1701,8 @@ $(function() {
         if (typeof $.fn.select2 === 'function') {
             $('#filterManagerSelect').select2({
                 width: '100%',
-                placeholder: 'All Sales Managers',
-                allowClear: true
+                placeholder: 'All Cluster Heads',
+                allowClear: <?= !empty($isClusterHeadRestricted) ? 'false' : 'true' ?>
             });
             $('#filterTeamSelect').select2({
                 width: '100%',

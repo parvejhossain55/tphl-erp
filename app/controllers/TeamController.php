@@ -164,7 +164,7 @@ class TeamController extends Controller
     public function assignManagerTeams()
     {
         if (!$this->canAssignSalesManager()) {
-            setError("You do not have permission to assign Sales Managers.");
+            setError("You do not have permission to assign Cluster Heads.");
             header("Location: {$GLOBALS['base_url']}/teams");
             exit;
         }
@@ -178,15 +178,15 @@ class TeamController extends Controller
         $assignedBy = (int)($_SESSION['user']['id'] ?? 0) ?: null;
 
         if ($managerUserId <= 0) {
-            setError("Please select a Sales Manager.");
+            setError("Please select a Cluster Head.");
             header("Location: {$GLOBALS['base_url']}/teams");
             exit;
         }
 
         if ($this->teamModel->syncManagerTeams($managerUserId, $teamIds, $assignedBy, $note !== '' ? $note : null)) {
-            setSuccess("Sales Manager team assignments updated successfully.");
+            setSuccess("Cluster Head team assignments updated successfully.");
         } else {
-            setError("Failed to update Sales Manager team assignments.");
+            setError("Failed to update Cluster Head team assignments.");
         }
 
         header("Location: {$GLOBALS['base_url']}/teams");

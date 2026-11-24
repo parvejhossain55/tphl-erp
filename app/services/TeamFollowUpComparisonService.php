@@ -213,7 +213,7 @@ class TeamFollowUpComparisonService
             $roleId = (int) $r['role_id'];
             $isSales = in_array($roleId, self::SALES_ROLE_IDS, true) 
                 || in_array((int) $r['secondary_role_id'], self::SALES_ROLE_IDS, true)
-                || strtolower(trim((string) ($r['role_name'] ?? ''))) === 'sales manager';
+                || in_array(strtolower(trim((string) ($r['role_name'] ?? ''))), ['cluster head', 'sales manager'], true);
 
             $users[(int) $r['id']] = [
                 'id' => (int) $r['id'],

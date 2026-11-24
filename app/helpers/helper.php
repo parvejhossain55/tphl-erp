@@ -722,7 +722,7 @@ function isTeamLeader(): bool
 }
 
 /**
- * Resolve the new Sales Manager role ID dynamically from the roles table.
+ * Resolve the Cluster Head (formerly Sales Manager) role ID dynamically from the roles table.
  * Excludes legacy Role ID 5 (which was renamed to Sales Team Leader).
  */
 function getSalesManagerRoleId($db = null): int
@@ -737,7 +737,7 @@ function getSalesManagerRoleId($db = null): int
         return 0;
     }
 
-    $res = @$conn->query("SELECT id FROM roles WHERE LOWER(TRIM(name)) = 'sales manager' AND id != 5 LIMIT 1");
+    $res = @$conn->query("SELECT id FROM roles WHERE LOWER(TRIM(name)) IN ('cluster head', 'sales manager') AND id != 5 ORDER BY (LOWER(TRIM(name)) = 'cluster head') DESC LIMIT 1");
     if ($res && ($row = $res->fetch_assoc())) {
         $cachedId = (int) $row['id'];
         return $cachedId;
@@ -748,7 +748,7 @@ function getSalesManagerRoleId($db = null): int
 }
 
 /**
- * Check if the currently logged-in user holds the new Sales Manager role
+ * Check if the currently logged-in user holds the Cluster Head (formerly Sales Manager) role
  * (multi-team manager between Sales Team Leader and Head of Sales).
  */
 function isSalesManager(): bool
@@ -772,10 +772,10 @@ function isSalesManager(): bool
     $roleName    = strtolower(trim((string) ($_SESSION['user']['role_name'] ?? '')));
     $secRoleName = strtolower(trim((string) ($_SESSION['user']['secondary_role_name'] ?? '')));
 
-    if ($roleId !== 5 && $roleName === 'sales manager') {
+    if ($roleId !== 5 && in_array($roleName, ['cluster head', 'sales manager'], true)) {
         return true;
     }
-    if ($secRoleId !== 5 && $secRoleName === 'sales manager') {
+    if ($secRoleId !== 5 && in_array($secRoleName, ['cluster head', 'sales manager'], true)) {
         return true;
     }
 

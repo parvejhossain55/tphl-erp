@@ -33,6 +33,7 @@ class TeamFollowUpComparisonController extends Controller
             || str_contains($roleName, 'chief')
             || str_contains($roleName, 'ceo')
             || str_contains($roleName, 'management')
+            || str_contains($roleName, 'cluster head')
             || str_contains($roleName, 'sales manager')
             || str_contains($roleName, 'sales team leader')
             || str_contains($roleName, 'sales head')
@@ -78,9 +79,31 @@ class TeamFollowUpComparisonController extends Controller
 
         $teamId = !empty($_GET['team_id']) ? (int) $_GET['team_id'] : null;
         $scope = function_exists('getSalesFilterScope') ? getSalesFilterScope($this->db) : ['is_global' => true];
-        $salesManagerId = (!empty($scope['is_global']) && !empty($_GET['sales_manager_id'])) ? (int) $_GET['sales_manager_id'] : null;
         $projectId = !empty($_GET['project_id']) ? (int) $_GET['project_id'] : null;
         $executiveId = !empty($_GET['executive_id']) ? (int) $_GET['executive_id'] : null;
+
+        if (!empty($scope['is_manager'])) {
+            $uid = (int) ($_SESSION['user']['id'] ?? 0);
+            $salesManagerId = $uid > 0 ? $uid : -1;
+            $allowedTeams = $scope['team_ids'] ?? [];
+            if ($teamId && !in_array($teamId, $allowedTeams, true)) {
+                $teamId = null;
+            }
+            if ($executiveId) {
+                $execAllowed = false;
+                foreach ($this->service->getSalesUsers() as $su) {
+                    if ((int) $su['id'] === $executiveId && in_array((int) ($su['team_id'] ?? 0), $allowedTeams, true)) {
+                        $execAllowed = true;
+                        break;
+                    }
+                }
+                if (!$execAllowed) {
+                    $executiveId = null;
+                }
+            }
+        } else {
+            $salesManagerId = (!empty($scope['is_global']) && !empty($_GET['sales_manager_id'])) ? (int) $_GET['sales_manager_id'] : null;
+        }
 
         return [
             'view' => $viewMode,
@@ -135,6 +158,25 @@ class TeamFollowUpComparisonController extends Controller
             return;
         }
 
+        $isGlobalViewer = !empty($scope['is_global']);
+        $isClusterHeadRestricted = !empty($scope['is_manager']);
+        $salesManagers = [];
+        if ($isGlobalViewer) {
+            $salesManagers = getSalesManagersWithTeams($this->db);
+        } elseif ($isClusterHeadRestricted) {
+            $uid = (int) ($_SESSION['user']['id'] ?? 0);
+            $allMgrs = getSalesManagersWithTeams($this->db);
+            if (isset($allMgrs[$uid])) {
+                $salesManagers = [$uid => $allMgrs[$uid]];
+            } else {
+                $salesManagers = [$uid => [
+                    'id' => $uid,
+                    'name' => trim((string) ($_SESSION['user']['full_name'] ?? '')) ?: 'Cluster Head',
+                    'team_ids' => $scope['team_ids'] ?? [],
+                ]];
+            }
+        }
+
         return $this->view('sales-performance/team-followup-comparison', [
             'current_route' => 'team-followup-comparison',
             'current_page' => 'team-followup-comparison',
@@ -146,8 +188,9 @@ class TeamFollowUpComparisonController extends Controller
             'teams' => $scopedTeams,
             'salesUsers' => $scopedUsers,
             'projects' => $scopedProjects,
-            'isGlobalViewer' => !empty($scope['is_global']),
-            'salesManagers' => !empty($scope['is_global']) ? getSalesManagersWithTeams($this->db) : [],
+            'isGlobalViewer' => $isGlobalViewer,
+            'isClusterHeadRestricted' => $isClusterHeadRestricted,
+            'salesManagers' => $salesManagers,
         ]);
     }
 
