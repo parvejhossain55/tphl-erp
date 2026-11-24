@@ -1635,6 +1635,15 @@ class AccountClient extends Model
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_type = 'penalty_settlement'
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status = 'verified'), 
+                    0
+                ) as penalty_settlement_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_type = 'others'
                      AND lp.verification_status != 'rejected'), 
                     0
@@ -1901,8 +1910,9 @@ class AccountClient extends Model
 
             // Total due and net received
             // Booking discount + Bulk EMI discount both reduce the client's total obligation
-            // Note: Payments under 'others' are outside flat/unit price and DO NOT reduce flat due
-            $unitPaid     = max(0, $totalPaid - $othersPaid);
+            // Note: Payments under 'others' and 'penalty_settlement' are outside flat/unit price and DO NOT reduce flat due
+            $penaltySettlementPaid = (float) ($clientDetails['penalty_settlement_paid'] ?? 0);
+            $unitPaid     = max(0, $totalPaid - $othersPaid - $penaltySettlementPaid);
             $principalDue = max(0, round($totalPrice - $discountAmount - $unitPaid - $totalBulkEmiDiscount));
             $netReceived  = round($totalPaid - $totalServiceFee);
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
@@ -1928,7 +1938,8 @@ class AccountClient extends Model
             $accruedPenalty = ($remainingConstructionFee > 0)
                 ? $this->computeLiveAccruedPenalty((int)($clientDetails['project_id'] ?? 0), (int)$totalEmiCount, (float)$perEmiAmount, $emiPaidPoolForPenalty)
                 : 0.0;
-            $totalDue = round($principalDue + $accruedPenalty, 2);
+            $carriedPenaltyDue = round(max(0.0, (float)($clientDetails['total_penalty_amount'] ?? 0) - (float)($clientDetails['total_penalty_waived'] ?? 0) - (float)($clientDetails['total_penalty_paid'] ?? 0)), 2);
+            $totalDue = round($principalDue + $accruedPenalty + $carriedPenaltyDue, 2);
 
             // Registration paid status
             $isRegistrationPaid = ($registrationPaid > 0);
