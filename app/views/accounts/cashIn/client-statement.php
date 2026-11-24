@@ -20,6 +20,7 @@ $validTransactions = array_values(array_filter($transactions, function ($t) {
     return false;
 }));
 
+
 // Ensure transactions are sorted in business order:
 // 1. Booking Money, 2. Registration/Land Share, 3. Dev Charge, 4. EMI Installments (Advance -> Regular -> Settlement), 5. Others
 if (class_exists('AccountClient')) {
