@@ -621,6 +621,7 @@
                                         <th colspan="2">Site Visit Ach.</th>
                                         <th colspan="2">Unit Ach.</th>
                                         <th colspan="3">Volume Achieved (Tk)</th>
+                                        <th rowspan="2" class="bg-success-subtle text-success">Collection (Tk)</th>
                                         
                                         <th rowspan="2">Score</th>
                                         <th rowspan="2">Action</th>
@@ -695,6 +696,33 @@
                                         <td><?= number_format($emp['volume_unassigned'], 2) ?></td>
                                         <td class="fw-bold text-success">Tk <?= number_format($emp['total_volume_achieved'], 2) ?></td>
                                         
+                                        <td class="text-center">
+                                            <?php if(!empty($emp['total_collected']) && $emp['total_collected'] > 0): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success fw-bold px-2 py-0 view-collection-btn" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#collectionModal"
+                                                        data-title="Collection Breakdown - <?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-name="<?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-role="<?= htmlspecialchars($emp['level_designation'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($emp['team_name'], ENT_QUOTES, 'UTF-8') ?>)"
+                                                        data-total="Tk <?= number_format($emp['total_collected'], 2) ?>"
+                                                        data-verified="Tk <?= number_format($emp['verified_collection'], 2) ?>"
+                                                        data-pending="Tk <?= number_format($emp['pending_collection'], 2) ?>"
+                                                        data-receipts="<?= htmlspecialchars(json_encode($emp['collection_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <i class="fa-solid fa-receipt me-1"></i>Tk <?= number_format($emp['total_collected'], 2) ?>
+                                                </button>
+                                                <div class="d-flex justify-content-center gap-1 mt-1" style="font-size: 10px;">
+                                                    <span class="badge bg-success-transparent text-success border border-success-subtle" title="Verified by Accounts">
+                                                        <i class="fa-solid fa-check-double me-1"></i><?= number_format($emp['verified_collection']) ?>
+                                                    </span>
+                                                    <span class="badge bg-warning-transparent text-warning border border-warning-subtle" title="Pending Verification">
+                                                        <i class="fa-regular fa-clock me-1"></i><?= number_format($emp['pending_collection']) ?>
+                                                    </span>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted">Tk 0.00</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        
                                         <td class="fw-bold text-primary"><?= number_format($emp['performance_score'], 2) ?></td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-outline-primary px-2 py-0 view-ranking-breakdown-btn" 
@@ -708,7 +736,7 @@
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if(empty($tableInds)): ?>
-                                        <tr><td colspan="21" class="text-center py-4 text-muted">No member records found for the selected period.</td></tr>
+                                        <tr><td colspan="22" class="text-center py-4 text-muted">No member records found for the selected period.</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -745,6 +773,7 @@
                                         <th>Units Sold</th>
                                         <th>Volume Target</th>
                                         <th>Volume Achieved</th>
+                                        <th class="bg-success-subtle text-success">Collection (Tk)</th>
                                         <th>Score</th>
                                         <th>Action</th>
                                     </tr>
@@ -773,6 +802,9 @@
                                                     'visit_target' => $tm['visit_target'] ?? 0,
                                                     'units_sold' => $tm['units_sold'] ?? 0,
                                                     'total_volume_achieved' => $tm['total_volume_achieved'] ?? 0,
+                                                    'total_collected' => $tm['total_collected'] ?? 0,
+                                                    'verified_collection' => $tm['verified_collection'] ?? 0,
+                                                    'pending_collection' => $tm['pending_collection'] ?? 0,
                                                     'performance_score' => $tm['performance_score'] ?? 0
                                                 ];
                                             }
@@ -806,6 +838,32 @@
                                         </td>
                                         <td><?= number_format($t['volume_target']) ?></td>
                                         <td class="fw-bold text-success"><?= number_format($t['total_volume_achieved'], 2) ?> (<?= $t['volume_ach_pct'] ?>%)</td>
+                                        <td class="text-center">
+                                            <?php if (!empty($t['total_collected']) && $t['total_collected'] > 0): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success fw-bold px-2 py-0 view-collection-btn" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#collectionModal"
+                                                        data-title="Team Collection Breakdown - <?= htmlspecialchars($t['team_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-name="<?= htmlspecialchars($t['team_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-role="Company Team"
+                                                        data-total="Tk <?= number_format($t['total_collected'], 2) ?>"
+                                                        data-verified="Tk <?= number_format($t['verified_collection'], 2) ?>"
+                                                        data-pending="Tk <?= number_format($t['pending_collection'], 2) ?>"
+                                                        data-receipts="<?= htmlspecialchars(json_encode($t['collection_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <i class="fa-solid fa-receipt me-1"></i>Tk <?= number_format($t['total_collected'], 2) ?>
+                                                </button>
+                                                <div class="d-flex justify-content-center gap-1 mt-1" style="font-size: 10px;">
+                                                    <span class="badge bg-success-transparent text-success border border-success-subtle" title="Verified by Accounts">
+                                                        <i class="fa-solid fa-check-double me-1"></i><?= number_format($t['verified_collection']) ?>
+                                                    </span>
+                                                    <span class="badge bg-warning-transparent text-warning border border-warning-subtle" title="Pending Verification">
+                                                        <i class="fa-regular fa-clock me-1"></i><?= number_format($t['pending_collection']) ?>
+                                                    </span>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted">Tk 0.00</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="fw-bold"><?= number_format($t['performance_score'], 2) ?></td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-info px-2 py-0 view-team-members-btn" 
@@ -1449,6 +1507,64 @@
     </div>
 </div>
 
+<!-- Collection Breakdown Modal -->
+<div class="modal custom-modal fade" id="collectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-success"><i class="fa-solid fa-receipt me-2"></i> <span id="colModalTitle">Collection Breakdown</span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="text-muted fs-13" id="colModalSub">Details</span>
+                </div>
+                <div class="row g-3 p-3 bg-light rounded border shadow-sm mb-3">
+                    <div class="col-md-4">
+                        <span class="text-muted fs-12 fw-semibold text-uppercase">Total Collection:</span>
+                        <h4 class="mb-0 fw-bold text-success" id="colTotalAmt">Tk 0.00</h4>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted fs-12 fw-semibold text-uppercase">Verified by Accounts:</span>
+                        <h4 class="mb-0 fw-bold text-primary" id="colVerifiedAmt">Tk 0.00</h4>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted fs-12 fw-semibold text-uppercase">Pending Verification:</span>
+                        <h4 class="mb-0 fw-bold text-warning" id="colPendingAmt">Tk 0.00</h4>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white rounded border shadow-sm">
+                    <table class="table table-hover table-striped align-middle mb-0 text-nowrap">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>#</th>
+                                <th>Receipt No</th>
+                                <th>Payment Date</th>
+                                <th>Project & Unit</th>
+                                <th>Client Name</th>
+                                <th>Client Phone</th>
+                                <th>Method</th>
+                                <th>Payment Type</th>
+                                <th>Amount (Tk)</th>
+                                <th>Verification Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="colTableBody">
+                            <!-- Dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Sold Units Breakdown Modal -->
 <div class="modal custom-modal fade" id="soldUnitsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -1531,6 +1647,7 @@
                                 <th>Visits Done</th>
                                 <th>Units Sold</th>
                                 <th>Volume Achieved (Tk)</th>
+                                <th>Collection (Tk)</th>
                                 <th>Perf Score</th>
                             </tr>
                         </thead>
@@ -2058,6 +2175,13 @@
                                 <td>${m.visited || 0} / ${m.visit_target || 0}</td>
                                 <td class="fw-bold ${m.units_sold > 0 ? 'text-success' : 'text-muted'}">${m.units_sold || 0} Units</td>
                                 <td class="text-end fw-bold text-dark">Tk ${Number(m.total_volume_achieved || 0).toLocaleString()}</td>
+                                <td class="text-center">
+                                    <span class="fw-bold text-success">Tk ${Number(m.total_collected || 0).toLocaleString()}</span>
+                                    <div class="fs-10 text-muted">
+                                        <span class="text-success">Ver: ${Number(m.verified_collection || 0).toLocaleString()}</span> · 
+                                        <span class="text-warning">Pen: ${Number(m.pending_collection || 0).toLocaleString()}</span>
+                                    </div>
+                                </td>
                                 <td class="fw-bold text-success">${Number(m.performance_score || 0).toFixed(2)}%</td>
                             </tr>
                         `;
@@ -2182,6 +2306,56 @@
             });
             $(document).on('click', '.view-ranking-breakdown-btn', function() {
                 populateRankingBreakdownModal($(this));
+            });
+
+            // Collection Modal Populator
+            function populateCollectionModal(btn) {
+                var title = btn.attr('data-title') || btn.closest('[data-title]').attr('data-title') || 'Collection Breakdown';
+                var name = btn.attr('data-name') || btn.closest('[data-name]').attr('data-name') || '';
+                var role = btn.attr('data-role') || btn.closest('[data-role]').attr('data-role') || '';
+                var total = btn.attr('data-total') || 'Tk 0.00';
+                var verified = btn.attr('data-verified') || 'Tk 0.00';
+                var pending = btn.attr('data-pending') || 'Tk 0.00';
+                var receipts = getElementData(btn, 'data-receipts') || [];
+
+                $('#colModalTitle').text(title);
+                $('#colModalSub').text(name + (role ? ' • ' + role : ''));
+                $('#colTotalAmt').text(total);
+                $('#colVerifiedAmt').text(verified);
+                $('#colPendingAmt').text(pending);
+
+                var tbody = $('#colTableBody');
+                if (receipts.length > 0) {
+                    tbody.html(receipts.map(function(r, i) {
+                        var isVer = (r.verification_status === 'verified');
+                        var statusBadge = isVer
+                            ? '<span class="badge bg-success-transparent text-success border border-success-subtle"><i class="fa-solid fa-check-double me-1"></i>Verified</span>'
+                            : '<span class="badge bg-warning-transparent text-warning border border-warning-subtle"><i class="fa-regular fa-clock me-1"></i>Pending Verification</span>';
+                        return `
+                            <tr>
+                                <td class="text-center fw-bold">${i + 1}</td>
+                                <td class="text-center fw-bold text-primary">${r.receipt_no || '-'}</td>
+                                <td class="text-center">${r.payment_date || '-'}</td>
+                                <td><span class="fw-semibold text-dark">${r.project_name || '-'}</span><br><small class="text-muted">${r.unit_label || ''}</small></td>
+                                <td class="fw-bold">${r.client_name || '-'}</td>
+                                <td>${r.client_phone || '-'}</td>
+                                <td class="text-center"><span class="badge bg-light text-dark border">${r.payment_method || 'Cash'}</span></td>
+                                <td class="text-center"><span class="badge bg-primary-transparent text-primary">${r.payment_type || 'Payment'}</span></td>
+                                <td class="text-end fw-bold text-success">Tk ${Number(r.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-center">${statusBadge}</td>
+                            </tr>
+                        `;
+                    }).join(''));
+                } else {
+                    tbody.html(`<tr><td colspan="10" class="text-center text-muted py-4">No collection records found.</td></tr>`);
+                }
+            }
+
+            $('#collectionModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateCollectionModal($(e.relatedTarget));
+            });
+            $(document).on('click', '.view-collection-btn', function() {
+                populateCollectionModal($(this));
             });
 
             $('#soldUnitsModal').on('show.bs.modal', function(e) {
