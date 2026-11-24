@@ -18,6 +18,7 @@ $status     = $refund['status'] ?? 'pending';
 $statusInfo = $statusMap[$status] ?? ['label' => ucfirst($status), 'color' => 'secondary'];
 $isPending  = ($status === 'pending');
 $isApproved = in_array($status, ['approved', 'refunded']);
+$isAccountsRole = in_array((int)$userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 36, 37, 38, 39], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'account') !== false;
 
 if (!class_exists('ApprovalRequest')) {
     require_once __DIR__ . '/../../../models/ApprovalRequest.php';
@@ -40,9 +41,22 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
     </div>
     <div class="d-flex gap-2 align-items-center">
         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
-        <?php if ($status === 'refunded' || $isApproved): ?>
-            <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-outline-success btn-sm fw-semibold">
-                <i class="fa-solid fa-receipt me-1"></i> Refund Money Receipt
+        <?php if ($status === 'refunded'): ?>
+            <a href="<?= $base_url ?>/print-debit-voucher?module=client_refund_requests&id=<?= $refund['id'] ?>" target="_blank" class="btn btn-primary btn-sm fw-semibold shadow-sm">
+                <i class="fa-solid fa-file-invoice-dollar me-1"></i> Debit Voucher (Company)
+            </a>
+            <button type="button" class="btn btn-outline-success btn-sm fw-semibold shadow-sm" onclick="openReceiptModal()">
+                <i class="fa-solid fa-eye me-1"></i> View Client Receipt
+            </button>
+            <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-success btn-sm fw-semibold shadow-sm">
+                <i class="fa-solid fa-print me-1"></i> Print Client Receipt
+            </a>
+        <?php elseif ($isApproved): ?>
+            <button type="button" class="btn btn-outline-success btn-sm fw-semibold shadow-sm" onclick="openReceiptModal()">
+                <i class="fa-solid fa-eye me-1"></i> View Receipt
+            </button>
+            <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-success btn-sm fw-semibold shadow-sm">
+                <i class="fa-solid fa-print me-1"></i> Print Receipt
             </a>
         <?php endif; ?>
         <?php
@@ -74,6 +88,44 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
     <div class="row">
         <!-- Main Content (Left) -->
         <div class="col-lg-8">
+            <?php if ($status === 'refunded'): ?>
+            <!-- Refund Disbursement & Money Receipt Banner -->
+            <div class="card custom-card border-success mb-3 shadow-sm" style="border-left: 5px solid #198754 !important; background: #f4fbf7;">
+                <div class="card-header bg-success-subtle py-2.5 px-3 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0 fw-bold text-success fs-14">
+                        <i class="fa-solid fa-receipt me-2"></i>Refund Money Receipt &amp; Disbursement Settlement
+                    </h6>
+                    <span class="badge bg-success text-white font-monospace">Disbursed &amp; Paid</span>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-7">
+                            <div class="fs-15 fw-bold text-dark mb-1">
+                                Net Refund Disbursed: <span class="text-success font-monospace">৳ <?= number_format($refund['refund_amount'], 2) ?></span>
+                            </div>
+                            <div class="text-muted small">
+                                <?php if (!empty($refund['refunded_at'])): ?>
+                                    <i class="fa-regular fa-calendar-check me-1"></i>Paid on <strong><?= date('d M Y, h:i A', strtotime($refund['refunded_at'])) ?></strong> · 
+                                <?php endif; ?>
+                                Client &amp; Office Copy Money Receipt has been generated with complete approval history &amp; signatures.
+                            </div>
+                        </div>
+                        <div class="col-md-5 text-md-end mt-2 mt-md-0 d-flex flex-wrap gap-2 justify-content-md-end">
+                            <a href="<?= $base_url ?>/print-debit-voucher?module=client_refund_requests&id=<?= $refund['id'] ?>" target="_blank" class="btn btn-sm btn-primary fw-bold shadow-sm">
+                                <i class="fa-solid fa-file-invoice-dollar me-1"></i> Debit Voucher (Company)
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-sm" onclick="openReceiptModal()">
+                                <i class="fa-solid fa-eye me-1"></i> View Client Receipt
+                            </button>
+                            <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-sm btn-success fw-bold shadow-sm">
+                                <i class="fa-solid fa-print me-1"></i> Print Client Receipt
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Booking & Client Info -->
             <div class="card custom-card mb-3">
                 <div class="card-header">
@@ -267,43 +319,105 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
 
             <!-- Payment History -->
             <?php if (!empty($payments)): ?>
-            <div class="card custom-card mb-3">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Payment History</h6>
+            <?php
+            $pendingPaymentCount = 0;
+            foreach ($payments as $p) {
+                if (($p['verification_status'] ?? '') !== 'verified') $pendingPaymentCount++;
+            }
+            ?>
+            <div class="card custom-card mb-3 border shadow-sm">
+                <div class="card-header bg-white py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-clock-history text-primary me-2 fs-15"></i>
+                        <h6 class="card-title mb-0 fs-13 fw-bold text-dark text-uppercase" style="letter-spacing: 0.5px;">Payment History</h6>
+                    </div>
+                    <?php if ($pendingPaymentCount > 0): ?>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle font-monospace px-2.5 py-1" style="font-size: 11px;">
+                            <i class="fa-regular fa-clock me-1"></i><?= $pendingPaymentCount ?> Payment Awaiting Verification
+                        </span>
+                    <?php else: ?>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace px-2.5 py-1" style="font-size: 11px;">
+                            <i class="fa-solid fa-check-double me-1"></i>All Payments Verified
+                        </span>
+                    <?php endif; ?>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-3">
+                    <?php if ($pendingPaymentCount > 0 && (float)$refund['total_paid'] <= 0): ?>
+                    <div class="p-3 rounded-2 mb-3 d-flex align-items-center justify-content-between border" style="background: #fffdf5; border-color: #fde68a !important;">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.15); color: #d97706;">
+                                <i class="fa-solid fa-triangle-exclamation fs-14"></i>
+                            </div>
+                            <div style="font-size: 12px; line-height: 1.5; color: #78350f;">
+                                <strong>Cash-In Verification Required:</strong> Total verified paid is currently <strong>৳ 0.00</strong> because client payment is awaiting accounts verification. 
+                                <?php if ($isAccountsRole): ?>
+                                    Click <strong>Verify Cash-In</strong> in the table below to verify it directly and enable company retention deduction.
+                                <?php else: ?>
+                                    Accounts department will verify this payment to enable company retention deduction.
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <div class="table-responsive">
-                        <table class="table table-sm table-bordered mb-0">
-                            <thead class="table-light">
+                        <table class="table table-sm table-hover mb-0 align-middle border">
+                            <thead class="table-light" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; background: #f8fafc;">
                                 <tr>
-                                    <th>#</th>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Amount (৳)</th>
-                                    <th>Method</th>
-                                    <th>Status</th>
-                                    <th>By</th>
+                                    <th class="py-2 px-3">#</th>
+                                    <th class="py-2 px-3">Date</th>
+                                    <th class="py-2 px-3">Type</th>
+                                    <th class="py-2 px-3 text-end">Amount (৳)</th>
+                                    <th class="py-2 px-3 text-center">Method</th>
+                                    <th class="py-2 px-3 text-center">Status</th>
+                                    <th class="py-2 px-3">By</th>
+                                    <?php if ($isAccountsRole): ?>
+                                    <th class="py-2 px-3 text-center" style="width: 140px;">Action</th>
+                                    <?php endif; ?>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <?php foreach ($payments as $idx => $pay): ?>
-                                <tr class="<?= $pay['verification_status'] !== 'verified' ? 'text-muted' : '' ?>">
-                                    <td><?= $idx + 1 ?></td>
-                                    <td><?= date('d M Y', strtotime($pay['payment_date'])) ?></td>
-                                    <td><?= ucfirst(str_replace('_', ' ', $pay['payment_type'])) ?></td>
-                                    <td class="text-end fw-semibold">৳ <?= number_format($pay['amount'], 2) ?></td>
-                                    <td><?= ucfirst($pay['payment_method'] ?? '') ?></td>
-                                    <td>
-                                        <?php
-                                        $vColor = match ($pay['verification_status'] ?? '') {
-                                            'verified' => 'success',
-                                            'rejected' => 'danger',
-                                            default    => 'warning',
-                                        };
-                                        ?>
-                                        <span class="badge bg-<?= $vColor ?>"><?= ucfirst($pay['verification_status'] ?? 'pending') ?></span>
+                            <tbody style="font-size: 12.5px;">
+                                <?php foreach ($payments as $idx => $pay): 
+                                    $isPayPending = ($pay['verification_status'] ?? '') !== 'verified';
+                                ?>
+                                <tr style="background: #ffffff;">
+                                    <td class="py-2.5 px-3 text-muted"><?= $idx + 1 ?></td>
+                                    <td class="py-2.5 px-3 text-dark"><?= date('d M Y', strtotime($pay['payment_date'])) ?></td>
+                                    <td class="py-2.5 px-3 fw-medium text-dark"><?= ucfirst(str_replace('_', ' ', $pay['payment_type'])) ?></td>
+                                    <td class="py-2.5 px-3 text-end fw-bold text-dark font-monospace">৳ <?= number_format($pay['amount'], 2) ?></td>
+                                    <td class="py-2.5 px-3 text-center">
+                                        <span class="badge bg-light text-secondary border font-monospace text-uppercase" style="font-size: 10.5px;">
+                                            <?= htmlspecialchars($pay['payment_method'] ?? 'cash') ?>
+                                        </span>
                                     </td>
-                                    <td><?= htmlspecialchars($pay['created_by_name'] ?? '—') ?></td>
+                                    <td class="py-2.5 px-3 text-center">
+                                        <?php if ($isPayPending): ?>
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle font-monospace px-2 py-1" style="font-size: 11px;">
+                                                <i class="fa-regular fa-clock me-1"></i>Pending
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace px-2 py-1" style="font-size: 11px;">
+                                                <i class="fa-solid fa-check me-1"></i>Verified
+                                            </span>
+                                            <?php if (!empty($pay['verified_at'])): ?>
+                                                <div class="text-muted" style="font-size: 9.5px;"><?= date('d M Y, h:i A', strtotime($pay['verified_at'])) ?></div>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="py-2.5 px-3 text-muted"><?= htmlspecialchars($pay['created_by_name'] ?? '—') ?></td>
+                                    <?php if ($isAccountsRole): ?>
+                                    <td class="py-2.5 px-3 text-center">
+                                        <?php if ($isPayPending): ?>
+                                            <button type="button" class="btn btn-sm btn-success fw-bold py-1 px-2.5 shadow-sm d-inline-flex align-items-center gap-1"
+                                                    style="border-radius: 6px; font-size: 11.5px; white-space: nowrap;"
+                                                    onclick="confirmVerifyPayment(<?= (int)$pay['id'] ?>, <?= (int)$refund['id'] ?>, '<?= number_format($pay['amount'], 2) ?>')">
+                                                <i class="fa-solid fa-check-double"></i> Verify Cash-In
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="text-success small fw-semibold"><i class="fa-solid fa-check-circle me-1"></i>Verified</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <?php endif; ?>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -871,33 +985,31 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <!-- ========================================================================= -->
             <?php if ($status === 'approved' && $canDisburseRefund): ?>
             <?php
-                $preMethod = !empty($refund['preferred_payment_method']) ? strtolower($refund['preferred_payment_method']) : 'bank';
+                $preMethod     = !empty($refund['preferred_payment_method']) ? strtolower($refund['preferred_payment_method']) : 'bank';
                 $clientBankVal = $refund['client_bank_name'] ?? '';
                 $clientAcVal   = $refund['client_bank_account_no'] ?? '';
+                $clientAcName  = $refund['client_bank_account_name'] ?? '';
+                $clientBranch  = $refund['client_bank_branch'] ?? '';
+                $clientRouting = $refund['client_bank_routing_no'] ?? '';
             ?>
             <div class="modal fade" id="disburseRefundModal" tabindex="-1" aria-labelledby="disburseRefundModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
-                    <div class="modal-content border-0 shadow">
-                        <div class="modal-header bg-success text-white py-2.5 px-3">
-                            <h5 class="modal-title fs-15 fw-bold text-white" id="disburseRefundModalLabel">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+                        <div class="modal-header bg-success text-white py-2.5 px-3 border-0">
+                            <h5 class="modal-title fs-15 fw-bold text-white d-flex align-items-center" id="disburseRefundModalLabel">
                                 <i class="fa-solid fa-money-bill-transfer me-2"></i>Accounts Refund Disbursement Payout
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <form action="<?= $base_url ?>/client-refund-disburse/<?= $refund['id'] ?><?= (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') ? '?ref=all_approvals' : '' ?>" method="POST" enctype="multipart/form-data" id="disburseForm">
                             <div class="modal-body p-3">
-                                <!-- Client & Amount Summary Banner matching Image 2 -->
+                                <!-- Client & Amount Summary Banner -->
                                 <div class="p-3 rounded-2 bg-light border mb-3">
-                                    <div class="row g-2">
+                                    <div class="row g-2 align-items-center">
                                         <div class="col-md-6">
                                             <span class="text-muted small d-block">Client & Flat:</span>
                                             <strong class="text-dark fs-14"><?= htmlspecialchars($refund['client_name'] ?? '—') ?><?= !empty($refund['client_phone']) ? ' (' . htmlspecialchars($refund['client_phone']) . ')' : '' ?></strong>
                                             <div class="text-muted small"><?= htmlspecialchars($refund['project_name'] ?? '—') ?> — Flat: <?= htmlspecialchars($refund['flat_name'] ?? '—') ?></div>
-                                            <?php if (!empty($clientBankVal) || !empty($clientAcVal)): ?>
-                                                <div class="mt-1 fs-12 text-primary">
-                                                    <i class="fa-solid fa-building-columns me-1"></i> Client Bank: <strong><?= htmlspecialchars($clientBankVal ?: '—') ?></strong> (A/C: <?= htmlspecialchars($clientAcVal ?: '—') ?>)
-                                                </div>
-                                            <?php endif; ?>
                                         </div>
                                         <div class="col-md-6 text-md-end">
                                             <span class="text-muted small d-block">Approved Net Refund to Pay:</span>
@@ -907,25 +1019,66 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     </div>
                                 </div>
 
-                                <!-- Payment Form Grid matching Image 2 -->
-                                <div class="row ">
+                                <!-- Client Payout Bank Info (Submitted by Sales - Auto-Populated) -->
+                                <div class="p-3 rounded-2 border mb-3" style="background: #f8fafc; border-left: 4px solid #0d6efd !important;">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <div class="d-flex align-items-center gap-1.5">
+                                            <i class="fa-solid fa-building-columns text-primary fs-14"></i>
+                                            <strong class="text-dark fs-13">Client Payout Bank Details</strong>
+                                        </div>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-uppercase" style="font-size: 10px;">
+                                            <i class="fa-solid fa-magic me-1"></i>Auto-Populated
+                                        </span>
+                                    </div>
+                                    <div class="row g-2 small">
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted d-block" style="font-size: 11px;">Bank Name:</span>
+                                            <strong class="text-primary fs-12"><?= htmlspecialchars($clientBankVal ?: 'Not specified') ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted d-block" style="font-size: 11px;">A/C Holder Name:</span>
+                                            <strong class="text-dark fs-12"><?= htmlspecialchars($clientAcName ?: ($refund['client_name'] ?? '—')) ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted d-block" style="font-size: 11px;">Account No:</span>
+                                            <strong class="text-dark font-monospace fs-12"><?= htmlspecialchars($clientAcVal ?: '—') ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted d-block" style="font-size: 11px;">Branch:</span>
+                                            <strong class="text-dark fs-12"><?= htmlspecialchars($clientBranch ?: '—') ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted d-block" style="font-size: 11px;">Routing Number:</span>
+                                            <strong class="text-dark font-monospace fs-12"><?= htmlspecialchars($clientRouting ?: '—') ?></strong>
+                                        </div>
+                                        <div class="col-sm-6 col-md-4">
+                                            <span class="text-muted d-block" style="font-size: 11px;">Preferred Method:</span>
+                                            <strong class="text-primary text-uppercase fs-12"><?= htmlspecialchars($refund['preferred_payment_method'] ?? 'Bank') ?></strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Form Grid with Auto-Filled Inputs -->
+                                <div class="row g-2.5">
                                     <!-- Payment Method * -->
                                     <div class="col-md-6">
                                         <label class="form-label fs-12 fw-semibold text-dark">Payment Method <span class="text-danger">*</span></label>
                                         <select name="payment_method" id="disburseMethod" class="form-select form-select-sm" required onchange="toggleDisburseFields(this.value)">
-                                            <option value="bank" <?= $preMethod === 'bank' ? 'selected' : '' ?>>Bank</option>
+                                            <option value="bank" <?= $preMethod === 'bank' ? 'selected' : '' ?>>Bank Transfer</option>
                                             <option value="cheque" <?= $preMethod === 'cheque' ? 'selected' : '' ?>>Cheque</option>
                                             <option value="cash" <?= $preMethod === 'cash' ? 'selected' : '' ?>>Cash</option>
-                                            <option value="online" <?= $preMethod === 'online' ? 'selected' : '' ?>>Online</option>
+                                            <option value="online" <?= $preMethod === 'online' ? 'selected' : '' ?>>Online Transfer</option>
                                         </select>
                                     </div>
 
-                                    <!-- Transfer To / Company Bank * -->
+                                    <!-- Transfer From / Company Bank * -->
                                     <div class="col-md-6" id="disburseCompanyBankCol">
-                                        <label class="form-label fs-12 fw-semibold text-dark">Transfer To / Company Bank <span class="text-danger">*</span></label>
+                                        <label class="form-label fs-12 fw-semibold text-dark">
+                                            <i class="fa-solid fa-arrow-right-from-bracket text-primary me-1"></i> Transfer From / Company Bank <span class="text-danger">*</span>
+                                        </label>
                                         <div class="input-group input-group-sm">
                                             <select name="company_bank_id" id="disburseCompanyBankSelect" class="form-select form-select-sm">
-                                                <option value="">-- Select Transfer To / Company Bank --</option>
+                                                <option value="">-- Select Company Payout Bank --</option>
                                                 <?php if (!empty($companyBanks)): ?>
                                                     <?php foreach ($companyBanks as $cb): ?>
                                                         <option value="<?= $cb['id'] ?>">
@@ -938,30 +1091,45 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         </div>
                                     </div>
 
-                                    <!-- Transfer From / Client Bank * -->
+                                    <!-- Transfer To / Client Bank Name (Auto-filled) -->
                                     <div class="col-md-6" id="disburseClientBankCol">
-                                        <label class="form-label fs-12 fw-semibold text-dark">Transfer From / Client Bank <span class="text-danger">*</span></label>
-                                        <select name="bank_name" id="disburseClientBankSelect" class="form-select form-select-sm" style="width: 100%;">
-                                            <option value="">-- Select Client Bank --</option>
-                                            <option value="Other Country / Foreign Bank" <?= $clientBankVal === 'Other Country / Foreign Bank' ? 'selected' : '' ?>>Other Country / Foreign Bank</option>
-                                            <option value="Other Bank" <?= $clientBankVal === 'Other Bank' ? 'selected' : '' ?>>Other Bank</option>
-                                            <?php if (!empty($clientBankVal) && !in_array($clientBankVal, $allBangladeshBanks ?? []) && !in_array($clientBankVal, ['Other Country / Foreign Bank', 'Other Bank'])): ?>
-                                                <option value="<?= htmlspecialchars($clientBankVal) ?>" selected><?= htmlspecialchars($clientBankVal) ?></option>
-                                            <?php endif; ?>
+                                        <label class="form-label fs-12 fw-semibold text-dark">
+                                            <i class="fa-solid fa-arrow-right-to-bracket text-success me-1"></i> Transfer To / Client Bank Name <span class="text-danger">*</span>
+                                        </label>
+                                        <input list="bdBanksList" name="bank_name" id="disburseClientBankInput" class="form-control form-control-sm" placeholder="Client Bank Name" value="<?= htmlspecialchars($clientBankVal) ?>" required>
+                                        <datalist id="bdBanksList">
                                             <?php if (!empty($allBangladeshBanks)): ?>
                                                 <?php foreach ($allBangladeshBanks as $bName): ?>
-                                                    <option value="<?= htmlspecialchars($bName) ?>" <?= (strcasecmp($clientBankVal, $bName) === 0) ? 'selected' : '' ?>>
-                                                        <?= htmlspecialchars($bName) ?>
-                                                    </option>
+                                                    <option value="<?= htmlspecialchars($bName) ?>"></option>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
-                                        </select>
+                                            <option value="Other Country / Foreign Bank"></option>
+                                            <option value="Other Bank"></option>
+                                        </datalist>
                                     </div>
 
-                                    <!-- Client Bank A/C No. (Optional) -->
+                                    <!-- Client A/C Holder Name (Auto-filled) -->
+                                    <div class="col-md-6" id="disburseClientAcNameCol">
+                                        <label class="form-label fs-12 fw-semibold text-dark">Client A/C Holder Name</label>
+                                        <input type="text" name="bank_account_name" id="disburseClientAcName" class="form-control form-control-sm" placeholder="Account Holder Name" value="<?= htmlspecialchars($clientAcName ?: ($refund['client_name'] ?? '')) ?>">
+                                    </div>
+
+                                    <!-- Client Bank A/C No. (Auto-filled) -->
                                     <div class="col-md-6" id="disburseClientAcCol">
-                                        <label class="form-label fs-12 fw-semibold text-dark">Client Bank A/C No. <span class="text-muted">(Optional)</span></label>
-                                        <input type="text" name="bank_account_no" id="disburseClientAcNo" class="form-control form-control-sm" placeholder="Account Number" value="<?= htmlspecialchars($clientAcVal) ?>">
+                                        <label class="form-label fs-12 fw-semibold text-dark">Client Bank A/C No. <span class="text-danger">*</span></label>
+                                        <input type="text" name="bank_account_no" id="disburseClientAcNo" class="form-control form-control-sm font-monospace" placeholder="Account Number" value="<?= htmlspecialchars($clientAcVal) ?>" required>
+                                    </div>
+
+                                    <!-- Client Bank Branch (Auto-filled) -->
+                                    <div class="col-md-6" id="disburseClientBranchCol">
+                                        <label class="form-label fs-12 fw-semibold text-dark">Client Bank Branch</label>
+                                        <input type="text" name="bank_branch" id="disburseClientBranch" class="form-control form-control-sm" placeholder="Branch Name" value="<?= htmlspecialchars($clientBranch) ?>">
+                                    </div>
+
+                                    <!-- Client Bank Routing No (Auto-filled) -->
+                                    <div class="col-md-6" id="disburseClientRoutingCol">
+                                        <label class="form-label fs-12 fw-semibold text-dark">Client Routing Number</label>
+                                        <input type="text" name="bank_routing_no" id="disburseClientRoutingNo" class="form-control form-control-sm font-monospace" placeholder="Routing Number" value="<?= htmlspecialchars($clientRouting) ?>">
                                     </div>
 
                                     <!-- Cheque Number (When Cheque selected) -->
@@ -979,7 +1147,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <!-- Transaction Reference -->
                                     <div class="col-md-6" id="disburseRefCol">
                                         <label class="form-label fs-12 fw-semibold text-dark">Transaction Reference</label>
-                                        <input type="text" name="transaction_ref" id="disburseTransactionRef" class="form-control form-control-sm" placeholder="Required reference number">
+                                        <input type="text" name="transaction_ref" id="disburseTransactionRef" class="form-control form-control-sm" placeholder="e.g. Bank Trx ID / Ref No.">
                                     </div>
 
                                     <!-- Attachment Image (Mandatory) -->
@@ -1001,7 +1169,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     </div>
                                 </div>
                             </div>
-                            <div class="modal-footer bg-light py-2 px-3">
+                            <div class="modal-footer bg-light py-2 px-3 border-top">
                                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                                 <button type="submit" class="btn btn-success btn-sm fw-bold px-3">
                                     <i class="fa-light fa-check me-1"></i> Disburse & Record Payment
@@ -1016,48 +1184,68 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             function toggleDisburseFields(method) {
                 const coBankCol     = document.getElementById('disburseCompanyBankCol');
                 const clientBankCol = document.getElementById('disburseClientBankCol');
+                const clientAcNameCol = document.getElementById('disburseClientAcNameCol');
                 const clientAcCol   = document.getElementById('disburseClientAcCol');
+                const clientBranchCol = document.getElementById('disburseClientBranchCol');
+                const clientRoutingCol = document.getElementById('disburseClientRoutingCol');
                 const chequeCol     = document.getElementById('disburseChequeCol');
                 const refCol        = document.getElementById('disburseRefCol');
                 const coBankSelect  = document.getElementById('disburseCompanyBankSelect');
-                const clientBankSelect = document.getElementById('disburseClientBankSelect');
+                const clientBankInput = document.getElementById('disburseClientBankInput');
+                const clientAcInput = document.getElementById('disburseClientAcNo');
                 const chequeInput   = document.getElementById('disburseChequeNo');
 
                 if (method === 'bank') {
                     if (coBankCol) coBankCol.style.display = 'block';
                     if (clientBankCol) clientBankCol.style.display = 'block';
+                    if (clientAcNameCol) clientAcNameCol.style.display = 'block';
                     if (clientAcCol) clientAcCol.style.display = 'block';
+                    if (clientBranchCol) clientBranchCol.style.display = 'block';
+                    if (clientRoutingCol) clientRoutingCol.style.display = 'block';
                     if (chequeCol) chequeCol.style.display = 'none';
                     if (refCol) refCol.style.display = 'block';
                     if (coBankSelect) coBankSelect.required = true;
-                    if (clientBankSelect) clientBankSelect.required = true;
+                    if (clientBankInput) clientBankInput.required = true;
+                    if (clientAcInput) clientAcInput.required = true;
                     if (chequeInput) chequeInput.required = false;
                 } else if (method === 'cheque') {
                     if (coBankCol) coBankCol.style.display = 'block';
                     if (clientBankCol) clientBankCol.style.display = 'none';
+                    if (clientAcNameCol) clientAcNameCol.style.display = 'block';
                     if (clientAcCol) clientAcCol.style.display = 'none';
+                    if (clientBranchCol) clientBranchCol.style.display = 'none';
+                    if (clientRoutingCol) clientRoutingCol.style.display = 'none';
                     if (chequeCol) chequeCol.style.display = 'block';
                     if (refCol) refCol.style.display = 'none';
                     if (coBankSelect) coBankSelect.required = true;
-                    if (clientBankSelect) clientBankSelect.required = false;
+                    if (clientBankInput) clientBankInput.required = false;
+                    if (clientAcInput) clientAcInput.required = false;
                     if (chequeInput) chequeInput.required = true;
                 } else if (method === 'online') {
                     if (coBankCol) coBankCol.style.display = 'block';
                     if (clientBankCol) clientBankCol.style.display = 'block';
+                    if (clientAcNameCol) clientAcNameCol.style.display = 'block';
                     if (clientAcCol) clientAcCol.style.display = 'block';
+                    if (clientBranchCol) clientBranchCol.style.display = 'block';
+                    if (clientRoutingCol) clientRoutingCol.style.display = 'block';
                     if (chequeCol) chequeCol.style.display = 'none';
                     if (refCol) refCol.style.display = 'block';
                     if (coBankSelect) coBankSelect.required = true;
-                    if (clientBankSelect) clientBankSelect.required = false;
+                    if (clientBankInput) clientBankInput.required = true;
+                    if (clientAcInput) clientAcInput.required = true;
                     if (chequeInput) chequeInput.required = false;
                 } else { // cash
                     if (coBankCol) coBankCol.style.display = 'none';
                     if (clientBankCol) clientBankCol.style.display = 'none';
+                    if (clientAcNameCol) clientAcNameCol.style.display = 'none';
                     if (clientAcCol) clientAcCol.style.display = 'none';
+                    if (clientBranchCol) clientBranchCol.style.display = 'none';
+                    if (clientRoutingCol) clientRoutingCol.style.display = 'none';
                     if (chequeCol) chequeCol.style.display = 'none';
                     if (refCol) refCol.style.display = 'none';
                     if (coBankSelect) coBankSelect.required = false;
-                    if (clientBankSelect) clientBankSelect.required = false;
+                    if (clientBankInput) clientBankInput.required = false;
+                    if (clientAcInput) clientAcInput.required = false;
                     if (chequeInput) chequeInput.required = false;
                 }
             }
@@ -1364,6 +1552,37 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Receipt Preview Modal (Customer Copy & Office Copy) -->
+<div class="modal fade" id="receiptPreviewModal" tabindex="-1" aria-labelledby="receiptPreviewModalLabel" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 950px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-success text-white py-2.5 px-3 border-0">
+                <h5 class="modal-title fs-15 fw-bold text-white d-flex align-items-center" id="receiptPreviewModalLabel">
+                    <i class="fa-solid fa-receipt me-2"></i>Refund Money Receipt Preview (#<?= $refund['id'] ?>)
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-light btn-sm fw-bold px-3 shadow-sm text-success" onclick="printReceiptIframe()">
+                        <i class="fa-solid fa-print me-1"></i> Print Receipt
+                    </button>
+                    <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-outline-light btn-sm" title="Open in new window">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </a>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0" style="background: #f1f5f9; height: 75vh;">
+                <iframe id="receiptPreviewIframe" src="about:blank" style="width: 100%; height: 100%; border: none; background: #ffffff;"></iframe>
+            </div>
+            <div class="modal-footer bg-white py-2 px-3 border-top d-flex justify-content-between">
+                <div class="text-muted small">
+                    <i class="fa-solid fa-circle-check text-success me-1"></i>Official 2-Part Voucher (Customer Copy &amp; Office Copy with complete audit signatures)
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const totalPaid = <?= json_encode((float)($refund['total_paid'] ?? 0)) ?>;
@@ -1511,6 +1730,103 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Auto-open receipt modal if URL contains ?receipt=1
+    if (new URLSearchParams(window.location.search).get('receipt') === '1') {
+        setTimeout(function() {
+            openReceiptModal();
+        }, 500);
+    }
 });
+
+// =============================================================================
+// Receipt Preview & Print Functions
+// =============================================================================
+const receiptUrl = '<?= $base_url ?>/client-refund-receipt/<?= (int)$refund['id'] ?>';
+
+function openReceiptModal() {
+    const iframe = document.getElementById('receiptPreviewIframe');
+    if (iframe && (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes('client-refund-receipt'))) {
+        iframe.src = receiptUrl;
+    }
+    const modalEl = document.getElementById('receiptPreviewModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+function printReceiptIframe() {
+    const iframe = document.getElementById('receiptPreviewIframe');
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    } else {
+        window.open(receiptUrl, '_blank');
+    }
+}
+
+// =============================================================================
+// Direct Cash-In Payment Verification from Refund Page
+// =============================================================================
+function confirmVerifyPayment(paymentId, refundId, amountFormatted) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Verify Cash-In Payment?',
+            html: `Are you sure you want to verify this payment of <strong>৳ ${amountFormatted}</strong>?<br><small class="text-muted">Once verified, it will count towards total verified paid amount and enable accurate retention deduction.</small>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fa-solid fa-check-double me-1"></i> Yes, Verify Now',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Verifying Payment...',
+                    text: 'Please wait while payment and refund amounts are synchronizing.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                fetch(`<?= $base_url ?>/client-refund-verify-payment/${refundId}/${paymentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success || data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Payment Verified!',
+                            text: data.message || 'Payment has been successfully verified.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Verification Failed',
+                            text: data.message || 'Could not verify payment.'
+                        });
+                    }
+                })
+                .catch(err => {
+                    window.location.href = `<?= $base_url ?>/client-refund-verify-payment/${refundId}/${paymentId}`;
+                });
+            }
+        });
+    } else {
+        if (confirm(`Are you sure you want to verify this payment of ৳ ${amountFormatted}?`)) {
+            window.location.href = `<?= $base_url ?>/client-refund-verify-payment/${refundId}/${paymentId}`;
+        }
+    }
+}
 </script>
 
