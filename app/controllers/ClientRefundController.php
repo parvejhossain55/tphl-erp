@@ -1224,4 +1224,153 @@ class ClientRefundController extends Controller
         header("Location: {$GLOBALS['base_url']}/client-refunds");
         exit;
     }
+
+    // =========================================================================
+    // REFUND MONEY RECEIPT & SETTLEMENT SLIP (PRINTABLE VIEW)
+    // =========================================================================
+    public function printReceipt($id)
+    {
+        $id = (int)$id;
+        $stmt = $this->db->prepare("
+            SELECT crr.*,
+                   l.full_name AS client_name, l.phone AS client_phone, l.email AS client_email,
+                   l.present_add_bn, l.permanent_address, l.address AS lead_address,
+                   p.name AS project_name, p.category_id,
+                   f.flat_name, f.floor_no, f.price_value AS flat_price,
+                   lb.booking_date, lb.agreement_value, lb.booking_status,
+                   u_req.full_name AS requested_by_name, r_req.name AS requested_by_role,
+                   u_app.full_name AS approved_by_name, r_app.name AS approved_by_role
+            FROM client_refund_requests crr
+            LEFT JOIN leads l ON l.id = crr.lead_id
+            LEFT JOIN projects p ON p.id = crr.project_id
+            LEFT JOIN flats f ON f.id = crr.flat_id
+            LEFT JOIN lead_bookings lb ON lb.id = crr.booking_id
+            LEFT JOIN users u_req ON u_req.id = crr.requested_by
+            LEFT JOIN roles r_req ON r_req.id = u_req.role_id
+            LEFT JOIN users u_app ON u_app.id = crr.approved_by
+            LEFT JOIN roles r_app ON r_app.id = u_app.role_id
+            WHERE crr.id = ?
+        ");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $refund = $stmt->get_result()->fetch_assoc();
+
+        if (!$refund) {
+            setError('Refund request record not found.');
+            header("Location: {$GLOBALS['base_url']}/client-refunds");
+            exit;
+        }
+
+        // Fetch approval request details & audit trail
+        $arStmt = $this->db->prepare("
+            SELECT ar.*,
+                   u_sh.full_name AS sales_head_name, r_sh.name AS sales_head_role, e_sh.employee_id AS sales_head_emp_id,
+                   u_qc.full_name AS qc_name, r_qc.name AS qc_role, e_qc.employee_id AS qc_emp_id,
+                   u_oh.full_name AS op_head_name, r_oh.name AS op_head_role, e_oh.employee_id AS op_head_emp_id,
+                   u_ah.full_name AS accounts_head_name, r_ah.name AS accounts_head_role, e_ah.employee_id AS accounts_head_emp_id,
+                   u_mg.full_name AS mgmt_name, r_mg.name AS mgmt_role, e_mg.employee_id AS mgmt_emp_id
+            FROM approval_requests ar
+            LEFT JOIN users u_sh ON u_sh.id = ar.sales_head_by
+            LEFT JOIN roles r_sh ON r_sh.id = u_sh.role_id
+            LEFT JOIN employees e_sh ON e_sh.user_id = u_sh.id
+            LEFT JOIN users u_qc ON u_qc.id = ar.qc_by
+            LEFT JOIN roles r_qc ON r_qc.id = u_qc.role_id
+            LEFT JOIN employees e_qc ON e_qc.user_id = u_qc.id
+            LEFT JOIN users u_oh ON u_oh.id = ar.op_head_by
+            LEFT JOIN roles r_oh ON r_oh.id = u_oh.role_id
+            LEFT JOIN employees e_oh ON e_oh.user_id = u_oh.id
+            LEFT JOIN users u_ah ON u_ah.id = ar.accounts_head_by
+            LEFT JOIN roles r_ah ON r_ah.id = u_ah.role_id
+            LEFT JOIN employees e_ah ON e_ah.user_id = u_ah.id
+            LEFT JOIN users u_mg ON u_mg.id = ar.approved_by
+            LEFT JOIN roles r_mg ON r_mg.id = u_mg.role_id
+            LEFT JOIN employees e_mg ON e_mg.user_id = u_mg.id
+            WHERE ar.source_table = 'client_refund_requests' AND ar.source_id = ?
+            ORDER BY ar.id DESC LIMIT 1
+        ");
+        $arStmt->bind_param('i', $id);
+        $arStmt->execute();
+        $approvalReq = $arStmt->get_result()->fetch_assoc();
+
+        // Fetch original payments (Money Receipts)
+        $bookingId = (int)$refund['booking_id'];
+        $mrStmt = $this->db->prepare("
+            SELECT id, amount, payment_date, payment_method, cheque_no, transaction_ref, verification_status
+            FROM lead_payments
+            WHERE booking_id = ? AND amount > 0
+            ORDER BY payment_date ASC, id ASC
+        ");
+        $mrStmt->bind_param('i', $bookingId);
+        $mrStmt->execute();
+        $originalPayments = $mrStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        // Fetch disbursement details
+        $disbursement = null;
+        $disbStmt = $this->db->prepare("
+            SELECT lp.*, u.full_name AS disbursed_by_name, r.name AS disbursed_by_role, e.employee_id AS disbursed_by_emp_id,
+                   cba.bank_name AS company_bank_name, cba.account_name AS company_account_name, cba.account_number AS company_account_number
+            FROM lead_payments lp
+            LEFT JOIN users u ON lp.created_by = u.id
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN company_bank_accounts cba ON lp.bank_id = cba.id
+            WHERE lp.booking_id = ? AND lp.amount < 0
+            ORDER BY lp.id DESC LIMIT 1
+        ");
+        $disbStmt->bind_param('i', $bookingId);
+        $disbStmt->execute();
+        $disbursement = $disbStmt->get_result()->fetch_assoc();
+
+        // Fallback disbursement lookup from cashout_payments if lead_payments negative record not found
+        if (!$disbursement && !empty($refund['cashout_request_id'])) {
+            $coId = (int)$refund['cashout_request_id'];
+            $coStmt = $this->db->prepare("
+                SELECT cp.*, u.full_name AS disbursed_by_name, r.name AS disbursed_by_role, e.employee_id AS disbursed_by_emp_id,
+                       cba.bank_name AS company_bank_name, cba.account_name AS company_account_name, cba.account_number AS company_account_number
+                FROM cashout_payments cp
+                LEFT JOIN users u ON cp.created_by = u.id
+                LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN employees e ON e.user_id = u.id
+                LEFT JOIN company_bank_accounts cba ON cp.bank_id = cba.id
+                WHERE cp.cashout_request_id = ?
+                ORDER BY cp.id DESC LIMIT 1
+            ");
+            $coStmt->bind_param('i', $coId);
+            $coStmt->execute();
+            $disbursement = $coStmt->get_result()->fetch_assoc();
+        }
+
+        // Fetch requester employee info
+        $requesterInfo = null;
+        if (!empty($refund['requested_by'])) {
+            $reqStmt = $this->db->prepare("
+                SELECT u.full_name, r.name AS role_name, e.employee_id, d.name AS department_name
+                FROM users u
+                LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN employees e ON e.user_id = u.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                WHERE u.id = ? LIMIT 1
+            ");
+            $reqStmt->bind_param('i', $refund['requested_by']);
+            $reqStmt->execute();
+            $requesterInfo = $reqStmt->get_result()->fetch_assoc();
+        }
+
+        // Render standalone printable receipt view
+        $viewPath = __DIR__ . '/../views/accounts/refunds/refund-receipt.php';
+        if (!file_exists($viewPath)) {
+            die('Receipt view file not found.');
+        }
+
+        extract([
+            'refund'            => $refund,
+            'approval_request'  => $approvalReq,
+            'disbursement'      => $disbursement,
+            'originalPayments'  => $originalPayments,
+            'requesterInfo'     => $requesterInfo,
+        ]);
+
+        include $viewPath;
+        exit;
+    }
 }

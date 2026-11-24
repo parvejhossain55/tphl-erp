@@ -806,6 +806,11 @@ $statusMap = [
                                             <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-xs btn-outline-primary py-1 px-2 flex-grow-1" title="View Details">
                                                 <i class="fa-light fa-eye"></i> View
                                             </a>
+                                            <?php if (in_array($r['status'], ['approved', 'refunded'], true)): ?>
+                                                <a href="<?= $base_url ?>/client-refund-receipt/<?= $r['id'] ?>" target="_blank" class="btn btn-xs btn-outline-success py-1 px-1.5" title="Print Refund Money Receipt">
+                                                    <i class="fa-light fa-receipt"></i>
+                                                </a>
+                                            <?php endif; ?>
                                             <?php if ($r['status'] === 'pending' && in_array($userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37])): ?>
                                                 <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" 
                                                         onclick="openQuickRetentionModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
@@ -1262,6 +1267,13 @@ function renderTableRows(rows, page, perPage) {
                 </form>`;
         }
 
+        let receiptBtnHtml = (r.status === 'refunded' || r.status === 'approved') ? `
+            <a href="${baseUrl}/client-refund-receipt/${r.id}" target="_blank"
+               class="btn btn-xs btn-outline-success py-1 px-1.5"
+               title="Print Refund Money Receipt">
+                <i class="fa-light fa-receipt"></i>
+            </a>` : '';
+
         let ledgerBtnHtml = r.booking_id ? `
             <a href="${baseUrl}/clients-cash-in-history/${r.booking_id}" target="_blank"
                class="btn btn-xs btn-outline-dark py-1 px-2"
@@ -1308,6 +1320,7 @@ function renderTableRows(rows, page, perPage) {
                             <a href="${baseUrl}/client-refund/${r.id}" class="btn btn-xs btn-outline-primary py-1 px-2 flex-grow-1" title="View Details">
                                 <i class="fa-light fa-eye"></i> View
                             </a>
+                            ${receiptBtnHtml}
                             ${retentionBtnHtml}
                             ${payBtnHtml}
                             ${deleteBtnHtml}
