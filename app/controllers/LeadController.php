@@ -617,147 +617,6 @@ class LeadController extends Controller
             }
         }
 
-        // ── PREVIOUS ASSIGNEES / TRANSFERS & OTHER HOLDERS (DUPLICATES) ──
-        $prevAssigneesMap = [];
-        $alsoWithMap = [];
-
-        if (!empty($leadIds)) {
-            $idsStr = implode(',', array_map('intval', $leadIds));
-
-            // 1. Previous Assignee from lead_assignment_history
-            $histRes = $this->db->query("
-                SELECT h.lead_id, h.from_user_id, h.from_team_id, 
-                       u.full_name AS from_user_name, 
-                       t.name AS from_team_name,
-                       h.action_type
-                FROM lead_assignment_history h
-                LEFT JOIN users u ON h.from_user_id = u.id
-                LEFT JOIN teams t ON h.from_team_id = t.id
-                WHERE h.lead_id IN ($idsStr) 
-                  AND (h.from_user_id IS NOT NULL OR h.from_team_id IS NOT NULL)
-                ORDER BY h.id DESC
-            ");
-            if ($histRes) {
-                while ($hRow = $histRes->fetch_assoc()) {
-                    $lId = (int)$hRow['lead_id'];
-                    if (!isset($prevAssigneesMap[$lId])) {
-                        $prevName = $hRow['from_user_name'] ?? '';
-                        $prevTeam = $hRow['from_team_name'] ?? '';
-                        if ($prevName !== '' || $prevTeam !== '') {
-                            $prevAssigneesMap[$lId] = $prevName . ($prevTeam !== '' ? " ($prevTeam)" : '');
-                        }
-                    }
-                }
-            }
-
-            // 2. Previous Follow-Up Creator (if different from current assigned_id)
-            $fuCreatorRes = $this->db->query("
-                SELECT lf.lead_id, lf.created_by, u.full_name AS fu_user_name, t.name AS fu_team_name
-                FROM lead_follow_ups lf
-                JOIN users u ON lf.created_by = u.id
-                LEFT JOIN teams t ON u.team_id = t.id
-                WHERE lf.lead_id IN ($idsStr)
-                GROUP BY lf.lead_id, lf.created_by, u.full_name, t.name
-            ");
-            if ($fuCreatorRes) {
-                while ($fuRow = $fuCreatorRes->fetch_assoc()) {
-                    $lId = (int)$fuRow['lead_id'];
-                    if (!isset($prevAssigneesMap[$lId])) {
-                        foreach ($leads as $chkLead) {
-                            if ((int)$chkLead['id'] === $lId) {
-                                if ((int)($chkLead['assigned_id'] ?? 0) !== (int)$fuRow['created_by']) {
-                                    $fuName = $fuRow['fu_user_name'] ?? '';
-                                    $fuTeam = $fuRow['fu_team_name'] ?? '';
-                                    $prevAssigneesMap[$lId] = $fuName . ($fuTeam !== '' ? " ($fuTeam)" : '');
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 3. Fallback to initial_team_id (if different from current team_id)
-            foreach ($leads as $chkLead) {
-                $lId = (int)$chkLead['id'];
-                if (!isset($prevAssigneesMap[$lId])) {
-                    $initTid = !empty($chkLead['initial_team_id']) ? (int)$chkLead['initial_team_id'] : null;
-                    $curTid  = !empty($chkLead['team_id']) ? (int)$chkLead['team_id'] : null;
-                    if ($initTid && $initTid !== $curTid && isset($teamsData[$initTid])) {
-                        $prevAssigneesMap[$lId] = $teamsData[$initTid]['team_name'];
-                    }
-                }
-            }
-
-            // 4. Other active holders (Duplicate leads by Phone/Email)
-            $phoneSuffixes = [];
-            $emails = [];
-            $leadLookup = [];
-            foreach ($leads as $l) {
-                $pDigits = preg_replace('/[^0-9]/', '', $l['phone_number'] ?? $l['phone'] ?? '');
-                $s = strlen($pDigits) >= 10 ? substr($pDigits, -10) : '';
-                $e = trim(strtolower($l['email'] ?? ''));
-                $leadLookup[(int)$l['id']] = [
-                    'suffix' => $s, 
-                    'email'  => $e, 
-                    'assigned_id' => (int)($l['assigned_id'] ?? 0)
-                ];
-                if ($s !== '') $phoneSuffixes[] = $s;
-                if ($e !== '') $emails[] = $e;
-            }
-            $phoneSuffixes = array_unique($phoneSuffixes);
-            $emails = array_unique($emails);
-
-            if (!empty($phoneSuffixes) || !empty($emails)) {
-                $conds = [];
-                if (!empty($phoneSuffixes)) {
-                    $escaped = array_map(fn($s) => "'" . $this->db->real_escape_string($s) . "'", $phoneSuffixes);
-                    $conds[] = "RIGHT(l.phone_number, 10) IN (" . implode(',', $escaped) . ")";
-                }
-                if (!empty($emails)) {
-                    $escaped = array_map(fn($e) => "'" . $this->db->real_escape_string($e) . "'", $emails);
-                    $conds[] = "l.email IN (" . implode(',', $escaped) . ")";
-                }
-                $sqlAlso = "
-                    SELECT l.id, l.phone_number, l.phone, l.email, l.assigned_id, l.team_id,
-                           u.full_name AS assignee_name, t.name AS team_name
-                    FROM leads l
-                    JOIN users u ON l.assigned_id = u.id
-                    LEFT JOIN teams t ON l.team_id = t.id
-                    WHERE l.deleted_at IS NULL AND l.assigned_id IS NOT NULL AND (" . implode(' OR ', $conds) . ")
-                ";
-                $resAlso = $this->db->query($sqlAlso);
-                if ($resAlso) {
-                    $dups = $resAlso->fetch_all(MYSQLI_ASSOC);
-                    foreach ($leads as $l) {
-                        $lId = (int)$l['id'];
-                        $lSuffix = $leadLookup[$lId]['suffix'] ?? '';
-                        $lEmail  = $leadLookup[$lId]['email'] ?? '';
-                        $lUid    = $leadLookup[$lId]['assigned_id'] ?? 0;
-
-                        $matchedHolders = [];
-                        $seenUids = [];
-                        foreach ($dups as $d) {
-                            if ((int)$d['id'] === $lId) continue;
-                            $dPhone = preg_replace('/[^0-9]/', '', $d['phone_number'] ?? $d['phone'] ?? '');
-                            $dSuffix = strlen($dPhone) >= 10 ? substr($dPhone, -10) : '';
-                            $dEmail  = trim(strtolower($d['email'] ?? ''));
-
-                            $match = ($lSuffix !== '' && $lSuffix === $dSuffix) || ($lEmail !== '' && $lEmail === $dEmail);
-                            $dUid = (int)$d['assigned_id'];
-                            if ($match && $dUid !== $lUid && !isset($seenUids[$dUid])) {
-                                $seenUids[$dUid] = true;
-                                $matchedHolders[] = $d['assignee_name'] . (!empty($d['team_name']) ? ' (' . $d['team_name'] . ')' : '');
-                            }
-                        }
-                        if (!empty($matchedHolders)) {
-                            $alsoWithMap[$lId] = $matchedHolders;
-                        }
-                    }
-                }
-            }
-        }
-
         // ── MOBILE FORMAT: return raw data for JS card rendering ─────────
         if (!empty($_GET['mobile'])) {
             $mobileData = [];
@@ -855,8 +714,6 @@ class LeadController extends Controller
                     'booking_sales_current_team_name' => $lead['booking_sales_current_team_name'] ?? '',
                     'booking_sales_current_team_id'   => $lead['booking_sales_current_team_id'] ?? null,
                     'booking_sales_status' => $lead['booking_sales_status'] ?? '',
-                    'prev_assignee'        => $prevAssigneesMap[$lead['id']] ?? '',
-                    'also_with'            => !empty($alsoWithMap[$lead['id']]) ? implode(', ', $alsoWithMap[$lead['id']]) : '',
                 ];
             }
             echo json_encode([
@@ -1179,23 +1036,6 @@ class LeadController extends Controller
                 }
             }
             $assignedByHtml .= '</div>';
-
-            // Block 3: Previous Assignment / Handled By ("age kar kache chilo")
-            if (!empty($prevAssigneesMap[$lead['id']])) {
-                $assignedByHtml .= '<div class="pt-1 border-top mt-1 text-muted ps-1" style="font-size: 10px; line-height: 1.25;" title="Previously Assigned / Handled By">';
-                $assignedByHtml .= '  <i class="bi bi-arrow-counterclockwise text-warning me-1"></i>Prev: <strong class="text-dark">' . htmlspecialchars($prevAssigneesMap[$lead['id']]) . '</strong>';
-                $assignedByHtml .= '</div>';
-            }
-
-            // Block 4: Other current holders / duplicate leads ("r kar kache ache")
-            if (!empty($alsoWithMap[$lead['id']])) {
-                $alsoListStr = implode(', ', $alsoWithMap[$lead['id']]);
-                $assignedByHtml .= '<div class="pt-1 border-top mt-1 ps-1" style="font-size: 10px; line-height: 1.25;">';
-                $assignedByHtml .= '  <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0.5 text-wrap" style="font-size: 9px; text-align: left; display: block;" title="Same customer also assigned to: ' . htmlspecialchars($alsoListStr, ENT_QUOTES, 'UTF-8') . '">';
-                $assignedByHtml .= '    <i class="bi bi-people me-1"></i>Also with: <strong class="text-danger">' . htmlspecialchars($alsoListStr) . '</strong>';
-                $assignedByHtml .= '  </span>';
-                $assignedByHtml .= '</div>';
-            }
 
             $assignedByHtml .= '</div>';
 

@@ -2676,18 +2676,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="ps-1 mb-1"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size:10px;"><i class="bi bi-hourglass-split me-1 text-warning"></i>Pending Team Assign</span></div>
                         ${lead.team_id ? `<div class="text-muted ps-1" style="font-size:10px;" title="Target Team"><i class="bi bi-people me-1"></i>${teamNameClean}</div>` : ''}
                     `}
-                    ${lead.prev_assignee ? `
-                        <div class="pt-1 border-top mt-1 text-muted ps-1" style="font-size:10px; line-height:1.25;" title="Previously Assigned / Handled By">
-                            <i class="bi bi-arrow-counterclockwise text-warning me-1"></i>Prev: <strong class="text-dark">${(lead.prev_assignee).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>
-                        </div>
-                    ` : ''}
-                    ${lead.also_with ? `
-                        <div class="pt-1 border-top mt-1 ps-1" style="font-size:10px; line-height:1.25;">
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0.5 text-wrap" style="font-size:9px; text-align:left; display:block;" title="Same customer also assigned to: ${(lead.also_with).replace(/"/g,'&quot;')}">
-                                <i class="bi bi-people me-1"></i>Also with: <strong class="text-danger">${(lead.also_with).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>
-                            </span>
-                        </div>
-                    ` : ''}
                 </div>
             </div>`;
 
