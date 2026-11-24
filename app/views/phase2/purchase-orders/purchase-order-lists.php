@@ -280,20 +280,23 @@ $recPct = ($poStats['total_qty'] > 0) ? min(100, round(($poStats['received_qty']
                                 <td>
                                      <?php
                                      $badge = match($po['status']) {
-                                         'Issued'                 => 'bg-info',
-                                         'Purchase Head Approved' => 'bg-warning text-dark',
-                                         'QC Approved'            => 'bg-primary',
-                                         'Approved'               => 'bg-success',
-                                         'Partially Received'     => 'bg-warning text-dark',
-                                         'Fully Received'         => 'bg-success',
-                                         'Cancelled'              => 'bg-danger',
-                                         default                  => 'bg-secondary',
+                                         'Issued'                  => 'bg-info',
+                                         'Purchase Head Approved'  => 'bg-warning text-dark',
+                                         'QC Approved'             => 'bg-primary',
+                                         'Operation Head Approved' => 'bg-purple text-white',
+                                         'Approved'                => 'bg-success',
+                                         'Partially Received'      => 'bg-warning text-dark',
+                                         'Fully Received'          => 'bg-success',
+                                         'Cancelled'               => 'bg-danger',
+                                         default                   => 'bg-secondary',
                                      };
+                                     $badgeStyle = ($po['status'] === 'Operation Head Approved') ? 'background-color:#7c3aed;color:#fff;' : '';
                                      ?>
-                                     <span class="badge <?= $badge ?>"><?= $po['status'] ?></span>
+                                     <span class="badge <?= $badge ?>" style="<?= $badgeStyle ?>"><?= $po['status'] ?></span>
                                      <?php
                                      $creatorRole = (int)($po['creator_role_id'] ?? 0);
                                      $phNeeded = in_array($creatorRole, [23, 31]);
+                                     $bodNeeded = ((float)($po['total_amount'] ?? 0) > 30000);
                                      
                                      if ($po['status'] === 'Issued'): ?>
                                          <div class="mt-1 text-danger" style="font-size: 11px; font-weight: 600;">
@@ -307,17 +310,22 @@ $recPct = ($poStats['total_qty'] > 0) ? min(100, round(($poStats['received_qty']
                                          <div class="mt-1 text-danger" style="font-size: 11px; font-weight: 600;">
                                              <i class="bi bi-hourglass-split"></i> Pending: Operation Head
                                          </div>
+                                     <?php elseif ($po['status'] === 'Operation Head Approved'): ?>
+                                         <div class="mt-1" style="font-size: 11px; font-weight: 600; color:#7c3aed;">
+                                             <i class="bi bi-hourglass-split"></i> Pending: Board of Director
+                                         </div>
                                      <?php endif; ?>
                                 </td>
                                 <td class="text-center">
                                      <?php
-                                     $phOk = !empty($po['purchase_head_approved_by_id']);
-                                     $qcOk = !empty($po['qc_approved_by_id']);
-                                     $opOk = !empty($po['op_head_approved_by_id']);
+                                     $phOk  = !empty($po['purchase_head_approved_by_id']);
+                                     $qcOk  = !empty($po['qc_approved_by_id']);
+                                     $opOk  = !empty($po['op_head_approved_by_id']);
+                                     $bodOk = !empty($po['bod_approved_by_id']);
                                      $creatorRole = (int)($po['creator_role_id'] ?? 0);
                                      $phNeeded = in_array($creatorRole, [23, 31]);
-                                     $totalSteps = $phNeeded ? 3 : 2;
-                                     $doneSteps = ($phNeeded && $phOk ? 1 : 0) + ($qcOk ? 1 : 0) + ($opOk ? 1 : 0);
+                                     $totalSteps = ($phNeeded ? 3 : 2) + ($bodNeeded ? 1 : 0);
+                                     $doneSteps = ($phNeeded && $phOk ? 1 : 0) + ($qcOk ? 1 : 0) + ($opOk ? 1 : 0) + ($bodNeeded && $bodOk ? 1 : 0);
                                      $apvColor = ($doneSteps == $totalSteps) ? '#059669' : ($doneSteps > 0 ? '#2563eb' : '#6b7280');
                                      ?>
                                      <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
@@ -326,6 +334,7 @@ $recPct = ($poStats['total_qty'] > 0) ? min(100, round(($poStats['received_qty']
                                         <?= ($phNeeded && $phOk)?'<span title="Purchase Head">PH✓</span>':'' ?>
                                         <?= $qcOk?'<span title="QC & Internal Audit">QC✓</span>':'' ?>
                                         <?= $opOk?'<span title="Operation Head">OP✓</span>':'' ?>
+                                        <?= ($bodNeeded && $bodOk)?'<span title="Board of Director">BOD✓</span>':'' ?>
                                      </span>
                                 </td>
                                 <td class="text-center" style="min-width: 170px;">

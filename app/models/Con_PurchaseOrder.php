@@ -76,6 +76,9 @@ class Con_PurchaseOrder extends Model
             'op_head_approved_by_id'       => "INT NULL DEFAULT NULL",
             'op_head_approved_at'          => "DATETIME NULL DEFAULT NULL",
             'op_head_note'                 => "TEXT NULL DEFAULT NULL",
+            'bod_approved_by_id'           => "INT NULL DEFAULT NULL",
+            'bod_approved_at'              => "DATETIME NULL DEFAULT NULL",
+            'bod_note'                     => "TEXT NULL DEFAULT NULL",
             'upload_from'                  => "VARCHAR(50) NULL DEFAULT NULL",
             'remarks'                      => "TEXT NULL DEFAULT NULL",
         ];
@@ -85,6 +88,18 @@ class Con_PurchaseOrder extends Model
                 if (!@$db->query("ALTER TABLE `purchase_orders` ADD COLUMN `{$col}` {$def}")) {
                     $cleanDef = preg_replace('/\s+AFTER\s+`\w+`$/i', '', $def);
                     @$db->query("ALTER TABLE `purchase_orders` ADD COLUMN `{$col}` {$cleanDef}");
+                }
+            }
+        }
+
+        // Ensure status ENUM includes 'Operation Head Approved' if status column is an ENUM
+        $statusCol = @$db->query("SHOW COLUMNS FROM `purchase_orders` LIKE 'status'");
+        if ($statusCol && ($statusRow = $statusCol->fetch_assoc())) {
+            $colType = $statusRow['Type'] ?? '';
+            if (stripos($colType, 'enum(') === 0 && stripos($colType, 'Operation Head Approved') === false) {
+                if (preg_match("/^enum\((.*)\)$/i", $colType, $m)) {
+                    $newEnum = "ENUM(" . $m[1] . ",'Operation Head Approved')";
+                    @$db->query("ALTER TABLE `purchase_orders` MODIFY COLUMN `status` {$newEnum} NOT NULL DEFAULT 'Issued'");
                 }
             }
         }
@@ -177,7 +192,9 @@ class Con_PurchaseOrder extends Model
                     qc_u.full_name AS qc_approver_name,
                     mgmt_u.full_name AS mgmt_approver_name,
                     ph_u.full_name AS ph_approver_name,
-                    op_u.full_name AS op_approver_name
+                    op_u.full_name AS op_approver_name,
+                    bod_u.full_name AS bod_approver_name,
+                    (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount
              FROM {$this->table} po
              LEFT JOIN purchase_requests pr ON pr.id = po.request_id
              LEFT JOIN (
@@ -198,6 +215,7 @@ class Con_PurchaseOrder extends Model
              LEFT JOIN users mgmt_u ON mgmt_u.id = po.mgmt_approved_by_id
              LEFT JOIN users ph_u ON ph_u.id = po.purchase_head_approved_by_id
              LEFT JOIN users op_u ON op_u.id = po.op_head_approved_by_id
+             LEFT JOIN users bod_u ON bod_u.id = po.bod_approved_by_id
              WHERE po.id = ?";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -360,6 +378,24 @@ class Con_PurchaseOrder extends Model
             );
             $logStmt->execute();
             $logStmt->close();
+
+            // If PO was already Approved by Operation Head (<= 30,000) and new total exceeds 30,000 without BOD approval,
+            // require Board of Director approval by reverting status to 'Operation Head Approved'.
+            $totStmt = $this->db->prepare("SELECT po.status, po.op_head_approved_by_id, po.bod_approved_by_id, COALESCE(SUM(poi.quantity * poi.unit_price), 0) AS new_total FROM {$this->table} po LEFT JOIN {$this->itemTable} poi ON poi.purchase_order_id = po.id WHERE po.id = ? GROUP BY po.id");
+            if ($totStmt) {
+                $totStmt->bind_param('i', $poId);
+                $totStmt->execute();
+                $totRow = $totStmt->get_result()->fetch_assoc();
+                $totStmt->close();
+                if ($totRow && $totRow['status'] === 'Approved' && !empty($totRow['op_head_approved_by_id']) && empty($totRow['bod_approved_by_id']) && (float)$totRow['new_total'] > 30000) {
+                    $revStmt = $this->db->prepare("UPDATE {$this->table} SET status = 'Operation Head Approved' WHERE id = ?");
+                    if ($revStmt) {
+                        $revStmt->bind_param('i', $poId);
+                        $revStmt->execute();
+                        $revStmt->close();
+                    }
+                }
+            }
 
             $this->db->commit();
             return [

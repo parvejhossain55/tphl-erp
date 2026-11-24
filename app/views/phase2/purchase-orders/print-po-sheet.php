@@ -16,22 +16,25 @@ $negotiationNotes = $negotiationNotes ?? [];
 $siteSettings = $siteSettings ?? [];
 $vendorSelectionData = $vendorSelectionData ?? null;
 
-$creatorRole = (int)($po['creator_role_id'] ?? 0);
-$phNeeded = in_array($creatorRole, [23, 31]);
-$phApproved = !empty($po['purchase_head_approved_by_id']);
-$qcApproved = !empty($po['qc_approved_by_id']);
-$opApproved = !empty($po['op_head_approved_by_id']);
-$fullyApproved = ($phNeeded ? $phApproved : true) && $qcApproved && $opApproved;
-
-$isUrgent = !empty($po['pr_is_urgent']) || !empty($prDetails['is_urgent']);
-$urgentReason = !empty($po['pr_urgent_reason']) ? $po['pr_urgent_reason'] : (!empty($prDetails['urgent_reason']) ? $prDetails['urgent_reason'] : '');
-
 $poTotalValue = $poTotalValue ?? 0;
 if ($poTotalValue <= 0 && !empty($items)) {
     foreach ($items as $itm) {
         $poTotalValue += (float)($itm['quantity'] * $itm['unit_price']);
     }
 }
+
+$creatorRole = (int)($po['creator_role_id'] ?? 0);
+$phNeeded = in_array($creatorRole, [23, 31]);
+$phApproved = !empty($po['purchase_head_approved_by_id']);
+$qcApproved = !empty($po['qc_approved_by_id']);
+$opApproved = !empty($po['op_head_approved_by_id']);
+$bodNeeded = $bodNeeded ?? ($poTotalValue > 30000);
+$bodApproved = $bodApproved ?? !empty($po['bod_approved_by_id']);
+$alreadyFinalStatus = in_array($po['status'] ?? '', ['Approved', 'Partially Received', 'Fully Received'], true);
+$fullyApproved = $alreadyFinalStatus || (($phNeeded ? $phApproved : true) && $qcApproved && $opApproved && ($bodNeeded ? $bodApproved : true));
+
+$isUrgent = !empty($po['pr_is_urgent']) || !empty($prDetails['is_urgent']);
+$urgentReason = !empty($po['pr_urgent_reason']) ? $po['pr_urgent_reason'] : (!empty($prDetails['urgent_reason']) ? $prDetails['urgent_reason'] : '');
 
 // Logo resolution
 $logoUrl = '';
@@ -733,6 +736,20 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                 <td><?= !empty($po['op_head_approved_at']) ? date('d M Y, h:i A', strtotime($po['op_head_approved_at'])) : '—' ?></td>
                 <td><?= !empty($po['op_head_note']) ? htmlspecialchars($po['op_head_note']) : '—' ?></td>
             </tr>
+            <!-- Board of Director (when PO > 30,000) -->
+            <?php if ($bodNeeded): ?>
+            <tr>
+                <td><strong><?= $phNeeded ? '7' : '6' ?>. Board of Director</strong></td>
+                <td><?= !empty($po['bod_approver_name']) ? htmlspecialchars($po['bod_approver_name']) : 'Board of Director' ?></td>
+                <td style="text-align:center">
+                    <span class="po-badge-status <?= $bodApproved ? 'po-badge-approved' : 'po-badge-pending' ?>">
+                        <?= $bodApproved ? 'Approved' : 'Pending' ?>
+                    </span>
+                </td>
+                <td><?= !empty($po['bod_approved_at']) ? date('d M Y, h:i A', strtotime($po['bod_approved_at'])) : '—' ?></td>
+                <td><?= !empty($po['bod_note']) ? htmlspecialchars($po['bod_note']) : '—' ?></td>
+            </tr>
+            <?php endif; ?>
         </tbody>
     </table>
 
@@ -758,6 +775,12 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
             <div class="po-sig-line"><?= !empty($po['op_approver_name']) ? htmlspecialchars($po['op_approver_name']) : 'Operation Head' ?></div>
             <div class="po-sig-sub">Head of Operations / MD</div>
         </div>
+        <?php if ($bodNeeded): ?>
+        <div class="po-sig-block">
+            <div class="po-sig-line"><?= !empty($po['bod_approver_name']) ? htmlspecialchars($po['bod_approver_name']) : 'Board of Director' ?></div>
+            <div class="po-sig-sub">Board of Director</div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- 8. Document Footer -->
