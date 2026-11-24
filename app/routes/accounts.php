@@ -298,6 +298,8 @@ return [
     'client-refund-reject/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'reject'],
     'client-refund-disburse/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'disbursePayment'],
     'client-refund-adjust/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'adjustRetention'],
+    'client-refund-verify-payment/(\d+)/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'verifyPayment'],
+    'client-refund-verify-payment' => ['controller' => 'ClientRefundController', 'method' => 'verifyPayment'],
     'client-refund-receipt/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'printReceipt'],
     'client-refund-delete/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'delete'],
 

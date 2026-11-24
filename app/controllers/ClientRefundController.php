@@ -508,6 +508,30 @@ class ClientRefundController extends Controller
 
         $payments = $this->model->getPaymentsForBooking($refund['booking_id']);
 
+        // Auto-sync total_paid and amounts if verified payments exist but total_paid differs while pending or approved
+        $actualVerifiedPaid = $this->model->getTotalVerifiedPaid((int)$refund['booking_id']);
+        if (in_array($refund['status'], ['pending', 'approved'], true) && abs((float)$refund['total_paid'] - $actualVerifiedPaid) > 0.01) {
+            $oldTotal = (float)$refund['total_paid'];
+            $retPct   = ($oldTotal > 0) ? round(((float)$refund['retention_amount'] / $oldTotal) * 100, 2) : 0;
+            if ($retPct > 0) {
+                $newRetention = round(($actualVerifiedPaid * $retPct) / 100, 2);
+                $newRefundAmt = max(0, $actualVerifiedPaid - $newRetention);
+            } else {
+                $newRetention = (float)$refund['retention_amount'];
+                $newRefundAmt = max(0, $actualVerifiedPaid - $newRetention);
+            }
+
+            $uSync = $this->db->prepare("UPDATE client_refund_requests SET total_paid = ?, retention_amount = ?, refund_amount = ? WHERE id = ?");
+            $uSync->bind_param('dddi', $actualVerifiedPaid, $newRetention, $newRefundAmt, $id);
+            $uSync->execute();
+
+            $this->db->query("UPDATE approval_requests SET request_amount = {$newRefundAmt} WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+
+            $refund['total_paid']       = $actualVerifiedPaid;
+            $refund['retention_amount'] = $newRetention;
+            $refund['refund_amount']    = $newRefundAmt;
+        }
+
         // Get linked cashout request if exists
         $cashoutRequest = null;
         if (!empty($refund['cashout_request_id'])) {
@@ -626,6 +650,14 @@ class ClientRefundController extends Controller
         }
 
         $totalPaid = (float)($refund['total_paid'] ?? 0);
+        if ($totalPaid <= 0) {
+            $actualVerifiedPaid = $this->model->getTotalVerifiedPaid((int)$refund['booking_id']);
+            if ($actualVerifiedPaid > 0) {
+                $totalPaid = $actualVerifiedPaid;
+                $this->db->query("UPDATE client_refund_requests SET total_paid = {$actualVerifiedPaid} WHERE id = {$id}");
+                $refund['total_paid'] = $actualVerifiedPaid;
+            }
+        }
         if (isset($_POST['retention_percent']) && $_POST['retention_percent'] !== '' && (!isset($_POST['retention_amount']) || $_POST['retention_amount'] === '')) {
             $retPercent = max(0, min(100, (float)$_POST['retention_percent']));
             $retentionAmount = round(($totalPaid * $retPercent) / 100, 2);
@@ -836,6 +868,14 @@ class ClientRefundController extends Controller
         }
 
         $totalPaid = (float)$refund['total_paid'];
+        if ($totalPaid <= 0) {
+            $actualVerifiedPaid = $this->model->getTotalVerifiedPaid((int)$refund['booking_id']);
+            if ($actualVerifiedPaid > 0) {
+                $totalPaid = $actualVerifiedPaid;
+                $this->db->query("UPDATE client_refund_requests SET total_paid = {$actualVerifiedPaid} WHERE id = {$id}");
+                $refund['total_paid'] = $actualVerifiedPaid;
+            }
+        }
         
         // Calculate retention amount from % or fixed amount
         $retentionPercent = (isset($_POST['retention_percent']) && $_POST['retention_percent'] !== '') ? (float)$_POST['retention_percent'] : null;
@@ -1062,16 +1102,19 @@ class ClientRefundController extends Controller
             exit;
         }
 
-        $paymentMethod  = trim($_POST['payment_method'] ?? 'cash');
-        $companyBankId  = !empty($_POST['company_bank_id']) ? (int)$_POST['company_bank_id'] : (!empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null);
-        $chequeNo       = trim($_POST['cheque_no'] ?? '');
-        $paymentDate    = !empty($_POST['payment_date']) ? $_POST['payment_date'] : date('Y-m-d');
-        $transactionRef = trim($_POST['transaction_ref'] ?? '');
-        $clientBankName = trim($_POST['bank_name'] ?? '');
-        $bankAccountNo  = trim($_POST['bank_account_no'] ?? '');
-        $remarks        = trim($_POST['remarks'] ?? '');
-        $refundAmount   = (float)$refund['refund_amount'];
-        $bookingId      = (int)$refund['booking_id'];
+        $paymentMethod   = trim($_POST['payment_method'] ?? 'cash');
+        $companyBankId   = !empty($_POST['company_bank_id']) ? (int)$_POST['company_bank_id'] : (!empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null);
+        $chequeNo        = trim($_POST['cheque_no'] ?? '');
+        $paymentDate     = !empty($_POST['payment_date']) ? $_POST['payment_date'] : date('Y-m-d');
+        $transactionRef  = trim($_POST['transaction_ref'] ?? '');
+        $clientBankName  = trim($_POST['bank_name'] ?? ($refund['client_bank_name'] ?? ''));
+        $bankAccountNo   = trim($_POST['bank_account_no'] ?? ($refund['client_bank_account_no'] ?? ''));
+        $bankAccountName = trim($_POST['bank_account_name'] ?? ($refund['client_bank_account_name'] ?? ''));
+        $bankBranch      = trim($_POST['bank_branch'] ?? ($refund['client_bank_branch'] ?? ''));
+        $bankRoutingNo   = trim($_POST['bank_routing_no'] ?? ($refund['client_bank_routing_no'] ?? ''));
+        $remarks         = trim($_POST['remarks'] ?? '');
+        $refundAmount    = (float)$refund['refund_amount'];
+        $bookingId       = (int)$refund['booking_id'];
 
         // Get company bank name if provided
         $companyBankName = '';
@@ -1119,11 +1162,26 @@ class ClientRefundController extends Controller
 
         $this->db->begin_transaction();
         try {
-            // 1. Update client_refund_requests status to 'refunded' and record disbursement proof
+            // 1. Update client_refund_requests status to 'refunded' and sync latest client bank details
             $upStmt = $this->db->prepare("UPDATE client_refund_requests 
-                SET status = 'refunded', refunded_at = NOW(), disbursement_proof = ? 
+                SET status = 'refunded', 
+                    refunded_at = NOW(), 
+                    disbursement_proof = ?,
+                    client_bank_name = IF(? != '', ?, client_bank_name),
+                    client_bank_account_name = IF(? != '', ?, client_bank_account_name),
+                    client_bank_account_no = IF(? != '', ?, client_bank_account_no),
+                    client_bank_branch = IF(? != '', ?, client_bank_branch),
+                    client_bank_routing_no = IF(? != '', ?, client_bank_routing_no)
                 WHERE id = ?");
-            $upStmt->bind_param("si", $proofPath, $id);
+            $upStmt->bind_param("sssssssssi", 
+                $proofPath, 
+                $clientBankName, $clientBankName,
+                $bankAccountName, $bankAccountName,
+                $bankAccountNo, $bankAccountNo,
+                $bankBranch, $bankBranch,
+                $bankRoutingNo, $bankRoutingNo,
+                $id
+            );
             $upStmt->execute();
 
             // 2. Insert negative payment entry in lead_payments to reduce cash-in balance
@@ -1171,9 +1229,130 @@ class ClientRefundController extends Controller
 
         $redirectTo = !empty($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' 
             ? "{$GLOBALS['base_url']}/client-refunds" 
-            : "{$GLOBALS['base_url']}/client-refund/{$id}";
+            : "{$GLOBALS['base_url']}/client-refund/{$id}?receipt=1";
         header("Location: {$redirectTo}");
         exit;
+    }
+
+    // =========================================================================
+    // VERIFY PAYMENT FROM REFUND PAGE (Accounts / Admin)
+    // =========================================================================
+    public function verifyPayment($refundId = null, $paymentId = null)
+    {
+        $refundId  = (int)($refundId ?: ($_POST['refund_id'] ?? 0));
+        $paymentId = (int)($paymentId ?: ($_POST['payment_id'] ?? 0));
+        $isAjax    = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['ajax']) || isset($_GET['ajax']);
+
+        $respond = function($success, $message, $data = []) use ($isAjax, $refundId) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(array_merge(['success' => $success, 'message' => $message], $data));
+                exit;
+            }
+            if ($success) {
+                setSuccess($message);
+            } else {
+                setError($message);
+            }
+            $target = $refundId ? "{$GLOBALS['base_url']}/client-refund/{$refundId}" : "{$GLOBALS['base_url']}/client-refunds";
+            header("Location: {$target}");
+            exit;
+        };
+
+        // 1. Authorization: Allow Accounts, Management, Admin, QC, Audit or Sales Manager
+        $allowedRoles = [1, 2, 3, 5, 6, 7, 9, 10, 13, 20, 24, 25, 30, 32, 33, 34, 35, 36, 37, 38, 39];
+        $allRoles     = $this->getAllUserRoles();
+        $roleName     = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $canVerify    = !empty($_SESSION['user']['id']) && (
+            count(array_intersect($allRoles, $allowedRoles)) > 0 || 
+            strpos($roleName, 'account') !== false || 
+            strpos($roleName, 'admin') !== false ||
+            strpos($roleName, 'manage') !== false ||
+            strpos($roleName, 'audit') !== false ||
+            strpos($roleName, 'qc') !== false
+        );
+
+        if (!$canVerify) {
+            $respond(false, 'You are not authorized to verify cash-in payments.');
+        }
+
+        // 2. Fetch refund
+        $refund = $this->model->find($refundId);
+        if (!$refund) {
+            $respond(false, 'Refund request not found.');
+        }
+
+        // 3. Fetch payment
+        $stmt = $this->db->prepare("SELECT * FROM lead_payments WHERE id = ?");
+        $stmt->bind_param('i', $paymentId);
+        $stmt->execute();
+        $payment = $stmt->get_result()->fetch_assoc();
+
+        if (!$payment) {
+            $respond(false, 'Payment record not found.');
+        }
+
+        if ((int)$payment['booking_id'] !== (int)$refund['booking_id']) {
+            $respond(false, 'Payment does not belong to this booking.');
+        }
+
+        $bookingId  = (int)$refund['booking_id'];
+        $amount     = (float)$payment['amount'];
+        $verifierId = (int)($this->userId ?: ($_SESSION['user']['id'] ?? 1));
+
+        // 4. Update lead_payments: mark verified (no SMS as per requirements)
+        if ($payment['verification_status'] !== 'verified') {
+            $upStmt = $this->db->prepare("
+                UPDATE lead_payments 
+                SET verification_status = 'verified', 
+                    payment_status = 'paid', 
+                    verified_by = ?, 
+                    verified_at = NOW() 
+                WHERE id = ? OR (bulk_parent_id = ? AND bulk_parent_id > 0)
+            ");
+            $upStmt->bind_param('iii', $verifierId, $paymentId, $paymentId);
+            $upStmt->execute();
+
+            // 5. Update Booking Payment Status
+            require_once dirname(__DIR__) . '/controllers/PaymentBookingController.php';
+            if (class_exists('PaymentBookingController')) {
+                $paymentController = new PaymentBookingController($this->db);
+                $paymentController->updateBookingPaymentStatus($bookingId);
+            }
+        }
+
+        // 6. Recalculate Total Verified Paid
+        $newTotalPaid = $this->model->getTotalVerifiedPaid($bookingId);
+
+        // 7. Synchronize client_refund_requests
+        $newRetention = (float)$refund['retention_amount'];
+        $newRefundAmt = max(0, $newTotalPaid - $newRetention);
+
+        if (in_array($refund['status'], ['pending', 'approved'], true)) {
+            $oldTotalPaid = (float)$refund['total_paid'];
+            $retPct = ($oldTotalPaid > 0) ? round(((float)$refund['retention_amount'] / $oldTotalPaid) * 100, 2) : 0;
+            
+            if ($retPct > 0) {
+                $newRetention = round(($newTotalPaid * $retPct) / 100, 2);
+                $newRefundAmt = max(0, $newTotalPaid - $newRetention);
+            } else {
+                $newRetention = (float)$refund['retention_amount'];
+                $newRefundAmt = max(0, $newTotalPaid - $newRetention);
+            }
+
+            $uRef = $this->db->prepare("UPDATE client_refund_requests SET total_paid = ?, retention_amount = ?, refund_amount = ? WHERE id = ?");
+            $uRef->bind_param('dddi', $newTotalPaid, $newRetention, $newRefundAmt, $refundId);
+            $uRef->execute();
+
+            // Update approval_requests request_amount
+            $this->db->query("UPDATE approval_requests SET request_amount = {$newRefundAmt} WHERE source_table = 'client_refund_requests' AND source_id = {$refundId}");
+        }
+
+        $respond(true, 'Payment of ৳' . number_format($amount, 2) . ' verified successfully! Total Paid and Retention have been updated.', [
+            'total_paid'       => $newTotalPaid,
+            'retention_amount' => $newRetention,
+            'refund_amount'    => $newRefundAmt,
+        ]);
     }
 
     // =========================================================================
