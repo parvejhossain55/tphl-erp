@@ -820,7 +820,7 @@
                         </a>
                     </li>
                 <?php endif; ?>
-
+ 
                 <?php 
                 // Roles allowed to access Expense Adjustments:
                 // Accounts (6, 30), Purchase (17, 23, 31), Management (1, 3, 33), Admin & Operation Head (20, 32),
