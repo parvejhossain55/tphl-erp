@@ -629,7 +629,16 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $flatId = (int)$v_flat_id;
             $this->db->query("UPDATE flats SET is_booked = 1, status = 'booked' WHERE id = {$flatId}");
         }
-        
+
+        $this->syncProjectActiveEmisToBooking(
+            (int)$bookingId,
+            (int)($v_project_id ?? 0),
+            !empty($v_flat_id) ? (int)$v_flat_id : null,
+            (float)($v_agreement_value ?? 0),
+            (float)($v_discount_amount ?? 0),
+            !empty($v_created_by) ? (int)$v_created_by : 1
+        );
+
         return $bookingId;
     }
 
@@ -729,10 +738,144 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 $flatId = (int)$data['flat_id'];
                 $this->db->query("UPDATE flats SET is_booked = 1, status = 'booked' WHERE id = {$flatId}");
             }
+            $this->syncProjectActiveEmisToBooking(
+                (int)$bookingId,
+                (int)($data['project_id'] ?? 0),
+                !empty($data['flat_id']) ? (int)$data['flat_id'] : null,
+                (float)($data['agreement_value'] ?? 0),
+                (float)($discountAmount ?? 0),
+                !empty($data['created_by']) ? (int)$data['created_by'] : 1
+            );
             return $bookingId;
         }
 
         throw new Exception($stmt->error);
+    }
+
+    /**
+     * Auto-sync already-active project-level EMI schedule items to a newly created booking
+     * so emi_schedules and client_emi_fixed_dates immediately match the project schedule.
+     */
+    protected function syncProjectActiveEmisToBooking(
+        int $bookingId,
+        int $projectId,
+        ?int $flatId = null,
+        float $agreementValue = 0.0,
+        float $discountAmount = 0.0,
+        int $createdBy = 1
+    ): void {
+        if ($bookingId <= 0 || $projectId <= 0) {
+            return;
+        }
+
+        try {
+            $qItems = $this->db->prepare("
+                SELECT emi_no, due_date, emi_amount, remarks
+                FROM project_emi_schedule_items
+                WHERE project_id = ? AND is_active = 1 AND due_date IS NOT NULL
+                ORDER BY emi_no ASC
+            ");
+            if (!$qItems) {
+                return;
+            }
+            $qItems->bind_param("i", $projectId);
+            $qItems->execute();
+            $resItems = $qItems->get_result();
+            $activeItems = [];
+            if ($resItems) {
+                while ($row = $resItems->fetch_assoc()) {
+                    $activeItems[] = $row;
+                }
+            }
+            $qItems->close();
+
+            if (empty($activeItems)) {
+                return;
+            }
+
+            // Resolve project schedule defaults & flat pricing to compute client per-EMI amount
+            $totalEmiNo       = 36;
+            $defaultEmiAmount = 0.0;
+            $qSched = $this->db->prepare("SELECT total_emi_no, default_emi_amount FROM project_emi_schedules WHERE project_id = ? LIMIT 1");
+            if ($qSched) {
+                $qSched->bind_param("i", $projectId);
+                $qSched->execute();
+                $sRes = $qSched->get_result();
+                if ($sRes && ($sRow = $sRes->fetch_assoc())) {
+                    if (!empty($sRow['total_emi_no'])) {
+                        $totalEmiNo = max(1, (int)$sRow['total_emi_no']);
+                    }
+                    $defaultEmiAmount = (float)($sRow['default_emi_amount'] ?? 0);
+                }
+                $qSched->close();
+            }
+
+            $priceValue = $agreementValue;
+            $landShare  = 0.0;
+            $devCharge  = 0.0;
+            if (!empty($flatId)) {
+                $qFlat = $this->db->prepare("
+                    SELECT price_value, land_share_value, development_charges, is_shop, shop_service_charge
+                    FROM flats WHERE id = ? LIMIT 1
+                ");
+                if ($qFlat) {
+                    $qFlat->bind_param("i", $flatId);
+                    $qFlat->execute();
+                    $fRes = $qFlat->get_result();
+                    if ($fRes && ($fRow = $fRes->fetch_assoc())) {
+                        if ((float)($fRow['price_value'] ?? 0) > 0) {
+                            $priceValue = (float)$fRow['price_value'];
+                        }
+                        $landShare = (float)($fRow['land_share_value'] ?? 0);
+                        $devCharge = (float)($fRow['development_charges'] ?? 0)
+                            + ((int)($fRow['is_shop'] ?? 0) === 1 ? (float)($fRow['shop_service_charge'] ?? 0) : 0.0);
+                    }
+                    $qFlat->close();
+                }
+            }
+
+            $netTotalPrice   = max(0.0, $priceValue - $discountAmount);
+            $constructionFee = max(0.0, round($netTotalPrice - ($landShare + $devCharge), 2));
+            $clientEmiAmt    = ($constructionFee > 0) ? round($constructionFee / $totalEmiNo, 2) : $defaultEmiAmount;
+
+            $insSched = $this->db->prepare("
+                INSERT INTO emi_schedules (lead_booking_id, emi_no, emi_amount, due_date, status)
+                VALUES (?, ?, ?, ?, 'pending')
+            ");
+            $insFix = $this->db->prepare("
+                INSERT INTO client_emi_fixed_dates (booking_id, emi_no, due_date, notes, fixed_by, fixed_at)
+                VALUES (?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    due_date = VALUES(due_date),
+                    notes = COALESCE(VALUES(notes), notes),
+                    fixed_by = VALUES(fixed_by),
+                    fixed_at = NOW()
+            ");
+            if (!$insSched || !$insFix) {
+                if ($insSched) $insSched->close();
+                if ($insFix) $insFix->close();
+                return;
+            }
+
+            $fixedBy = $createdBy > 0 ? $createdBy : 1;
+            foreach ($activeItems as $item) {
+                $emiNo   = (int)$item['emi_no'];
+                $dueDate = $item['due_date'];
+                $note    = $item['remarks'] ?? null;
+                $amt     = ($clientEmiAmt > 0) ? $clientEmiAmt : (float)($item['emi_amount'] ?? 0);
+
+                $insSched->bind_param("iids", $bookingId, $emiNo, $amt, $dueDate);
+                $insSched->execute();
+
+                $insFix->bind_param("iissi", $bookingId, $emiNo, $dueDate, $note, $fixedBy);
+                $insFix->execute();
+            }
+
+            $insSched->close();
+            $insFix->close();
+        } catch (\Throwable $e) {
+            error_log("BookingLead::syncProjectActiveEmisToBooking error (booking {$bookingId}): " . $e->getMessage());
+        }
     }
 
 

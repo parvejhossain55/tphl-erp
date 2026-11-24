@@ -242,11 +242,12 @@ class CedReportController extends Controller
             ) pay ON pay.booking_id = lb.id
             LEFT JOIN (
                 SELECT 
-                    lead_booking_id,
-                    SUM(CASE WHEN due_date <= CURRENT_DATE() OR status = 'paid' THEN 1 ELSE 0 END) AS matured_emi_count
-                FROM emi_schedules
-                GROUP BY lead_booking_id
-            ) sched ON sched.lead_booking_id = lb.id
+                    project_id,
+                    COUNT(*) AS matured_emi_count
+                FROM project_emi_schedule_items
+                WHERE is_active = 1
+                GROUP BY project_id
+            ) sched ON sched.project_id = lb.project_id
             LEFT JOIN (
                 SELECT 
                     ef.booking_id,
@@ -302,18 +303,12 @@ class CedReportController extends Controller
             $singleEmiAmount = ($totalEmiNo > 0 && $constructionFee > 0) ? round($constructionFee / $totalEmiNo, 2) : 0.0;
             $totalEmiAmount = $constructionFee;
 
-            // EMI Asked Count
+            // EMI Asked Count strictly from Project-Level Active EMIs (0 if none active)
             $schedMatured = (int)($row['sched_matured_count'] ?? 0);
             $emiPaid = (float)($row['emi_paid'] ?? 0);
             $bulkDiscount = (float)($row['bulk_emi_discount'] ?? 0);
 
-            if ($schedMatured > 0) {
-                $emiAskedCount = min($totalEmiNo, $schedMatured);
-            } elseif ($emiPaid > 0 && $singleEmiAmount > 0) {
-                $emiAskedCount = min($totalEmiNo, max(1, (int)ceil(($emiPaid + $bulkDiscount) / $singleEmiAmount)));
-            } else {
-                $emiAskedCount = 0;
-            }
+            $emiAskedCount = ($schedMatured > 0) ? min($totalEmiNo, $schedMatured) : 0;
 
             $totalAskedAmount = round($emiAskedCount * $singleEmiAmount, 2);
             $emiDue = max(0, round($totalAskedAmount - $emiPaid - $bulkDiscount, 2));

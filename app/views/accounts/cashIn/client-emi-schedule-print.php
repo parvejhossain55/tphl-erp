@@ -405,7 +405,7 @@ foreach ($virtualEmiSchedule as $item) {
                 <tr>
                     <th style="width: 60px;" class="text-center">EMI #</th>
                     <th style="width: 130px;">Scheduled Due Date</th>
-                    <th class="text-end" style="width: 100px;">Amount (TK)</th>
+                    <th class="text-end" style="width: 110px;">EMI Amount (TK)</th>
                     <th class="text-end" style="width: 100px;">Paid (TK)</th>
                     <th class="text-end" style="width: 100px;">Due (TK)</th>
                     <th style="width: 80px;" class="text-center">Status</th>
@@ -436,9 +436,13 @@ foreach ($virtualEmiSchedule as $item) {
                             $matClass = 'badge-due';
                             $matLabel = 'Overdue' . (!empty($emi['overdue_days']) ? ' (' . $emi['overdue_days'] . 'd)' : '');
                             break;
+                        case 'advance':
+                            $matClass = 'badge-matured';
+                            $matLabel = 'Advance Paid';
+                            break;
                         case 'pending':
                             $matClass = 'badge-pending';
-                            $matLabel = 'Current Month';
+                            $matLabel = 'Active (Pending)';
                             break;
                         case 'unscheduled':
                             $matClass = 'badge-future';

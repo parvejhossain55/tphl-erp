@@ -628,6 +628,31 @@ window.openEditPaymentDateModal = function(target) {
         </div>
         <?php endif; ?>
 
+        <!-- 20. Total Accrued Penalty (Current Live 5% Overdue Penalty) -->
+        <?php $liveAccruedPenaltyCard = round((float)($paymentSummary['accrued_penalty'] ?? 0), 2); ?>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper" style="<?= $liveAccruedPenaltyCard > 0 ? 'border-left: 3px solid #dc2626;' : '' ?>">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:<?= $liveAccruedPenaltyCard > 0 ? '#dc2626' : '#27ae60' ?>; background: <?= $liveAccruedPenaltyCard > 0 ? 'rgba(220, 38, 38, 0.1)' : 'rgba(39, 174, 96, 0.1)' ?>;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </span>
+                    </div>
+                    <div class="card__title-wrap" style="width: 100%;">
+                        <h6 class="card__sub-title mb-10">Total Accrued Penalty</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:<?= $liveAccruedPenaltyCard > 0 ? '#dc2626' : '#27ae60' ?>;">
+                                TK.<?= number_format($liveAccruedPenaltyCard, 2) ?>
+                            </h4>
+                        </div>
+                        <small class="text-muted" style="font-size: 11px;">
+                            <?= $liveAccruedPenaltyCard > 0 ? 'Current unpaid 5% overdue penalty' : 'No accrued penalty' ?>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 
@@ -1287,6 +1312,47 @@ window.openEditPaymentDateModal = function(target) {
                         </tbody>
                     </table>
                 </div>
+                <?php
+                    $ledgerPrincipalEmiDue = 0.0;
+                    $ledgerAccruedPenalty  = 0.0;
+                    $ledgerDueEmiCount     = 0;
+                    if (!empty($virtualEmiSchedule)) {
+                        foreach ($virtualEmiSchedule as $vRow) {
+                            if (!empty($vRow['is_project_active']) && (float)($vRow['due_amount'] ?? 0) > 0.01) {
+                                $ledgerPrincipalEmiDue += (float)$vRow['due_amount'];
+                                $ledgerAccruedPenalty  += (float)($vRow['penalty_amount'] ?? 0);
+                                $ledgerDueEmiCount++;
+                            }
+                        }
+                    }
+                    $ledgerTotalEmiPayable = round($ledgerPrincipalEmiDue + $ledgerAccruedPenalty, 2);
+                ?>
+                <?php if ($ledgerPrincipalEmiDue > 0 || $ledgerAccruedPenalty > 0): ?>
+                <div class="mt-3 p-3 rounded-3 border" style="background: #fffbeb; border-color: #fde68a !important;">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-danger-subtle text-danger p-2" style="font-size: 14px; border-radius: 6px;">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </span>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 13px;">Ledger Outstanding Breakdown (EMI Due &amp; Penalty)</div>
+                                <small class="text-muted">Separate reflection of unpaid active Principal EMI Due (<?= $ledgerDueEmiCount ?> EMI<?= $ledgerDueEmiCount === 1 ? '' : 's' ?>) and auto-accrued 5% late penalty.</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center flex-wrap gap-2">
+                            <span class="badge bg-white text-danger border border-danger-subtle px-3 py-2 font-monospace" style="font-size: 12px;">
+                                Principal EMI Due: TK. <?= number_format($ledgerPrincipalEmiDue, 2) ?>
+                            </span>
+                            <span class="badge bg-white border border-warning px-3 py-2 font-monospace" style="font-size: 12px; color: #b45309;">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>5% Penalty: TK. <?= number_format($ledgerAccruedPenalty, 2) ?>
+                            </span>
+                            <span class="badge bg-danger text-white px-3 py-2 font-monospace" style="font-size: 12.5px;">
+                                Total EMI Payable: TK. <?= number_format($ledgerTotalEmiPayable, 2) ?>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div> <!-- End Pane 1: Detailed Ledger -->
 
             <!-- Pane 2: Date-Wise Payment Summary (Unified Batches) -->
@@ -1471,9 +1537,51 @@ window.openEditPaymentDateModal = function(target) {
 
                 <!-- VIRTUAL EMI SCHEDULE (Yield to Maturity & CED Scheduling) -->
                 <?php if (!empty($virtualEmiSchedule)): ?>
+                <?php
+                    $schedActiveCount  = 0;
+                    $schedActiveAsked  = 0.0;
+                    $schedActiveDue    = 0.0;
+                    $schedAdvanceAmt   = 0.0;
+                    $schedTotalPenalty = 0.0;
+                    $maxActiveEmiNo    = 0;
+                    foreach ($virtualEmiSchedule as $_v) {
+                        if (!empty($_v['is_project_active'])) {
+                            $schedActiveCount++;
+                            $schedActiveAsked  += (float)($_v['amount'] ?? 0);
+                            $schedActiveDue    += (float)($_v['due_amount'] ?? 0);
+                            $schedTotalPenalty += (float)($_v['penalty_amount'] ?? 0);
+                            if ((int)$_v['emi_no'] > $maxActiveEmiNo) {
+                                $maxActiveEmiNo = (int)$_v['emi_no'];
+                            }
+                        } elseif (($_v['status'] ?? '') === 'advance') {
+                            $schedAdvanceAmt += (float)($_v['paid_amount'] ?? 0);
+                        }
+                    }
+                    $totalScheduleRows    = count($virtualEmiSchedule);
+                    $visibleScheduleLimit = min($totalScheduleRows, $maxActiveEmiNo + ($schedAdvanceAmt > 0 ? 1 : 0));
+                    $hiddenScheduleCount  = max(0, $totalScheduleRows - $visibleScheduleLimit);
+                ?>
                 <div class="mt-4 pt-4 border-top">
                     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-                        <h5 class="mb-0"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                        <div class="d-flex align-items-center flex-wrap gap-2">
+                            <h5 class="mb-0"><i class="fa-light fa-calendar-check me-2"></i>EMI Maturity Schedule</h5>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size:11.5px;">
+                                Active Asked: TK. <?= number_format($schedActiveAsked, 2) ?> (<?= $schedActiveCount ?>)
+                            </span>
+                            <?php if ($schedAdvanceAmt > 0): ?>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1" style="font-size:11.5px;">
+                                    <i class="fa-solid fa-forward-fast me-1"></i>Advance: TK. <?= number_format($schedAdvanceAmt, 2) ?>
+                                </span>
+                            <?php endif; ?>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size:11.5px;">
+                                Active Due: TK. <?= number_format($schedActiveDue, 2) ?>
+                            </span>
+                            <?php if ($schedTotalPenalty > 0): ?>
+                                <span class="badge bg-warning-subtle text-danger border border-warning-subtle px-2 py-1" style="font-size:11.5px;">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>5% Penalty: TK. <?= number_format($schedTotalPenalty, 2) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
                         <div class="d-flex align-items-center gap-2">
                             <a href="<?= $GLOBALS['base_url'] ?>/client-emi-schedule-print/<?= htmlspecialchars($bookingId) ?>" target="_blank" class="btn btn-sm btn-outline-secondary shadow-sm" title="Print EMI Maturity Schedule">
                                 <i class="fa-solid fa-print me-1"></i> Print Schedule
@@ -1489,7 +1597,7 @@ window.openEditPaymentDateModal = function(target) {
                                 <tr>
                                     <th>EMI No</th>
                                     <th>Scheduled / Due Date</th>
-                                    <th>Amount</th>
+                                    <th>EMI Amount</th>
                                     <th>Paid Amount</th>
                                     <th>Due Amount</th>
                                     <th>Payment Status</th>
@@ -1497,7 +1605,8 @@ window.openEditPaymentDateModal = function(target) {
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($virtualEmiSchedule as $emi): 
+                                <?php foreach ($virtualEmiSchedule as $emi):
+                                    $isExtraRow = ((int)$emi['emi_no'] > $visibleScheduleLimit);
                                     $maturityBadge = '';
                                     switch($emi['maturity_status']) {
                                         case 'paid_on_time':
@@ -1507,14 +1616,17 @@ window.openEditPaymentDateModal = function(target) {
                                             $delayText = (!empty($emi['delay_days']) && $emi['delay_days'] > 0) ? ' (' . $emi['delay_days'] . 'd delay)' : '';
                                             $maturityBadge = '<span class="badge text-white" style="background:#ea580c;"><i class="fa-solid fa-clock-rotate-left me-1"></i>Paid Late' . $delayText . '</span>';
                                             break;
+                                        case 'advance':
+                                            $maturityBadge = '<span class="badge bg-info text-dark"><i class="fa-solid fa-forward-fast me-1"></i>Advance Paid</span>';
+                                            break;
                                         case 'matured': 
                                             $maturityBadge = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;"><i class="fa-solid fa-check me-1"></i>Matured</span>'; 
                                             break;
                                         case 'pending': 
-                                            $maturityBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending (Current Month)</span>'; 
+                                            $maturityBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Active (Pending)</span>'; 
                                             break;
                                         case 'due': 
-                                            $overdueText = (!empty($emi['overdue_days']) && $emi['overdue_days'] > 0) ? ' (' . $emi['overdue_days'] . 'd overdue)' : '';
+                                            $overdueText = (!empty($emi['overdue_days']) && $emi['overdue_days'] > 0) ? ' (' . $emi['overdue_days'] . 'd)' : '';
                                             $maturityBadge = '<span class="badge bg-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>Overdue' . $overdueText . '</span>'; 
                                             break;
                                         case 'unscheduled':
@@ -1530,10 +1642,11 @@ window.openEditPaymentDateModal = function(target) {
                                     
                                     $statusBadge = '';
                                     if ($emi['status'] === 'paid') $statusBadge = '<span class="badge bg-success">Paid</span>';
+                                    elseif ($emi['status'] === 'advance') $statusBadge = '<span class="badge bg-info text-dark">Advance</span>';
                                     elseif ($emi['status'] === 'partially_paid') $statusBadge = '<span class="badge bg-warning text-dark">Partially Paid</span>';
                                     else $statusBadge = '<span class="text-muted">Unpaid</span>';
                                 ?>
-                                <tr>
+                                <tr<?= $isExtraRow ? ' class="emi-extra-row d-none"' : '' ?>>
                                     <td>
                                         <strong>#<?= $emi['emi_no'] ?></strong> 
                                         <?php if (!empty($emi['is_virtual']) && !empty($emi['due_date'])): ?>
@@ -1565,14 +1678,35 @@ window.openEditPaymentDateModal = function(target) {
                                     </td>
                                     <td>TK. <?= number_format($emi['amount'], 2) ?></td>
                                     <td>
-                                        TK. <?= number_format($emi['paid_amount'], 2) ?>
+                                        <?php if (($emi['status'] ?? '') === 'advance'): ?>
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <span class="fw-bold text-info">TK. <?= number_format($emi['paid_amount'], 2) ?></span>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:10px;">Advance Credit</span>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="<?= ($emi['paid_amount'] ?? 0) > 0 ? 'fw-semibold text-success' : 'text-muted' ?>">TK. <?= number_format($emi['paid_amount'], 2) ?></span>
+                                        <?php endif; ?>
                                         <?php if (!empty($emi['last_payment_date'])): ?>
                                             <div class="small text-muted" style="font-size: 11px;">
                                                 <i class="fa-light fa-calendar-check me-1"></i>Cleared: <?= date('d M, Y', strtotime($emi['last_payment_date'])) ?>
                                             </div>
                                         <?php endif; ?>
                                     </td>
-                                    <td>TK. <?= number_format($emi['due_amount'], 2) ?></td>
+                                    <td>
+                                        <?php if (empty($emi['is_project_active'])): ?>
+                                            <span class="text-muted">TK. 0.00</span>
+                                            <div class="small text-muted" style="font-size: 11px;">Not Asked Yet</div>
+                                        <?php elseif (($emi['due_amount'] ?? 0) > 0): ?>
+                                            <span class="fw-bold text-danger">TK. <?= number_format($emi['due_amount'], 2) ?></span>
+                                            <?php if (($emi['penalty_amount'] ?? 0) > 0): ?>
+                                                <div class="small text-danger mt-1" style="font-size: 11px;">
+                                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>+5% Penalty: TK. <?= number_format($emi['penalty_amount'], 2) ?> (<?= (int)$emi['months_overdue'] ?> mo)
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="fw-semibold text-success">TK. 0.00</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?= $statusBadge ?></td>
                                     <td><?= $maturityBadge ?></td>
                                 </tr>
@@ -1580,6 +1714,14 @@ window.openEditPaymentDateModal = function(target) {
                             </tbody>
                         </table>
                     </div>
+                    <?php if ($hiddenScheduleCount > 0): ?>
+                        <div class="text-center mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                                    onclick="var rows=document.querySelectorAll('.emi-extra-row');var hidden=rows.length&&rows[0].classList.contains('d-none');rows.forEach(function(r){r.classList.toggle('d-none',!hidden);});this.innerHTML=hidden?'<i class=&quot;fa-solid fa-chevron-up me-1&quot;></i>Show Active Only (<?= $visibleScheduleLimit ?> of <?= $totalScheduleRows ?>)':'<i class=&quot;fa-solid fa-chevron-down me-1&quot;></i>Show All EMIs (+<?= $hiddenScheduleCount ?> more / <?= $totalScheduleRows ?> total)';">
+                                <i class="fa-solid fa-chevron-down me-1"></i>Show All EMIs (+<?= $hiddenScheduleCount ?> more / <?= $totalScheduleRows ?> total)
+                            </button>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 

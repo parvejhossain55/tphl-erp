@@ -292,17 +292,18 @@ class CedProjectAssignment
                     $agent['unverified_collected'] = (float)$row2['unverified_collected'];
                 }
 
-                // 3. Total Matured Overdue EMIs for these projects
+                // 3. Total Overdue Active EMIs for these projects (strictly project_emi_schedule_items.is_active = 1)
                 $q3 = $this->db->query("SELECT 
                         COALESCE(SUM(es.due_emi_amount), 0) AS total_overdue
                     FROM emi_schedules es
                     INNER JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+                    INNER JOIN project_emi_schedule_items pesi ON pesi.project_id = lb.project_id AND pesi.emi_no = es.emi_no AND pesi.is_active = 1
                     WHERE lb.project_id IN ($pIdList)
                       AND lb.deleted_at IS NULL
                       AND lb.booking_status NOT IN ('cancelled', 'refunded')
                       AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
                       AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-                      AND es.due_date <= CURDATE()
+                      AND pesi.due_date < CURDATE()
                       AND es.status != 'paid'");
 
                 if ($q3 && $row3 = $q3->fetch_assoc()) {
@@ -434,10 +435,11 @@ class CedProjectAssignment
                         GROUP BY booking_id
                     ) pay ON pay.booking_id = lb.id
                     LEFT JOIN (
-                        SELECT lead_booking_id, SUM(due_emi_amount) AS overdue
-                        FROM emi_schedules
-                        WHERE due_date <= CURDATE() AND status != 'paid'
-                        GROUP BY lead_booking_id
+                        SELECT es.lead_booking_id, SUM(es.due_emi_amount) AS overdue
+                        FROM emi_schedules es
+                        INNER JOIN project_emi_schedule_items pesi ON pesi.project_id = $pId AND pesi.emi_no = es.emi_no AND pesi.is_active = 1
+                        WHERE pesi.due_date < CURDATE() AND es.status != 'paid'
+                        GROUP BY es.lead_booking_id
                     ) due ON due.lead_booking_id = lb.id
                     WHERE lb.project_id = $pId
                       AND lb.deleted_at IS NULL
@@ -598,17 +600,18 @@ class CedProjectAssignment
         ");
         $stats2 = $q2 ? $q2->fetch_assoc() : [];
 
-        // 3. Overdue EMIs
+        // 3. Overdue Active EMIs
         $q3 = $this->db->query("
             SELECT 
                 COALESCE(SUM(es.due_emi_amount), 0) AS total_overdue
             FROM emi_schedules es
             INNER JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            INNER JOIN project_emi_schedule_items pesi ON pesi.project_id = lb.project_id AND pesi.emi_no = es.emi_no AND pesi.is_active = 1
             WHERE lb.deleted_at IS NULL
               AND lb.booking_status NOT IN ('cancelled', 'refunded')
               AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
               AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-              AND es.due_date <= CURDATE()
+              AND pesi.due_date < CURDATE()
               AND es.status != 'paid'
         ");
         $stats3 = $q3 ? $q3->fetch_assoc() : [];
@@ -689,12 +692,13 @@ class CedProjectAssignment
                 COALESCE(SUM(es.due_emi_amount), 0) AS total_overdue
             FROM emi_schedules es
             INNER JOIN lead_bookings lb ON es.lead_booking_id = lb.id
+            INNER JOIN project_emi_schedule_items pesi ON pesi.project_id = lb.project_id AND pesi.emi_no = es.emi_no AND pesi.is_active = 1
             WHERE lb.project_id NOT IN (SELECT project_id FROM ced_project_assignments WHERE status = 'active')
               AND lb.deleted_at IS NULL
               AND lb.booking_status NOT IN ('cancelled', 'refunded')
               AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
               AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-              AND es.due_date <= CURDATE()
+              AND pesi.due_date < CURDATE()
               AND es.status != 'paid'
         ");
         $stats3 = $q3 ? $q3->fetch_assoc() : [];
