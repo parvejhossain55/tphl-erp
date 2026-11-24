@@ -52,62 +52,13 @@ class CedProjectDashboardController extends CedCollectionStatementController
 
     /**
      * Mirror AccountClientController::getEffectiveCedProjectFilter() for CED agent scoping.
+     * Unlocked: all authorized CED users can view and filter across all projects.
      *
-     * @return int[] Empty array when user is unrestricted; otherwise list of active assigned project IDs.
+     * @return int[]
      */
     protected function resolveScopedProjectIds(): array
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
-        $userRoleId    = (int)($_SESSION['user']['role_id'] ?? 0);
-        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
-        $roleName      = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-
-        $unrestrictedRoles = [1, 3, 6, 7, 30, 33, 34, 35, 36, 37, 38, 39];
-        $isUnrestricted = $currentUserId <= 0
-            || $currentUserId === 94
-            || in_array($userRoleId, $unrestrictedRoles, true)
-            || in_array($userSecRoleId, $unrestrictedRoles, true)
-            || in_array($userPriRoleId, $unrestrictedRoles, true)
-            || strpos($roleName, 'head of client experience') !== false
-            || strpos($roleName, 'client experience') !== false
-            || strpos($roleName, 'clients experiment') !== false
-            || strpos($roleName, 'credit recovery') !== false
-            || strpos($roleName, 'management') !== false
-            || strpos($roleName, 'admin') !== false
-            || strpos($roleName, 'account') !== false
-            || (function_exists('isHeadOfClientExperience') && isHeadOfClientExperience())
-            || (function_exists('isClientsCommunicated') && isClientsCommunicated())
-            || (function_exists('isCreditRecovery') && isCreditRecovery())
-            || (function_exists('hasPermission') && hasPermission('CED Manage'))
-            || (function_exists('isAccountsHead') && isAccountsHead())
-            || (function_exists('isAccountsExecutive') && isAccountsExecutive());
-
-        if ($isUnrestricted) {
-            return [];
-        }
-
-        $scopedIds = [];
-        $res = $this->db->query("
-            SELECT DISTINCT project_id
-            FROM ced_project_assignments
-            WHERE user_id = {$currentUserId}
-              AND status = 'active'
-        ");
-        if ($res) {
-            while ($r = $res->fetch_assoc()) {
-                $pId = (int)$r['project_id'];
-                if ($pId > 0) {
-                    $scopedIds[] = $pId;
-                }
-            }
-        }
-
-        return $scopedIds;
+        return [];
     }
 
     /**
@@ -560,72 +511,88 @@ class CedProjectDashboardController extends CedCollectionStatementController
     }
 
     /**
-     * Compute per-booking EMI metrics using the exact Module 1 logic
-     * (respecting project_emi_schedule_items overrides and Regular vs Advance split).
+     * Compute per-booking EMI metrics strictly from Project-Level Active EMIs
+     * (`project_emi_schedule_items.is_active = 1`).
+     * If a project has 0 active EMIs, demand_count = 0 and asked_amount = 0.0
+     * (any EMI paid is treated as Advance EMI).
      *
      * @param string $inProjectIds Comma-separated list of integer project IDs
      * @return array Keyed by booking_id
      */
     private function computeBookingEmiMetrics(string $inProjectIds): array
     {
-        $today = $this->db->real_escape_string(date('Y-m-d'));
         $activeBookingCond = $this->activeBookingSql('lb');
         $validPaymentCond  = $this->validPaymentSql('lp');
 
         $metrics = [];
 
-        // Asked EMIs up to TODAY per active booking
-        $qSched = $this->db->query("
+        // 1. Active EMI count per project (strictly is_active = 1, no calendar fallback)
+        $activeCountByProject = [];
+        $qActive = $this->db->query("
+            SELECT project_id, COUNT(*) AS active_emi_count
+            FROM project_emi_schedule_items
+            WHERE project_id IN ({$inProjectIds})
+              AND is_active = 1
+            GROUP BY project_id
+        ");
+        if ($qActive) {
+            while ($ar = $qActive->fetch_assoc()) {
+                $activeCountByProject[(int)$ar['project_id']] = (int)$ar['active_emi_count'];
+            }
+        }
+
+        // 2. Per-booking Construction Fee & Per-EMI Amount -> Asked Amount = active_emi_count * per_emi_amount
+        $qBookings = $this->db->query("
             SELECT
-                es.lead_booking_id AS booking_id,
+                lb.id AS booking_id,
                 lb.project_id,
-                COUNT(*) AS total_sched_rows,
-                SUM(
-                    CASE
-                        WHEN es.status != 'cancelled'
-                             AND (
-                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb.project_id) AND pesi.is_active = 1)
-                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb.project_id) AND es.due_date <= '{$today}')
-                             )
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS demand_count,
-                COALESCE(SUM(
-                    CASE
-                        WHEN es.status != 'cancelled'
-                             AND (
-                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb.project_id) AND pesi.is_active = 1)
-                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb.project_id) AND es.due_date <= '{$today}')
-                             )
-                        THEN es.emi_amount
-                        ELSE 0
-                    END
-                ), 0) AS asked_amount
-            FROM emi_schedules es
-            INNER JOIN lead_bookings lb ON lb.id = es.lead_booking_id
-            LEFT JOIN project_emi_schedule_items pesi ON pesi.project_id = lb.project_id AND pesi.emi_no = es.emi_no
+                COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
+                COALESCE(f.land_share_value, 0) AS land_share,
+                COALESCE(f.development_charges, 0) AS dev_charge,
+                COALESCE(
+                    NULLIF(lb.total_emi_no, 0),
+                    NULLIF((SELECT MAX(lp_e.total_emi_no) FROM lead_payments lp_e WHERE lp_e.booking_id = lb.id AND lp_e.is_trashed = 0), 0),
+                    NULLIF(pes.total_emi_no, 0),
+                    36
+                ) AS total_emi_no
+            FROM lead_bookings lb
+            LEFT JOIN flats f ON f.id = lb.flat_id
+            LEFT JOIN project_emi_schedules pes ON pes.project_id = lb.project_id
             WHERE lb.project_id IN ({$inProjectIds})
               AND {$activeBookingCond}
-            GROUP BY es.lead_booking_id, lb.project_id
         ");
-        if ($qSched) {
-            while ($sr = $qSched->fetch_assoc()) {
-                $bId = (int)$sr['booking_id'];
+        if ($qBookings) {
+            while ($br = $qBookings->fetch_assoc()) {
+                $bId            = (int)$br['booking_id'];
+                $pId            = (int)$br['project_id'];
+                $totalPrice     = (float)$br['total_price'];
+                $landShare      = (float)$br['land_share'];
+                $devCharge      = (float)$br['dev_charge'];
+                $totalEmiNo     = max(1, (int)$br['total_emi_no']);
+                if ($totalEmiNo > 120) {
+                    $totalEmiNo = 42;
+                }
+                $constructionFee = max(0.0, round($totalPrice - ($landShare + $devCharge)));
+                $perEmiAmount    = ($totalEmiNo > 0) ? round($constructionFee / $totalEmiNo) : 0.0;
+
+                $projActiveCount = $activeCountByProject[$pId] ?? 0;
+                $demandCount     = min($totalEmiNo, $projActiveCount);
+                $askedAmount     = round($demandCount * $perEmiAmount, 2);
+
                 $metrics[$bId] = [
-                    'project_id'            => (int)$sr['project_id'],
-                    'total_sched_rows'      => (int)$sr['total_sched_rows'],
-                    'demand_count'          => (int)$sr['demand_count'],
-                    'asked_amount'          => round((float)$sr['asked_amount'], 2),
+                    'project_id'            => $pId,
+                    'total_sched_rows'      => $demandCount,
+                    'demand_count'          => $demandCount,
+                    'asked_amount'          => $askedAmount,
                     'total_emi_paid'        => 0.0,
                     'advance_paid'          => 0.0,
                     'net_regular_collected' => 0.0,
-                    'emi_due'               => 0.0,
+                    'emi_due'               => $askedAmount,
                 ];
             }
         }
 
-        // Valid EMI payments per active booking
+        // 3. Valid EMI payments per active booking
         $qPaid = $this->db->query("
             SELECT
                 lp.booking_id,
@@ -636,7 +603,7 @@ class CedProjectDashboardController extends CedCollectionStatementController
             WHERE lb.project_id IN ({$inProjectIds})
               AND {$activeBookingCond}
               AND {$validPaymentCond}
-              AND lp.payment_type = 'emi'
+              AND lp.payment_type IN ('emi', 'emi_due_settlement')
             GROUP BY lp.booking_id, lb.project_id
         ");
         if ($qPaid) {
@@ -658,22 +625,15 @@ class CedProjectDashboardController extends CedCollectionStatementController
             }
         }
 
-        // Apply Module 1 split per booking:
+        // 4. Split strictly against Project-Level Asked Amount:
         // Regular EMI Paid = min(paid, asked); Advance = max(0, paid - asked)
-        // Net Regular EMI Collected = total_emi_paid - advance_paid (= Regular EMI Paid)
-        // Regular EMI Due = asked_amount - net_regular_collected
+        // Regular EMI Due  = max(0, asked - Regular EMI Paid)
         foreach ($metrics as $bId => &$m) {
-            if ($m['total_sched_rows'] === 0) {
-                $m['net_regular_collected'] = $m['total_emi_paid'];
-                $m['advance_paid']          = 0.0;
-                $m['emi_due']               = 0.0;
-            } else {
-                $netReg = round(min($m['total_emi_paid'], $m['asked_amount']), 2);
-                $adv    = round(max(0.0, $m['total_emi_paid'] - $netReg), 2);
-                $m['net_regular_collected'] = $netReg;
-                $m['advance_paid']          = $adv;
-                $m['emi_due']               = round(max(0.0, $m['asked_amount'] - $netReg), 2);
-            }
+            $netReg = round(min($m['total_emi_paid'], $m['asked_amount']), 2);
+            $adv    = round(max(0.0, $m['total_emi_paid'] - $netReg), 2);
+            $m['net_regular_collected'] = $netReg;
+            $m['advance_paid']          = $adv;
+            $m['emi_due']               = round(max(0.0, $m['asked_amount'] - $netReg), 2);
         }
         unset($m);
 

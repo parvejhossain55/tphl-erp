@@ -1791,7 +1791,6 @@ class AccountClient extends Model
                     (SELECT SUM(lp.penalty_paid) 
                      FROM lead_payments lp 
                      WHERE {$lpTrash}lp.booking_id = lb.id 
-                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status != 'rejected'), 
                     0
                 ) as total_penalty_paid,
@@ -1904,7 +1903,7 @@ class AccountClient extends Model
             // Booking discount + Bulk EMI discount both reduce the client's total obligation
             // Note: Payments under 'others' are outside flat/unit price and DO NOT reduce flat due
             $unitPaid     = max(0, $totalPaid - $othersPaid);
-            $totalDue     = max(0, round($totalPrice - $discountAmount - $unitPaid - $totalBulkEmiDiscount));
+            $principalDue = max(0, round($totalPrice - $discountAmount - $unitPaid - $totalBulkEmiDiscount));
             $netReceived  = round($totalPaid - $totalServiceFee);
             $totalEmiDue  = (float) ($clientDetails['total_emi_due'] ?? 0);
 
@@ -1922,6 +1921,14 @@ class AccountClient extends Model
 
             // Fixed Per-EMI Calculation: Total Construction Fee ÷ Total EMI Count
             $perEmiAmount = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
+
+            // Automatically compute live accrued 5% compounded penalty on unpaid overdue project-active EMIs
+            // and include it in total_due without waiting for a manual transaction/adjustment.
+            $emiPaidPoolForPenalty = round((float)($clientDetails['emi_paid'] ?? 0) + $totalBulkEmiDiscount, 2);
+            $accruedPenalty = ($remainingConstructionFee > 0)
+                ? $this->computeLiveAccruedPenalty((int)($clientDetails['project_id'] ?? 0), (int)$totalEmiCount, (float)$perEmiAmount, $emiPaidPoolForPenalty)
+                : 0.0;
+            $totalDue = round($principalDue + $accruedPenalty, 2);
 
             // Registration paid status
             $isRegistrationPaid = ($registrationPaid > 0);
@@ -1951,10 +1958,13 @@ class AccountClient extends Model
             $clientDetails['emi_paid_total']                       = $emiPaidTotal;
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
+            $clientDetails['principal_due']                        = $principalDue;
+            $clientDetails['accrued_penalty']                      = $accruedPenalty;
             $clientDetails['total_due']                            = $totalDue;
             $clientDetails['total_penalty_paid']                   = (float) ($clientDetails['total_penalty_paid'] ?? 0);
             $clientDetails['total_penalty_amount']                 = (float) ($clientDetails['total_penalty_amount'] ?? 0);
             $clientDetails['total_penalty_waived']                 = (float) ($clientDetails['total_penalty_waived'] ?? 0);
+            $clientDetails['total_penalty_due']                    = round(max(0.0, $clientDetails['total_penalty_amount'] - $clientDetails['total_penalty_waived'] - $clientDetails['total_penalty_paid']), 2);
             $clientDetails['others_paid']                          = $othersPaid;
             $clientDetails['others_paid_total']                    = $othersPaidTotal;
             $clientDetails['net_received']                         = $netReceived;
@@ -2200,7 +2210,30 @@ class AccountClient extends Model
         }
         $paidEmiStmt->close();
 
-        // 2. Fetch custom fixed dates set by CED (excluding deactivated unpaid project EMIs)
+        // 2. Fetch project-level EMI schedule items (Single Source of Truth for active EMIs & due dates)
+        $projectId = (int)($clientDetails['project_id'] ?? 0);
+        $projectEmiItems = [];
+        if ($projectId > 0) {
+            $projItemStmt = $this->db->prepare("
+                SELECT emi_no, due_date, emi_amount, remarks, is_active
+                FROM project_emi_schedule_items
+                WHERE project_id = ?
+                ORDER BY emi_no ASC
+            ");
+            if ($projItemStmt) {
+                $projItemStmt->bind_param("i", $projectId);
+                $projItemStmt->execute();
+                $pRes = $projItemStmt->get_result();
+                if ($pRes) {
+                    while ($prow = $pRes->fetch_assoc()) {
+                        $projectEmiItems[(int)$prow['emi_no']] = $prow;
+                    }
+                }
+                $projItemStmt->close();
+            }
+        }
+
+        // 2b. Fetch custom fixed dates set by CED (metadata / legacy) (excluding deactivated unpaid project EMIs)
         $projectId = (int)($clientDetails['project_id'] ?? 0);
         $fixedDates = [];
         $fixedStmt = $this->db->prepare("
@@ -2284,136 +2317,154 @@ class AccountClient extends Model
             $anchorDate->modify('+1 month');
         }
 
-        $runnerDate = clone $anchorDate;
-        
+        $perEmiAmount = (float)($clientDetails['per_emi_amount'] ?? 0);
+
+        // Compute total valid EMI paid pool for waterfall allocation
+        $totalEmiPaidPool = 0.0;
+        $latestAnyEmiPaymentDate = null;
+        foreach ($paidEmis as $pe) {
+            $totalEmiPaidPool += (float)($pe['total_paid'] ?? 0);
+            $lpd = $pe['last_payment_date'] ?? null;
+            if (!empty($lpd) && ($latestAnyEmiPaymentDate === null || $lpd > $latestAnyEmiPaymentDate)) {
+                $latestAnyEmiPaymentDate = $lpd;
+            }
+        }
+        $verifiedEmiPlusDiscount = (float)($clientDetails['emi_paid'] ?? 0) + (float)($clientDetails['total_bulk_emi_discount'] ?? 0);
+        $totalEmiPaidPool = round(max($totalEmiPaidPool, $verifiedEmiPlusDiscount), 2);
+
+        // Step A: Allocate paid pool across Project-Active EMIs first (in order)
+        $remainingPool      = $totalEmiPaidPool;
+        $activeAllocations  = [];
+        $firstInactiveEmiNo = null;
         for ($i = 1; $i <= $totalEmi; $i++) {
-            $hasPayment = isset($paidEmis[$i]);
-            $hasFixedDate = isset($fixedDates[$i]);
-            
-            // Determine due date & CED fixed metadata
+            $pItem    = $projectEmiItems[$i] ?? null;
+            $isActive = ($pItem !== null && (int)($pItem['is_active'] ?? 0) === 1);
+            if ($isActive) {
+                $alloc = ($perEmiAmount > 0) ? round(min($remainingPool, $perEmiAmount), 2) : 0.0;
+                $activeAllocations[$i] = $alloc;
+                $remainingPool = round(max(0.0, $remainingPool - $alloc), 2);
+            } elseif ($firstInactiveEmiNo === null) {
+                $firstInactiveEmiNo = $i;
+            }
+        }
+        // Step B: All remaining surplus (Advance) pools ONLY onto the first Inactive EMI
+        $advancePoolAmount = $remainingPool;
+
+        for ($i = 1; $i <= $totalEmi; $i++) {
+            $hasPayment      = isset($paidEmis[$i]);
+            $hasFixedDate    = isset($fixedDates[$i]);
+            $projItem        = $projectEmiItems[$i] ?? null;
+            $isProjectActive = ($projItem !== null && (int)($projItem['is_active'] ?? 0) === 1);
+
+            // Determine due date strictly from Project-Level EMI Control (no artificial calendar fallback)
             $isDateCustom = false;
-            $fixedByName = null;
-            $fixedByCode = null;
-            $fixedAt = null;
-            $fixedNotes = null;
-            $dueDateStr = null;
-            $dueDateObj = null;
-            
-            if ($hasFixedDate) {
-                $dueDateStr = $fixedDates[$i]['due_date'];
+            $fixedByName  = null;
+            $fixedByCode  = null;
+            $fixedAt      = null;
+            $fixedNotes   = null;
+            $dueDateStr   = null;
+            $dueDateObj   = null;
+
+            if ($isProjectActive && !empty($projItem['due_date'])) {
+                $dueDateStr   = $projItem['due_date'];
                 $isDateCustom = true;
-                $fixedByName = $fixedDates[$i]['fixed_by_name'] ?? 'CED Team';
-                $fixedByCode = $fixedDates[$i]['fixed_by_code'] ?? null;
-                $fixedAt = $fixedDates[$i]['fixed_at'] ?? null;
-                $fixedNotes = $fixedDates[$i]['notes'] ?? null;
-                $dueDateObj = new \DateTime($dueDateStr);
-                $runnerDate = clone $dueDateObj;
-            } elseif ($hasPayment && !empty($paidEmis[$i]['schedule_due_date'])) {
-                $dueDateStr = $paidEmis[$i]['schedule_due_date'];
-                $dueDateObj = new \DateTime($dueDateStr);
-                $runnerDate = clone $dueDateObj;
+                $fixedByName  = $hasFixedDate ? ($fixedDates[$i]['fixed_by_name'] ?? 'Project EMI Schedule') : 'Project EMI Schedule';
+                $fixedByCode  = $hasFixedDate ? ($fixedDates[$i]['fixed_by_code'] ?? null) : null;
+                $fixedAt      = $hasFixedDate ? ($fixedDates[$i]['fixed_at'] ?? null) : null;
+                $fixedNotes   = !empty($projItem['remarks']) ? $projItem['remarks'] : ($hasFixedDate ? ($fixedDates[$i]['notes'] ?? null) : null);
+                $dueDateObj   = new \DateTime($dueDateStr);
+            } elseif ($hasFixedDate && $isProjectActive) {
+                $dueDateStr   = $fixedDates[$i]['due_date'];
+                $isDateCustom = true;
+                $fixedByName  = $fixedDates[$i]['fixed_by_name'] ?? 'CED Team';
+                $fixedByCode  = $fixedDates[$i]['fixed_by_code'] ?? null;
+                $fixedAt      = $fixedDates[$i]['fixed_at'] ?? null;
+                $fixedNotes   = $fixedDates[$i]['notes'] ?? null;
+                $dueDateObj   = new \DateTime($dueDateStr);
             } else {
-                // Unpaid & no custom fixed date by CED:
-                // Only project forward if CED or payment has anchored at least one date in this booking
-                if (!empty($fixedDates) || !empty($lastPaidDueDate)) {
-                    if (count($paidEmis) > 0 || count($fixedDates) > 0 || $i > 1) {
-                        $runnerDate->modify('+1 month');
-                    }
-                    $dueDateStr = $runnerDate->format('Y-m-d');
-                    $dueDateObj = clone $runnerDate;
-                } else {
-                    // No date has ever been scheduled by CED or recorded via payment.
-                    // Keep unassigned (Not Scheduled) so artificial past dates are never fabricated.
-                    $dueDateStr = null;
-                    $dueDateObj = null;
-                }
+                // Inactive at project level -> always Not Scheduled
+                $dueDateStr = null;
+                $dueDateObj = null;
             }
 
-            $dueMonth = $dueDateObj ? (int)$dueDateObj->format('Ym') : null;
-            $isOverdueDate = ($dueDateStr !== null && $dueDateStr < $todayStr);
-            
-            // Amounts & payment stats
-            $scheduledAmt = (float)($clientDetails['per_emi_amount'] ?? 0);
-            $paidAmt = 0.0;
-            $dueAmt = $scheduledAmt;
+            $isOverdueDate = ($isProjectActive && $dueDateStr !== null && $dueDateStr < $todayStr);
+
+            // Amounts & payment stats from waterfall allocation
+            $scheduledAmt    = $perEmiAmount;
+            $paidAmt         = 0.0;
+            $dueAmt          = $scheduledAmt;
             $lastPaymentDate = null;
-            $paymentStatus = 'unpaid';
-            $isFullyPaid = false;
-            
-            if ($hasPayment) {
-                $payRec = $paidEmis[$i];
-                $paidAmt = (float)($payRec['total_paid'] ?? 0);
-                $minDue = $payRec['min_due_emi'];
-                $dueAmt = ($minDue !== null) ? (float)$minDue : max(0, $scheduledAmt - $paidAmt);
-                $lastPaymentDate = $payRec['last_payment_date'] ?? null;
-                $paymentStatus = $payRec['latest_payment_status'] ?? ($dueAmt <= 0 ? 'paid' : 'partially_paid');
-                
+            $paymentStatus   = 'unpaid';
+            $isFullyPaid     = false;
+
+            if ($isProjectActive) {
+                $paidAmt         = $activeAllocations[$i] ?? 0.0;
+                $dueAmt          = round(max(0.0, $scheduledAmt - $paidAmt), 2);
+                $lastPaymentDate = $hasPayment ? ($paidEmis[$i]['last_payment_date'] ?? $latestAnyEmiPaymentDate) : ($paidAmt > 0 ? $latestAnyEmiPaymentDate : null);
+
                 if ($dueAmt <= 0.01 && $paidAmt > 0) {
-                    $isFullyPaid = true;
-                    $dueAmt = 0;
+                    $isFullyPaid   = true;
+                    $dueAmt        = 0.0;
                     $paymentStatus = 'paid';
+                } elseif ($paidAmt > 0) {
+                    $paymentStatus = 'partially_paid';
+                } else {
+                    $paymentStatus = 'unpaid';
                 }
-                
-                if ($paidAmt + $dueAmt > 0) {
-                    $scheduledAmt = $paidAmt + $dueAmt;
-                }
+            } elseif ($i === $firstInactiveEmiNo && $advancePoolAmount > 0) {
+                // Entire Advance surplus sits on the first Inactive EMI only; later EMIs stay 0
+                $paidAmt         = $advancePoolAmount;
+                $dueAmt          = round(max(0.0, $scheduledAmt - $paidAmt), 2);
+                $lastPaymentDate = $latestAnyEmiPaymentDate;
+                $paymentStatus   = 'advance';
+                $isFullyPaid     = false;
+            } else {
+                // Subsequent inactive EMIs receive nothing until earlier EMIs are activated
+                $paidAmt         = 0.0;
+                $dueAmt          = $scheduledAmt;
+                $lastPaymentDate = null;
+                $paymentStatus   = 'unpaid';
+                $isFullyPaid     = false;
             }
 
-            // Lock check (Best Practice #1): Locked if fully paid
-            $isLocked = $isFullyPaid;
-            
-            // Maturity & delay calculation
-            $delayDays = 0;
-            $overdueDays = 0;
+            // Lock check (Best Practice #1): Locked if fully paid active EMI
+            $isLocked = ($isProjectActive && $isFullyPaid);
+
+            // Maturity & delay calculation strictly driven by Project-Level Active status
+            $delayDays      = 0;
+            $overdueDays    = 0;
             $maturityStatus = '';
-            
-            if ($isFullyPaid) {
-                if (!empty($lastPaymentDate) && !empty($dueDateStr)) {
-                    if ($lastPaymentDate <= $dueDateStr) {
-                        $maturityStatus = 'paid_on_time';
-                        $delayDays = 0;
+
+            if ($isProjectActive) {
+                if ($isFullyPaid) {
+                    if (!empty($lastPaymentDate) && !empty($dueDateStr)) {
+                        if ($lastPaymentDate <= $dueDateStr) {
+                            $maturityStatus = 'paid_on_time';
+                            $delayDays      = 0;
+                        } else {
+                            $maturityStatus = 'paid_late';
+                            $diff           = (new \DateTime($lastPaymentDate))->diff($dueDateObj);
+                            $delayDays      = (int)$diff->days;
+                        }
                     } else {
-                        $maturityStatus = 'paid_late';
-                        $diff = (new \DateTime($lastPaymentDate))->diff($dueDateObj);
-                        $delayDays = (int)$diff->days;
+                        $maturityStatus = 'paid';
                     }
-                } else {
-                    $maturityStatus = ($dueMonth && $dueMonth < $currentMonth) ? 'matured' : 'paid';
-                }
-            } elseif ($paidAmt > 0 && $dueAmt > 0) {
-                // Partially Paid
-                if ($isOverdueDate) {
+                } elseif ($isOverdueDate) {
                     $maturityStatus = 'due';
-                    $diff = $today->diff($dueDateObj);
-                    $overdueDays = (int)$diff->days;
-                } elseif ($dueMonth && $dueMonth == $currentMonth) {
-                    $maturityStatus = 'pending';
+                    $diff           = $today->diff($dueDateObj);
+                    $overdueDays    = (int)$diff->days;
                 } else {
-                    $maturityStatus = 'future';
+                    $maturityStatus = 'pending';
                 }
             } else {
-                // Unpaid (no payment)
-                if ($hasFixedDate) {
-                    // CED set an explicit due date for this unpaid EMI
-                    if ($isOverdueDate) {
-                        $maturityStatus = 'due';
-                        $diff = $today->diff($dueDateObj);
-                        $overdueDays = (int)$diff->days;
-                    } elseif ($dueMonth && $dueMonth == $currentMonth) {
-                        $maturityStatus = 'pending';
-                    } else {
-                        $maturityStatus = 'future';
-                    }
-                } else {
-                    // Unpaid and NOT scheduled by CED yet:
-                    // Cannot be overdue or penalized!
-                    $maturityStatus = !empty($dueDateStr) ? 'future' : 'unscheduled';
-                    $overdueDays = 0;
-                }
+                // Inactive at project level: NEVER overdue or penalized!
+                $maturityStatus = ($paidAmt > 0) ? 'advance' : 'unscheduled';
+                $overdueDays    = 0;
             }
 
-            $penaltyCalc = ($maturityStatus === 'due' && !empty($dueDateStr))
-                ? $this->calculateCompoundedPenalty($scheduledAmt, $dueDateStr)
+            // 5% compounded monthly penalty applies ONLY to unpaid balance of overdue Active EMIs
+            $penaltyCalc = ($isProjectActive && $maturityStatus === 'due' && !empty($dueDateStr) && $dueAmt > 0)
+                ? $this->calculateCompoundedPenalty($dueAmt, $dueDateStr, 0.05)
                 : ['months_overdue' => 0, 'penalty_amount' => 0, 'total_payable' => $dueAmt];
 
             $schedule[] = [
@@ -2424,7 +2475,8 @@ class AccountClient extends Model
                 'due_amount'        => $dueAmt,
                 'status'            => $paymentStatus,
                 'maturity_status'   => $maturityStatus,
-                'is_virtual'        => !$hasPayment,
+                'is_project_active' => $isProjectActive,
+                'is_virtual'        => ($paidAmt <= 0),
                 'is_locked'         => $isLocked,
                 'is_date_custom'    => $isDateCustom,
                 'fixed_by_name'     => $fixedByName,
@@ -2563,6 +2615,237 @@ class AccountClient extends Model
     }
 
     /**
+     * Compute total live accrued 5% compounded penalty across currently unpaid overdue
+     * Project-Active EMIs using the same waterfall allocation as getVirtualEmiSchedule().
+     * Called directly from getClientByBookingId() (no recursion).
+     */
+    public function computeLiveAccruedPenalty(int $projectId, int $totalEmi, float $perEmiAmount, float $emiPaidPool): float
+    {
+        if ($projectId <= 0 || $totalEmi <= 0 || $perEmiAmount <= 0) {
+            return 0.0;
+        }
+
+        $projStmt = $this->db->prepare("
+            SELECT emi_no, due_date, is_active
+            FROM project_emi_schedule_items
+            WHERE project_id = ?
+            ORDER BY emi_no ASC
+        ");
+        if (!$projStmt) {
+            return 0.0;
+        }
+        $projStmt->bind_param("i", $projectId);
+        $projStmt->execute();
+        $res = $projStmt->get_result();
+        $projectItems = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $projectItems[(int)$row['emi_no']] = $row;
+            }
+        }
+        $projStmt->close();
+
+        if (empty($projectItems)) {
+            return 0.0;
+        }
+
+        $todayStr       = date('Y-m-d');
+        $remainingPool  = max(0.0, round($emiPaidPool, 2));
+        $totalPenalty   = 0.0;
+
+        for ($i = 1; $i <= $totalEmi; $i++) {
+            $item = $projectItems[$i] ?? null;
+            if ($item === null || (int)($item['is_active'] ?? 0) !== 1) {
+                continue;
+            }
+
+            $alloc         = round(min($remainingPool, $perEmiAmount), 2);
+            $remainingPool = round(max(0.0, $remainingPool - $alloc), 2);
+            $dueAmt        = round(max(0.0, $perEmiAmount - $alloc), 2);
+            $dueDateStr    = !empty($item['due_date']) ? $item['due_date'] : null;
+
+            if ($dueAmt > 0.01 && $dueDateStr !== null && $dueDateStr < $todayStr) {
+                $calc = $this->calculateCompoundedPenalty($dueAmt, $dueDateStr, 0.05);
+                $totalPenalty += (float)($calc['penalty_amount'] ?? 0);
+            }
+        }
+
+        return round($totalPenalty, 2);
+    }
+
+    /**
+     * Batch-compute live accrued 5% overdue penalties for a list of booking IDs in 3 lightweight queries (no N+1).
+     * Returns [booking_id => float accrued_penalty].
+     */
+    public function computeLiveAccruedPenaltiesByBookingIds(array $bookingIds): array
+    {
+        $bookingIds = array_values(array_unique(array_filter(array_map('intval', $bookingIds), fn($id) => $id > 0)));
+        if (empty($bookingIds)) {
+            return [];
+        }
+
+        $resultMap = array_fill_keys($bookingIds, 0.0);
+        $inIds = implode(',', $bookingIds);
+
+        // 1. Fetch booking pricing & project_id
+        $bookings = [];
+        $projectIds = [];
+        $qB = $this->db->query("
+            SELECT
+                lb.id AS booking_id,
+                lb.project_id,
+                COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
+                COALESCE(lb.discount_amount, 0) AS discount_amount,
+                COALESCE(f.land_share_value, 0) AS land_share,
+                COALESCE(f.development_charges, 0) + IF(COALESCE(f.is_shop, 0) = 1, COALESCE(f.shop_service_charge, 0), 0) AS dev_charge,
+                COALESCE(NULLIF((SELECT MAX(lp2.total_emi_no) FROM lead_payments lp2 WHERE lp2.booking_id = lb.id AND lp2.is_trashed = 0), 0), pes.total_emi_no, 36) AS total_emi_no
+            FROM lead_bookings lb
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN project_emi_schedules pes ON pes.project_id = lb.project_id
+            WHERE lb.id IN ({$inIds})
+        ");
+        if (!$qB) {
+            return $resultMap;
+        }
+        while ($row = $qB->fetch_assoc()) {
+            $bId = (int)$row['booking_id'];
+            $pId = (int)($row['project_id'] ?? 0);
+            $bookings[$bId] = $row;
+            if ($pId > 0) {
+                $projectIds[$pId] = $pId;
+            }
+        }
+        if (empty($projectIds)) {
+            return $resultMap;
+        }
+
+        // 2. Fetch active project EMI items for all involved projects
+        $inPids = implode(',', array_values($projectIds));
+        $projItemsByProject = [];
+        $qP = $this->db->query("
+            SELECT project_id, emi_no, due_date, is_active
+            FROM project_emi_schedule_items
+            WHERE project_id IN ({$inPids}) AND is_active = 1
+            ORDER BY project_id ASC, emi_no ASC
+        ");
+        if ($qP) {
+            while ($pr = $qP->fetch_assoc()) {
+                $projItemsByProject[(int)$pr['project_id']][(int)$pr['emi_no']] = $pr;
+            }
+        }
+        if (empty($projItemsByProject)) {
+            return $resultMap;
+        }
+
+        // 3. Fetch verified EMI paid + discount pool per booking
+        $emiPoolByBooking = [];
+        $qPaid = $this->db->query("
+            SELECT booking_id,
+                   COALESCE(SUM(amount), 0) + COALESCE(SUM(CASE WHEN is_emi_discount = 0 THEN COALESCE(bulk_emi_discount, 0) ELSE 0 END), 0) AS emi_pool
+            FROM lead_payments
+            WHERE booking_id IN ({$inIds})
+              AND (is_trashed = 0 OR is_trashed IS NULL)
+              AND (payment_type IN ('emi', 'emi_due_settlement') OR is_emi_discount = 1)
+              AND payment_status IN ('paid', 'partially_paid')
+              AND (verification_status = 'verified')
+            GROUP BY booking_id
+        ");
+        if ($qPaid) {
+            while ($payRow = $qPaid->fetch_assoc()) {
+                $emiPoolByBooking[(int)$payRow['booking_id']] = (float)$payRow['emi_pool'];
+            }
+        }
+
+        $todayStr = date('Y-m-d');
+        foreach ($bookings as $bId => $bk) {
+            $pId = (int)($bk['project_id'] ?? 0);
+            if (empty($projItemsByProject[$pId])) {
+                continue;
+            }
+            $totalPrice      = (float)($bk['total_price'] ?? 0);
+            $discount        = (float)($bk['discount_amount'] ?? 0);
+            $landShare       = (float)($bk['land_share'] ?? 0);
+            $devCharge       = (float)($bk['dev_charge'] ?? 0);
+            $totalEmi        = max(1, (int)($bk['total_emi_no'] ?? 36));
+            $constructionFee = max(0.0, round($totalPrice - $discount - $landShare - $devCharge));
+            if ($constructionFee <= 0) {
+                continue;
+            }
+            $perEmiAmount = round($constructionFee / $totalEmi);
+            if ($perEmiAmount <= 0) {
+                continue;
+            }
+
+            $remainingPool = max(0.0, round((float)($emiPoolByBooking[$bId] ?? 0.0), 2));
+            if ($remainingPool >= $constructionFee) {
+                continue;
+            }
+
+            $penaltySum = 0.0;
+            $pItems = $projItemsByProject[$pId];
+            for ($i = 1; $i <= $totalEmi; $i++) {
+                if (!isset($pItems[$i])) {
+                    continue;
+                }
+                $alloc         = round(min($remainingPool, $perEmiAmount), 2);
+                $remainingPool = round(max(0.0, $remainingPool - $alloc), 2);
+                $dueAmt        = round(max(0.0, $perEmiAmount - $alloc), 2);
+                $dueDateStr    = !empty($pItems[$i]['due_date']) ? $pItems[$i]['due_date'] : null;
+
+                if ($dueAmt > 0.01 && $dueDateStr !== null && $dueDateStr < $todayStr) {
+                    $calc = $this->calculateCompoundedPenalty($dueAmt, $dueDateStr, 0.05);
+                    $penaltySum += (float)($calc['penalty_amount'] ?? 0);
+                }
+            }
+            $resultMap[$bId] = round($penaltySum, 2);
+        }
+
+        return $resultMap;
+    }
+
+    /**
+     * Batch-compute total live accrued 5% overdue penalties grouped by lead_id (sums across all active bookings of each lead).
+     * Returns [lead_id => float total_accrued_penalty].
+     */
+    public function computeLiveAccruedPenaltiesByLeadIds(array $leadIds): array
+    {
+        $leadIds = array_values(array_unique(array_filter(array_map('intval', $leadIds), fn($id) => $id > 0)));
+        if (empty($leadIds)) {
+            return [];
+        }
+
+        $leadMap = array_fill_keys($leadIds, 0.0);
+        $inLeads = implode(',', $leadIds);
+        $bookingToLead = [];
+        $qL = $this->db->query("
+            SELECT id, lead_id
+            FROM lead_bookings
+            WHERE lead_id IN ({$inLeads})
+              AND deleted_at IS NULL
+              AND booking_status NOT IN ('refunded', 'cancelled')
+              AND (landshare_status IS NULL OR landshare_status != 'cancelled')
+        ");
+        if (!$qL) {
+            return $leadMap;
+        }
+        while ($row = $qL->fetch_assoc()) {
+            $bookingToLead[(int)$row['id']] = (int)$row['lead_id'];
+        }
+        if (empty($bookingToLead)) {
+            return $leadMap;
+        }
+
+        $penByBooking = $this->computeLiveAccruedPenaltiesByBookingIds(array_keys($bookingToLead));
+        foreach ($penByBooking as $bId => $pen) {
+            $lId = $bookingToLead[$bId] ?? 0;
+            if ($lId > 0 && $pen > 0) {
+                $leadMap[$lId] = round(($leadMap[$lId] ?? 0.0) + $pen, 2);
+            }
+        }
+        return $leadMap;
+    }
+
+    /**
      * Calculate 5% Compounded Monthly Late Penalty
      * Formula: Payable = Base * (1 + 0.05)^m
      */
@@ -2636,6 +2919,7 @@ class AccountClient extends Model
                 lp.penalty_amount,
                 lp.penalty_paid,
                 lp.penalty_waived,
+                lp.penalty_due,
                 lp.waiver_reason,
                 lp.waiver_status,
                 lp.waiver_attachment,
@@ -2660,7 +2944,7 @@ class AccountClient extends Model
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
             WHERE {$lpTrash}lp.booking_id = ?
-              AND (lp.penalty_amount > 0 OR lp.penalty_paid > 0 OR lp.penalty_waived > 0)
+              AND (lp.penalty_amount > 0 OR lp.penalty_paid > 0 OR lp.penalty_waived > 0 OR lp.penalty_due > 0 OR lp.payment_type = 'penalty_settlement')
             ORDER BY lp.payment_date ASC, lp.id ASC
         ";
 
@@ -2729,7 +3013,9 @@ class AccountClient extends Model
                 }
                 $installmentLabel = "{$targetEmi}{$suffix} Installment";
             }
-            if ($r['settlement_type'] === 'emi_due_settlement') {
+            if ($r['payment_type'] === 'penalty_settlement') {
+                $installmentLabel = 'Late Penalty Due Settlement';
+            } elseif ($r['settlement_type'] === 'emi_due_settlement') {
                 $installmentLabel .= ' (Settlement)';
             }
 
@@ -2741,6 +3027,9 @@ class AccountClient extends Model
             $r['penalty_amount']    = (float)$r['penalty_amount'];
             $r['penalty_paid']      = (float)$r['penalty_paid'];
             $r['penalty_waived']    = (float)$r['penalty_waived'];
+            $r['penalty_due']       = isset($r['penalty_due'])
+                ? (float)$r['penalty_due']
+                : round(max(0.0, $r['penalty_amount'] - $r['penalty_waived'] - $r['penalty_paid']), 2);
             $r['amount']            = (float)$r['amount'];
             $r['base_emi_amount']   = (float)$r['base_emi_amount'];
 
@@ -2824,6 +3113,7 @@ class AccountClient extends Model
                 'total_penalty_paid'                   => 0,
                 'total_penalty_amount'                 => 0,
                 'total_penalty_waived'                 => 0,
+                'total_penalty_due'                    => 0,
                 'total_emi_due'                        => 0,
                 'total_emi'                            => 0,
                 'completed_emi'                        => 0,
@@ -2897,10 +3187,13 @@ class AccountClient extends Model
             'total_paid'                           => $clientDetails['total_paid'],
             'others_paid'                          => $clientDetails['others_paid'] ?? 0,
             'others_paid_total'                    => $clientDetails['others_paid_total'] ?? 0,
+            'principal_due'                        => $clientDetails['principal_due'] ?? $clientDetails['total_due'],
+            'accrued_penalty'                      => $clientDetails['accrued_penalty'] ?? 0,
             'total_due'                            => $clientDetails['total_due'],
             'total_penalty_paid'                   => $clientDetails['total_penalty_paid'] ?? 0,
             'total_penalty_amount'                 => $clientDetails['total_penalty_amount'] ?? 0,
             'total_penalty_waived'                 => $clientDetails['total_penalty_waived'] ?? 0,
+            'total_penalty_due'                    => $clientDetails['total_penalty_due'] ?? 0,
             'total_emi_due'                        => $clientDetails['total_emi_due'] ?? 0,
             'total_bulk_emi_discount'              => $clientDetails['total_bulk_emi_discount'] ?? 0,
             'total_emi'                            => $clientDetails['total_emi'],
@@ -3061,6 +3354,7 @@ class AccountClient extends Model
                     break;
 
                 case 'others':
+                case 'penalty_settlement':
                     $landShareAmount = 0;
                     $serviceFee = 0;
                     break;
@@ -3139,6 +3433,20 @@ class AccountClient extends Model
             }
 
             $paymentId = $this->db->insert_id;
+
+            // Standalone penalty due settlement: record paid amount in penalty_paid (does not deduct flat principal)
+            if ($paymentType === 'penalty_settlement' && $paymentId > 0) {
+                $pSetStmt = $this->db->prepare("
+                    UPDATE lead_payments
+                    SET penalty_amount = 0, penalty_paid = ?, penalty_waived = 0, penalty_due = 0, waiver_status = 'none'
+                    WHERE id = ?
+                ");
+                if ($pSetStmt) {
+                    $pSetStmt->bind_param('di', $amount, $paymentId);
+                    $pSetStmt->execute();
+                    $pSetStmt->close();
+                }
+            }
 
             // If this is an EMI due settlement, reduce the due on the original payment
             if (!empty($transactionData['settlement_type']) && $transactionData['settlement_type'] === 'emi_due_settlement' && $parentPaymentId) {
@@ -4566,50 +4874,39 @@ class AccountClient extends Model
             + (!empty($clientDetails['is_shop']) && (int)$clientDetails['is_shop'] === 1 ? (float)($clientDetails['shop_service_charge'] ?? 0) : 0.0);
         $activeEmiAsked = 0.0;
         $activeEmiCount = 0;
-        $todayStr       = date('Y-m-d');
 
-        $emiAskStmt = $this->db->prepare("
-            SELECT
-                COALESCE(SUM(
-                    CASE
-                        WHEN es.status != 'cancelled'
-                             AND (
-                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND pesi.is_active = 1)
-                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND es.due_date <= ?)
-                             )
-                        THEN es.emi_amount
-                        ELSE 0
-                    END
-                ), 0) AS active_emi_asked,
-                SUM(
-                    CASE
-                        WHEN es.status != 'cancelled'
-                             AND (
-                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND pesi.is_active = 1)
-                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = ?) AND es.due_date <= ?)
-                             )
-                        THEN 1
-                        ELSE 0
-                    END
-                ) AS active_emi_count
-            FROM emi_schedules es
-            LEFT JOIN project_emi_schedule_items pesi ON (pesi.project_id = ? AND pesi.emi_no = es.emi_no)
-            WHERE es.lead_booking_id = ?
-        ");
-        if ($emiAskStmt) {
-            $emiAskStmt->bind_param("iisiisii", $projectId, $projectId, $todayStr, $projectId, $projectId, $todayStr, $projectId, $bookingId);
-            $emiAskStmt->execute();
-            $emiAskRow = $emiAskStmt->get_result()->fetch_assoc();
-            if ($emiAskRow) {
-                $activeEmiAsked = round((float)($emiAskRow['active_emi_asked'] ?? 0), 2);
-                $activeEmiCount = (int)($emiAskRow['active_emi_count'] ?? 0);
+        // Strictly from Project-Level Active EMIs (is_active = 1; 0 if none active — no calendar fallback)
+        if ($projectId > 0) {
+            $emiAskStmt = $this->db->prepare("
+                SELECT COUNT(*) AS active_emi_count
+                FROM project_emi_schedule_items
+                WHERE project_id = ? AND is_active = 1
+            ");
+            if ($emiAskStmt) {
+                $emiAskStmt->bind_param("i", $projectId);
+                $emiAskStmt->execute();
+                $emiAskRow = $emiAskStmt->get_result()->fetch_assoc();
+                if ($emiAskRow) {
+                    $totalEmiNo     = max(1, (int)($clientDetails['total_emi'] ?? 36));
+                    $perEmiAmount   = (float)($clientDetails['per_emi_amount'] ?? 0);
+                    $activeEmiCount = min($totalEmiNo, (int)($emiAskRow['active_emi_count'] ?? 0));
+                    $activeEmiAsked = round($activeEmiCount * $perEmiAmount, 2);
+                }
+                $emiAskStmt->close();
             }
-            $emiAskStmt->close();
         }
 
-        $askedAmount = round($landShareAsk + $devChargeAsk + $activeEmiAsked, 2);
-        $totalDue    = max(0.0, round($totalPrice - ($grandTotalPaid + $grandTotalDiscount), 2));
-        $currentDue  = max(0.0, round($askedAmount - ($grandTotalPaid + $grandTotalDiscount), 2));
+        $emiPaidTotal   = round((float)($clientDetails['emi_paid'] ?? 0) + (float)($clientDetails['total_bulk_emi_discount'] ?? 0), 2);
+        $regularEmiPaid = round(min($emiPaidTotal, $activeEmiAsked), 2);
+        $advanceEmi     = round(max(0.0, $emiPaidTotal - $regularEmiPaid), 2);
+        $regularEmiDue  = round(max(0.0, $activeEmiAsked - $regularEmiPaid), 2);
+
+        $askedAmount         = round($landShareAsk + $devChargeAsk + $activeEmiAsked, 2);
+        $accruedPenalty      = round((float)($clientDetails['accrued_penalty'] ?? 0), 2);
+        $principalTotalDue   = max(0.0, round($totalPrice - ($grandTotalPaid + $grandTotalDiscount), 2));
+        $principalCurrentDue = max(0.0, round($askedAmount - ($grandTotalPaid + $grandTotalDiscount), 2));
+        $totalDue            = round($principalTotalDue + $accruedPenalty, 2);
+        $currentDue          = round($principalCurrentDue + $accruedPenalty, 2);
 
         return [
             'client_details'        => $clientDetails,
@@ -4617,12 +4914,18 @@ class AccountClient extends Model
             'total_price'           => $totalPrice,
             'total_paid'            => $grandTotalPaid,
             'total_discount'        => $grandTotalDiscount,
+            'principal_due'         => $principalTotalDue,
+            'accrued_penalty'       => $accruedPenalty,
             'total_due'             => $totalDue,
             'asked_amount'          => $askedAmount,
             'land_share_ask'        => round($landShareAsk, 2),
             'dev_charge_ask'        => round($devChargeAsk, 2),
             'active_emi_asked'      => $activeEmiAsked,
             'active_emi_count'      => $activeEmiCount,
+            'regular_emi_paid'      => $regularEmiPaid,
+            'advance_emi'           => $advanceEmi,
+            'regular_emi_due'       => $regularEmiDue,
+            'principal_current_due' => $principalCurrentDue,
             'current_due'           => $currentDue,
             'batches'               => array_values($batches),
             'batch_map'             => $batchMap
@@ -5214,13 +5517,16 @@ class AccountClient extends Model
                 $penaltyAmount = (float)($transactionData['penalty_amount'] ?? 0);
                 $penaltyPaid   = (float)($transactionData['penalty_paid'] ?? 0);
                 $penaltyWaived = (float)($transactionData['penalty_waived'] ?? 0);
+                $penaltyDue    = isset($transactionData['penalty_due'])
+                    ? max(0.0, (float)$transactionData['penalty_due'])
+                    : round(max(0.0, $penaltyAmount - $penaltyWaived - $penaltyPaid), 2);
                 $waiverReason  = $transactionData['waiver_reason'] ?? null;
                 $waiverAtt     = $transactionData['waiver_attachment'] ?? null;
                 $waiverStatus  = $transactionData['waiver_status'] ?? 'none';
 
-                if ($penaltyAmount > 0 || $penaltyWaived > 0) {
-                    $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
-                    $pUpd->bind_param("dddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
+                if ($penaltyAmount > 0 || $penaltyPaid > 0 || $penaltyWaived > 0 || $penaltyDue > 0) {
+                    $pUpd = $this->db->prepare("UPDATE lead_payments SET penalty_amount = ?, penalty_paid = ?, penalty_waived = ?, penalty_due = ?, waiver_reason = ?, waiver_attachment = ?, waiver_status = ? WHERE id = ?");
+                    $pUpd->bind_param("ddddsssi", $penaltyAmount, $penaltyPaid, $penaltyWaived, $penaltyDue, $waiverReason, $waiverAtt, $waiverStatus, $firstPaymentId);
                     $pUpd->execute();
                     $pUpd->close();
                 }

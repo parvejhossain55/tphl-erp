@@ -1031,48 +1031,13 @@ public function indexTwo($bookingId = null)
     }
 
     /**
-     * Get effective project filter for CED / Client Experience agent
-     * Returns: null (all allowed) OR int (specific project) OR array of ints (assigned projects)
+     * Get effective project filter for CED / Client Experience agent.
+     * Unlocked: CED agents can view and filter across all projects.
      */
     protected function getEffectiveCedProjectFilter(?int $selectedProjectId, &$assignedProjectIds = [])
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
-        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
-        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
-        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-
-        // Head of CED / Management check
-        $isHeadOrAdmin = in_array($userRoleId, [1, 3, 33, 38, 39], true)
-            || in_array($userSecRoleId, [1, 3, 38, 39], true)
-            || in_array($userPriRoleId, [1, 3, 38, 39], true)
-            || strpos($userRoleName, 'head of client experience') !== false
-            || (function_exists('isHeadOfClientExperience') && isHeadOfClientExperience());
-
-        if ($isHeadOrAdmin || $currentUserId <= 0) {
-            $assignedProjectIds = [];
-            return $selectedProjectId;
-        }
-
-        require_once dirname(__DIR__) . '/models/CedProjectAssignment.php';
-        $assignmentModel = new CedProjectAssignment($this->db);
-        $assignedProjectIds = $assignmentModel->getAgentAssignedProjectIds($currentUserId);
-
-        // If user has NO assigned projects, they see all projects
-        if (empty($assignedProjectIds)) {
-            return $selectedProjectId;
-        }
-
-        // If specific project requested and it's among assigned projects
-        if ($selectedProjectId !== null && in_array($selectedProjectId, $assignedProjectIds, true)) {
-            return $selectedProjectId;
-        }
-
-        // Default to all assigned projects
-        return $assignedProjectIds;
+        $assignedProjectIds = [];
+        return $selectedProjectId;
     }
 
     public function indexView()
@@ -1396,10 +1361,11 @@ public function indexTwo($bookingId = null)
      */
     public function renderCashInRowsHtml($clients, $conflictedUnits = [], $paymentType = '')
     {
-        $colspan = !empty($paymentType) ? 11 : 9;
+        $colspan = !empty($paymentType) ? 12 : 10;
         if (empty($clients)) {
             return '<tr><td colspan="' . $colspan . '" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
         }
+        $penaltiesByLead = $this->clientModel->computeLiveAccruedPenaltiesByLeadIds(array_column($clients, 'lead_id'));
         $html = '';
         foreach ($clients as $client) {
             $typeLastPayment = null;
@@ -1593,6 +1559,13 @@ public function indexTwo($bookingId = null)
                 $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
             }
 
+            $leadPenalty = (float)($penaltiesByLead[(int)($client['lead_id'] ?? 0)] ?? 0);
+            if ($leadPenalty > 0) {
+                $html .= '<td class="text-nowrap"><span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 11.5px;"><i class="fa-solid fa-triangle-exclamation me-1"></i>TK.' . number_format($leadPenalty, 2) . '</span></td>';
+            } else {
+                $html .= '<td class="text-muted text-nowrap small">—</td>';
+            }
+
             $html .= '<td>' . ($typeLastPayment ? date('d M, Y', strtotime($typeLastPayment)) : 'No Payment') . '</td>';
             $html .= '<td><span class="badge ' . $badgeClass . '"><i class="fa-light ' . $badgeIcon . ' me-1"></i>' . $verText . '</span></td>';
             $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
@@ -1633,6 +1606,7 @@ public function indexTwo($bookingId = null)
             $html .= '<th>Total Paid</th>';
         }
 
+        $html .= '<th class="text-nowrap">Current Penalty</th>';
         $html .= '<th>Last Payment</th>';
         $html .= '<th>Verification</th>';
         $html .= '<th>Profile</th>';
@@ -1777,8 +1751,9 @@ public function indexTwo($bookingId = null)
     public function renderCedRowsHtml($clients)
     {
         if (empty($clients)) {
-            return '<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
+            return '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
         }
+        $penaltiesByLead = $this->clientModel->computeLiveAccruedPenaltiesByLeadIds(array_column($clients, 'lead_id'));
         $html = '';
         foreach ($clients as $client) {
             $html .= '<tr>';
@@ -1886,6 +1861,14 @@ public function indexTwo($bookingId = null)
                 $html .= '<span class="text-muted">-</span>';
             }
             $html .= '</td>';
+
+            // Current Penalty (Live Accrued 5% Overdue Penalty)
+            $cedLeadPenalty = (float)($penaltiesByLead[(int)($client['lead_id'] ?? 0)] ?? 0);
+            if ($cedLeadPenalty > 0) {
+                $html .= '<td class="text-nowrap"><span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 11.5px;"><i class="fa-solid fa-triangle-exclamation me-1"></i>TK.' . number_format($cedLeadPenalty, 2) . '</span></td>';
+            } else {
+                $html .= '<td class="text-muted text-nowrap small">—</td>';
+            }
 
             $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
 
@@ -2567,6 +2550,7 @@ public function addCedTransaction()
         'shop_service_charge',
         'emi',
         'emi_due_settlement',
+        'penalty_settlement',
         'others'
     ];
     if (!in_array($paymentType, $allowedCedPaymentTypes)) {
@@ -2634,16 +2618,30 @@ public function addCedTransaction()
         }
     }
 
-    if (!empty($_POST['no_penalty'])) {
+    if ($paymentType === 'penalty_settlement') {
         $penaltyAmount = 0;
         $penaltyWaived = 0;
-        $penaltyPaid = 0;
-        $waiverReason = null;
-        $waiverStatus = 'none';
+        $penaltyPaid   = max(0, (float)($_POST['amount'] ?? 0));
+        $penaltyDue    = 0;
+        $waiverReason  = null;
+        $waiverStatus  = 'none';
+    } elseif (!empty($_POST['no_penalty'])) {
+        $penaltyAmount = 0;
+        $penaltyWaived = 0;
+        $penaltyPaid   = 0;
+        $penaltyDue    = 0;
+        $waiverReason  = null;
+        $waiverStatus  = 'none';
     } else {
         $penaltyAmount = isset($_POST['penalty_amount']) ? (float)$_POST['penalty_amount'] : 0;
         $penaltyWaived = isset($_POST['penalty_waived']) ? (float)$_POST['penalty_waived'] : 0;
-        $penaltyPaid   = max(0, $penaltyAmount - $penaltyWaived);
+        $netPenalty    = round(max(0.0, $penaltyAmount - $penaltyWaived), 2);
+        if (isset($_POST['penalty_paid']) && $_POST['penalty_paid'] !== '' && is_numeric($_POST['penalty_paid'])) {
+            $penaltyPaid = round(min($netPenalty, max(0.0, (float)$_POST['penalty_paid'])), 2);
+        } else {
+            $penaltyPaid = $netPenalty;
+        }
+        $penaltyDue    = round(max(0.0, $netPenalty - $penaltyPaid), 2);
         $waiverReason  = $_POST['waiver_reason'] ?? null;
         $waiverStatus  = (!empty($_POST['apply_waiver']) && $penaltyWaived > 0) ? 'pending' : 'none';
     }
@@ -2678,6 +2676,7 @@ public function addCedTransaction()
         'penalty_amount'    => $penaltyAmount,
         'penalty_paid'      => $penaltyPaid,
         'penalty_waived'    => $penaltyWaived,
+        'penalty_due'       => $penaltyDue,
         'waiver_reason'     => $waiverReason,
         'waiver_attachment' => $waiverAttachmentPath,
         'waiver_status'     => $waiverStatus,
@@ -6855,12 +6854,13 @@ public function discountStatement($bookingId = null)
         public function renderDueTrackingRowsHtml(array $clients): string
     {
         if (empty($clients)) {
-            return '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
+            return '<tr><td colspan="11" class="text-center py-5 text-muted"><i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50 d-block"></i>No client due records found matching the criteria.</td></tr>';
         }
 
-        // Batch query followup counts for these bookings
+        // Batch query followup counts & live accrued penalties for these bookings
         $bookingIds = array_filter(array_column($clients, 'booking_id'));
         $followupCounts = [];
+        $penaltiesByBooking = !empty($bookingIds) ? $this->clientModel->computeLiveAccruedPenaltiesByBookingIds($bookingIds) : [];
         if (!empty($bookingIds)) {
             $bIdsStr = implode(',', array_map('intval', $bookingIds));
             $fcRes = $this->db->query("SELECT booking_id, COUNT(*) as cnt FROM emi_followups WHERE booking_id IN ($bIdsStr) GROUP BY booking_id");
@@ -7017,12 +7017,24 @@ public function discountStatement($bookingId = null)
             }
             $html .= '</td>';
 
-            // Col 9: Overall Due (Tk.) - Clean, right-aligned (No "Tk.")
+            // Col 9: Current Penalty (Tk.) - Live Accrued 5% Overdue Penalty
+            $currentPenalty = (float)($penaltiesByBooking[$bookingId] ?? 0.0);
             $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
-            if ($overallDue <= 0) {
+            if ($currentPenalty > 0) {
+                $html .= '<div class="fw-bold fs-13" style="color:#b45309;">' . number_format($currentPenalty, 2) . '</div>';
+                $html .= '<div class="extra-small" style="font-size:10px; color:#b45309;"><i class="fa-solid fa-triangle-exclamation me-1"></i>5% Accrued</div>';
+            } else {
+                $html .= '<span class="text-muted extra-small" style="font-size:11px;">-</span>';
+            }
+            $html .= '</td>';
+
+            // Col 10: Overall Due (Tk.) - Includes live accrued penalty
+            $overallDueWithPenalty = round($overallDue + $currentPenalty, 2);
+            $html .= '<td class="text-end" style="font-variant-numeric: tabular-nums;">';
+            if ($overallDueWithPenalty <= 0) {
                 $html .= '<div class="text-success fw-bold fs-13"><i class="fa-solid fa-check-double me-1"></i>Cleared</div>';
             } else {
-                $html .= '<div class="fw-bold text-danger fs-14">' . number_format($overallDue) . '</div>';
+                $html .= '<div class="fw-bold text-danger fs-14">' . number_format($overallDueWithPenalty, $currentPenalty > 0 ? 2 : 0) . '</div>';
             }
             if ($lastPaymentDate) {
                 $html .= '<div class="extra-small text-muted" style="font-size:10px;" title="Last Payment Date"><i class="fa-solid fa-clock-rotate-left me-1"></i>' . $lastPaymentDate . '</div>';
@@ -7082,9 +7094,15 @@ public function discountStatement($bookingId = null)
         $totShopPaid = 0;
         $totOverdueEmi = 0;
         $totRemEmiDue = 0;
+        $totCurrentPenalty = 0;
         $totOverallDue = 0;
 
+        $footerBookingIds = array_filter(array_column($clients, 'booking_id'));
+        $footerPenalties  = !empty($footerBookingIds) ? $this->clientModel->computeLiveAccruedPenaltiesByBookingIds($footerBookingIds) : [];
+
         foreach ($clients as $c) {
+            $bId = (int)($c['booking_id'] ?? 0);
+            $rowPen = (float)($footerPenalties[$bId] ?? 0.0);
             $totFlatValue += (float)($c['total_price'] ?? 0);
             $totDiscount  += (float)($c['discount_amount'] ?? 0);
             $totPaid      += (float)($c['total_paid'] ?? 0);
@@ -7103,8 +7121,9 @@ public function discountStatement($bookingId = null)
 
             $totOverdueEmi+= (float)($c['overdue_emi_amount'] ?? 0);
             $totRemEmiDue += (float)($c['remaining_emi_due'] ?? 0);
+            $totCurrentPenalty += $rowPen;
 
-            $totOverallDue+= (float)($c['overall_due'] ?? 0);
+            $totOverallDue+= (float)($c['overall_due'] ?? 0) + $rowPen;
         }
 
         $label = $isAll ? 'GRAND TOTAL' : 'TOTAL';
@@ -7157,12 +7176,17 @@ public function discountStatement($bookingId = null)
         $html .= '<div class="extra-small text-muted" style="font-size: 10px;">Rem: ' . number_format($totRemEmiDue) . '</div>';
         $html .= '</td>';
 
-        // Col 9: Overall Due (Tk.)
+        // Col 9: Current Penalty (Tk.)
         $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
-        $html .= '<div class="' . ($totOverallDue > 0 ? 'text-danger' : 'text-success') . ' fs-14">' . number_format($totOverallDue) . '</div>';
+        $html .= '<div class="fs-13" style="color: ' . ($totCurrentPenalty > 0 ? '#b45309' : '#16a34a') . ';">' . number_format($totCurrentPenalty, 2) . '</div>';
         $html .= '</td>';
 
-        // Col 10: Action (Hidden in print)
+        // Col 10: Overall Due (Tk.)
+        $html .= '<td class="text-end fw-bold" style="font-variant-numeric: tabular-nums;">';
+        $html .= '<div class="' . ($totOverallDue > 0 ? 'text-danger' : 'text-success') . ' fs-14">' . number_format($totOverallDue, $totCurrentPenalty > 0 ? 2 : 0) . '</div>';
+        $html .= '</td>';
+
+        // Col 11: Action (Hidden in print)
         $html .= '<td class="no-print"></td>';
 
         $html .= '</tr>';

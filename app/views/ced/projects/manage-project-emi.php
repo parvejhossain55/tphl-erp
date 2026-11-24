@@ -475,7 +475,51 @@ function openEmiListModal(projectId, projectName) {
 function toggleEmiItemActive(btn) {
     const row = btn.closest('tr');
     const input = row.querySelector('.emi-active-input');
+    const currentEmiNo = parseInt(row.querySelector('input[name="emi_no[]"]').value, 10);
     const isNowActive = input.value !== '1';
+    const allRows = Array.from(document.querySelectorAll('#emiListTbody .emi-item-row'));
+
+    if (isNowActive) {
+        // Block activating EMI #N if any previous EMI (< N) is still Deactive
+        let firstInactivePrev = null;
+        for (const r of allRows) {
+            const no = parseInt(r.querySelector('input[name="emi_no[]"]').value, 10);
+            const activeVal = r.querySelector('.emi-active-input').value;
+            if (no < currentEmiNo && activeVal !== '1') {
+                firstInactivePrev = no;
+                break;
+            }
+        }
+        if (firstInactivePrev !== null) {
+            const msg = `EMI #${firstInactivePrev} is currently Deactive. Please activate EMI #${firstInactivePrev} first before activating EMI #${currentEmiNo}.`;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', title: 'Sequential Activation Required', text: msg, confirmButtonColor: '#0d5c3a' });
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+    } else {
+        // Block deactivating EMI #N if any later EMI (> N) is still Active
+        let lastActiveNext = null;
+        for (const r of allRows) {
+            const no = parseInt(r.querySelector('input[name="emi_no[]"]').value, 10);
+            const activeVal = r.querySelector('.emi-active-input').value;
+            if (no > currentEmiNo && activeVal === '1') {
+                lastActiveNext = no;
+            }
+        }
+        if (lastActiveNext !== null) {
+            const msg = `EMI #${lastActiveNext} is still Active. Please deactivate EMI #${lastActiveNext} first before deactivating EMI #${currentEmiNo}.`;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'warning', title: 'Sequential Deactivation Required', text: msg, confirmButtonColor: '#0d5c3a' });
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+    }
+
     input.value = isNowActive ? '1' : '0';
 
     if (isNowActive) {

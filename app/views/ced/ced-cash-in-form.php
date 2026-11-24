@@ -60,6 +60,7 @@ $shopDevRemaining      = max(0, $shopDevTarget - $shopDevPaid);
 $perEmiAmount          = (float)($paymentSummary['per_emi_amount'] ?? 0);
 $serviceChargeRate     = (float)($paymentSummary['service_charge_per_emi'] ?? 0);
 $totalEmiDue           = (float)($paymentSummary['total_emi_due'] ?? 0);
+$outstandingPenaltyDue = (float)($paymentSummary['total_penalty_due'] ?? 0);
 if ($totalEmiDue <= 0 && !empty($outstandingDues)) {
     $totalEmiDue = (float)array_sum(array_column($outstandingDues, 'due_emi_amount'));
 }
@@ -95,8 +96,14 @@ $virtualEmiSchedule    = $virtualEmiSchedule ?? [];
 $overduePenaltySum     = 0;
 $overdueEmiCount       = 0;
 $overdueEmiList        = [];
+$activeEmiDueSum       = 0.0;
+$activeEmiDueNos       = [];
 if (!empty($virtualEmiSchedule)) {
     foreach ($virtualEmiSchedule as $sch) {
+        if (!empty($sch['is_project_active']) && (float)($sch['due_amount'] ?? 0) > 0.01) {
+            $activeEmiDueSum += (float)$sch['due_amount'];
+            $activeEmiDueNos[] = (int)($sch['emi_no'] ?? 0);
+        }
         if (($sch['maturity_status'] ?? '') === 'due') {
             $overdueEmiCount++;
             $overduePenaltySum += (float)($sch['penalty_amount'] ?? 0);
@@ -112,6 +119,7 @@ if (!empty($virtualEmiSchedule)) {
         }
     }
 }
+$effectiveOutstandingEmiDue = ($activeEmiDueSum > 0) ? round($activeEmiDueSum, 2) : round($totalEmiDue, 2);
 ?>
 
 <div class="row">
@@ -252,6 +260,13 @@ if (!empty($virtualEmiSchedule)) {
                                     </option>
                                 <?php endif; ?>
 
+                                <!-- 6b. Settle Late Penalty Due (only shown when unpaid carried-forward penalty due exists) -->
+                                <?php if ($outstandingPenaltyDue > 0): ?>
+                                    <option value="penalty_settlement" data-details="false" style="color: #b45309; font-weight: 600;">
+                                        Settle Late Penalty Due (Remaining: TK.<?= number_format($outstandingPenaltyDue, 2) ?>)
+                                    </option>
+                                <?php endif; ?>
+
                                 <!-- 7. Others (Extra / Incidental Charges — outside flat/shop price) -->
                                 <option value="others" data-details="false" style="color: #0d6efd; font-weight: 600;">
                                     Others (Extra / Incidental Charges — Excluded from <?= $isShop ? 'Shop' : 'Flat' ?> Price)
@@ -313,36 +328,71 @@ if (!empty($virtualEmiSchedule)) {
 
                         <!-- EMI Info Panel (shown when EMI selected) -->
                         <div class="col-md-12 emi-fields" style="display: none;">
-                            <div class="from__input-box p-3" style="background:#f8f9fa;border-radius:8px;border:1px solid #dee2e6;">
-                                <label class="form__input-title">EMI Payment Info <small class="text-muted">(Smart Allocation)</small></label>
-                                <div class="w-100 mt-2">
-                                    <?php if ($totalEmiDue > 0): ?>
-                                        <div class="d-block w-100 mb-2 p-2 bg-warning bg-opacity-10 border border-warning rounded">
-                                            <div class="d-flex align-items-center mb-1">
-                                                <span class="badge bg-warning text-dark"><i class="fa-light fa-exclamation-triangle me-1"></i>Outstanding Due</span>
-                                                <strong class="text-danger ms-2">TK.<?= number_format($totalEmiDue, 2) ?></strong>
-                                            </div>
-                                            <div class="d-block text-muted small" style="line-height: 1.4;">
-                                                — will be auto-cleared first from your payment (oldest due first)
+                            <div class="from__input-box p-3" style="background:#ffffff;border-radius:10px;border:1px solid #e2e8f0;">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                                    <label class="form__input-title mb-0" style="font-weight:700; color:#0f172a;">
+                                        <i class="fa-light fa-circle-info text-primary me-1"></i>EMI Payment Info
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size:11px; font-weight:600;">Smart Allocation</span>
+                                    </label>
+                                    <small class="text-muted">Auto-clears oldest due first, then covers current &amp; upcoming EMIs.</small>
+                                </div>
+
+                                <div class="row g-2">
+                                    <?php if ($effectiveOutstandingEmiDue > 0): ?>
+                                        <?php
+                                            $dueEmiCountLabel = count($activeEmiDueNos);
+                                            if ($dueEmiCountLabel === 1) {
+                                                $dueNosText = 'EMI #' . $activeEmiDueNos[0];
+                                            } elseif ($dueEmiCountLabel > 1 && ($activeEmiDueNos[$dueEmiCountLabel - 1] - $activeEmiDueNos[0]) === ($dueEmiCountLabel - 1)) {
+                                                $dueNosText = $dueEmiCountLabel . ' EMIs (#' . $activeEmiDueNos[0] . ' – #' . $activeEmiDueNos[$dueEmiCountLabel - 1] . ')';
+                                            } elseif ($dueEmiCountLabel > 1) {
+                                                $dueNosText = $dueEmiCountLabel . ' EMIs (#' . implode(', #', $activeEmiDueNos) . ')';
+                                            } else {
+                                                $dueNosText = 'Auto-cleared oldest first';
+                                            }
+                                        ?>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="p-2 px-3 rounded border h-100" style="background:#fef2f2; border-color:#fecaca !important;">
+                                                <div class="text-danger text-uppercase fw-semibold" style="font-size:10px; letter-spacing:0.4px;">
+                                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Outstanding EMI Due
+                                                </div>
+                                                <div class="fw-bold text-danger font-monospace mt-1" style="font-size:16px;">
+                                                    TK. <?= number_format($effectiveOutstandingEmiDue, 2) ?>
+                                                </div>
+                                                <div class="text-muted" style="font-size:11px;"><?= htmlspecialchars($dueNosText) ?></div>
                                             </div>
                                         </div>
                                     <?php endif; ?>
-                                    
-                                    <div class="d-block w-100 text-muted small p-2 bg-light border rounded">
-                                        <?php if ($perEmiAmount > 0): ?>
-                                            <div class="mb-1">Suggested EMI: <strong>TK.<?= number_format($perEmiAmount, 2) ?></strong>.</div>
-                                            <?php if ($serviceChargeRate > 0): ?>
-                                                <div class="mb-1">Service charge of <strong><?= number_format($serviceChargeRate, 2) ?>%</strong> applies on total amount.</div>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-                                        <div class="mb-1">Enter any amount — the system will:</div>
-                                        <ol class="mb-0 ps-3" style="line-height: 1.4;">
-                                            <li>Clear outstanding dues (oldest first)</li>
-                                            <li>Cover current installment</li>
-                                            <li>Carry surplus to next installment(s)</li>
-                                        </ol>
-                                    </div>
+
+                                    <?php if ($perEmiAmount > 0): ?>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="p-2 px-3 rounded border h-100" style="background:#f8fafc; border-color:#e2e8f0 !important;">
+                                                <div class="text-muted text-uppercase fw-semibold" style="font-size:10px; letter-spacing:0.4px;">
+                                                    Suggested Per-EMI
+                                                </div>
+                                                <div class="fw-bold text-dark font-monospace mt-1" style="font-size:16px;">
+                                                    TK. <?= number_format($perEmiAmount, 2) ?>
+                                                </div>
+                                                <div class="text-muted" style="font-size:11px;">Standard monthly installment</div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($serviceChargeRate > 0): ?>
+                                        <div class="col-md-4 col-sm-12">
+                                            <div class="p-2 px-3 rounded border h-100" style="background:#f0f9ff; border-color:#bae6fd !important;">
+                                                <div class="text-primary text-uppercase fw-semibold" style="font-size:10px; letter-spacing:0.4px;">
+                                                    Service Charge
+                                                </div>
+                                                <div class="fw-bold text-primary font-monospace mt-1" style="font-size:16px;">
+                                                    <?= number_format($serviceChargeRate, 2) ?>%
+                                                </div>
+                                                <div class="text-muted" style="font-size:11px;">Applies on total EMI amount</div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
+
                                 <input type="hidden" name="due_emi_amount" id="dueEmiAmount" value="0">
 
                                 <!-- EMI Discount Toggle -->
@@ -408,8 +458,17 @@ if (!empty($virtualEmiSchedule)) {
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mb-1">
+                                            <div style="min-width:170px; max-width:210px;">
+                                                <label class="form-label small fw-semibold text-dark mb-1" for="penaltyPaid">Penalty Paid Now (TK)</label>
+                                                <input type="number" name="penalty_paid" id="penaltyPaid" class="form-control form-control-sm" step="0.01" min="0" value="0">
+                                            </div>
+                                            <div class="pb-1">
+                                                <span class="text-muted small">Carry-Forward Penalty Due:</span>
+                                                <strong id="remainingPenaltyDueText" class="text-warning-emphasis ms-1 small">TK. 0.00</strong>
+                                            </div>
+                                        </div>
                                         <input type="hidden" name="penalty_amount" id="penaltyAmount" value="0">
-                                        <input type="hidden" name="penalty_paid" id="penaltyPaid" value="0">
                                     </div>
                                     <div class="col-12 col-md-5 mt-3 mt-md-0">
                                         <div class="d-block w-100">
@@ -477,19 +536,6 @@ if (!empty($virtualEmiSchedule)) {
                                                 </tr>
                                             </tfoot>
                                         </table>
-                                    </div>
-
-                                    <!-- Explanatory Note on Calculation -->
-                                    <div class="mt-2 p-2 rounded bg-light border fs-12 text-muted">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <i class="fa-light fa-calculator text-primary me-2"></i>
-                                            <strong class="text-dark">How Penalty is Calculated (5% Compounded Monthly):</strong>
-                                        </div>
-                                        <div class="ps-3" style="line-height: 1.5;">
-                                            <div>&bull; <strong>Formula:</strong> <code>Base EMI &times; [(1 + 0.05)<sup>Months</sup> &minus; 1]</code> (Compounded monthly on EMI Base).</div>
-                                            <div>&bull; <strong>Overdue Delay:</strong> Any day past a monthly maturity cycle enters the next month (e.g. 63 days = 2 months + 3 days &rarr; <strong>3 months</strong>; 49 days = 1 month + 19 days &rarr; <strong>2 months</strong>).</div>
-                                            <div>&bull; <strong>Total Overdue Penalty:</strong> <?= implode(' + ', array_map(function($i){ return 'TK. ' . number_format($i['penalty_amount'], 2) . ' (EMI #' . $i['emi_no'] . ')'; }, $overdueEmiList)) ?> = <strong class="text-danger">TK. <?= number_format($overduePenaltySum, 2) ?></strong>.</div>
-                                        </div>
                                     </div>
                                 </div>
                                 <?php endif; ?>
@@ -1275,10 +1321,21 @@ if (!empty($virtualEmiSchedule)) {
             const penaltyAmountInput    = document.getElementById('penaltyAmount');
             const penaltyPaidInput      = document.getElementById('penaltyPaid');
             const penaltyWaivedInput    = document.getElementById('penaltyWaived');
+            const remainingPenDueText   = document.getElementById('remainingPenaltyDueText');
             const toggleWaiver          = document.getElementById('toggleWaiver');
             const toggleNoPenalty       = document.getElementById('toggleNoPenalty');
 
             const pTypeValue = paymentType ? paymentType.value : '';
+            if (pTypeValue === 'penalty_settlement') {
+                const penDue = <?= json_encode(round($outstandingPenaltyDue, 2)) ?>;
+                if (amountField && (!amountField.value || parseFloat(amountField.value) <= 0)) {
+                    amountField.value = Math.round(penDue);
+                }
+                const amtHelp = document.getElementById('amountHelp');
+                if (amtHelp) {
+                    amtHelp.innerHTML = 'Remaining Late Penalty Due: <strong class="text-danger">TK.' + penDue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</strong> (Partial or full payment allowed; does not deduct from flat price)';
+                }
+            }
             const isEligibleForPenalty = (pTypeValue === 'emi' || pTypeValue === 'emi_due_settlement');
 
             if (!isEligibleForPenalty || overdueEmiCount <= 0 || overduePenaltySum <= 0) {
@@ -1287,6 +1344,7 @@ if (!empty($virtualEmiSchedule)) {
                 if (penaltyBadge) penaltyBadge.style.display = 'none';
                 if (penaltyAmountInput) penaltyAmountInput.value = '0';
                 if (penaltyPaidInput) penaltyPaidInput.value = '0';
+                if (remainingPenDueText) remainingPenDueText.textContent = 'TK. 0.00';
                 return;
             }
 
@@ -1301,10 +1359,15 @@ if (!empty($virtualEmiSchedule)) {
             }
             if (penaltyAmountInput) penaltyAmountInput.value = overduePenaltySum.toFixed(2);
 
+            let netPenalty = overduePenaltySum;
             let effectivePenaltyPaid = overduePenaltySum;
             if (toggleNoPenalty && toggleNoPenalty.checked) {
+                netPenalty = 0;
                 effectivePenaltyPaid = 0;
-                if (penaltyPaidInput) penaltyPaidInput.value = '0';
+                if (penaltyPaidInput) {
+                    penaltyPaidInput.value = '0';
+                    penaltyPaidInput.readOnly = true;
+                }
                 if (penaltyWaivedInput) penaltyWaivedInput.value = '0';
                 if (toggleWaiver) {
                     toggleWaiver.checked = false;
@@ -1318,18 +1381,35 @@ if (!empty($virtualEmiSchedule)) {
                 if (waiverFile) waiverFile.removeAttribute('required');
             } else {
                 if (toggleWaiver) toggleWaiver.disabled = false;
-                
+                if (penaltyPaidInput) penaltyPaidInput.readOnly = false;
+
                 if (toggleWaiver && toggleWaiver.checked) {
-                    const waivedVal = parseFloat(penaltyWaivedInput?.value) || overduePenaltySum;
-                    effectivePenaltyPaid = Math.max(0, overduePenaltySum - waivedVal);
-                    if (penaltyPaidInput) penaltyPaidInput.value = effectivePenaltyPaid.toFixed(2);
-                    if (penaltyWaivedInput && (!penaltyWaivedInput.value || parseFloat(penaltyWaivedInput.value) <= 0)) {
+                    const waivedVal = Math.min(overduePenaltySum, Math.max(0, parseFloat(penaltyWaivedInput?.value) || 0));
+                    netPenalty = Math.max(0, overduePenaltySum - waivedVal);
+                    if (penaltyWaivedInput && (!penaltyWaivedInput.value || parseFloat(penaltyWaivedInput.value) < 0)) {
                         penaltyWaivedInput.value = overduePenaltySum.toFixed(2);
+                        netPenalty = 0;
                     }
                 } else {
-                    if (penaltyPaidInput) penaltyPaidInput.value = overduePenaltySum.toFixed(2);
+                    netPenalty = overduePenaltySum;
                     if (penaltyWaivedInput) penaltyWaivedInput.value = '0';
                 }
+
+                if (penaltyPaidInput) {
+                    penaltyPaidInput.max = netPenalty.toFixed(2);
+                    if (penaltyPaidInput.dataset.userEdited === '1') {
+                        effectivePenaltyPaid = Math.min(netPenalty, Math.max(0, parseFloat(penaltyPaidInput.value) || 0));
+                    } else {
+                        effectivePenaltyPaid = netPenalty;
+                        penaltyPaidInput.value = effectivePenaltyPaid.toFixed(2);
+                    }
+                }
+            }
+
+            const carryForwardDue = Math.max(0, netPenalty - effectivePenaltyPaid);
+            if (remainingPenDueText) {
+                remainingPenDueText.textContent = 'TK. ' + carryForwardDue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                remainingPenDueText.className = carryForwardDue > 0 ? 'text-danger fw-bold ms-1 small' : 'text-success ms-1 small';
             }
 
             // Total Payable
@@ -1361,6 +1441,15 @@ if (!empty($virtualEmiSchedule)) {
                     }
                 };
             }
+        }
+
+        // Editable Penalty Paid Now input listener
+        const penaltyPaidEditable = document.getElementById('penaltyPaid');
+        if (penaltyPaidEditable) {
+            penaltyPaidEditable.addEventListener('input', function() {
+                this.dataset.userEdited = '1';
+                updatePenaltyDisplay();
+            });
         }
 
         // Toggle Penalty Waiver fields

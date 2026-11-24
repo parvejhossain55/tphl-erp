@@ -1053,10 +1053,10 @@ class CedClientBroadcastController extends Controller
                     lp.booking_id,
                     COALESCE(SUM(CASE WHEN lp.payment_type IN ('booking_money', 'registration', 'land_share') THEN lp.amount ELSE 0 END), 0) AS land_share_paid,
                     COALESCE(SUM(CASE WHEN lp.payment_type = 'development_charge' THEN lp.amount ELSE 0 END), 0) AS total_dc_received,
-                    COALESCE(SUM(CASE WHEN lp.payment_type = 'emi' THEN lp.amount ELSE 0 END), 0) AS total_emi_paid
+                    COALESCE(SUM(CASE WHEN lp.payment_type IN ('emi', 'emi_due_settlement') THEN lp.amount ELSE 0 END), 0) AS total_emi_paid
                 FROM lead_payments lp
                 WHERE {$validPaymentCond}
-                  AND lp.payment_type IN ('booking_money', 'registration', 'land_share', 'development_charge', 'emi')
+                  AND lp.payment_type IN ('booking_money', 'registration', 'land_share', 'development_charge', 'emi', 'emi_due_settlement')
                 GROUP BY lp.booking_id
             ) pay ON pay.booking_id = lb.id
             WHERE {$whereSql}
@@ -1077,34 +1077,45 @@ class CedClientBroadcastController extends Controller
 
         $inBookingIds = implode(',', array_keys($bookings));
 
-        // 2. EMI asked up to today (same Module 1 logic as CedProjectDashboardController)
+        // 2. EMI asked strictly from Project-Level Active EMIs (is_active = 1; 0 if none active)
         $emiDemand = [];
         $qSched = $this->db->query("
             SELECT
-                es.lead_booking_id AS booking_id,
-                COUNT(*) AS total_sched_rows,
-                COALESCE(SUM(
-                    CASE
-                        WHEN es.status != 'cancelled'
-                             AND (
-                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb.project_id) AND pesi.is_active = 1)
-                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb.project_id) AND es.due_date <= '{$today}')
-                             )
-                        THEN es.emi_amount
-                        ELSE 0
-                    END
-                ), 0) AS asked_amount
-            FROM emi_schedules es
-            INNER JOIN lead_bookings lb ON lb.id = es.lead_booking_id
-            LEFT JOIN project_emi_schedule_items pesi ON pesi.project_id = lb.project_id AND pesi.emi_no = es.emi_no
-            WHERE es.lead_booking_id IN ({$inBookingIds})
-            GROUP BY es.lead_booking_id
+                lb.id AS booking_id,
+                COALESCE(NULLIF(f.price_value, 0), lb.agreement_value, 0) AS total_price,
+                COALESCE(f.land_share_value, 0) AS land_share,
+                COALESCE(f.development_charges, 0) AS dev_charge,
+                COALESCE(
+                    NULLIF(lb.total_emi_no, 0),
+                    NULLIF((SELECT MAX(lp_e.total_emi_no) FROM lead_payments lp_e WHERE lp_e.booking_id = lb.id AND lp_e.is_trashed = 0), 0),
+                    NULLIF(pes.total_emi_no, 0),
+                    36
+                ) AS total_emi_no,
+                COALESCE(act.active_emi_count, 0) AS active_emi_count
+            FROM lead_bookings lb
+            LEFT JOIN flats f ON f.id = lb.flat_id
+            LEFT JOIN project_emi_schedules pes ON pes.project_id = lb.project_id
+            LEFT JOIN (
+                SELECT project_id, COUNT(*) AS active_emi_count
+                FROM project_emi_schedule_items
+                WHERE is_active = 1
+                GROUP BY project_id
+            ) act ON act.project_id = lb.project_id
+            WHERE lb.id IN ({$inBookingIds})
         ");
         if ($qSched) {
             while ($sr = $qSched->fetch_assoc()) {
+                $totalEmiNo = max(1, (int)$sr['total_emi_no']);
+                if ($totalEmiNo > 120) {
+                    $totalEmiNo = 42;
+                }
+                $constructionFee = max(0.0, round((float)$sr['total_price'] - ((float)$sr['land_share'] + (float)$sr['dev_charge'])));
+                $perEmiAmount    = ($totalEmiNo > 0) ? round($constructionFee / $totalEmiNo) : 0.0;
+                $activeCount     = min($totalEmiNo, (int)$sr['active_emi_count']);
+
                 $emiDemand[(int)$sr['booking_id']] = [
-                    'total_sched_rows' => (int)$sr['total_sched_rows'],
-                    'asked_amount'     => round((float)$sr['asked_amount'], 2),
+                    'total_sched_rows' => $activeCount,
+                    'asked_amount'     => round($activeCount * $perEmiAmount, 2),
                 ];
             }
         }
@@ -1184,15 +1195,9 @@ class CedClientBroadcastController extends Controller
 
             $emiPaid  = round((float)$r['total_emi_paid'], 2);
             $ed       = $emiDemand[$bId] ?? ['total_sched_rows' => 0, 'asked_amount' => 0.0];
-            if ($ed['total_sched_rows'] === 0) {
-                $netReg  = $emiPaid;
-                $advPaid = 0.0;
-                $emiDue  = 0.0;
-            } else {
-                $netReg  = round(min($emiPaid, $ed['asked_amount']), 2);
-                $advPaid = round(max(0.0, $emiPaid - $netReg), 2);
-                $emiDue  = round(max(0.0, $ed['asked_amount'] - $netReg), 2);
-            }
+            $netReg   = round(min($emiPaid, $ed['asked_amount']), 2);
+            $advPaid  = round(max(0.0, $emiPaid - $netReg), 2);
+            $emiDue   = round(max(0.0, $ed['asked_amount'] - $netReg), 2);
 
             $totalDue = round($lsDue + $dcDue + $emiDue, 2);
 
