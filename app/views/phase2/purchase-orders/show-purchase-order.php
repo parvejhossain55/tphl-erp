@@ -4,9 +4,14 @@ $po           = $po ?? [];
 $items        = $items ?? [];
 $pendingItems = $pendingItems ?? [];
 $qcApproved     = $qcApproved ?? false;
+$opApproved     = $opApproved ?? false;
+$bodNeeded      = $bodNeeded ?? false;
+$bodApproved    = $bodApproved ?? false;
 $mgmtApproved   = $mgmtApproved ?? false;
 $fullyApproved  = $fullyApproved ?? false;
 $canApproveQC   = $canApproveQC ?? false;
+$canApproveOP   = $canApproveOP ?? false;
+$canApproveBOD  = $canApproveBOD ?? false;
 $canApproveMgmt = $canApproveMgmt ?? false;
 $currentRoleId  = $currentRoleId ?? 0;
 $linkedBoq      = $linkedBoq ?? null;
@@ -14,20 +19,21 @@ $canEditItemQty = $canEditItemQty ?? false;
 $qtyLogs        = $qtyLogs ?? [];
 $poReturns      = $poReturns ?? [];
 $hasReceiving   = $hasReceiving ?? false;
-$isViewOnlyRole = in_array((int)$currentRoleId, [13, 20, 24, 25, 32], true);
+$isViewOnlyRole = in_array((int)$currentRoleId, [13, 20, 24, 25, 32, 38], true);
 $canLogGrn      = !$isViewOnlyRole;
 if ($currentRoleId == 12 && $hasReceiving) {
     $canLogGrn = false; // Site Engineer can only create MRN once per PO
 }
 
 $statusBadge = [
-  'Issued'             => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'Issued'],
-  'Approved'           => ['bg' => 'rgba(16,185,129,.15)',  'color' => '#059669', 'label' => 'Approved'],
-  'Partially Received' => ['bg' => 'rgba(245,158,11,.15)',  'color' => '#d97706', 'label' => 'Partially Received'],
-  'Fully Received'     => ['bg' => 'rgba(16,185,129,.15)',  'color' => '#059669', 'label' => 'Fully Received'],
-  'Cancelled'          => ['bg' => 'rgba(239,68,68,.15)',   'color' => '#dc2626', 'label' => 'Cancelled'],
-  'QC Approved'        => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'QC Approved'],
-  'Purchase Head Approved' => ['bg' => 'rgba(245,158,11,.15)', 'color' => '#d97706', 'label' => 'PH Approved'],
+  'Issued'                 => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'Issued'],
+  'Approved'               => ['bg' => 'rgba(16,185,129,.15)',  'color' => '#059669', 'label' => 'Approved'],
+  'Partially Received'     => ['bg' => 'rgba(245,158,11,.15)',  'color' => '#d97706', 'label' => 'Partially Received'],
+  'Fully Received'         => ['bg' => 'rgba(16,185,129,.15)',  'color' => '#059669', 'label' => 'Fully Received'],
+  'Cancelled'              => ['bg' => 'rgba(239,68,68,.15)',   'color' => '#dc2626', 'label' => 'Cancelled'],
+  'QC Approved'            => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'QC Approved'],
+  'Purchase Head Approved' => ['bg' => 'rgba(245,158,11,.15)',  'color' => '#d97706', 'label' => 'PH Approved'],
+  'Operation Head Approved'=> ['bg' => 'rgba(139,92,246,.15)',  'color' => '#7c3aed', 'label' => 'OP Head Approved'],
 ];
 $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' => '#6b7280', 'label' => $po['status']];
 ?>
@@ -210,8 +216,10 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               echo '⏳ Awaiting Purchase Head Approval';
           } elseif (!$qcApproved) {
               echo '⏳ Awaiting QC & Internal Audit Approval';
-          } else {
+          } elseif (!$opApproved) {
               echo '⏳ Awaiting Operation Head Approval';
+          } else {
+              echo '⏳ Awaiting Board of Director Approval';
           }
           ?>
         </div>
@@ -1392,6 +1400,42 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         </span>
       </div>
 
+      <!-- Board of Director Step (only when PO total > 30,000) -->
+      <?php if ($bodNeeded): ?>
+      <div class="po-apv-step" style="background:<?= $bodApproved ? 'rgba(16,185,129,.06)' : 'rgba(124,58,237,.05)' ?>;
+        border:1px solid <?= $bodApproved ? 'rgba(16,185,129,.2)' : 'rgba(124,58,237,.22)' ?>;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="po-apv-icon" style="background:<?= $bodApproved ? 'rgba(16,185,129,.15)' : 'rgba(124,58,237,.12)' ?>;
+            color:<?= $bodApproved ? '#059669' : '#7c3aed' ?>">
+            <i class="fal <?= $bodApproved ? 'fa-check-circle' : 'fa-crown' ?>"></i>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700">Board of Director <span style="font-size:9.5px;font-weight:600;color:#7c3aed">(PO &gt; ৳30,000)</span></div>
+            <?php if ($bodApproved && !empty($po['bod_approver_name'])): ?>
+              <div style="font-size:10px;font-weight:700;color:#059669"><?= htmlspecialchars($po['bod_approver_name']) ?></div>
+              <?php if (!empty($po['bod_approved_at'])): ?>
+                <div style="font-size:9px;color:var(--text-muted)"><?= date('d M Y, h:i A', strtotime($po['bod_approved_at'])) ?></div>
+              <?php endif; ?>
+              <?php if (!empty($po['bod_note'])): ?>
+                <div style="font-size:10px;color:#555;font-style:italic;margin-top:2px">Note: <?= htmlspecialchars($po['bod_note']) ?></div>
+              <?php endif; ?>
+            <?php else: ?>
+              <?php if (!$opApproved): ?>
+                <div style="font-size:10px;color:var(--text-muted)">Waiting for Operation Head first</div>
+              <?php else: ?>
+                <div style="font-size:10px;color:var(--text-muted)">Awaiting Board of Director approval</div>
+              <?php endif; ?>
+            <?php endif; ?>
+          </div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;
+          background:<?= $bodApproved ? 'rgba(16,185,129,.12)' : 'rgba(124,58,237,.12)' ?>;
+          color:<?= $bodApproved ? '#059669' : '#7c3aed' ?>">
+          <?= $bodApproved ? '✓ Approved' : 'Pending' ?>
+        </span>
+      </div>
+      <?php endif; ?>
+
       <!-- Cancelled / Rejected Banner -->
       <?php if ($po['status'] === 'Cancelled'): ?>
         <div style="padding:14px;border-radius:12px;background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.3);margin-bottom:16px">
@@ -1542,8 +1586,48 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         </div>
       <?php endif; ?>
 
+      <!-- Approve Action — Board of Director -->
+      <?php if ($canApproveBOD): ?>
+        <div class="row gx-2 mb-3">
+          <div class="col-6">
+            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalBOD">
+              <i class="fal fa-crown me-1"></i>Approve
+            </button>
+          </div>
+          <div class="col-6">
+            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+              <i class="fal fa-times-circle me-1"></i>Reject
+            </button>
+          </div>
+        </div>
+
+        <!-- Approve Modal BOD -->
+        <div class="modal fade" id="approvePoModalBOD" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+              <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST">
+                <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title fw-bold" style="color:#6d28d9"><i class="fal fa-crown me-2"></i>Approve as Board of Director</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Approval Note (Optional)</label>
+                    <textarea class="form-control" name="approval_note" rows="3" placeholder="Add an approval note..."></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
+                  <button type="submit" class="btn text-white" style="background:#6d28d9;border-radius:10px;font-weight:600"><i class="fal fa-check-circle me-1"></i> Confirm Final Approval</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
+
       <!-- Reject Modal -->
-      <?php if ($canApprovePH || $canApproveQC || $canApproveOP): ?>
+      <?php if ($canApprovePH || $canApproveQC || $canApproveOP || $canApproveBOD): ?>
         <div class="modal fade" id="rejectPoModal" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">

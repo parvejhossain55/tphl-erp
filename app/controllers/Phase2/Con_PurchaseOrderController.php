@@ -41,7 +41,7 @@ class Con_PurchaseOrderController extends Controller
         $orders = $this->poModel->getAll();
 
         // Determine filters
-        $isApproverRole = in_array($currentRoleId, [17, 24, 20]);
+        $isApproverRole = in_array($currentRoleId, [17, 24, 20, 38]);
         $filter         = $_GET['filter'] ?? ($isApproverRole ? 'pending_my_approval' : 'all');
         $projectId      = $_GET['project_id'] ?? '';
         $categoryId     = $_GET['category_id'] ?? '';
@@ -130,23 +130,28 @@ class Con_PurchaseOrderController extends Controller
             $phApproved    = !empty($po['purchase_head_approved_by_id']);
             $qcApproved    = !empty($po['qc_approved_by_id']);
             $opApproved    = !empty($po['op_head_approved_by_id']);
+            $bodNeeded     = ((float)($po['total_amount'] ?? 0) > 30000);
+            $bodApproved   = !empty($po['bod_approved_by_id']);
+            $isCancelled   = (($po['status'] ?? '') === 'Cancelled');
 
-            $canApprovePH   = (in_array($currentRoleId, [17, 1, 3])) && $phNeeded && !$phApproved;
-            $canApproveQC   = (in_array($currentRoleId, [24, 1, 3])) && (!$phNeeded || $phApproved) && !$qcApproved;
-            $canApproveOP   = (in_array($currentRoleId, [20, 1, 3])) && $qcApproved && !$opApproved;
+            $canApprovePH   = !$isCancelled && (in_array($currentRoleId, [17, 1, 3])) && $phNeeded && !$phApproved;
+            $canApproveQC   = !$isCancelled && (in_array($currentRoleId, [24, 1, 3])) && (!$phNeeded || $phApproved) && !$qcApproved;
+            $canApproveOP   = !$isCancelled && (in_array($currentRoleId, [20, 1, 3])) && $qcApproved && !$opApproved;
+            $canApproveBOD  = !$isCancelled && (in_array($currentRoleId, [38, 1, 3])) && $opApproved && $bodNeeded && !$bodApproved;
 
-            $iCanApprove = $canApprovePH || $canApproveQC || $canApproveOP;
+            $iCanApprove = $canApprovePH || $canApproveQC || $canApproveOP || $canApproveBOD;
             $iHaveApproved = ($po['purchase_head_approved_by_id'] == $currentUserId) ||
                              ($po['qc_approved_by_id'] == $currentUserId) ||
-                             ($po['op_head_approved_by_id'] == $currentUserId);
+                             ($po['op_head_approved_by_id'] == $currentUserId) ||
+                             ($po['bod_approved_by_id'] == $currentUserId);
 
             if ($filter === 'pending_my_approval') {
                 if ($iCanApprove) {
                     $filteredOrders[] = $po;
                 }
             } elseif ($filter === 'pending_approval') {
-                // Any approval pending (Issued, Purchase Head Approved, QC Approved)
-                if (in_array($po['status'], ['Issued', 'Purchase Head Approved', 'QC Approved'])) {
+                // Any approval pending (Issued, Purchase Head Approved, QC Approved, Operation Head Approved)
+                if (in_array($po['status'], ['Issued', 'Purchase Head Approved', 'QC Approved', 'Operation Head Approved'])) {
                     $filteredOrders[] = $po;
                 }
             } elseif ($filter === 'my_approved') {
@@ -210,7 +215,7 @@ class Con_PurchaseOrderController extends Controller
             $summaryStats['total_amount'] += $amt;
             $summaryStats['total_paid']   += $paid;
             $summaryStats['total_due']    += max(0, $amt - $paid);
-            if (in_array($fpo['status'] ?? '', ['Issued', 'Purchase Head Approved', 'QC Approved'], true)) {
+            if (in_array($fpo['status'] ?? '', ['Issued', 'Purchase Head Approved', 'QC Approved', 'Operation Head Approved'], true)) {
                 $summaryStats['pending_approval_count']++;
             }
         }
@@ -260,12 +265,16 @@ class Con_PurchaseOrderController extends Controller
         $phApproved    = !empty($po['purchase_head_approved_by_id']);
         $qcApproved    = !empty($po['qc_approved_by_id']);
         $opApproved    = !empty($po['op_head_approved_by_id']);
-        $fullyApproved = ($phNeeded ? $phApproved : true) && $qcApproved && $opApproved;
+        $bodNeeded     = ((float)($po['total_amount'] ?? 0) > 30000);
+        $bodApproved   = !empty($po['bod_approved_by_id']);
+        $alreadyFinalStatus = in_array($po['status'] ?? '', ['Approved', 'Partially Received', 'Fully Received'], true);
+        $fullyApproved = $alreadyFinalStatus || (($phNeeded ? $phApproved : true) && $qcApproved && $opApproved && ($bodNeeded ? $bodApproved : true));
 
         $isCancelled    = ($po['status'] === 'Cancelled');
         $canApprovePH   = !$isCancelled && (in_array($currentRoleId, [17, 1, 3])) && $phNeeded && !$phApproved;
         $canApproveQC   = !$isCancelled && (in_array($currentRoleId, [24, 1, 3])) && (!$phNeeded || $phApproved) && !$qcApproved;
         $canApproveOP   = !$isCancelled && (in_array($currentRoleId, [20, 1, 3])) && $qcApproved && !$opApproved;
+        $canApproveBOD  = !$isCancelled && (in_array($currentRoleId, [38, 1, 3])) && $opApproved && $bodNeeded && !$bodApproved;
 
         // Management checks are mapped to Operation Head parameters for compatibility
         $mgmtApproved   = $opApproved;
@@ -274,11 +283,11 @@ class Con_PurchaseOrderController extends Controller
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         $isCreator = ($currentUserId == $createdBy);
         $isManagement = (strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false || in_array($currentRoleId, [1, 3, 6, 30]));
-        $isNotApproved = empty($po['purchase_head_approved_by_id']) && empty($po['qc_approved_by_id']) && empty($po['op_head_approved_by_id']);
+        $isNotApproved = empty($po['purchase_head_approved_by_id']) && empty($po['qc_approved_by_id']) && empty($po['op_head_approved_by_id']) && empty($po['bod_approved_by_id']);
         $canDeletePO = ($isCreator || $isManagement) && $isNotApproved && $po['status'] !== 'Cancelled';
 
-        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 13, 25, 30, 31, 23]);
-        $canEditItemQty = !$isCancelled && ($isApproverRole || $canApprovePH || $canApproveQC || $canApproveOP || $isCreator);
+        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 38, 13, 25, 30, 31, 23]);
+        $canEditItemQty = !$isCancelled && ($isApproverRole || $canApprovePH || $canApproveQC || $canApproveOP || $canApproveBOD || $isCreator);
 
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
@@ -472,6 +481,9 @@ class Con_PurchaseOrderController extends Controller
             'canApprovePH'        => $canApprovePH,
             'canApproveQC'        => $canApproveQC,
             'canApproveOP'        => $canApproveOP,
+            'bodNeeded'           => $bodNeeded,
+            'bodApproved'         => $bodApproved,
+            'canApproveBOD'       => $canApproveBOD,
             'mgmtApproved'        => $mgmtApproved,
             'canApproveMgmt'      => $canApproveMgmt,
             'canDeletePO'         => $canDeletePO,
@@ -518,7 +530,10 @@ class Con_PurchaseOrderController extends Controller
         $phApproved    = !empty($po['purchase_head_approved_by_id']);
         $qcApproved    = !empty($po['qc_approved_by_id']);
         $opApproved    = !empty($po['op_head_approved_by_id']);
-        $fullyApproved = ($phNeeded ? $phApproved : true) && $qcApproved && $opApproved;
+        $bodNeeded     = ((float)($po['total_amount'] ?? 0) > 30000);
+        $bodApproved   = !empty($po['bod_approved_by_id']);
+        $alreadyFinalStatus = in_array($po['status'] ?? '', ['Approved', 'Partially Received', 'Fully Received'], true);
+        $fullyApproved = $alreadyFinalStatus || (($phNeeded ? $phApproved : true) && $qcApproved && $opApproved && ($bodNeeded ? $bodApproved : true));
 
         $items = $this->poModel->getItems($id);
 
@@ -649,6 +664,8 @@ class Con_PurchaseOrderController extends Controller
             'phApproved'          => $phApproved,
             'qcApproved'          => $qcApproved,
             'opApproved'          => $opApproved,
+            'bodNeeded'           => $bodNeeded,
+            'bodApproved'         => $bodApproved,
             'fullyApproved'       => $fullyApproved,
             'vendorSelectionData' => $vendorSelectionData,
             'cstMatrix'           => $cstMatrix,
@@ -732,6 +749,7 @@ class Con_PurchaseOrderController extends Controller
         $note = trim($_POST['approval_note'] ?? '');
         $creatorRole = (int)($po['creator_role_id'] ?? 0);
         $phNeeded = in_array($creatorRole, [23, 31]);
+        $bodNeeded = ((float)($po['total_amount'] ?? 0) > 30000);
 
         // 1. Purchase Head Approval (role 17 or Admin)
         if (($roleId === 17 || in_array($roleId, [1, 3])) && $phNeeded && empty($po['purchase_head_approved_by_id'])) {
@@ -765,17 +783,36 @@ class Con_PurchaseOrderController extends Controller
 
         // 3. Operation Head Approval (role 20 or Admin)
         } elseif (($roleId === 20 || in_array($roleId, [1, 3])) && !empty($po['qc_approved_by_id']) && empty($po['op_head_approved_by_id'])) {
+            $nextStatus = $bodNeeded ? 'Operation Head Approved' : 'Approved';
             $stmt = $this->db->prepare(
-                "UPDATE purchase_orders SET op_head_approved_by_id = ?, op_head_approved_at = NOW(), op_head_note = ?, status = 'Approved' WHERE id = ?"
+                "UPDATE purchase_orders SET op_head_approved_by_id = ?, op_head_approved_at = NOW(), op_head_note = ?, status = ? WHERE id = ?"
+            );
+            $stmt->bind_param('issi', $userId, $note, $nextStatus, $id);
+            if ($stmt->execute()) {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                if ($bodNeeded) {
+                    $mailService->notifyPOApprovalStage($po['project_name'], $id, [38], 'Board of Director');
+                    setSuccess('Purchase Order approved by Operation Head. Awaiting Board of Director approval (PO exceeds ৳30,000).');
+                } else {
+                    $mailService->notifySiteOperatorForApprovedPO($id, $po['project_name']);
+                    setSuccess('Purchase Order approved by Operation Head. Status updated to Fully Approved!');
+                }
+            } else {
+                setError('Failed to approve Purchase Order: ' . $stmt->error);
+            }
+
+        // 4. Board of Director Approval (role 38 or Admin) — required when PO total > 30,000
+        } elseif (($roleId === 38 || in_array($roleId, [1, 3])) && !empty($po['op_head_approved_by_id']) && $bodNeeded && empty($po['bod_approved_by_id'])) {
+            $stmt = $this->db->prepare(
+                "UPDATE purchase_orders SET bod_approved_by_id = ?, bod_approved_at = NOW(), bod_note = ?, status = 'Approved' WHERE id = ?"
             );
             $stmt->bind_param('isi', $userId, $note, $id);
             if ($stmt->execute()) {
-                // ── Notify Site Operator ─────────────────────────
                 require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
                 $mailService = new \ProjectWorkflowMailService($this->db);
                 $mailService->notifySiteOperatorForApprovedPO($id, $po['project_name']);
-
-                setSuccess('Purchase Order approved by Operation Head. Status updated to Fully Approved!');
+                setSuccess('Purchase Order approved by Board of Director. Status updated to Fully Approved!');
             } else {
                 setError('Failed to approve Purchase Order: ' . $stmt->error);
             }
@@ -808,8 +845,8 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Role guard — Purchase Head (17), QC (24), Operation Head (20), or Admin (1, 3) can reject
-        if (!in_array($roleId, [17, 20, 24, 1, 3])) {
+        // Role guard — Purchase Head (17), QC (24), Operation Head (20), Board of Director (38), or Admin (1, 3) can reject
+        if (!in_array($roleId, [17, 20, 24, 38, 1, 3])) {
             setError('You are not authorized to reject Purchase Orders.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
             exit;
@@ -941,7 +978,7 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        if (!empty($po['purchase_head_approved_by_id']) || !empty($po['qc_approved_by_id']) || !empty($po['op_head_approved_by_id'])) {
+        if (!empty($po['purchase_head_approved_by_id']) || !empty($po['qc_approved_by_id']) || !empty($po['op_head_approved_by_id']) || !empty($po['bod_approved_by_id'])) {
             setError('This Purchase Order has already been approved and cannot be deleted.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
             exit;
@@ -1006,8 +1043,8 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Approver roles (PH, QC, Op Head, Management, Admin) or Creator
-        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 13, 25, 30, 31, 23]);
+        // Approver roles (PH, QC, Op Head, BOD, Management, Admin) or Creator
+        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 38, 13, 25, 30, 31, 23]);
         $isCreator = ($currentUserId == (int)$po['created_by']);
         if (!$isApproverRole && !$isCreator) {
             setError('You do not have permission to modify quantities for this Purchase Order.');

@@ -402,7 +402,15 @@ class TrackerCalculationService
                     'volume_assigned' => 0,
                     'volume_unassigned' => 0,
                     'total_volume_achieved' => 0,
+                    'total_collected' => 0.0,
+                    'verified_collection' => 0.0,
+                    'pending_collection' => 0.0,
+                    'collection_details' => [],
                     'performance_score' => 0,
+                    'total_collected' => 0.0,
+                    'verified_collection' => 0.0,
+                    'pending_collection' => 0.0,
+                    'collection_details' => [],
                     'sold_units_details' => []
                 ];
             }
@@ -596,6 +604,69 @@ class TrackerCalculationService
                         'land_share_value' => (float)$row['land_share_val'],
                         'effective_volume' => $effVal,
                         'is_assigned' => $isAssigned
+                    ];
+                }
+            }
+        }
+
+        // 3.1 Collections (Payments Received in Period)
+        $collQ = "
+            SELECT pay.id as payment_id, pay.booking_id, pay.amount, 
+                   COALESCE(pay.payment_date, DATE(pay.created_at)) as payment_date,
+                   pay.payment_method, pay.payment_type, pay.verification_status, pay.transaction_ref,
+                   COALESCE(NULLIF(b.sales_by_id, 0), NULLIF(b.created_by, 0), NULLIF(l.assigned_id, 0), pay.created_by) AS sales_user_id,
+                   b.project_id, p.name AS project_name, f.flat_name, f.floor_no,
+                   COALESCE(NULLIF(l.full_name, ''), NULLIF(l.lead_name, ''), 'N/A') AS client_name,
+                   COALESCE(NULLIF(l.phone, ''), NULLIF(l.phone_number, ''), '-') AS client_phone
+            FROM lead_payments pay
+            JOIN lead_bookings b ON b.id = pay.booking_id AND b.deleted_at IS NULL AND b.booking_status IN ('booked', 'completed')
+            LEFT JOIN leads l ON b.lead_id = l.id
+            LEFT JOIN projects p ON b.project_id = p.id
+            LEFT JOIN flats f ON b.flat_id = f.id
+            WHERE (
+                b.sales_by_id IN ($userIds) 
+                OR ( (b.sales_by_id IS NULL OR b.sales_by_id = 0) AND (b.created_by IN ($userIds) OR pay.created_by IN ($userIds)) )
+            )
+              AND COALESCE(pay.payment_date, DATE(pay.created_at)) BETWEEN DATE('$start') AND DATE('$end')
+              AND (pay.is_trashed = 0 OR pay.is_trashed IS NULL)
+              AND (pay.is_emi_discount = 0 OR pay.is_emi_discount IS NULL)
+              AND (pay.verification_status != 'rejected' OR pay.verification_status IS NULL)
+            ORDER BY pay.payment_date DESC, pay.id DESC
+        ";
+        $collRes = $this->db->query($collQ);
+        if ($collRes) {
+            while ($row = $collRes->fetch_assoc()) {
+                $uid = (int)$row['sales_user_id'];
+                if (isset($employees[$uid])) {
+                    $amt = (float)$row['amount'];
+                    $isVer = (strtolower(trim($row['verification_status'] ?? '')) === 'verified');
+                    
+                    $employees[$uid]['total_collected'] += $amt;
+                    if ($isVer) {
+                        $employees[$uid]['verified_collection'] += $amt;
+                    } else {
+                        $employees[$uid]['pending_collection'] += $amt;
+                    }
+
+                    $unitLabel = trim(($row['floor_no'] ? 'Floor ' . $row['floor_no'] . ', ' : '') . ($row['flat_name'] ?: 'Unit #' . $row['flat_id']));
+                    if (empty($unitLabel)) {
+                        $unitLabel = 'Unit #' . ($row['flat_id'] ?? '-');
+                    }
+
+                    $employees[$uid]['collection_details'][] = [
+                        'payment_id' => (int)$row['payment_id'],
+                        'receipt_no' => 'REC-' . str_pad($row['payment_id'], 6, '0', STR_PAD_LEFT),
+                        'booking_id' => (int)$row['booking_id'],
+                        'payment_date' => $row['payment_date'],
+                        'amount' => $amt,
+                        'payment_method' => ucfirst($row['payment_method'] ?? 'Cash'),
+                        'payment_type' => ucwords(str_replace('_', ' ', $row['payment_type'] ?? 'Payment')),
+                        'verification_status' => $row['verification_status'] ?: 'pending',
+                        'is_verified' => $isVer,
+                        'client_name' => $row['client_name'],
+                        'client_phone' => $row['client_phone'],
+                        'project_name' => $row['project_name'] ?: 'Project #' . $row['project_id'],
+                        'unit_label' => $unitLabel
                     ];
                 }
             }
@@ -905,7 +976,15 @@ class TrackerCalculationService
                     'volume_assigned' => 0,
                     'volume_unassigned' => 0,
                     'total_volume_achieved' => 0,
+                    'total_collected' => 0.0,
+                    'verified_collection' => 0.0,
+                    'pending_collection' => 0.0,
+                    'collection_details' => [],
                     'performance_score' => 0,
+                    'total_collected' => 0.0,
+                    'verified_collection' => 0.0,
+                    'pending_collection' => 0.0,
+                    'collection_details' => [],
                     'sold_units_details' => []
                 ];
             }
@@ -935,6 +1014,17 @@ class TrackerCalculationService
             $teams[$tid]['volume_assigned'] += $emp['volume_assigned'];
             $teams[$tid]['volume_unassigned'] += $emp['volume_unassigned'];
             $teams[$tid]['total_volume_achieved'] += $emp['total_volume_achieved'];
+            $teams[$tid]['total_collected'] += $emp['total_collected'];
+            $teams[$tid]['verified_collection'] += $emp['verified_collection'];
+            $teams[$tid]['pending_collection'] += $emp['pending_collection'];
+            if (!empty($emp['collection_details'])) {
+                foreach ($emp['collection_details'] as $cItem) {
+                    $teams[$tid]['collection_details'][] = array_merge($cItem, [
+                        'member_name' => $emp['member_name'],
+                        'level_designation' => $emp['level_designation']
+                    ]);
+                }
+            }
         }
 
         foreach ($teams as &$t) {
@@ -1017,6 +1107,9 @@ class TrackerCalculationService
             'total_units_sold' => array_sum(array_column($teams, 'units_sold')),
             'total_units_target' => array_sum(array_column($teams, 'unit_target')),
             'total_visited' => array_sum(array_column($teams, 'visited')),
+            'total_collected' => array_sum(array_column($teams, 'total_collected')),
+            'total_verified_collection' => array_sum(array_column($teams, 'verified_collection')),
+            'total_pending_collection' => array_sum(array_column($teams, 'pending_collection')),
             'total_visit_target' => array_sum(array_column($teams, 'visit_target')),
             'top_team' => !empty($teams) ? reset($teams) : null
         ];

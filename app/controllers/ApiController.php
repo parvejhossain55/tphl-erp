@@ -703,7 +703,10 @@ class ApiController extends Controller
 
 
                 "payment_info" => [
-                    "total_price" => $totalPayable,
+                    "total_price" => $flatPrice,
+                    "flat_price" => $flatPrice,
+                    "total_payable" => $totalPayable,
+                    "discount_amount" => $discountAmount,
                     "total_paid" => $totalPaid,
                     "total_due" => $totalDue,
                     "approved_emi_discount" => $bulkEmiDiscount,
@@ -1073,7 +1076,8 @@ class ApiController extends Controller
                 "image"                => $image,
                 "flatNo"               => $flat['flat_name'] ?? '',
                 "flatSize"             => $flat && !empty($flat['sqft']) ? $flat['sqft'] . ' sqft' : '',
-                "price"                => number_format($totalPayable),
+                "price"                => number_format($flatPrice),
+                "total_payable"        => number_format($totalPayable),
                 "partial_payment"      => number_format($totalPaid),
                 "due_payment"          => number_format($totalDue),
                 "discount"             => $discountAmount ? number_format($discountAmount) : '',

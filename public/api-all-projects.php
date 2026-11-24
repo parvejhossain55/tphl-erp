@@ -28,28 +28,45 @@ $options = [
 
 $pdo = null;
 
-if ($isLocal) {
+// 1. Try configuration from app/config/config.php if available
+if (file_exists(__DIR__ . '/../app/config/config.php')) {
     try {
-        $pdo = new PDO("mysql:host=127.0.0.1;dbname=tphl_db;charset=utf8mb4", 'root', '', $options);
+        $cfg = require __DIR__ . '/../app/config/config.php';
+        if (is_array($cfg) && !empty($cfg['db_name'])) {
+            $host = $cfg['db_host'] ?? '127.0.0.1';
+            $db   = $cfg['db_name'];
+            $user = $cfg['db_user'] ?? 'root';
+            $pass = $cfg['db_pass'] ?? '';
+            $pdo  = new PDO("mysql:host={$host};dbname={$db};charset=utf8mb4", $user, $pass, $options);
+        }
     } catch (\PDOException $e) {
+        $pdo = null;
+    }
+}
+
+// 2. Fallback to standard presets if config didn't connect
+if (!$pdo) {
+    $credentials = [
+        ['127.0.0.1', 'final_erp_db', 'final_erp_user', '#erp_db@TPHL_PASS#'],
+        ['127.0.0.1', 'final_erp_db', 'final_erp_user', 'finaltPhl@#5672dhKL%sd10'],
+        ['127.0.0.1', 'final_erp_db', 'final_erp_user', '#erp_db@TPHL_PASS'],
+        ['127.0.0.1', 'tphl_db', 'root', ''],
+        ['localhost', 'tphl_db', 'root', ''],
+    ];
+
+    foreach ($credentials as [$h, $d, $u, $p]) {
         try {
-            $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', '#erp_db@TPHL_PASS', $options);
-        } catch (\PDOException $e2) {
-            echo json_encode(['success' => false, 'message' => 'DB Connection failed: ' . $e2->getMessage(), 'data' => []]);
-            exit;
+            $pdo = new PDO("mysql:host={$h};dbname={$d};charset=utf8mb4", $u, $p, $options);
+            break;
+        } catch (\PDOException $ex) {
+            continue;
         }
     }
-} else {
-    try {
-        $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', '#erp_db@TPHL_PASS', $options);
-    } catch (\PDOException $e) {
-        try {
-            $pdo = new PDO("mysql:host=127.0.0.1;dbname=tphl_db;charset=utf8mb4", 'root', '', $options);
-        } catch (\PDOException $e2) {
-            echo json_encode(['success' => false, 'message' => 'DB Connection failed: ' . $e2->getMessage(), 'data' => []]);
-            exit;
-        }
-    }
+}
+
+if (!$pdo) {
+    echo json_encode(['success' => false, 'message' => 'DB Connection failed: Unable to connect to ERP Database', 'data' => []]);
+    exit;
 }
 
 // -------------------------------------------------------------
