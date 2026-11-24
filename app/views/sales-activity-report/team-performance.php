@@ -667,9 +667,9 @@
             <?php if (!empty($isGlobalViewer)): ?>
             <!-- Sales Manager (Cluster Head) Filter -->
             <div class="tp-form-group">
-                <label for="fManager"><i class="fa-solid fa-user-tie me-1"></i> Sales Manager</label>
+                <label for="fManager"><i class="fa-solid fa-user-tie me-1"></i> Cluster Head</label>
                 <select name="sales_manager_id" id="fManager" class="tp-input" style="min-width: 175px;">
-                    <option value="">All Sales Managers</option>
+                    <option value="">All Cluster Heads</option>
                     <?php foreach (($salesManagers ?? []) as $sm): ?>
                         <option value="<?= (int)$sm['id'] ?>" data-teams="<?= htmlspecialchars(implode(',', $sm['team_ids'])) ?>" <?= (!empty($selectedSalesManagerId) && (int)$selectedSalesManagerId === (int)$sm['id']) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($sm['name']) ?>

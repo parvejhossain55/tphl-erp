@@ -2018,14 +2018,25 @@ $jsData = [
                     <option value="<?= (int) $p['id'] ?>" <?= (int) $filters['project_id'] === (int) $p['id'] ? 'selected' : '' ?>><?= sp_h($p['name']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select name="sales_manager_id" id="spManager" class="sp-select2" data-placeholder="All cluster heads">
-                <option value="">All cluster heads</option>
-                <?php foreach (($salesManagers ?? []) as $sm): ?>
-                    <option value="<?= (int) $sm['id'] ?>" data-teams="<?= sp_h(implode(',', $sm['team_ids'])) ?>" <?= (int) ($filters['sales_manager_id'] ?? 0) === (int) $sm['id'] ? 'selected' : '' ?>>
-                        <?= sp_h($sm['name']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <?php if (!empty($isClusterHeadRestricted)): ?>
+                <input type="hidden" name="sales_manager_id" value="<?= (int) ($filters['sales_manager_id'] ?? 0) ?>">
+                <select id="spManager" class="sp-select2" data-placeholder="Cluster Head" disabled>
+                    <?php foreach (($salesManagers ?? []) as $sm): ?>
+                        <option value="<?= (int) $sm['id'] ?>" data-teams="<?= sp_h(implode(',', $sm['team_ids'])) ?>" selected>
+                            <?= sp_h($sm['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            <?php else: ?>
+                <select name="sales_manager_id" id="spManager" class="sp-select2" data-placeholder="All cluster heads">
+                    <option value="">All cluster heads</option>
+                    <?php foreach (($salesManagers ?? []) as $sm): ?>
+                        <option value="<?= (int) $sm['id'] ?>" data-teams="<?= sp_h(implode(',', $sm['team_ids'])) ?>" <?= (int) ($filters['sales_manager_id'] ?? 0) === (int) $sm['id'] ? 'selected' : '' ?>>
+                            <?= sp_h($sm['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            <?php endif; ?>
             <select name="team_id" id="spTeam" class="sp-select2" data-placeholder="All teams">
                 <option value="">All teams</option>
                 <?php foreach ($teams as $t): if (!$t['active']) continue; ?>
@@ -2743,7 +2754,7 @@ $jsData = [
         <summary><i class="fa-regular fa-circle-info" style="color:var(--sp-green)"></i> How these numbers are calculated</summary>
         <dl>
             <dt>Leads received</dt><dd>Active leads whose assignment time (or creation time if never assigned) falls inside the period. Credited to the current owner (<code>assigned_id</code>).</dd>
-            <dt>Team</dt><dd>The owner's team (<code>users.team_id</code>). Sales Manager / Head / Executive with the same team_id roll up into that team; all teams + unattributed rows add up exactly to the overall total.</dd>
+            <dt>Team</dt><dd>The owner's team (<code>users.team_id</code>). Cluster Head / Head / Executive with the same team_id roll up into that team; all teams + unattributed rows add up exactly to the overall total.</dd>
             <dt>Contacted</dt><dd>Lead has a follow-up logged, a first-contact time, or a call status of Called / Received / Not received.</dd>
             <dt>Qualified</dt><dd>Lead status (current or in any follow-up) is Prospect, High Prospect, Hot, Warm, Will Visit, Visited or Sold.</dd>
             <dt>Visit scheduled / completed</dt><dd>Follow-up next action “site visit” or status Visit Scheduled (Will Visit) → scheduled. Status Visited or follow-up type Visit / Face to Face → completed.</dd>

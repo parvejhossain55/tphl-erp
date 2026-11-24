@@ -150,9 +150,9 @@ class TrackerCalculationService
             }
         }
         
-        // 1. Check Sales Manager (multi-team via sales_manager_teams) BEFORE global admin
-        //    so a Sales Manager whose role_id happens to be in any list is still scoped to assigned teams.
-        $isSalesMgr = (function_exists('isSalesManager') && isSalesManager()) || $roleName === 'sales manager';
+        // 1. Check Cluster Head / Sales Manager (multi-team via sales_manager_teams) BEFORE global admin
+        //    so a Cluster Head whose role_id happens to be in any list is still scoped to assigned teams.
+        $isSalesMgr = (function_exists('isSalesManager') && isSalesManager()) || in_array($roleName, ['cluster head', 'sales manager'], true);
         if ($isSalesMgr) {
             $managedIds = function_exists('getManagedTeamIds')
                 ? getManagedTeamIds($this->db, (int)($user['id'] ?? 0))

@@ -252,11 +252,11 @@ if (!function_exists('buildTeamUrl')) {
                 <?php if (!empty($isGlobalTeamViewer) && !empty($salesManagers)): ?>
                     <div class="input-group input-group-sm flex-nowrap" style="width: auto;">
                         <span class="input-group-text bg-white text-muted fw-semibold text-nowrap" style="height: 34px; border-radius: 8px 0 0 8px; font-size: 12px; border-color: #cbd5e1;">
-                            <i class="fa-solid fa-user-tie text-primary me-1"></i> Sales Manager
+                            <i class="fa-solid fa-user-tie text-primary me-1"></i> Cluster Head
                         </span>
                         <select id="managerSelect" class="form-select form-select-sm fw-semibold" style="height: 34px; min-width: 170px; max-width: 230px; border-radius: 0 8px 8px 0; font-size: 12.5px; border-color: #cbd5e1;" onchange="window.location.href=this.value;">
                             <option value="<?= buildTeamUrl(['sales_manager_id' => null, 'team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>" <?= empty($selectedSalesManagerId) ? 'selected' : '' ?>>
-                                All Sales Managers
+                                All Cluster Heads
                             </option>
                             <?php foreach ($salesManagers as $sm): ?>
                                 <option value="<?= buildTeamUrl(['sales_manager_id' => $sm['id'], 'team_id' => 'all', 'member_id' => null, 'assigned_user' => null]) ?>" <?= (!empty($selectedSalesManagerId) && (int)$selectedSalesManagerId === (int)$sm['id']) ? 'selected' : '' ?>>

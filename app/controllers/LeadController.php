@@ -2825,7 +2825,7 @@ class LeadController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $canDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
-            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'cluster head', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true) 
             || isSalesCoLeader();
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -2933,7 +2933,7 @@ class LeadController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $canDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
-            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true) 
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'cluster head', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true) 
             || isSalesCoLeader();
 
         $redirectUrl = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ($GLOBALS['base_url'] . "/lead-lists");
@@ -3059,7 +3059,7 @@ class LeadController extends Controller
         $isCoLeader = isSalesCoLeader();
 
         $canBulkDelete = in_array($userRoleId, [1, 3, 5, 9, 32, 33, 34], true) 
-            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true)
+            || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'cluster head', 'sales manager', 'sales team leader', 'sales team head', 'head of sales'], true)
             || $isCoLeader;
 
         if (!$canBulkDelete || $userRoleId === 35) {

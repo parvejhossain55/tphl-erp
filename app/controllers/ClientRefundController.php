@@ -481,7 +481,7 @@ class ClientRefundController extends Controller
 
             $this->db->commit();
 
-            setSuccess('Refund request of ৳' . number_format($refundAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . ') submitted. Forwarded to Related Sales Manager for primary approval.');
+            setSuccess('Refund request of ৳' . number_format($refundAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . ') submitted. Forwarded to Related Cluster Head for primary approval.');
             $redirectBack = in_array((int)$this->userRole, [5], true) ? "{$GLOBALS['base_url']}/team-refunds" : "{$GLOBALS['base_url']}/client-refund/{$refundId}";
             header("Location: {$redirectBack}");
         } catch (\Exception $e) {
@@ -653,7 +653,7 @@ class ClientRefundController extends Controller
 
         if (!$this->canApproveStage($stage, $refund)) {
             $stageNames = [
-                'sales_manager' => 'Related Sales Manager',
+                'sales_manager' => 'Related Cluster Head',
                 'qc'            => 'QC Team',
                 'op_head'       => 'Operation Head',
                 'accounts_head' => 'Accounts Head',
@@ -668,7 +668,7 @@ class ClientRefundController extends Controller
         // Stage 1: Related Sales Manager -> forwards to QC
         if ($stage === 'sales_manager') {
             $this->db->query("UPDATE approval_requests SET sales_head_status = 'approved', sales_head_by = {$this->userId}, sales_head_at = NOW(), sales_head_note = '{$noteEsc}', approve_role = 'qc' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
-            $respond(true, 'Primary approval completed by Sales Manager. Forwarded to QC for verification.');
+            $respond(true, 'Primary approval completed by Cluster Head. Forwarded to QC for verification.');
         }
 
         // Stage 2: QC -> forwards to Operation Head
