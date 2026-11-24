@@ -5092,8 +5092,8 @@ public function discountStatement($bookingId = null)
                         }
                     }
 
-                    // ====== TRIGGER 2: SMS VERIFIED NOTIFICATION ======
-                    $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+                    // ====== TRIGGER 2: SMS VERIFIED NOTIFICATION (DISABLED ON VERIFY) ======
+                    $sendSms = false; // Disabled: No SMS sent on verify as per request
                     $isTestingMode = isset($_POST['is_testing_mode']) ? filter_var($_POST['is_testing_mode'], FILTER_VALIDATE_BOOLEAN) : false;
                     if ($sendSms && !$isTestingMode) {
                         require_once dirname(__DIR__) . '/services/SmsService.php';
@@ -5181,7 +5181,7 @@ public function discountStatement($bookingId = null)
         }
 
         $paymentIds = $_POST['payment_ids'] ?? [];
-        $sendSms    = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+        $sendSms    = false; // Disabled: No SMS sent on verify as per request
         $userId     = $_SESSION['user']['id'] ?? 0;
 
         if (empty($paymentIds) || !is_array($paymentIds)) {

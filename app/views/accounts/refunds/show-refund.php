@@ -40,6 +40,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
     </div>
     <div class="d-flex gap-2 align-items-center">
         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-3 py-2"><?= $statusInfo['label'] ?></span>
+        <?php if ($status === 'refunded' || $isApproved): ?>
+            <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-outline-success btn-sm fw-semibold">
+                <i class="fa-solid fa-receipt me-1"></i> Refund Money Receipt
+            </a>
+        <?php endif; ?>
         <?php
         $backUrl = (!empty($_GET['ref']) && $_GET['ref'] === 'all_approvals') 
             ? "{$base_url}/all-approval-requests" 
@@ -844,16 +849,19 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         </div>
                         <?php endif; ?>
                     </div>
-                    <?php 
-                        $payoutProof = !empty($refund['disbursement_proof']) ? $refund['disbursement_proof'] : (!empty($refund['document']) ? $refund['document'] : null);
-                    ?>
-                    <?php if ($payoutProof): ?>
-                    <div class="mt-2 pt-2 border-top">
-                        <a href="<?= $base_url ?>/<?= htmlspecialchars($payoutProof) ?>" target="_blank" class="btn btn-sm btn-outline-success w-100 fw-semibold">
+                    <div class="mt-2 pt-2 border-top d-flex flex-column gap-2">
+                        <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-sm btn-success w-100 fw-bold shadow-sm py-2">
+                            <i class="fa-solid fa-receipt me-1"></i> Print Refund Receipt (Client &amp; Office Copy)
+                        </a>
+                        <?php 
+                            $payoutProof = !empty($refund['disbursement_proof']) ? $refund['disbursement_proof'] : (!empty($refund['document']) ? $refund['document'] : null);
+                        ?>
+                        <?php if ($payoutProof): ?>
+                        <a href="<?= $base_url ?>/<?= htmlspecialchars($payoutProof) ?>" target="_blank" class="btn btn-sm btn-outline-secondary w-100 fw-semibold">
                             <i class="bi bi-file-earmark-arrow-down me-1"></i> View Payment Voucher / Attachment
                         </a>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -1174,9 +1182,12 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <i class="bi bi-plus-circle me-1"></i> Add Payment
                         </button>
                         <?php else: ?>
-                        <div class="text-center text-success fw-bold mb-3">
+                        <div class="text-center text-success fw-bold mb-2">
                             <i class="bi bi-check-circle me-1"></i> Refund fully disbursed
                         </div>
+                        <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-success btn-sm w-100 fw-bold mb-3 shadow-sm py-1.5">
+                            <i class="fa-solid fa-receipt me-1"></i> Print Refund Receipt (Client &amp; Office Copy)
+                        </a>
                         <?php endif; ?>
 
                         <?php if (!empty($cashout_payments)): ?>

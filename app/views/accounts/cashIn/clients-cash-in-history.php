@@ -766,7 +766,7 @@ window.openEditPaymentDateModal = function(target) {
                     </button>
                     <?php endif; ?>
 
-                    <div class="ms-auto d-flex align-items-center">
+                    <div class="ms-auto d-flex align-items-center d-none" style="display: none !important;">
                         <div class="form-check form-switch p-2 bg-light border rounded mb-0">
                             <input class="form-check-input ms-0 me-2" type="checkbox" id="globalSendSmsToggle">
                             <label class="form-check-label fw-semibold text-primary" for="globalSendSmsToggle" style="cursor: pointer;">
@@ -2427,7 +2427,7 @@ window.openEditPaymentDateModal = function(target) {
 
         function submitForceVerify() {
             const note = document.getElementById('forceVerifyNote').value.trim();
-            const sendSms = document.getElementById('globalSendSmsToggle').checked ? 1 : 0;
+            const sendSms = 0; // Disabled: No SMS on verify
             if (!note) {
                 Swal.fire('Error', 'A note is required for force verification', 'error');
                 return;
@@ -2461,7 +2461,7 @@ window.openEditPaymentDateModal = function(target) {
                     cancelButtonText:   'Cancel',
                 }).then(result => {
                     if (result.isConfirmed) {
-                        let sendSms = document.getElementById('globalSendSmsToggle').checked ? 1 : 0;
+                        let sendSms = 0; // Disabled: No SMS on verify
                         _doVerifyRequest(paymentId, action, rejectionReason, '', sendSms);
                     } else {
                         // User dismissed (Cancel / Esc) — reload to stay in sync
@@ -2819,7 +2819,7 @@ window.openEditPaymentDateModal = function(target) {
                     cancelButtonText: 'Cancel'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        const sendSms = document.getElementById('globalSendSmsToggle') && document.getElementById('globalSendSmsToggle').checked ? 1 : 0;
+                        const sendSms = 0; // Disabled: No SMS on verify
                         
                         $.ajax({
                             url: '<?= $GLOBALS['base_url'] ?>/account-client/bulkVerify',

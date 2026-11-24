@@ -154,10 +154,15 @@ $statusBadgeMap = [
                                             <div class="text-muted fs-10 mt-1">At: <?= htmlspecialchars($stageTxt) ?></div>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="text-center pe-3">
+                                    <td class="text-center pe-3 text-nowrap">
                                         <a href="<?= $base_url ?>/client-refund/<?= (int)$r['id'] ?>" class="btn btn-xs btn-outline-primary py-1 px-2">
                                             <i class="fa-light fa-eye me-1"></i> View
                                         </a>
+                                        <?php if (in_array($r['status'], ['approved', 'refunded'], true)): ?>
+                                            <a href="<?= $base_url ?>/client-refund-receipt/<?= (int)$r['id'] ?>" target="_blank" class="btn btn-xs btn-outline-success py-1 px-2 ms-1" title="Print Refund Receipt">
+                                                <i class="fa-light fa-receipt me-1"></i> Receipt
+                                            </a>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>

@@ -976,6 +976,18 @@ $hasActiveFilters = !empty($search)
                                                     </a>
                                                 </div>
                                             <?php endif; ?>
+                                            <?php if (!empty($prevAssigneesMap[$lead['id']])): ?>
+                                                <div class="text-secondary ps-1 mt-1" style="font-size: 11px; line-height: 1.25;" title="Previously Assigned / Handled By">
+                                                    <i class="bi bi-arrow-counterclockwise text-warning me-1"></i>Prev: <strong><?= htmlspecialchars($prevAssigneesMap[$lead['id']]) ?></strong>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($alsoWithMap[$lead['id']])): ?>
+                                                <div class="mt-1">
+                                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0.5 text-wrap" style="font-size: 10px; line-height: 1.25;" title="Same customer also assigned to: <?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']]), ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="bi bi-people me-1"></i>Also with: <strong class="text-danger"><?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']])) ?></strong>
+                                                    </span>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
 
@@ -1603,6 +1615,18 @@ $hasActiveFilters = !empty($search)
                         <div class="mt-1">
                             <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
                             <span class="fs-11 text-muted"><?= htmlspecialchars($mAddr) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($prevAssigneesMap[$lead['id']])): ?>
+                        <div class="text-muted small mt-1" title="Previously Assigned / Handled By">
+                            <i class="bi bi-arrow-counterclockwise text-warning me-1"></i>Prev: <strong><?= htmlspecialchars($prevAssigneesMap[$lead['id']]) ?></strong>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($alsoWithMap[$lead['id']])): ?>
+                        <div class="mt-1">
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0.5 text-wrap" style="font-size: 9px;" title="Same customer also assigned to: <?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']]), ENT_QUOTES, 'UTF-8') ?>">
+                                <i class="bi bi-people me-1"></i>Also with: <strong class="text-danger"><?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']])) ?></strong>
+                            </span>
                         </div>
                         <?php endif; ?>
                         <?php
@@ -3432,50 +3456,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const fd = new FormData();
-        fd.append('lead_ids', leads.join(','));
-
-        fetch(base_url + '/check-leads-duplicates', { method: 'POST', body: fd })
-            .then(r => r.json())
-            .then(data => {
-                if (data.has_duplicates) {
-                    let dupInfo = data.duplicates.map(d => 
-                        `• <strong>${d.current_lead_name}</strong> is already assigned to <strong>${d.original_assignee_name}</strong> (${d.original_team_name || 'No Team'})`
-                    ).join('<br>');
-                    
-                    Swal.fire({
-                        title: 'Duplicate Leads Detected',
-                        html: `<div class="text-start mb-3" style="font-size:0.85rem;">
-                                Some of the selected leads are already assigned:<br><br>
-                                ${dupInfo}<br><br>
-                                Please choose how to assign them:<br><br>
-                                • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong>, and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
-                                • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
-                               </div>`,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        showDenyButton: true,
-                        confirmButtonText: 'Split Assign (Existing + Rest to New)',
-                        denyButtonText: 'Assign All to New',
-                        cancelButtonText: 'Cancel',
-                        confirmButtonColor: '#198754',
-                        denyButtonColor: '#0d6efd',
-                        cancelButtonColor: '#6c757d'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            submitAssignForm(userId, leads, assignedDate, 'existing');
-                        } else if (result.isDenied) {
-                            submitAssignForm(userId, leads, assignedDate, 'new');
-                        }
-                    });
-                } else {
-                    submitAssignForm(userId, leads, assignedDate, 'new');
-                }
-            })
-            .catch(e => {
-                console.error(e);
-                submitAssignForm(userId, leads, assignedDate, 'new');
-            });
+        // Direct assignment to selected user (never redirect duplicates away to other teams)
+        submitAssignForm(userId, leads, assignedDate, 'new');
     }
 
     // ── Table Length Select (Show 25, 50, 100, 200, All entries) ──
