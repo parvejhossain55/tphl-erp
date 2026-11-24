@@ -251,7 +251,8 @@ class SalesActivityReportController extends Controller
                 'Unit Target', 'Volume Target (Tk)', 'Visit Target', 
                 'Assigned Leads', 'Follow Up', 'Follow Up %', 'Contacted', 'Contacted %', 'Interested', 
                 'Visits Done', 'Visit Ach %', 
-                'Units Sold', 'Unit Ach %', 'Volume Assigned (Tk)', 'Volume Unassigned (Tk)', 'Total Volume Achieved (Tk)', 'Perf. Score'
+                'Units Sold', 'Unit Ach %', 'Volume Assigned (Tk)', 'Volume Unassigned (Tk)', 'Total Volume Achieved (Tk)', 
+                'Total Collected (Tk)', 'Verified Collection (Tk)', 'Pending Collection (Tk)', 'Perf. Score'
             ];
             
             $inds = $monthlyData['table_individuals'] ?? ($monthlyData['individuals'] ?? []);
@@ -278,6 +279,9 @@ class SalesActivityReportController extends Controller
                     number_format((float)($emp['volume_assigned'] ?? 0), 2),
                     number_format((float)($emp['volume_unassigned'] ?? 0), 2),
                     number_format((float)($emp['total_volume_achieved'] ?? 0), 2),
+                    number_format((float)($emp['total_collected'] ?? 0), 2),
+                    number_format((float)($emp['verified_collection'] ?? 0), 2),
+                    number_format((float)($emp['pending_collection'] ?? 0), 2),
                     number_format((float)($emp['performance_score'] ?? 0), 2)
                 ];
             }
@@ -289,7 +293,8 @@ class SalesActivityReportController extends Controller
                 'Rank', 'Branch', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
                 'Contacted', 'Contacted %', 'Not Contacted', 'Interested', 'Not Interested', 
                 'Visits Done', 'Visit Target', 'Visit Ach %', 
-                'Units Sold', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Volume Ach %', 'Team Score'
+                'Units Sold', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Volume Ach %', 
+                'Total Collected (Tk)', 'Verified Collection (Tk)', 'Pending Collection (Tk)', 'Team Score'
             ];
             
             $teams = $monthlyData['teams'] ?? [];
@@ -313,6 +318,9 @@ class SalesActivityReportController extends Controller
                     number_format((float)($t['volume_target'] ?? 0), 2),
                     number_format((float)($t['total_volume_achieved'] ?? 0), 2),
                     ($t['volume_ach_pct'] ?? 0) . '%',
+                    number_format((float)($t['total_collected'] ?? 0), 2),
+                    number_format((float)($t['verified_collection'] ?? 0), 2),
+                    number_format((float)($t['pending_collection'] ?? 0), 2),
                     number_format((float)($t['performance_score'] ?? 0), 2)
                 ];
             }
@@ -511,7 +519,7 @@ class SalesActivityReportController extends Controller
                 'Unit Tgt', 'Vol Tgt', 'Visit Tgt', 
                 'Assigned', 'F.Up', 'F.Up%', 'Contact', 'Contact%', 'Interest', 
                 'Visits', 'Visit%', 
-                'Sold', 'Sold%', 'Assigned Vol', 'Unassigned Vol', 'Total Vol Achieved', 'Perf Score'
+                'Sold', 'Sold%', 'Assigned Vol', 'Unassigned Vol', 'Total Vol Achieved', 'Collected (Tk)', 'Verified', 'Pending', 'Perf Score'
             ];
             
             $inds = $monthlyData['table_individuals'] ?? ($monthlyData['individuals'] ?? []);
@@ -538,6 +546,9 @@ class SalesActivityReportController extends Controller
                     number_format((float)($emp['volume_assigned'] ?? 0)),
                     number_format((float)($emp['volume_unassigned'] ?? 0)),
                     number_format((float)($emp['total_volume_achieved'] ?? 0)),
+                    number_format((float)($emp['total_collected'] ?? 0)),
+                    number_format((float)($emp['verified_collection'] ?? 0)),
+                    number_format((float)($emp['pending_collection'] ?? 0)),
                     number_format((float)($emp['performance_score'] ?? 0), 2)
                 ];
             }
@@ -548,7 +559,8 @@ class SalesActivityReportController extends Controller
             $headers = [
                 'Rank', 'Branch', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
                 'Contacted', 'Contacted %', 'Not Contacted', 'Interested', 'Not Interested', 
-                'Visits (Ach/Tgt)', 'Sold Units', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Vol Ach %', 'Score'
+                'Visits (Ach/Tgt)', 'Sold Units', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Vol Ach %', 
+                'Collection (Tk)', 'Verified', 'Pending', 'Score'
             ];
             
             $teams = $monthlyData['teams'] ?? [];
@@ -570,6 +582,9 @@ class SalesActivityReportController extends Controller
                     number_format((float)($t['volume_target'] ?? 0)),
                     number_format((float)($t['total_volume_achieved'] ?? 0)),
                     ($t['volume_ach_pct'] ?? 0) . '%',
+                    number_format((float)($t['total_collected'] ?? 0)),
+                    number_format((float)($t['verified_collection'] ?? 0)),
+                    number_format((float)($t['pending_collection'] ?? 0)),
                     number_format((float)($t['performance_score'] ?? 0), 2)
                 ];
             }
