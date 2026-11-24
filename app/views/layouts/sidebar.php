@@ -669,6 +669,31 @@
                             <span class="sidebar__menu-label">My Approval History</span>
                         </a>
                     </li>
+                    <?php if ($isManagement): ?>
+                    <?php
+                    $pendingFeedbackAttentionCount = 0;
+                    if (isset($db)) {
+                        try {
+                            $cfRes = $db->query("SELECT COUNT(*) AS cnt FROM client_feedbacks WHERE followup_status = 'pending' AND (overall_experience = 'poor' OR may_contact = 1)");
+                            if ($cfRes && $cfRow = $cfRes->fetch_assoc()) {
+                                $pendingFeedbackAttentionCount = (int)($cfRow['cnt'] ?? 0);
+                            }
+                        } catch (\Throwable $e) {
+                            $pendingFeedbackAttentionCount = 0;
+                        }
+                    }
+                    ?>
+                    <li class="slide <?= isActive('client-feedback-report', $current_route) ?>">
+                        <a href="<?= $base_url ?>/client-feedback-report"
+                            class="sidebar__menu-item <?= isActive('client-feedback-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-star-half-stroke text-success"></i></div>
+                            <span class="sidebar__menu-label">Client Feedback Report</span>
+                            <?php if ($pendingFeedbackAttentionCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingFeedbackAttentionCount ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <?php if (!empty($canViewTaskManageV2)): ?>
                     <!-- Task Manage Module (Management, HODs & Team Leads) -->
                     <li
