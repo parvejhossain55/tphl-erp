@@ -44,41 +44,32 @@ if (file_exists(__DIR__ . '/../app/config/config.php')) {
     }
 }
 
+// 2. Fallback to standard local / production presets if config didn't connect
 if (!$pdo) {
-    if ($isLocal) {
+    $credentials = [
+        ['127.0.0.1', 'final_erp_db', 'final_erp_user', '#erp_db@TPHL_PASS#'],
+        ['127.0.0.1', 'final_erp_db', 'final_erp_user', 'finaltPhl@#5672dhKL%sd10'],
+        ['127.0.0.1', 'final_erp_db', 'final_erp_user', '#erp_db@TPHL_PASS'],
+        ['127.0.0.1', 'tphl_db', 'root', ''],
+        ['localhost', 'tphl_db', 'root', ''],
+    ];
+
+    foreach ($credentials as [$h, $d, $u, $p]) {
         try {
-            $pdo = new PDO("mysql:host=127.0.0.1;dbname=tphl_db;charset=utf8mb4", 'root', '', $options);
-        } catch (\PDOException $e) {
-            try {
-                $pdo = new PDO("mysql:host=localhost;dbname=tphl_db;charset=utf8mb4", 'root', '', $options);
-            } catch (\PDOException $e2) {
-                try {
-                    $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', '#erp_db@TPHL_PASS', $options);
-                } catch (\PDOException $e3) {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'DB Connection failed: ' . $e3->getMessage(),
-                        'data'    => null
-                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                    exit;
-                }
-            }
+            $pdo = new PDO("mysql:host={$h};dbname={$d};charset=utf8mb4", $u, $p, $options);
+            break;
+        } catch (\PDOException $ex) {
+            continue;
         }
-    } else {
-        try {
-            $pdo = new PDO("mysql:host=127.0.0.1;dbname=final_erp_db;charset=utf8mb4", 'final_erp_user', '#erp_db@TPHL_PASS', $options);
-        } catch (\PDOException $e) {
-            try {
-                $pdo = new PDO("mysql:host=127.0.0.1;dbname=tphl_db;charset=utf8mb4", 'root', '', $options);
-            } catch (\PDOException $e2) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'DB Connection failed: ' . $e2->getMessage(),
-                    'data'    => null
-                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                exit;
-            }
-        }
+    }
+
+    if (!$pdo) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'DB Connection failed: Unable to connect to ERP Database',
+            'data'    => null
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 }
 
