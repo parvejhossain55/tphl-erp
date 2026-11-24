@@ -884,17 +884,18 @@ $show_breadcrumb = true;
             line-height: 1.25 !important;
         }
 
-        /* EXACT 9 COLUMNS PERCENTAGE WIDTHS IN PRINT (TOTAL 100%) */
-        table.table-due th:nth-child(1), table.table-due td:nth-child(1) { width: 8% !important; max-width: 8% !important; }    /* ID & Date */
-        table.table-due th:nth-child(2), table.table-due td:nth-child(2) { width: 16% !important; max-width: 16% !important; }  /* Client Info */
-        table.table-due th:nth-child(3), table.table-due td:nth-child(3) { width: 14% !important; max-width: 14% !important; }  /* Project & Unit */
-        table.table-due th:nth-child(4), table.table-due td:nth-child(4) { width: 10.5% !important; max-width: 10.5% !important; } /* Flat Value */
-        table.table-due th:nth-child(5), table.table-due td:nth-child(5) { width: 10.5% !important; max-width: 10.5% !important; } /* Land Share Due */
-        table.table-due th:nth-child(6), table.table-due td:nth-child(6) { width: 10% !important; max-width: 10% !important; }   /* Dev Charge Due */
-        table.table-due th:nth-child(7), table.table-due td:nth-child(7) { width: 9.5% !important; max-width: 9.5% !important; } /* Shop Svc Due */
-        table.table-due th:nth-child(8), table.table-due td:nth-child(8) { width: 10.5% !important; max-width: 10.5% !important; } /* Due EMI */
-        table.table-due th:nth-child(9), table.table-due td:nth-child(9) { width: 11% !important; max-width: 11% !important; }   /* Overall Due */
-        table.table-due th:nth-child(10), table.table-due td:nth-child(10) { display: none !important; width: 0 !important; }    /* Action Col Hidden */
+        /* EXACT 10 VISIBLE COLUMNS PERCENTAGE WIDTHS IN PRINT (TOTAL 100%) */
+        table.table-due th:nth-child(1), table.table-due td:nth-child(1) { width: 7% !important; max-width: 7% !important; }     /* ID & Date */
+        table.table-due th:nth-child(2), table.table-due td:nth-child(2) { width: 15% !important; max-width: 15% !important; }   /* Client Info */
+        table.table-due th:nth-child(3), table.table-due td:nth-child(3) { width: 13% !important; max-width: 13% !important; }   /* Project & Unit */
+        table.table-due th:nth-child(4), table.table-due td:nth-child(4) { width: 9.5% !important; max-width: 9.5% !important; } /* Flat Value */
+        table.table-due th:nth-child(5), table.table-due td:nth-child(5) { width: 9.5% !important; max-width: 9.5% !important; } /* Land Share Due */
+        table.table-due th:nth-child(6), table.table-due td:nth-child(6) { width: 9% !important; max-width: 9% !important; }     /* Dev Charge Due */
+        table.table-due th:nth-child(7), table.table-due td:nth-child(7) { width: 8.5% !important; max-width: 8.5% !important; } /* Shop Svc Due */
+        table.table-due th:nth-child(8), table.table-due td:nth-child(8) { width: 9.5% !important; max-width: 9.5% !important; } /* Due EMI */
+        table.table-due th:nth-child(9), table.table-due td:nth-child(9) { width: 9% !important; max-width: 9% !important; }     /* Current Penalty */
+        table.table-due th:nth-child(10), table.table-due td:nth-child(10) { width: 10% !important; max-width: 10% !important; } /* Overall Due */
+        table.table-due th:nth-child(11), table.table-due td:nth-child(11) { display: none !important; width: 0 !important; }    /* Action Col Hidden */
     }
 </style>
 
@@ -1448,6 +1449,7 @@ $show_breadcrumb = true;
                             <th class="text-end" style="width: 140px;">Dev Charge Due (Tk.)</th>
                             <th class="text-end" style="width: 135px;">Shop Svc Due (Tk.)</th>
                             <th class="text-end" style="width: 140px;">Due EMI (Tk.)</th>
+                            <th class="text-end" style="width: 125px;">Current Penalty (Tk.)</th>
                             <th class="text-end" style="width: 145px;">Overall Due (Tk.)</th>
                             <th class="text-center no-print" style="width: 110px;">Actions</th>
                         </tr>

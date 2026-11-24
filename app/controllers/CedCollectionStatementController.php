@@ -792,30 +792,42 @@ class CedCollectionStatementController extends Controller
         $schedulesByBooking = [];
         $qSched = $this->db->query("
             SELECT
-                es.lead_booking_id,
-                COUNT(*) AS sched_count,
-                COALESCE(SUM(
-                    CASE
-                        WHEN es.status != 'cancelled'
-                             AND (
-                                 (EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb_es.project_id) AND pesi.is_active = 1)
-                                 OR (NOT EXISTS (SELECT 1 FROM project_emi_schedule_items px WHERE px.project_id = lb_es.project_id) AND es.due_date <= '{$endDateEsc}')
-                             )
-                        THEN es.emi_amount
-                        ELSE 0
-                    END
-                ), 0) AS asked_upto_end
-            FROM emi_schedules es
-            INNER JOIN lead_bookings lb_es ON lb_es.id = es.lead_booking_id
-            LEFT JOIN project_emi_schedule_items pesi ON pesi.project_id = lb_es.project_id AND pesi.emi_no = es.emi_no
-            WHERE es.lead_booking_id IN ({$inIds})
-            GROUP BY es.lead_booking_id
+                lb_es.id AS lead_booking_id,
+                COALESCE(NULLIF(f_es.price_value, 0), lb_es.agreement_value, 0) AS total_price,
+                COALESCE(f_es.land_share_value, 0) AS land_share,
+                COALESCE(f_es.development_charges, 0) AS dev_charge,
+                COALESCE(
+                    NULLIF(lb_es.total_emi_no, 0),
+                    NULLIF((SELECT MAX(lp_e.total_emi_no) FROM lead_payments lp_e WHERE lp_e.booking_id = lb_es.id AND lp_e.is_trashed = 0), 0),
+                    NULLIF(pes_es.total_emi_no, 0),
+                    36
+                ) AS total_emi_no,
+                COALESCE(act.active_emi_count, 0) AS active_emi_count
+            FROM lead_bookings lb_es
+            LEFT JOIN flats f_es ON f_es.id = lb_es.flat_id
+            LEFT JOIN project_emi_schedules pes_es ON pes_es.project_id = lb_es.project_id
+            LEFT JOIN (
+                SELECT project_id, COUNT(*) AS active_emi_count
+                FROM project_emi_schedule_items
+                WHERE is_active = 1
+                GROUP BY project_id
+            ) act ON act.project_id = lb_es.project_id
+            WHERE lb_es.id IN ({$inIds})
         ");
         if ($qSched) {
             while ($sr = $qSched->fetch_assoc()) {
+                $totalEmiNo = max(1, (int)$sr['total_emi_no']);
+                if ($totalEmiNo > 120) {
+                    $totalEmiNo = 42;
+                }
+                $constructionFee = max(0.0, round((float)$sr['total_price'] - ((float)$sr['land_share'] + (float)$sr['dev_charge'])));
+                $perEmiAmount    = ($totalEmiNo > 0) ? round($constructionFee / $totalEmiNo) : 0.0;
+                $activeCount     = min($totalEmiNo, (int)$sr['active_emi_count']);
+                $askedAmt        = round($activeCount * $perEmiAmount, 2);
+
                 $schedulesByBooking[(int)$sr['lead_booking_id']] = [
-                    'sched_count'    => (int)$sr['sched_count'],
-                    'asked_upto_end' => (float)$sr['asked_upto_end'],
+                    'sched_count'    => $activeCount,
+                    'asked_upto_end' => $askedAmt,
                 ];
             }
         }
@@ -857,14 +869,9 @@ class CedCollectionStatementController extends Controller
                 $remainingByBooking[$bId] = max(0.0, round($schedInfo['asked_upto_end'] - $paidBefore, 2));
             }
 
-            if ($schedCount === 0) {
-                $reg = round($amt, 2);
-                $adv = 0.0;
-            } else {
-                $reg = round(min($amt, $remainingByBooking[$bId]), 2);
-                $adv = round(max(0.0, $amt - $reg), 2);
-                $remainingByBooking[$bId] = max(0.0, round($remainingByBooking[$bId] - $reg, 2));
-            }
+            $reg = round(min($amt, $remainingByBooking[$bId]), 2);
+            $adv = round(max(0.0, $amt - $reg), 2);
+            $remainingByBooking[$bId] = max(0.0, round($remainingByBooking[$bId] - $reg, 2));
 
             // Filter by payment_type if user explicitly filtered for advance_emi or emi
             $ptFilter = $filters['payment_type'] ?? '';
@@ -1710,7 +1717,7 @@ class CedCollectionStatementController extends Controller
                 COALESCE(r_cr.name, 'N/A') AS collector_role,
                 COALESCE(e_cpa.full_name, u_cpa.full_name, u_cpa.user_name, 'Unassigned') AS ced_assigned_name,
                 COALESCE(r_cpa.name, '') AS ced_assigned_role,
-                COALESCE(cpa.user_id, 0) AS ced_assigned_user_id,
+                COALESCE(u_cpa.id, 0) AS ced_assigned_user_id,
                 COALESCE(e_v.full_name, u_v.full_name, u_v.user_name, '') AS verifier_name,
                 COALESCE(r_v.name, '') AS verifier_role
             FROM lead_payments lp

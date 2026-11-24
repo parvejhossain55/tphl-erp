@@ -160,7 +160,7 @@
     <div class="card history-card border-0 mb-4 shadow-sm">
         <div class="card-body p-3">
             <form method="GET" action="<?= $base_url ?>/ced-projects-history" class="row g-2 align-items-center">
-                <?php if ($canManage): ?>
+                <?php if (true): ?>
                     <div class="col-12 col-md-4">
                         <label class="small text-muted fw-bold mb-1"><i class="fa-solid fa-user me-1 text-primary"></i> Select CED Officer:</label>
                         <select name="agent_id" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -389,8 +389,8 @@
         </div>
     </div>
 
-    <!-- IF HEAD OF CED / MANAGEMENT AND NO SPECIFIC AGENT SELECTED: SHOW ALL AGENTS OVERVIEW TABLE WITH RANKING & COMPARISON -->
-    <?php if ($canManage && empty($selectedAgentId)): ?>
+    <!-- IF NO SPECIFIC AGENT SELECTED: SHOW ALL AGENTS OVERVIEW TABLE WITH RANKING & COMPARISON -->
+    <?php if (empty($selectedAgentId)): ?>
         <!-- Scope Explanation Banner for Head of CED -->
         <div class="alert alert-light border shadow-sm rounded-3 mb-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-left: 4px solid #3b82f6 !important;">
             <div class="d-flex align-items-center gap-3">
@@ -406,9 +406,11 @@
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
+                <?php if ($canManage): ?>
                 <a href="<?= $GLOBALS['base_url'] ?>/manage-projects-for-ced" class="btn btn-sm btn-primary">
                     <i class="fa-solid fa-sliders me-1"></i> Manage Project Assignments
                 </a>
+                <?php endif; ?>
                 <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="btn btn-sm btn-outline-secondary">
                     <i class="fa-solid fa-users me-1"></i> View All Company Clients (<?= number_format($companyOverallStats['total_clients'] ?? 1338) ?>)
                 </a>

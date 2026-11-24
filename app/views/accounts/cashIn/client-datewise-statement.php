@@ -22,6 +22,7 @@ $clientDetails       = $summaryData['client_details'];
 $totalPrice          = (float)($summaryData['total_price'] ?? 0);
 $totalPaid           = (float)($summaryData['total_paid'] ?? 0);
 $totalDiscount       = (float)($summaryData['total_discount'] ?? 0);
+$accruedPenalty      = (float)($summaryData['accrued_penalty'] ?? 0);
 $totalDue            = (float)($summaryData['total_due'] ?? 0);
 $askedAmount         = (float)($summaryData['asked_amount'] ?? 0);
 $activeEmiCount      = (int)($summaryData['active_emi_count'] ?? 0);
@@ -522,6 +523,9 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
                         ৳<?= number_format($totalDue, 2) ?>
                     <?php endif; ?>
                 </div>
+                <?php if ($accruedPenalty > 0): ?>
+                    <div style="font-size: 9px; color: #b45309; margin-top: 2px; font-weight: 600;">Incl. Penalty: ৳<?= number_format($accruedPenalty, 2) ?></div>
+                <?php endif; ?>
             </div>
             <?php if ($totalDiscount > 0): ?>
             <div class="summary-card highlight-discount">
@@ -538,7 +542,9 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
                         ৳<?= number_format($currentDue, 2) ?>
                     <?php endif; ?>
                 </div>
-                <div style="font-size: 9px; color: #64748b; margin-top: 2px;">Asked: ৳<?= number_format($askedAmount, 2) ?></div>
+                <div style="font-size: 9px; color: #64748b; margin-top: 2px;">
+                    Asked: ৳<?= number_format($askedAmount, 2) ?><?= $accruedPenalty > 0 ? ' + Penalty: ৳' . number_format($accruedPenalty, 2) : '' ?>
+                </div>
             </div>
         </div>
 

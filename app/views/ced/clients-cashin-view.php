@@ -503,6 +503,7 @@ $show_breadcrumb = true;
                             <th>Total Paid</th>
                             <th style="min-width: 140px;">Last Payment Date &amp; Creator</th>
                             <th>Current Month</th>
+                            <th class="text-nowrap">Current Penalty</th>
                             <th>Profile</th>
                             <th>Action</th>
                         </tr>
