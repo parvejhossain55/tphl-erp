@@ -36,10 +36,8 @@ class CedReportController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $isManagement = in_array($roleId, [1, 3, 33, 34, 35, 38]);
 
-        // Default Agent ID (Self if CED role, otherwise null)
-        $defaultAgentId = ($roleId === 7) ? $userId : null;
-        
-        $agentId = isset($_GET['agent_id']) && $_GET['agent_id'] !== '' ? (int)$_GET['agent_id'] : $defaultAgentId;
+        // Default to All Agents (null) unless a specific agent is explicitly selected
+        $agentId = (isset($_GET['agent_id']) && $_GET['agent_id'] !== '') ? (int)$_GET['agent_id'] : null;
 
         // Report Mode Logic
         $reportMode = $_GET['report_mode'] ?? 'custom';
@@ -120,6 +118,8 @@ class CedReportController extends Controller
             ")->fetch_assoc();
         }
 
+        $portfolioStats = $this->getCedPortfolioStats($agentId);
+
         $this->view("ced/ced-report", [
             "current_route" => "ced-report",
             "page_title" => "CED Activity Report",
@@ -129,6 +129,7 @@ class CedReportController extends Controller
             "startDate" => $startDate,
             "endDate" => $endDate,
             "summary" => $summary,
+            "portfolioStats" => $portfolioStats,
             "details" => $details,
             "agentInfo" => $agentInfo,
             "reportMode" => $reportMode,
@@ -137,6 +138,77 @@ class CedReportController extends Controller
             "breakdownData" => $breakdownData,
             "pagination" => $pagination
         ]);
+    }
+
+    /**
+     * Fetch assigned projects and active portfolio (clients/units)
+     * for the selected CED agent (or all agents).
+     */
+    private function getCedPortfolioStats(?int $agentId): array
+    {
+        $stats = [
+            'assigned_projects_count' => 0,
+            'assigned_projects'       => [],
+            'portfolio_clients'       => 0,
+            'portfolio_units'         => 0,
+        ];
+
+        // 1. Assigned active projects
+        $projSql = "
+            SELECT DISTINCT p.id, p.name
+            FROM ced_project_assignments cpa
+            INNER JOIN projects p ON cpa.project_id = p.id
+            WHERE cpa.status = 'active'
+              AND p.deleted_at IS NULL
+        ";
+        if ($agentId) {
+            $projSql .= " AND cpa.user_id = " . (int)$agentId;
+        }
+        $projSql .= " ORDER BY p.name ASC";
+
+        $projRes = $this->db->query($projSql);
+        $projectIds = [];
+        if ($projRes) {
+            while ($row = $projRes->fetch_assoc()) {
+                $pid = (int)$row['id'];
+                if ($pid > 0) {
+                    $projectIds[] = $pid;
+                    $stats['assigned_projects'][] = [
+                        'id'   => $pid,
+                        'name' => $row['name'],
+                    ];
+                }
+            }
+        }
+        $stats['assigned_projects_count'] = count($projectIds);
+
+        // 2. Assigned portfolio (active clients & units)
+        if (!empty($projectIds)) {
+            $pIdList = implode(',', $projectIds);
+            $portSql = "
+                SELECT
+                    COUNT(DISTINCT lb.lead_id) AS portfolio_clients,
+                    COUNT(lb.id) AS portfolio_units
+                FROM lead_bookings lb
+                WHERE lb.project_id IN ($pIdList)
+                  AND lb.deleted_at IS NULL
+                  AND lb.booking_status NOT IN ('cancelled', 'refunded')
+                  AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                  AND lb.id NOT IN (
+                      SELECT crr.booking_id
+                      FROM client_refund_requests crr
+                      WHERE crr.booking_id IS NOT NULL
+                        AND crr.status IN ('pending', 'approved', 'refunded')
+                  )
+            ";
+            $portRes = $this->db->query($portSql);
+            if ($portRes && $pRow = $portRes->fetch_assoc()) {
+                $stats['portfolio_clients'] = (int)($pRow['portfolio_clients'] ?? 0);
+                $stats['portfolio_units']   = (int)($pRow['portfolio_units'] ?? 0);
+            }
+        }
+
+        return $stats;
     }
 
     public function centralReport()

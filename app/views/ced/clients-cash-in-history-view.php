@@ -1372,7 +1372,11 @@ if (!isset($discountApprovalReq)) {
                             <i class="fa-solid fa-tags me-1"></i> Apply Previous Discount
                         </button>
                     <?php endif; ?>
-                    <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-success mb-3">
+                    <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>"
+                       id="btnGetStatementCed"
+                       data-detailed-url="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>"
+                       data-datewise-url="<?= $GLOBALS['base_url'] ?>/client-datewise-statement/<?= (int)$clientDetails['booking_id'] ?>"
+                       target="_blank" class="btn btn-success mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
                     <a href="<?= $GLOBALS['base_url'] ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
@@ -1425,6 +1429,20 @@ if (!isset($discountApprovalReq)) {
                         </button>
                     </li>
                 </ul>
+                <script>
+                (function() {
+                    const btn = document.getElementById('btnGetStatementCed');
+                    const tabDetailed = document.getElementById('tabDetailedTrxCed');
+                    const tabDatewise = document.getElementById('tabDatewiseTrxCed');
+                    if (!btn || !tabDetailed || !tabDatewise) return;
+                    const setDetailed = () => { btn.href = btn.dataset.detailedUrl; };
+                    const setDatewise = () => { btn.href = btn.dataset.datewiseUrl; };
+                    tabDetailed.addEventListener('shown.bs.tab', setDetailed);
+                    tabDetailed.addEventListener('click', setDetailed);
+                    tabDatewise.addEventListener('shown.bs.tab', setDatewise);
+                    tabDatewise.addEventListener('click', setDatewise);
+                })();
+                </script>
 
                 <div class="tab-content" id="trxViewTabsCedContent">
                     <!-- Pane 1: Detailed Ledger (Existing) -->
