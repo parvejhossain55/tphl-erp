@@ -815,7 +815,7 @@
                                 } elseif ($sourceTable === 'project_other_costs') {
                                     $targetUrl = $base_url . '/project-other-costs/review/' . $req['source_id'];
                                 } elseif ($sourceTable === 'project_extra_assets' || $sourceTable === 'purchase_requests') {
-                                    $targetUrl = $base_url . '/asset-extra-purchases?view=' . $req['source_id'];
+                                    $targetUrl = $base_url . '/asset-extra-purchase/' . $req['source_id'];
                                 } elseif ($sourceTable === 'expense_adjustments') {
                                     $targetUrl = $base_url . '/expense-adjustments/show?id=' . $req['source_id'];
                                 }

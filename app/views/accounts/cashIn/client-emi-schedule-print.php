@@ -13,6 +13,9 @@ $bookingDate  = !empty($clientDetails['booking_date']) ? date('d M, Y', strtotim
 $salesAgent   = htmlspecialchars($clientDetails['agent_name'] ?? 'N/A');
 $bookingId    = (int)($clientDetails['booking_id'] ?? $bookingId);
 
+// Resolve dynamic project/category branding (The Nature, The Olympus Real Estate, or Default)
+require __DIR__ . '/_project-branding.php';
+
 $totalPrice   = (float)($paymentSummary['total_price'] ?? 0);
 $perEmiAmt    = (float)($paymentSummary['per_emi_amount'] ?? ($clientDetails['per_emi_amount'] ?? 0));
 $totalEmi     = (int)($paymentSummary['total_emi'] ?? (count($virtualEmiSchedule) > 0 ? count($virtualEmiSchedule) : 36));
@@ -118,17 +121,32 @@ foreach ($virtualEmiSchedule as $item) {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid #0f172a;
+            border-bottom: 2px solid <?= ($isOlympusProject || $isNatureProject) ? $stmtThemePrimary : '#0f172a' ?>;
             padding-bottom: 12px;
             margin-bottom: 12px;
+        }
+
+        .company-info-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .company-logo-img {
+            height: 44px;
+            width: auto;
+            max-width: 140px;
+            object-fit: contain;
+            flex-shrink: 0;
         }
 
         .company-info h2 {
             font-size: 18px;
             font-weight: 800;
-            color: #0f172a;
+            color: <?= ($isOlympusProject || $isNatureProject) ? $stmtThemeDark : '#0f172a' ?>;
             letter-spacing: 0.5px;
             margin-bottom: 3px;
+            text-transform: uppercase;
         }
 
         .company-info p {
@@ -138,7 +156,7 @@ foreach ($virtualEmiSchedule as $item) {
         }
 
         .doc-title-badge {
-            background: #0f172a;
+            background: <?= ($isOlympusProject || $isNatureProject) ? $stmtThemeDark : '#0f172a' ?>;
             color: #ffffff;
             padding: 6px 14px;
             border-radius: 6px;
@@ -325,10 +343,15 @@ foreach ($virtualEmiSchedule as $item) {
 
         <!-- Header -->
         <div class="doc-header">
-            <div class="company-info">
-                <h2>THE PREMIUM HOMES LIMITED</h2>
-                <p>Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka</p>
-                <p>Phone: +8801958253300 | Email: info@thepremiumhomes.com | Web: www.thepremiumhomes.com</p>
+            <div class="company-info-wrap">
+                <?php if (!empty($stmtLogoSrc)): ?>
+                    <img src="<?= $stmtLogoSrc ?>" alt="<?= htmlspecialchars($stmtCompanyTitle) ?>" class="company-logo-img">
+                <?php endif; ?>
+                <div class="company-info">
+                    <h2><?= htmlspecialchars($stmtCompanyTitle) ?></h2>
+                    <p><?= htmlspecialchars($stmtCompanyAddress) ?></p>
+                    <p>Phone: <?= htmlspecialchars($stmtCompanyPhone) ?> | Email: <?= htmlspecialchars($stmtCompanyEmail) ?><?= !empty($stmtCompanyWebsite) ? ' | Web: ' . htmlspecialchars($stmtCompanyWebsite) : '' ?></p>
+                </div>
             </div>
             <div class="doc-title-badge">
                 <div>EMI Maturity Schedule</div>
@@ -537,7 +560,7 @@ foreach ($virtualEmiSchedule as $item) {
 
         <!-- Footer -->
         <div class="footer-note">
-            <span>TPHL-ERP • Official Client Statement System</span>
+            <span><?= htmlspecialchars($stmtCompanyTitle) ?> • Official Client Statement System</span>
             <span>Printed on: <?= date('d M, Y h:i A') ?></span>
         </div>
 

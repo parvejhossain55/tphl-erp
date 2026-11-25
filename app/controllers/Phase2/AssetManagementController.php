@@ -621,22 +621,142 @@ class AssetManagementController extends Controller
         exit;
     }
 
+    public function viewExtraPurchase($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)$id;
+        $req = $this->model->findExtraPurchase($id);
+        if (!$req) {
+            setError("Office procurement request #{$id} not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+            exit;
+        }
+
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleNameLower  = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array($roleNameLower, ['chief officer', 'management viewer', 'seal ceo'], true));
+        $isAdminOrMgmt  = (in_array($roleId, [1, 3, 38], true) || in_array($roleNameLower, ['super admin', 'admin', 'management', 'board of director', 'board of directors'], true) || strpos($roleNameLower, 'director') !== false || strpos($roleNameLower, 'dceo') !== false) && !$isChiefOfficer;
+        $isSuperAdmin   = $isAdminOrMgmt;
+        $isOperations   = ($isAdminOrMgmt || in_array((int)$roleId, [20, 32], true) || strpos($roleNameLower, 'operation head') !== false || strpos($roleNameLower, 'admin & operation') !== false) && !$isChiefOfficer;
+        $isOpHeadUser   = (in_array((int)$roleId, [20, 32], true) || strpos($roleNameLower, 'operation head') !== false || strpos($roleNameLower, 'admin & operation') !== false) && !$isChiefOfficer;
+        $isPurchaseHead = ($isAdminOrMgmt || in_array($roleId, [17, 31])) && !$isChiefOfficer;
+        $isQcAudit      = ($isAdminOrMgmt || in_array($roleId, [24, 25])) && !$isChiefOfficer;
+        $isManagement   = $isAdminOrMgmt;
+        $isAccounts     = ($isAdminOrMgmt || in_array($roleId, [6, 30]) || strpos($roleNameLower, 'account') !== false) && !$isChiefOfficer;
+
+        $reqTotal = (float)($req['total_price'] ?? 0);
+        $isOver1Lac = ($reqTotal > 10000);
+        $isCreator = (int)$req['requested_by'] === $userId;
+        $reportingBossId = (int)($req['reporting_user_id'] ?? $req['requester_reporting_boss_id'] ?? 0);
+        $isReporterBoss = ($reportingBossId === $userId);
+
+        $isOpHeadApproved = (!empty($req['op_head_status']) && strtolower($req['op_head_status']) === 'approved') || (!$isOver1Lac && ($req['mgmt_status'] ?? '') === 'approved');
+        $isAhApproved = (empty($req['approval_request_id']) || strtolower($req['accounts_head_status'] ?? '') === 'approved');
+        $rowDhStatus = $req['dept_head_status'] ?? 'not_required';
+        $rowItStatus = $req['it_head_status'] ?? 'not_required';
+
+        $canApprove = false;
+        $step = '';
+        $overrideWarningStage = '';
+
+        if ($isAdminOrMgmt && ($req['mgmt_status'] ?? '') === 'pending' && ($req['overall_status'] ?? '') !== 'rejected') {
+            $canApprove = true; $step = 'mgmt';
+            if ($rowDhStatus === 'pending') {
+                $overrideWarningStage = 'Department Head';
+            } elseif ($rowItStatus === 'pending') {
+                $overrideWarningStage = 'IT Head';
+            } elseif (($req['operations_status'] ?? 'pending') === 'pending') {
+                $overrideWarningStage = 'Admin & Operation';
+            } elseif (($req['purchase_head_status'] ?? 'pending') === 'pending') {
+                $overrideWarningStage = 'Purchase Head';
+            } elseif (($req['qc_audit_status'] ?? 'pending') === 'pending') {
+                $overrideWarningStage = 'QC & Internal Audit';
+            } elseif (!$isOpHeadApproved) {
+                $overrideWarningStage = 'Head of Operation';
+            } elseif (!$isAhApproved) {
+                $overrideWarningStage = 'Accounts Head';
+            }
+        } elseif (!$isCreator && !$isChiefOfficer && ($req['overall_status'] ?? '') !== 'rejected') {
+            if (($isReporterBoss || $isSuperAdmin) && $rowDhStatus === 'pending') {
+                $canApprove = true; $step = 'dept_head';
+            } elseif ($userId === 242 && in_array($rowDhStatus, ['approved', 'not_required']) && $rowItStatus === 'pending') {
+                $canApprove = true; $step = 'it_head';
+            } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && in_array($rowItStatus, ['approved', 'not_required']) && ($req['operations_status'] ?? 'pending') === 'pending') {
+                $canApprove = true; $step = 'operations';
+            } elseif ($isPurchaseHead && ($req['operations_status'] ?? '') === 'approved' && ($req['purchase_head_status'] ?? 'pending') === 'pending') {
+                $canApprove = true; $step = 'purchase_head';
+            } elseif ($isQcAudit && ($req['purchase_head_status'] ?? '') === 'approved' && ($req['qc_audit_status'] ?? 'pending') === 'pending') {
+                $canApprove = true; $step = 'qc_audit';
+            } elseif (($req['qc_audit_status'] ?? '') === 'approved' && ($req['mgmt_status'] ?? 'pending') === 'pending') {
+                if ($isOver1Lac) {
+                    if (!$isOpHeadApproved) {
+                        if ($isOpHeadUser || $isManagement) {
+                            $canApprove = true; $step = 'mgmt';
+                        }
+                    } elseif ($isAhApproved && $isManagement) {
+                        $canApprove = true; $step = 'mgmt';
+                    }
+                } else {
+                    if (!$isOpHeadApproved && ($isOpHeadUser || $isManagement)) {
+                        $canApprove = true; $step = 'mgmt';
+                    }
+                }
+            }
+        }
+
+        $isOpHeadPostQcAuto = $isOpHeadApproved || (!$isOver1Lac && ($req['mgmt_status'] ?? '') === 'approved');
+        $canApproveAh = (in_array((int)$roleId, [30, 1, 3, 38], true) || strpos($roleNameLower, 'accounts head') !== false) && ($req['qc_audit_status'] ?? '') === 'approved' && $isOpHeadPostQcAuto && ($req['payment_status'] ?? '') === 'unpaid' && !$isAhApproved && !empty($req['approval_request_id']);
+        $canPay = !empty($isAccounts) && (($req['mgmt_status'] ?? '') === 'approved' || ($req['overall_status'] ?? '') === 'approved') && ($req['payment_status'] ?? '') === 'unpaid' && $isAhApproved;
+        $isWaitingAccountsHead = (($req['qc_audit_status'] ?? '') === 'approved' && $isOpHeadPostQcAuto && ($req['payment_status'] ?? '') === 'unpaid' && !$isAhApproved);
+        $canConfirmPurchase = !empty($isOperations) && ($req['payment_status'] ?? '') === 'paid' && ($req['overall_status'] ?? '') === 'paid';
+        $isInitialPending = in_array($rowDhStatus, ['pending', 'not_required']) && in_array($rowItStatus, ['pending', 'not_required']) && (($req['operations_status'] ?? '') === 'pending' && ($req['purchase_head_status'] ?? '') === 'pending' && ($req['qc_audit_status'] ?? '') === 'pending' && ($req['mgmt_status'] ?? '') === 'pending');
+        $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
+
+        $bankAccounts = [];
+        $bRes = $this->db->query("SELECT id, bank_name, account_number, account_name FROM bank_accounts WHERE is_active = 1 ORDER BY bank_name ASC");
+        if ($bRes) {
+            $bankAccounts = $bRes->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $data = [
+            'page_title'             => 'Office Procurement Request #' . $id,
+            'req'                    => $req,
+            'canApprove'             => $canApprove,
+            'approvalStep'           => $step,
+            'overrideWarningStage'   => $overrideWarningStage,
+            'canApproveAh'           => $canApproveAh,
+            'canPay'                 => $canPay,
+            'isWaitingAccountsHead'  => $isWaitingAccountsHead,
+            'canConfirmPurchase'     => $canConfirmPurchase,
+            'canDelete'              => $canDelete,
+            'bankAccounts'           => $bankAccounts,
+            'coaList'                => getCOAExpenseList($this->db)
+        ];
+
+        $this->view('phase2/asset-management/view-extra-purchase', $data);
+    }
+
     public function approveExtraPurchase($id)
     {
+        $redirectTarget = (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'view')
+            ? "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}"
+            : "{$GLOBALS['base_url']}/asset-extra-purchases";
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $userId = (int)($_SESSION['user']['id'] ?? 1);
             $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
             if ($isChiefOfficer) {
                 setError("Access denied: You have view-only access.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                header("Location: {$redirectTarget}");
                 exit;
             }
             $req = $this->model->findExtraPurchase($id);
 
             if ($req && (int)$req['requested_by'] === $userId) {
                 setError("You cannot approve or reject your own purchase request.");
-                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                header("Location: {$redirectTarget}");
                 exit;
             }
 
@@ -996,12 +1116,16 @@ class AssetManagementController extends Controller
                 setError("Failed request approval.");
             }
         }
-        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+        header("Location: {$redirectTarget}");
         exit;
     }
 
     public function markPurchased($id)
     {
+        $redirectTarget = (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'view')
+            ? "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}"
+            : "{$GLOBALS['base_url']}/asset-extra-purchases";
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($_SESSION['user']['id'] ?? 1);
             $paymentMethod = $_POST['payment_method'] ?? 'Cash';
@@ -1110,12 +1234,16 @@ class AssetManagementController extends Controller
                 setError("Failed procurement payment.");
             }
         }
-        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+        header("Location: {$redirectTarget}");
         exit;
     }
 
     public function confirmPurchased($id)
     {
+        $redirectTarget = (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'view')
+            ? "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}"
+            : "{$GLOBALS['base_url']}/asset-extra-purchases";
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($_SESSION['user']['id'] ?? 1);
             $note = $_POST['purchase_note'] ?? $_POST['note'] ?? '';
@@ -1152,7 +1280,7 @@ class AssetManagementController extends Controller
                 setError("Failed procurement confirmation.");
             }
         }
-        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+        header("Location: {$redirectTarget}");
         exit;
     }
 

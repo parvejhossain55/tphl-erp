@@ -63,6 +63,7 @@ $canApprove = $canApprove ?? false;
     <div class="card custom-card shadow-sm border-0 mb-3 bg-white">
         <div class="card-body p-3">
             <form method="GET" action="<?= $base_url ?>/con-vendor-payment-requests" id="vprFilterForm">
+                <input type="hidden" name="per_page" id="vprHiddenPerPage" value="<?= (int)($pagination['perPage'] ?? 25) ?>">
                 <div class="row g-2 align-items-end">
                     <!-- Project Filter -->
                     <div class="col-xl-3 col-lg-3 col-md-6">
@@ -160,8 +161,8 @@ $canApprove = $canApprove ?? false;
 
 
     <!-- Vendor Payment Requests List -->
-    <div class="card custom-card shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center bg-light">
+    <div class="card custom-card shadow-sm" id="vprListCard">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 bg-light">
             <div>
                 <h6 class="card-title mb-0 fw-bold text-dark">
                     <i class="bi bi-card-list me-2 text-primary"></i> Vendor Payment Requests & Disbursal List
@@ -169,11 +170,44 @@ $canApprove = $canApprove ?? false;
                 <small class="text-muted">Track payment request approval workflow, management approvals, and accounts disbursement records.</small>
             </div>
         </div>
-        <div class="card-body">
+
+        <!-- Table Top Toolbar: Show Entries + Instant Live Search -->
+        <div class="px-3 pt-3 pb-2 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom bg-white">
+            <div class="d-flex align-items-center gap-2 fs-13">
+                <label for="vprPerPageSelect" class="mb-0 text-muted fw-semibold">Show</label>
+                <select id="vprPerPageSelect" class="form-select form-select-sm" style="width: auto; min-width: 72px;">
+                    <?php foreach ([10, 25, 50, 100] as $ppOpt): ?>
+                        <option value="<?= $ppOpt ?>" <?= ((int)($pagination['perPage'] ?? 25) === $ppOpt) ? 'selected' : '' ?>><?= $ppOpt ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="text-muted">entries</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2" style="min-width: 280px; max-width: 420px; width: 100%;">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white text-muted border-end-0">
+                        <i class="fa-solid fa-magnifying-glass" id="vprSearchIcon"></i>
+                        <span class="spinner-border spinner-border-sm text-primary d-none" id="vprSearchSpinner" role="status"></span>
+                    </span>
+                    <input type="text" id="vprLiveSearch" class="form-control border-start-0"
+                           placeholder="Search any key (VPR #, Bill #, PO #, Project, Vendor, Material, Status, Amount)..."
+                           value="<?= htmlspecialchars($filters['search'] ?? '') ?>" autocomplete="off">
+                    <button type="button" id="vprSearchClear" class="btn btn-outline-secondary <?= empty($filters['search']) ? 'd-none' : '' ?>" title="Clear search">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0 position-relative">
+            <div id="vprLoadingOverlay" class="d-none position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(255,255,255,0.65); z-index: 10;">
+                <div class="spinner-border text-primary" role="status"></div>
+            </div>
             <div class="table-responsive">
-                <table id="vprTable" class="table table-bordered table-hover align-middle text-nowrap">
+                <table id="vprTable" class="table table-bordered table-hover align-middle text-nowrap mb-0">
                     <thead class="table-dark">
                         <tr>
+                            <th class="text-center" style="width: 40px;">#</th>
                             <th>Req ID &amp; Bill #</th>
                             <th>Type</th>
                             <th>Date</th>
@@ -191,203 +225,177 @@ $canApprove = $canApprove ?? false;
                             <th class="text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php if (!empty($requests)): ?>
-                            <?php foreach ($requests as $req): ?>
-                                <?php
-                                $pt = $req['payment_type'] ?? 'Final';
-                                $ptClass = $pt === 'Advance' ? 'bg-primary' : ($pt === 'Partial' ? 'bg-warning text-dark' : 'bg-success');
-
-                                $statusMap = [
-                                    'Draft'          => 'warning text-dark',
-                                    'Submitted'      => 'info text-white',
-                                    'QC Approved'    => 'primary',
-                                    'Approved'       => 'success',
-                                    'Rejected'       => 'danger',
-                                    'Paid'           => 'secondary',
-                                    'Partially_Paid' => 'info text-white',
-                                    'Fully_Paid'     => 'success',
-                                ];
-                                $badge = $statusMap[$req['status'] ?? ''] ?? 'secondary';
-                                $statusLabel = str_replace('_', ' ', $req['status'] ?? 'Draft');
-
-                                $alreadyPaid = (float)($req['already_paid'] ?? 0);
-                                $netPay      = (float)($req['net_payable'] ?? 0);
-                                $dueAmt      = $req['due_amount'] !== null
-                                                ? (float)$req['due_amount']
-                                                : max(0, $netPay - $alreadyPaid);
-                                $canPayThis  = in_array($req['status'], ['Approved', 'Partially_Paid']) && $dueAmt > 0;
-                                ?>
-                                <tr>
-                                    <td class="fw-bold">
-                                        <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $req['id'] ?>" class="text-primary fs-13">
-                                            VPR-<?= $req['id'] ?>
-                                        </a>
-                                        <?php if (!empty($req['invoice_number'])): ?>
-                                            <br>
-                                            <span class="badge bg-light text-dark border extra-small mt-1" style="font-size: 10.5px;" title="Vendor Bill / Invoice #">
-                                                <i class="bi bi-receipt me-1 text-primary"></i><?= htmlspecialchars($req['invoice_number']) ?>
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><span class="badge <?= $ptClass ?>"><?= $pt ?></span></td>
-                                    <td><?= !empty($req['created_at']) ? date('d M Y', strtotime($req['created_at'])) : '—' ?></td>
-                                    <td>
-                                        <span class="fw-semibold text-dark"><?= htmlspecialchars($req['project_name'] ?? '—') ?></span>
-                                        <?php if (!empty($req['purchase_order_id'])): ?>
-                                            <br>
-                                            <a href="<?= $base_url ?>/con-purchase-order/<?= $req['purchase_order_id'] ?>" class="badge bg-light text-primary border" style="font-size: 10.5px;">
-                                                <i class="bi bi-box-seam me-1"></i>PO-<?= $req['purchase_order_id'] ?>
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php if (!empty($req['category_names'])): ?>
-                                            <br>
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle mt-1" style="font-size: 10px;" title="Materials: <?= htmlspecialchars($req['material_names'] ?? '') ?>">
-                                                <i class="bi bi-boxes me-1"></i><?= htmlspecialchars($req['category_names']) ?>
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><span class="badge bg-secondary"><?= htmlspecialchars($req['vendor_name'] ?? '—') ?></span></td>
-                                    <td class="text-end">
-                                        <div class="fw-bold text-dark">৳ <?= number_format((float)($req['invoice_amount'] ?? 0), 2) ?></div>
-                                        <?php if (!empty($req['invoice_number'])): ?>
-                                            <small class="text-muted d-block" style="font-size: 10px;" title="Vendor Bill / Invoice #">
-                                                Bill: <span class="fw-semibold text-secondary"><?= htmlspecialchars($req['invoice_number']) ?></span>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-end fw-bold">৳ <?= number_format((float)($req['net_payable'] ?? 0), 2) ?></td>
-                                    <td class="text-end fw-bold <?= $alreadyPaid > 0 ? 'text-success' : 'text-muted' ?>">
-                                        <?= $alreadyPaid > 0 ? '৳ ' . number_format($alreadyPaid, 2) : '—' ?>
-                                    </td>
-                                    <td class="text-end fw-bold <?= $dueAmt > 0 ? 'text-danger' : ($alreadyPaid > 0 ? 'text-success' : 'text-muted') ?>">
-                                        <?php if ($alreadyPaid <= 0 && $dueAmt <= 0): ?>
-                                            —
-                                        <?php elseif ($dueAmt <= 0 && $alreadyPaid > 0): ?>
-                                            <span class="text-success"><i class="bi bi-check-circle-fill"></i> Paid</span>
-                                        <?php else: ?>
-                                            ৳ <?= number_format($dueAmt, 2) ?>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span>
-                                        <?php if (($req['status'] ?? '') === 'Submitted'): ?>
-                                            <br>
-                                            <?php if (empty($req['purchase_head_approved_by_id'])): ?>
-                                                <small class="text-primary fw-semibold" style="font-size: 9.5px;"><i class="bi bi-clock"></i> Pending Purchase Head</small>
-                                            <?php else: ?>
-                                                <small class="text-info fw-semibold" style="font-size: 9.5px;"><i class="bi bi-clock"></i> Pending QC Audit</small>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-person-circle text-secondary fs-13"></i>
-                                            <span class="fw-semibold text-dark fs-12"><?= htmlspecialchars($req['created_by_name'] ?? '—') ?></span>
-                                        </div>
-                                        <?php if (!empty($req['created_at'])): ?>
-                                            <div class="text-muted" style="font-size: 10px; margin-top: 2px;">
-                                                <i class="bi bi-clock me-1"></i><?= date('d M Y, h:i A', strtotime($req['created_at'])) ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="small" style="font-size: 11px; line-height: 1.35;">
-                                            <div class="mb-1">
-                                                <strong>PH:</strong>
-                                                <?php if (!empty($req['purchase_head_approved_by_name'])): ?>
-                                                    <span class="text-success fw-semibold"><?= htmlspecialchars($req['purchase_head_approved_by_name']) ?></span>
-                                                <?php elseif (($req['status'] ?? '') === 'Submitted'): ?>
-                                                    <span class="badge bg-primary text-white" style="font-size:9.5px">Pending PH</span>
-                                                <?php else: ?>
-                                                    <span class="text-muted">—</span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div>
-                                                <strong>QC:</strong> 
-                                                <?php if (!empty($req['qc_approved_by_name'])): ?>
-                                                    <span class="text-success fw-semibold"><?= htmlspecialchars($req['qc_approved_by_name']) ?></span>
-                                                    <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
-                                                        <br><span class="badge bg-info text-white" style="font-size:9.5px">৳ <?= number_format((float)$req['qc_approved_amount'], 2) ?></span>
-                                                    <?php endif; ?>
-                                                    <?php if (!empty($req['qc_approved_at'])): ?>
-                                                        <br><small class="text-muted" style="font-size:9.5px"><?= date('d M Y', strtotime($req['qc_approved_at'])) ?></small>
-                                                    <?php endif; ?>
-                                                <?php elseif ($req['status'] === 'Submitted'): ?>
-                                                    <span class="badge bg-warning text-dark" style="font-size:9.5px">Pending QC</span>
-                                                <?php else: ?>
-                                                    <span class="text-muted">—</span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="mt-1">
-                                                <strong>Mgmt:</strong>
-                                                <?php if (!empty($req['approved_by_name'])): ?>
-                                                    <span class="text-success fw-semibold"><?= htmlspecialchars($req['approved_by_name']) ?></span>
-                                                    <?php if (!empty($req['approved_by_role'])): ?>
-                                                        <br><small class="text-muted fst-italic" style="font-size:9.5px"><?= htmlspecialchars($req['approved_by_role']) ?></small>
-                                                    <?php endif; ?>
-                                                <?php elseif (in_array($req['status'], ['Submitted', 'QC Approved'])): ?>
-                                                    <span class="badge bg-info text-white" style="font-size:9.5px">Pending Mgmt</span>
-                                                <?php else: ?>
-                                                    <span class="text-muted">—</span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <?php if (!empty($req['payment_by_name'])): ?>
-                                            <span class="text-primary fw-semibold" style="font-size: 11.5px;"><?= htmlspecialchars($req['payment_by_name']) ?></span>
-                                            <br><small class="text-success fw-bold" style="font-size: 10.5px">Paid: ৳ <?= number_format($alreadyPaid, 2) ?></small>
-                                        <?php else: ?>
-                                            <span class="text-muted small">—</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php if (!empty($req['payment_attachment'])): ?>
-                                            <a href="<?= $base_url ?>/<?= htmlspecialchars($req['payment_attachment']) ?>" target="_blank"
-                                               class="btn btn-sm btn-outline-secondary" title="View Attachment">
-                                                <i class="bi bi-paperclip"></i>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="text-muted">—</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="d-flex gap-1 justify-content-center">
-                                            <?php if ($canPayThis && $canProcessPayment): ?>
-                                                <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $req['id'] ?>#disburse" 
-                                                   class="btn btn-sm btn-success" title="Disburse Payment">
-                                                    <i class="bi bi-wallet2 me-1"></i> Pay
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if ($alreadyPaid > 0): ?>
-                                                <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=vendor&cashout_request_id=<?= $req['id'] ?>&project_id=<?= $req['project_id'] ?>" 
-                                                   class="btn btn-sm btn-outline-warning" title="Settlement / Adjustment">
-                                                    <i class="bi bi-sliders"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                            <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $req['id'] ?>" 
-                                               class="btn btn-sm btn-outline-primary" title="View Details">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr><td colspan="15" class="text-center text-muted py-4">No vendor payment requests found. <a href="<?= $base_url ?>/con-vendor-payment-create">Create one</a></td></tr>
-                        <?php endif; ?>
+                    <tbody id="vprTableBody">
+                        <?php include __DIR__ . '/partials/payment-rows.php'; ?>
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Server-Side Pagination Footer -->
+        <div class="card-footer bg-white py-3 border-top" id="vprPaginationContainer">
+            <?php include __DIR__ . '/partials/payment-pagination.php'; ?>
         </div>
     </div>
 </div>
 
 <script>
-$(document).ready(function () {
-    if ($.fn.DataTable && !$.fn.DataTable.isDataTable('#vprTable')) {
-        $('#vprTable').DataTable({ responsive: true, pageLength: 25, order: [] });
+document.addEventListener('DOMContentLoaded', function () {
+    var baseUrl       = <?= json_encode($base_url . '/con-vendor-payment-requests') ?>;
+    var tbody         = document.getElementById('vprTableBody');
+    var pagContainer  = document.getElementById('vprPaginationContainer');
+    var liveSearch    = document.getElementById('vprLiveSearch');
+    var clearBtn      = document.getElementById('vprSearchClear');
+    var perPageSelect = document.getElementById('vprPerPageSelect');
+    var filterForm    = document.getElementById('vprFilterForm');
+    var topSearchInp  = filterForm ? filterForm.querySelector('input[name="search"]') : null;
+    var overlay       = document.getElementById('vprLoadingOverlay');
+    var searchIcon    = document.getElementById('vprSearchIcon');
+    var searchSpinner = document.getElementById('vprSearchSpinner');
+
+    var currentPage   = <?= (int)($pagination['currentPage'] ?? 1) ?>;
+    var currentPerPage = <?= (int)($pagination['perPage'] ?? 25) ?>;
+    var debounceTimer = null;
+    var activeController = null;
+
+    function getParams(page) {
+        var params = new URLSearchParams();
+        if (filterForm) {
+            var proj = filterForm.querySelector('select[name="project_id"]');
+            var cat  = filterForm.querySelector('select[name="category_id"]');
+            var vnd  = filterForm.querySelector('select[name="vendor_id"]');
+            var st   = filterForm.querySelector('select[name="status"]');
+            if (proj && proj.value) params.set('project_id', proj.value);
+            if (cat && cat.value)   params.set('category_id', cat.value);
+            if (vnd && vnd.value)   params.set('vendor_id', vnd.value);
+            if (st && st.value)     params.set('status', st.value);
+        }
+        var q = liveSearch ? liveSearch.value.trim() : '';
+        if (q) params.set('search', q);
+        params.set('per_page', currentPerPage);
+        params.set('page', page || 1);
+        return params;
+    }
+
+    function setLoading(isLoading) {
+        if (overlay) overlay.classList.toggle('d-none', !isLoading);
+        if (searchIcon) searchIcon.classList.toggle('d-none', isLoading);
+        if (searchSpinner) searchSpinner.classList.toggle('d-none', !isLoading);
+    }
+
+    function fetchPage(page, scrollToTable) {
+        currentPage = page || 1;
+        var params = getParams(currentPage);
+
+        // Keep browser URL synced without reloading
+        var cleanUrl = baseUrl + (params.toString() ? '?' + params.toString() : '');
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', cleanUrl);
+        }
+
+        // Sync top filter search input
+        if (topSearchInp && liveSearch && topSearchInp.value !== liveSearch.value) {
+            topSearchInp.value = liveSearch.value;
+        }
+        if (clearBtn && liveSearch) {
+            clearBtn.classList.toggle('d-none', liveSearch.value.trim() === '');
+        }
+
+        params.set('ajax', '1');
+
+        if (activeController && typeof activeController.abort === 'function') {
+            activeController.abort();
+        }
+        activeController = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+
+        setLoading(true);
+        fetch(baseUrl + '?' + params.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            signal: activeController ? activeController.signal : undefined
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data && data.success) {
+                tbody.innerHTML = data.rows_html;
+                pagContainer.innerHTML = data.pagination_html;
+                currentPage = data.current_page || 1;
+                if (scrollToTable) {
+                    var card = document.getElementById('vprListCard');
+                    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        })
+        .catch(function (err) {
+            if (err && err.name === 'AbortError') return;
+            console.error('VPR pagination load error:', err);
+        })
+        .finally(function () {
+            setLoading(false);
+        });
+    }
+
+    // Live search on typing (300ms debounce)
+    if (liveSearch) {
+        liveSearch.addEventListener('input', function () {
+            if (clearBtn) clearBtn.classList.toggle('d-none', this.value.trim() === '');
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                fetchPage(1, false);
+            }, 300);
+        });
+        liveSearch.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(debounceTimer);
+                fetchPage(1, false);
+            }
+        });
+    }
+
+    // Clear search button
+    if (clearBtn && liveSearch) {
+        clearBtn.addEventListener('click', function () {
+            liveSearch.value = '';
+            clearBtn.classList.add('d-none');
+            liveSearch.focus();
+            fetchPage(1, false);
+        });
+    }
+
+    // Keep top search bar synced with live search
+    if (topSearchInp && liveSearch) {
+        topSearchInp.addEventListener('input', function () {
+            liveSearch.value = this.value;
+            if (clearBtn) clearBtn.classList.toggle('d-none', this.value.trim() === '');
+        });
+    }
+
+    // Change Show entries per page
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', function () {
+            currentPerPage = parseInt(this.value, 10) || 25;
+            var hiddenPp = document.getElementById('vprHiddenPerPage');
+            if (hiddenPp) hiddenPp.value = currentPerPage;
+            fetchPage(1, false);
+        });
+    }
+
+    // Intercept pagination link clicks for instant AJAX page switching
+    if (pagContainer) {
+        pagContainer.addEventListener('click', function (e) {
+            var link = e.target.closest('.vpr-page-link');
+            if (!link) return;
+            var li = link.closest('.page-item');
+            if (li && (li.classList.contains('disabled') || li.classList.contains('active'))) {
+                e.preventDefault();
+                return;
+            }
+            var targetPage = parseInt(link.getAttribute('data-page'), 10);
+            if (targetPage > 0) {
+                e.preventDefault();
+                fetchPage(targetPage, true);
+            }
+        });
     }
 });
 </script>
