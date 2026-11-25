@@ -738,7 +738,11 @@ window.openEditPaymentDateModal = function(target) {
                         <i class="fa-light fa-file-csv me-2"></i> CSV Import
                     </a>
                     <?php endif; ?>
-                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-success">
+                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>"
+                       id="btnGetStatement"
+                       data-detailed-url="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>"
+                       data-datewise-url="<?= $base_url ?>/client-datewise-statement/<?= (int)$clientDetails['booking_id'] ?>"
+                       target="_blank" class="btn btn-success">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
                     <a href="<?= $base_url ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
@@ -791,6 +795,20 @@ window.openEditPaymentDateModal = function(target) {
                         </button>
                     </li>
                 </ul>
+                <script>
+                (function() {
+                    const btn = document.getElementById('btnGetStatement');
+                    const tabDetailed = document.getElementById('tabDetailedTrx');
+                    const tabDatewise = document.getElementById('tabDatewiseTrx');
+                    if (!btn || !tabDetailed || !tabDatewise) return;
+                    const setDetailed = () => { btn.href = btn.dataset.detailedUrl; };
+                    const setDatewise = () => { btn.href = btn.dataset.datewiseUrl; };
+                    tabDetailed.addEventListener('shown.bs.tab', setDetailed);
+                    tabDetailed.addEventListener('click', setDetailed);
+                    tabDatewise.addEventListener('shown.bs.tab', setDatewise);
+                    tabDatewise.addEventListener('click', setDatewise);
+                })();
+                </script>
 
                 <div class="tab-content" id="trxViewTabsContent">
                     <!-- Pane 1: Detailed Ledger (Existing) -->

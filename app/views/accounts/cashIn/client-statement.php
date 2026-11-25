@@ -148,171 +148,6 @@ if ($totalPrice > 0) {
 } else {
     $remainingBalance   = (float)($paymentSummary['total_due'] ?? 0);
 }
-
-// Consolidate verified transactions by payment date (1 row per date, summing amounts)
-$dateGroups = [];
-$bookingDiscountApplied = false;
-$lastKnownEmiNo = 0;
-
-foreach ($validTransactions as $txn) {
-    $amount      = (float)($txn['amount'] ?? 0);
-    $paymentType = $txn['payment_type'] ?? '';
-    $discount    = (float)($txn['bulk_emi_discount'] ?? 0);
-
-    // Apply booking discount once on the booking_money date
-    if ($paymentType === 'booking_money' && $bookingDiscount > 0 && !$bookingDiscountApplied) {
-        $discount += $bookingDiscount;
-        $bookingDiscountApplied = true;
-    }
-
-    $emiNo = $txn['emi_no'] ?? null;
-    if (!empty($emiNo)) {
-        $lastKnownEmiNo = max($lastKnownEmiNo, (int)$emiNo);
-    }
-
-    $chequeNo  = trim((string)($txn['cheque_no'] ?? ''));
-    $transRef  = trim((string)($txn['transaction_ref'] ?? ''));
-    $bankName  = trim((string)(!empty($txn['bank_name']) ? $txn['bank_name'] : ($txn['bank_display_name'] ?? '')));
-    $payMethod = ucfirst(trim((string)($txn['payment_method'] ?? '')));
-
-    $rawDate   = !empty($txn['payment_date']) ? strtotime($txn['payment_date']) : false;
-    $dateKey   = $rawDate ? date('Y-m-d', $rawDate) : '0000-00-00';
-    $payDate   = $rawDate ? date('d-M-Y', $rawDate) : '—';
-
-    // Determine clean term label
-    $term = $txn['installment_label'] ?? strtoupper(str_replace('_', ' ', $paymentType));
-    $isRegularEmi = false;
-    $resolvedEmiNo = null;
-
-    if ($paymentType === 'booking_money') {
-        $term = 'Booking';
-    } elseif ($paymentType === 'land_share') {
-        $term = 'Land Share';
-    } elseif ($paymentType === 'registration') {
-        $term = 'Registration';
-    } elseif ($paymentType === 'development_charge') {
-        $term = 'Dev. Charge';
-    } elseif ($paymentType === 'emi' || $paymentType === 'emi_due_settlement') {
-        if (!empty($txn['settlement_type']) && $txn['settlement_type'] === 'emi_due_settlement') {
-            $term = $txn['installment_label'] ?? $term;
-        } else {
-            if (!$emiNo) {
-                $lastKnownEmiNo++;
-                $emiNo = $lastKnownEmiNo;
-            }
-            $isPartial = (!empty($txn['payment_status']) && strtolower($txn['payment_status']) === 'partially_paid');
-            $resolvedEmiNo = (int)$emiNo;
-            if ($isPartial) {
-                $term = 'Adv. Installment ' . $resolvedEmiNo;
-            } else {
-                $isRegularEmi = true;
-                $term = 'Installment ' . $resolvedEmiNo;
-            }
-        }
-    } elseif ($paymentType === 'shop_service_charge') {
-        $term = 'Shop Svc Charge';
-    } elseif ($paymentType === 'penalty_settlement') {
-        $term = 'Late Penalty Settlement';
-    } elseif ($paymentType === 'others') {
-        $otherPurpose = !empty($txn['other_purpose']) ? $txn['other_purpose'] : 'Extra Charges';
-        $term = 'Others (' . $otherPurpose . ')';
-    }
-
-    // Payment mode & bank display
-    $isEmiDiscount = !empty($txn['is_emi_discount']) && $txn['is_emi_discount'] == 1;
-    if ($isEmiDiscount) {
-        $discount = $amount;
-        $amount   = 0.0;
-        $modeLabel = 'Discount Paid';
-        $chequeOrRef = '';
-    } else {
-        $payTypeDisplay = !empty($bankName) ? 'Bank Transfer' : ($payMethod ?: 'Cash');
-        $modeLabel = !empty($bankName) ? ($payTypeDisplay . ' (' . $bankName . ')') : $payTypeDisplay;
-        $chequeOrRef = !empty($chequeNo) ? $chequeNo : $transRef;
-    }
-
-    $receiptNo = 'REC-' . str_pad($txn['id'] ?? '0', 6, '0', STR_PAD_LEFT);
-
-    if (!isset($dateGroups[$dateKey])) {
-        $dateGroups[$dateKey] = [
-            'date_key'        => $dateKey,
-            'formatted_date'  => $payDate,
-            'regular_emi_nos' => [],
-            'other_terms'     => [],
-            'receipts'        => [],
-            'modes'           => [],
-            'refs'            => [],
-            'discount'        => 0.0,
-            'paid_amount'     => 0.0,
-            'unit_deductible' => 0.0,
-            'txn_count'       => 0,
-            'is_discount_only'=> true,
-        ];
-    }
-
-    $g = &$dateGroups[$dateKey];
-    if ($isRegularEmi && $resolvedEmiNo !== null) {
-        $g['regular_emi_nos'][] = $resolvedEmiNo;
-    } elseif (!in_array($term, $g['other_terms'], true)) {
-        $g['other_terms'][] = $term;
-    }
-
-    if (!in_array($receiptNo, $g['receipts'], true)) {
-        $g['receipts'][] = $receiptNo;
-    }
-    if (!empty($modeLabel) && !in_array($modeLabel, $g['modes'], true)) {
-        $g['modes'][] = $modeLabel;
-    }
-    if (!empty($chequeOrRef) && !in_array($chequeOrRef, $g['refs'], true)) {
-        $g['refs'][] = $chequeOrRef;
-    }
-
-    $g['discount']    += $discount;
-    $g['paid_amount'] += $amount;
-    if (!$isEmiDiscount) {
-        $g['is_discount_only'] = false;
-    }
-    if (strtolower($paymentType) !== 'others' && strtolower($paymentType) !== 'penalty_settlement') {
-        $g['unit_deductible'] += ($amount + $discount);
-    }
-    $g['txn_count']++;
-    unset($g);
-}
-
-// Sort consolidated rows chronologically by payment date
-ksort($dateGroups);
-
-// Build final formatted display strings per date
-foreach ($dateGroups as &$g) {
-    $termParts = [];
-    if (!empty($g['regular_emi_nos'])) {
-        $nos = array_values(array_unique($g['regular_emi_nos']));
-        sort($nos);
-        $cnt = count($nos);
-        if ($cnt === 1) {
-            $termParts[] = 'Installment ' . $nos[0];
-        } elseif (($nos[$cnt - 1] - $nos[0]) === ($cnt - 1)) {
-            $termParts[] = 'Installment ' . $nos[0] . '–' . $nos[$cnt - 1];
-        } else {
-            $termParts[] = 'Installment ' . implode(', ', $nos);
-        }
-    }
-    foreach ($g['other_terms'] as $ot) {
-        $termParts[] = $ot;
-    }
-    $g['term_display'] = implode(', ', $termParts);
-
-    $rc = count($g['receipts']);
-    if ($rc <= 2) {
-        $g['receipt_display'] = implode(', ', $g['receipts']);
-    } else {
-        $g['receipt_display'] = $g['receipts'][0] . ' – ' . $g['receipts'][$rc - 1] . ' (' . $rc . ')';
-    }
-
-    $g['mode_display'] = implode('; ', $g['modes']);
-    $g['ref_display']  = !empty($g['refs']) ? implode(', ', $g['refs']) : '—';
-}
-unset($g);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -703,13 +538,8 @@ unset($g);
                 <?php endif; ?>
             </div>
             <div class="summary-cell">
-                <div class="s-label">Payment Dates</div>
-                <div class="s-value"><?= count($dateGroups) ?></div>
-                <?php if (count($validTransactions) > count($dateGroups)): ?>
-                    <div style="font-size:7.5px; color:#6b7280; margin-top:2px; font-weight:normal;">
-                        (<?= count($validTransactions) ?> Receipts)
-                    </div>
-                <?php endif; ?>
+                <div class="s-label">Transactions</div>
+                <div class="s-value"><?= count($validTransactions) ?></div>
             </div>
             <div class="summary-cell highlight">
                 <div class="s-label">Outstanding Balance <span style="text-transform:none; font-size:7px;">(Approximate)</span></div>
@@ -733,57 +563,125 @@ unset($g);
             </div>
         </div>
 
-        <!-- ═══ DATE-WISE CONSOLIDATED TRANSACTION TABLE ═══ -->
+        <!-- ═══ TRANSACTION TABLE ═══ -->
         <div class="table-wrapper">
             <table class="main-table">
                 <thead>
                     <tr>
-                        <th style="width:4%;">SL</th>
-                        <th style="width:10%;">Date</th>
-                        <th style="width:16%;">Particulars / Term</th>
-                        <th style="width:14%;">Receipt No.</th>
-                        <th style="width:18%;">Payment Mode &amp; Bank</th>
-                        <th style="width:8%;">Cheque /<br>Txn ID</th>
-                        <th style="width:6%;">Discount</th>
-                        <th style="width:10%;">Paid<br>Amount</th>
-                        <th style="width:14%;">Remaining<br>Balance<br><span style="text-transform:none; font-size:6.5px; font-weight:normal;">(Approximate)</span></th>
+                        <th style="width:28px;">SL</th>
+                        <th style="width:78px;">Date</th>
+                        <th style="width:105px;">Term</th>
+                        <th>Money Receipt<br>No.</th>
+                        <th>Payment<br>Type</th>
+                        <th>Bank Name</th>
+                        <th>Cheque /<br>Txn ID</th>
+                        <th>Added By</th>
+                        <th>Discount</th>
+                        <th>Paid<br>Amount</th>
+                        <th>Remaining<br>Balance<br><span style="text-transform:none; font-size:7px; font-weight:normal;">(Approximate)</span></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (!empty($dateGroups)): ?>
+                    <?php if (!empty($validTransactions)): ?>
                         <?php
                         $sl = 0;
                         $runningBalance = $totalPrice;
                         $totalDiscount  = 0;
                         $totalPaidCol   = 0;
+                        $bookingDiscountApplied = false;
+                        $lastKnownEmiNo = 0;
 
-                        foreach ($dateGroups as $row):
+                        foreach ($validTransactions as $txn):
                             $sl++;
-                            $rowDiscount = $row['discount'];
-                            $rowPaid     = $row['paid_amount'];
+                            $amount      = (float)($txn['amount'] ?? 0);
+                            $paymentType = $txn['payment_type'] ?? '';
+                            $discount    = (float)($txn['bulk_emi_discount'] ?? 0);
 
-                            $totalDiscount += $rowDiscount;
-                            $totalPaidCol  += $rowPaid;
+                            // Apply booking discount to the booking money row
+                            if ($paymentType === 'booking_money' && $bookingDiscount > 0 && empty($bookingDiscountApplied)) {
+                                $discount += $bookingDiscount;
+                                $bookingDiscountApplied = true;
+                            }
 
-                            // Running balance (Others payments are extra incidental costs and do not deduct from flat price)
-                            $runningBalance -= $row['unit_deductible'];
+                            $emiNo = $txn['emi_no'] ?? null;
+                            if (!empty($emiNo)) {
+                                $lastKnownEmiNo = max($lastKnownEmiNo, (int)$emiNo);
+                            }
+                            $chequeNo  = $txn['cheque_no'] ?? '';
+                            $transRef  = $txn['transaction_ref'] ?? '';
+                            $bankName  = !empty($txn['bank_name']) ? $txn['bank_name'] : ($txn['bank_display_name'] ?? '');
+                            $payMethod = ucfirst($txn['payment_method'] ?? '');
+                            $payDate   = isset($txn['payment_date']) ? date('d-M-Y', strtotime($txn['payment_date'])) : '';
+
+                            // Term label
+                            $term = $txn['installment_label'] ?? strtoupper(str_replace('_', ' ', $paymentType));
+
+                            if ($paymentType === 'booking_money') {
+                                $term = 'Booking';
+                            } elseif ($paymentType === 'land_share') {
+                                $term = 'Land Share';
+                            } elseif ($paymentType === 'registration') {
+                                $term = 'Registration';
+                            } elseif ($paymentType === 'development_charge') {
+                                $term = 'Dev. Charge';
+                            } elseif ($paymentType === 'emi' || $paymentType === 'emi_due_settlement') {
+                                if (!empty($txn['settlement_type']) && $txn['settlement_type'] === 'emi_due_settlement') {
+                                    $term = $txn['installment_label'] ?? $term;
+                                } else {
+                                    if (!$emiNo) {
+                                        $lastKnownEmiNo++;
+                                        $emiNo = $lastKnownEmiNo;
+                                    }
+                                    $isPartial = (!empty($txn['payment_status']) && strtolower($txn['payment_status']) === 'partially_paid');
+                                    $term = ($isPartial ? 'Advance ' : '') . 'Installment ' . $emiNo;
+                                }
+                            } elseif ($paymentType === 'shop_service_charge') {
+                                $term = 'Shop Svc Charge';
+                            } elseif ($paymentType === 'penalty_settlement') {
+                                $term = 'Late Penalty Settlement';
+                            } elseif ($paymentType === 'others') {
+                                $otherPurpose = !empty($txn['other_purpose']) ? $txn['other_purpose'] : 'Extra Charges';
+                                $term = 'Others (' . $otherPurpose . ')';
+                            }
+
+                            // Payment type display
+                            $payTypeDisplay = !empty($bankName) ? 'Bank Transfer' : htmlspecialchars($payMethod);
+
+                            $isEmiDiscount = !empty($txn['is_emi_discount']) && $txn['is_emi_discount'] == 1;
+                            if ($isEmiDiscount) {
+                                $discount = $amount;
+                                $amount = 0;
+                                $payTypeDisplay = '<span style="background:#f59e0b; color:#fff; padding:3px 6px; border-radius:4px; font-size:9px; white-space:nowrap;">Discount Paid</span>';
+                                $bankName = '-';
+                            }
+
+                            $totalDiscount += $discount;
+                            $totalPaidCol  += $amount;
+
+                            // Cheque/Transaction ID
+                            $chequeOrRef = !empty($chequeNo) ? $chequeNo : $transRef;
+                            if ($isEmiDiscount) $chequeOrRef = '-';
+
+                            // Money Receipt No
+                            $receiptNo = 'REC-' . str_pad($txn['id'] ?? '0', 6, '0', STR_PAD_LEFT);
+
+                            // Running balance (Others & penalty settlement payments do not deduct from flat price)
+                            if (strtolower($paymentType) !== 'others' && strtolower($paymentType) !== 'penalty_settlement') {
+                                $runningBalance -= ($amount + $discount);
+                            }
                             if ($runningBalance < 0) $runningBalance = 0;
                         ?>
-                        <tr<?= $row['is_discount_only'] ? ' class="discount-row"' : '' ?>>
+                        <tr<?= $isEmiDiscount ? ' class="discount-row"' : '' ?>>
                             <td class="center"><?= $sl ?></td>
-                            <td class="center" style="white-space:nowrap;"><?= htmlspecialchars($row['formatted_date']) ?></td>
-                            <td><?= htmlspecialchars($row['term_display']) ?></td>
-                            <td class="center" style="font-size:8.5px;"><?= htmlspecialchars($row['receipt_display']) ?></td>
-                            <td>
-                                <?php if ($row['is_discount_only']): ?>
-                                    <span style="background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px; font-size:8.5px; white-space:nowrap;">Discount Paid</span>
-                                <?php else: ?>
-                                    <?= htmlspecialchars($row['mode_display']) ?>
-                                <?php endif; ?>
-                            </td>
-                            <td class="center"><?= htmlspecialchars($row['ref_display']) ?></td>
-                            <td class="amount"><?= $rowDiscount > 0 ? number_format($rowDiscount, 0) : '' ?></td>
-                            <td class="amount"><strong><?= number_format($rowPaid, 0) ?></strong></td>
+                            <td class="center" style="white-space:nowrap;"><?= $payDate ?></td>
+                            <td><?= htmlspecialchars($term) ?></td>
+                            <td class="center"><?= htmlspecialchars($receiptNo) ?></td>
+                            <td class="center"><?= $payTypeDisplay ?></td>
+                            <td class="center"><?= htmlspecialchars($bankName) ?></td>
+                            <td class="center"><?= htmlspecialchars($chequeOrRef) ?></td>
+                            <td class="center"><?= !empty($txn['created_by_name']) ? htmlspecialchars($txn['created_by_name']) : 'System' ?></td>
+                            <td class="amount"><?= $discount > 0 ? number_format($discount, 0) : '' ?></td>
+                            <td class="amount"><?= number_format($amount, 0) ?></td>
                             <td class="amount"><?= number_format($runningBalance, 0) ?></td>
                         </tr>
                         <?php endforeach; ?>
@@ -794,8 +692,10 @@ unset($g);
                             <td class="center">—</td>
                             <td><strong>Booking Discount</strong></td>
                             <td class="center">—</td>
-                            <td><span style="background:#10b981; color:#fff; padding:2px 6px; border-radius:4px; font-size:8.5px; white-space:nowrap;">Booking Discount</span></td>
-                            <td class="center">—</td>
+                            <td class="center"><span style="background:#10b981; color:#fff; padding:3px 6px; border-radius:4px; font-size:9px; white-space:nowrap;">Booking Discount</span></td>
+                            <td class="center">-</td>
+                            <td class="center">-</td>
+                            <td class="center">-</td>
                             <td class="amount"><strong><?= number_format($bookingDiscount, 0) ?></strong></td>
                             <td class="amount">0</td>
                             <td class="amount"><?php $runningBalance -= $bookingDiscount; if ($runningBalance < 0) $runningBalance = 0; echo number_format($runningBalance, 0); ?></td>
@@ -809,8 +709,10 @@ unset($g);
                             <td class="center"><?= date('d-M-Y') ?></td>
                             <td><strong>Overdue EMI Late Penalty (5% Auto-Accrued)</strong></td>
                             <td class="center">—</td>
-                            <td><span style="background:#dc2626; color:#fff; padding:2px 6px; border-radius:4px; font-size:8.5px; white-space:nowrap;">Auto Penalty</span></td>
-                            <td class="center">—</td>
+                            <td class="center"><span style="background:#dc2626; color:#fff; padding:3px 6px; border-radius:4px; font-size:9px; white-space:nowrap;">Auto Penalty</span></td>
+                            <td class="center">-</td>
+                            <td class="center">-</td>
+                            <td class="center">-</td>
                             <td class="amount"></td>
                             <td class="amount" style="color:#b45309;"><strong>+<?= number_format($accruedPenalty, 2) ?></strong></td>
                             <td class="amount"><?php $runningBalance = round(max(0, $runningBalance) + $accruedPenalty, 2); echo number_format($runningBalance, 2); ?></td>
@@ -819,7 +721,8 @@ unset($g);
 
                         <!-- Totals Row -->
                         <tr class="total-row">
-                            <td colspan="6" style="text-align:right;"><strong>TOTAL</strong></td>
+                            <td colspan="4" style="text-align:right;"><strong>TOTAL</strong></td>
+                            <td></td><td></td><td></td><td></td>
                             <td class="amount"><?= $totalDiscount > 0 ? number_format($totalDiscount, 0) : '' ?></td>
                             <td class="amount"><strong><?= number_format($totalPaidCol, 0) ?></strong></td>
                             <td class="amount"><strong><?= number_format(max(0, $runningBalance), $accruedPenalty > 0 ? 2 : 0) ?></strong></td>
@@ -827,7 +730,7 @@ unset($g);
 
                     <?php else: ?>
                         <tr>
-                            <td colspan="9" style="text-align:center; padding:20px;">
+                            <td colspan="11" style="text-align:center; padding:20px;">
                                 No transactions found for the selected period.
                             </td>
                         </tr>
@@ -838,7 +741,7 @@ unset($g);
 
         <!-- Footer Note -->
      <div class="statement-footer">
-            <strong>Note:</strong> This statement includes only verified transactions. Multiple payments made on the same date are consolidated into a single date-wise entry. Rejected and pending payments are excluded from this report.
+            <strong>Note:</strong> This statement includes only verified transactions. Rejected and pending payments are excluded from this report.
             <?php if ($totalDiscounts > 0): ?>
             <?php if ($bookingDiscount > 0): ?> Booking discount of ৳<?= number_format($bookingDiscount, 2) ?> has been applied.<?php endif; ?>
             <?php if ($bulkEmiDiscount > 0): ?> EMI discount of ৳<?= number_format($bulkEmiDiscount, 2) ?> has been applied.<?php endif; ?>
