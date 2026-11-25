@@ -186,7 +186,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <th class="text-center">Management</th>
                                 <th class="text-center">Payment</th>
                                 <th>Overall</th>
-                                <th class="text-center no-print" style="width:130px">Action</th>
+                                <th class="text-center no-print text-nowrap" style="min-width:140px; white-space:nowrap;">Action</th>
                             </tr>
                         </thead>
                         <tbody class="table__body">
@@ -463,8 +463,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 </span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="text-center no-print">
-                                            <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                                        <td class="text-center no-print text-nowrap" style="white-space:nowrap;">
+                                            <div class="d-inline-flex align-items-center justify-content-center gap-1 flex-nowrap">
                                                 <?php
                                                 $isCreator = (int)$r['requested_by'] === $userId;
                                                 $reportingBossId = (int)($r['reporting_user_id'] ?? $r['requester_reporting_boss_id'] ?? 0);
@@ -1906,7 +1906,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 order: [], // Preserve SQL order (pea.id DESC)
                 columnDefs: [
                     { orderable: false, searchable: false, targets: 0 },  // # serial column
-                    { orderable: false, searchable: false, targets: -1 } // Actions column
+                    { orderable: false, searchable: false, className: 'text-nowrap', targets: -1 } // Actions column
                 ],
                 language: {
                     search: "_INPUT_",

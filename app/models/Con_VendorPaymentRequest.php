@@ -109,23 +109,16 @@ class Con_VendorPaymentRequest extends Model
      * @param array $assignedProjectIds  List of project IDs assigned to the user
      * @param array $filters  Optional search/filter parameters: project_id, vendor_id, category_id, status, search
      */
-    public function getAll($userId = null, $assignedProjectIds = [], $filters = [])
+    /**
+     * Build shared FROM + JOINs + WHERE clause for getAll() and countAll()
+     * Avoids heavy derived-table joins on con_financial_transactions before LIMIT/OFFSET.
+     */
+    private function buildListJoinsAndWhere($userId = null, $assignedProjectIds = [], $filters = [], $forSelect = true)
     {
-        $sql = "SELECT pr.*,
-                       COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
-                       p.name       AS project_name,
-                       po.id        AS po_number,
-                       u.full_name  AS created_by_name,
-                       u.role_id    AS created_by_role_id,
-                       ptl.full_name AS purchase_team_leader_by_name,
-                       ph.full_name AS purchase_head_approved_by_name,
-                       ab.full_name AS approved_by_name,
-                       ab_r.name    AS approved_by_role,
-                       qc.full_name AS qc_approved_by_name,
-                       qc_r.name    AS qc_approved_by_role,
-                       pb.full_name AS payment_by_name,
-                       COALESCE(txn_sum.total_paid, 0) AS already_paid
-                FROM {$this->table} pr
+        $hasSearch = !empty($filters['search']);
+
+        if ($forSelect) {
+            $joins = "FROM {$this->table} pr
                 LEFT JOIN vendors v          ON v.id  = pr.vendor_id
                 LEFT JOIN projects p         ON p.id  = pr.project_id
                 LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
@@ -135,24 +128,20 @@ class Con_VendorPaymentRequest extends Model
                 LEFT JOIN users ab           ON ab.id = pr.approved_by
                 LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
                 LEFT JOIN users qc           ON qc.id = pr.qc_approved_by_id
-                LEFT JOIN roles qc_r         ON qc_r.id = qc.role_id
-                LEFT JOIN (
-                    SELECT t1.ref_id, t1.processed_by
-                    FROM con_financial_transactions t1
-                    INNER JOIN (
-                        SELECT MAX(id) AS max_id
-                        FROM con_financial_transactions
-                        WHERE ref_type = 'vendor_payment'
-                        GROUP BY ref_id
-                    ) t2 ON t1.id = t2.max_id
-                ) latest_txn ON latest_txn.ref_id = pr.id
-                LEFT JOIN users pb ON pb.id = latest_txn.processed_by
-                LEFT JOIN (
-                    SELECT ref_id, SUM(amount_paid) AS total_paid
-                    FROM con_financial_transactions
-                    WHERE ref_type = 'vendor_payment'
-                    GROUP BY ref_id
-                ) txn_sum ON txn_sum.ref_id = pr.id";
+                LEFT JOIN roles qc_r         ON qc_r.id = qc.role_id";
+        } elseif ($hasSearch) {
+            $joins = "FROM {$this->table} pr
+                LEFT JOIN vendors v          ON v.id  = pr.vendor_id
+                LEFT JOIN projects p         ON p.id  = pr.project_id
+                LEFT JOIN purchase_orders po ON po.id = pr.purchase_order_id
+                LEFT JOIN users u            ON u.id  = pr.created_by
+                LEFT JOIN users ph           ON ph.id = pr.purchase_head_approved_by_id
+                LEFT JOIN users ab           ON ab.id = pr.approved_by
+                LEFT JOIN users qc           ON qc.id = pr.qc_approved_by_id";
+        } else {
+            // Fast path for COUNT(*) with no text search — zero unnecessary JOINs
+            $joins = "FROM {$this->table} pr";
+        }
 
         $whereClauses = [];
         if ($userId !== null) {
@@ -213,46 +202,139 @@ class Con_VendorPaymentRequest extends Model
             }
         }
 
-        // 5. Keyword search filter
-        if (!empty($filters['search'])) {
+        // 5. Keyword search filter (matches any column: VPR #, PO #, Bill #, Type, Date, Project, Category, Material, Vendor, Amount, Status, Users)
+        if ($hasSearch) {
             $rawKw = trim($filters['search']);
             $kw = $this->db->real_escape_string($rawKw);
             $cleanId = preg_replace('/[^0-9]/', '', $rawKw);
             $idCond = !empty($cleanId) ? " OR pr.id = " . (int)$cleanId . " OR po.id = " . (int)$cleanId : "";
             $whereClauses[] = "(
                 pr.id LIKE '%{$kw}%'
+                OR CONCAT('VPR-', pr.id) LIKE '%{$kw}%'
+                OR CONCAT('PO-', po.id) LIKE '%{$kw}%'
                 {$idCond}
                 OR pr.invoice_number LIKE '%{$kw}%'
+                OR pr.payment_type LIKE '%{$kw}%'
+                OR pr.status LIKE '%{$kw}%'
+                OR REPLACE(pr.status, '_', ' ') LIKE '%{$kw}%'
+                OR pr.invoice_amount LIKE '%{$kw}%'
+                OR pr.net_payable LIKE '%{$kw}%'
+                OR DATE_FORMAT(pr.created_at, '%d %b %Y') LIKE '%{$kw}%'
                 OR v.name LIKE '%{$kw}%'
                 OR v.company_name LIKE '%{$kw}%'
                 OR p.name LIKE '%{$kw}%'
                 OR po.id LIKE '%{$kw}%'
                 OR u.full_name LIKE '%{$kw}%'
+                OR ph.full_name LIKE '%{$kw}%'
+                OR qc.full_name LIKE '%{$kw}%'
+                OR ab.full_name LIKE '%{$kw}%'
+                OR EXISTS (
+                    SELECT 1 FROM con_financial_transactions cft
+                    JOIN users pb ON pb.id = cft.processed_by
+                    WHERE cft.ref_type = 'vendor_payment'
+                      AND cft.ref_id = pr.id
+                      AND pb.full_name LIKE '%{$kw}%'
+                )
+                OR EXISTS (
+                    SELECT 1 FROM purchase_order_items poi
+                    JOIN con_materials m ON m.id = poi.material_id
+                    LEFT JOIN con_material_categories mc ON mc.id = m.category_id
+                    WHERE poi.purchase_order_id = pr.purchase_order_id
+                      AND (m.name LIKE '%{$kw}%' OR mc.name LIKE '%{$kw}%')
+                )
             )";
         }
 
-        if (!empty($whereClauses)) {
-            $sql .= " WHERE " . implode(" AND ", $whereClauses);
-        }
+        $whereSql = !empty($whereClauses) ? " WHERE " . implode(" AND ", $whereClauses) : "";
+        return $joins . $whereSql;
+    }
 
-        $sql .= " ORDER BY 
-            CASE 
-                WHEN pr.status = 'Submitted' THEN 1
-                WHEN pr.status = 'QC Approved' THEN 2
-                WHEN pr.status = 'Approved' THEN 3
-                WHEN pr.status = 'Partially_Paid' THEN 4
-                WHEN pr.status = 'Draft' THEN 5
-                WHEN pr.status IN ('Fully_Paid', 'Paid') THEN 6
-                WHEN pr.status = 'Rejected' THEN 7
-                ELSE 8
-            END ASC,
-            pr.id DESC";
+    /**
+     * Count total vendor payment requests matching current filters (for server-side pagination)
+     */
+    public function countAll($userId = null, $assignedProjectIds = [], $filters = [])
+    {
+        $fromAndWhere = $this->buildListJoinsAndWhere($userId, $assignedProjectIds, $filters, false);
+        $sql = "SELECT COUNT(*) AS total {$fromAndWhere}";
+        $res = $this->db->query($sql);
+        if ($res && $row = $res->fetch_assoc()) {
+            return (int)$row['total'];
+        }
+        return 0;
+    }
+
+    public function getAll($userId = null, $assignedProjectIds = [], $filters = [], $limit = null, $offset = 0)
+    {
+        $fromAndWhere = $this->buildListJoinsAndWhere($userId, $assignedProjectIds, $filters, true);
+
+        $sql = "SELECT pr.*,
+                       COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) AS vendor_name,
+                       p.name       AS project_name,
+                       po.id        AS po_number,
+                       u.full_name  AS created_by_name,
+                       u.role_id    AS created_by_role_id,
+                       ptl.full_name AS purchase_team_leader_by_name,
+                       ph.full_name AS purchase_head_approved_by_name,
+                       ab.full_name AS approved_by_name,
+                       ab_r.name    AS approved_by_role,
+                       qc.full_name AS qc_approved_by_name,
+                       qc_r.name    AS qc_approved_by_role
+                {$fromAndWhere}
+                ORDER BY 
+                    CASE 
+                        WHEN pr.status = 'Submitted' THEN 1
+                        WHEN pr.status = 'QC Approved' THEN 2
+                        WHEN pr.status = 'Approved' THEN 3
+                        WHEN pr.status = 'Partially_Paid' THEN 4
+                        WHEN pr.status = 'Draft' THEN 5
+                        WHEN pr.status IN ('Fully_Paid', 'Paid') THEN 6
+                        WHEN pr.status = 'Rejected' THEN 7
+                        ELSE 8
+                    END ASC,
+                    pr.id DESC";
+
+        if ($limit !== null && (int)$limit > 0) {
+            $lim = (int)$limit;
+            $off = max(0, (int)$offset);
+            $sql .= " LIMIT {$lim} OFFSET {$off}";
+        }
 
         $result = $this->db->query($sql);
         $records = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
-        // Attach Material Categories and Material items map
+        // Attach already_paid, payment_by_name, Material Categories and Material items ONLY for the returned page rows
         if (!empty($records)) {
+            $vprIds = array_unique(array_filter(array_map('intval', array_column($records, 'id'))));
+            $paidMap = [];
+            $payerMap = [];
+            if (!empty($vprIds)) {
+                $vprIdList = implode(',', $vprIds);
+                $resTxn = $this->db->query("
+                    SELECT cft.ref_id, cft.id AS txn_id, cft.amount_paid, u.full_name AS processed_by_name
+                    FROM con_financial_transactions cft
+                    LEFT JOIN users u ON u.id = cft.processed_by
+                    WHERE cft.ref_type = 'vendor_payment'
+                      AND cft.ref_id IN ({$vprIdList})
+                    ORDER BY cft.id ASC
+                ");
+                if ($resTxn) {
+                    while ($t = $resTxn->fetch_assoc()) {
+                        $rid = (int)$t['ref_id'];
+                        $paidMap[$rid] = ($paidMap[$rid] ?? 0.0) + (float)($t['amount_paid'] ?? 0);
+                        if (!empty($t['processed_by_name'])) {
+                            $payerMap[$rid] = $t['processed_by_name'];
+                        }
+                    }
+                }
+            }
+
+            foreach ($records as &$rec) {
+                $rid = (int)$rec['id'];
+                $rec['already_paid']    = $paidMap[$rid] ?? 0.0;
+                $rec['payment_by_name'] = $payerMap[$rid] ?? null;
+            }
+            unset($rec);
+
             $poIds = array_unique(array_filter(array_column($records, 'purchase_order_id')));
             if (!empty($poIds)) {
                 $poIdList = implode(',', array_map('intval', $poIds));

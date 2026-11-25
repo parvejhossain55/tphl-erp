@@ -288,10 +288,61 @@ class Con_VendorPaymentRequestController extends Controller
             'vendor_id'   => $_GET['vendor_id'] ?? '',
             'category_id' => $_GET['category_id'] ?? '',
             'status'      => $_GET['status'] ?? '',
-            'search'      => $_GET['search'] ?? ''
+            'search'      => trim($_GET['search'] ?? '')
         ];
 
-        $requests = $this->model->getAll($filterUserId, $assignedProjectIds, $filters);
+        // Server-side pagination parameters (loads ONLY current page from MySQL)
+        $allowedPerPage = [10, 25, 50, 100];
+        $perPage = (int)($_GET['per_page'] ?? 25);
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 25;
+        }
+        $currentPage  = max(1, (int)($_GET['page'] ?? 1));
+        $totalRecords = $this->model->countAll($filterUserId, $assignedProjectIds, $filters);
+        $totalPages   = max(1, (int)ceil($totalRecords / $perPage));
+        if ($currentPage > $totalPages) {
+            $currentPage = $totalPages;
+        }
+        $offset = ($currentPage - 1) * $perPage;
+
+        $requests = $this->model->getAll($filterUserId, $assignedProjectIds, $filters, $perPage, $offset);
+
+        $pagination = [
+            'currentPage'  => $currentPage,
+            'perPage'      => $perPage,
+            'totalRecords' => $totalRecords,
+            'totalPages'   => $totalPages,
+            'offset'       => $offset,
+            'startRecord'  => $totalRecords > 0 ? ($offset + 1) : 0,
+            'endRecord'    => min($offset + count($requests), $totalRecords),
+        ];
+
+        // AJAX partial response for instant live search & page switching (no full page reload)
+        if (!empty($_GET['ajax']) && $_GET['ajax'] == '1') {
+            if (ob_get_length()) ob_clean();
+            $base_url = $GLOBALS['base_url'];
+            $canProcessPayment = $this->canProcessPayment();
+
+            ob_start();
+            include dirname(dirname(__DIR__)) . '/views/phase2/vendor-payment-requests/partials/payment-rows.php';
+            $rowsHtml = ob_get_clean();
+
+            ob_start();
+            include dirname(dirname(__DIR__)) . '/views/phase2/vendor-payment-requests/partials/payment-pagination.php';
+            $paginationHtml = ob_get_clean();
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success'         => true,
+                'rows_html'       => $rowsHtml,
+                'pagination_html' => $paginationHtml,
+                'total_records'   => $totalRecords,
+                'current_page'    => $currentPage,
+                'total_pages'     => $totalPages,
+            ]);
+            exit;
+        }
+
         $filterCounts = $this->model->getFilterCounts($filterUserId, $assignedProjectIds);
         $materialCategories = $this->model->getMaterialCategories();
 
@@ -315,46 +366,11 @@ class Con_VendorPaymentRequestController extends Controller
             $vendorsList = $this->vendorModel->getAll();
         }
 
-        // Fetch QC Audited/Approved POs (having qc_approved_by_id)
-        $qcApprovedPOs = [];
-        $stmtPO = $this->db->prepare("
-            SELECT po.id, po.status, po.created_at,
-                   po.purchase_head_approved_by_id, po.qc_approved_by_id, po.op_head_approved_by_id,
-                   po.purchase_head_approved_at, po.qc_approved_at, po.op_head_approved_at,
-                   u_creator.role_id AS creator_role_id,
-                   u_ph.full_name AS ph_name,
-                   u_qc.full_name AS qc_name,
-                   u_op.full_name AS op_name,
-                   pr.project_id, p.name AS project_name,
-                   v.id AS vendor_id, v.name AS vendor_name, v.company_name AS vendor_company,
-                   (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM purchase_order_items WHERE purchase_order_id = po.id) AS total_amount,
-                   COALESCE((SELECT SUM(cft.amount_paid) 
-                             FROM con_financial_transactions cft 
-                             JOIN vendor_payment_requests vpr ON vpr.id = cft.ref_id AND cft.ref_type = 'vendor_payment' 
-                             WHERE vpr.purchase_order_id = po.id), 0) AS total_paid,
-                   (SELECT COUNT(*) FROM vendor_payment_requests WHERE purchase_order_id = po.id) AS vpr_count
-            FROM purchase_orders po
-            JOIN purchase_requests pr ON pr.id = po.request_id
-            LEFT JOIN projects p ON p.id = pr.project_id
-            LEFT JOIN vendors v ON v.id = po.vendor_id
-            LEFT JOIN users u_creator ON u_creator.id = po.created_by
-            LEFT JOIN users u_ph ON u_ph.id = po.purchase_head_approved_by_id
-            LEFT JOIN users u_qc ON u_qc.id = po.qc_approved_by_id
-            LEFT JOIN users u_op ON u_op.id = po.op_head_approved_by_id
-            WHERE po.qc_approved_by_id IS NOT NULL 
-              AND po.status != 'Cancelled'
-            ORDER BY po.id DESC
-        ");
-        if ($stmtPO) {
-            $stmtPO->execute();
-            $qcApprovedPOs = $stmtPO->get_result()->fetch_all(MYSQLI_ASSOC);
-        }
-
         $this->view('phase2/vendor-payment-requests/payment-lists', [
             'current_route'       => 'con-vendor-payment-requests',
             'page_title'          => 'Vendor Payment Requests',
             'requests'            => $requests,
-            'qc_approved_pos'     => $qcApprovedPOs,
+            'pagination'          => $pagination,
             'userRole'            => $this->userRole,
             'canProcessPayment'   => $this->canProcessPayment(),
             'canApprove'          => $this->canApprove(),
