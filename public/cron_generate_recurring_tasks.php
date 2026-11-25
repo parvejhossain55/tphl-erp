@@ -39,13 +39,17 @@ function shouldRecurringTaskRunOnDate(array $task, string $targetDate): bool
         return false;
     }
 
-    // Anchor date is the root task's own scheduled/initial date.
-    // The root task itself represents the anchor date, so cron only spawns strictly after it.
-    $anchorRaw = !empty($task['deadline'])
-        ? $task['deadline']
-        : (!empty($task['start_date']) ? $task['start_date'] : ($task['created_at'] ?? ''));
-    $anchorDate = $anchorRaw !== '' ? substr((string)$anchorRaw, 0, 10) : '';
-    if ($anchorDate === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $anchorDate)) {
+    // Anchor date is the root task's start/creation date (falling back to deadline).
+    // Checking start_date / created_at before deadline ensures a future deadline does not block daily generation.
+    $anchorDate = '';
+    foreach ([$task['start_date'] ?? '', $task['created_at'] ?? '', $task['deadline'] ?? ''] as $candidate) {
+        $d = substr((string)$candidate, 0, 10);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d !== '0000-00-00') {
+            $anchorDate = $d;
+            break;
+        }
+    }
+    if ($anchorDate === '') {
         return false;
     }
 
@@ -55,7 +59,7 @@ function shouldRecurringTaskRunOnDate(array $task, string $targetDate): bool
 
     if (!empty($task['recurrence_end_date'])) {
         $endDate = substr((string)$task['recurrence_end_date'], 0, 10);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate) && $targetDate > $endDate) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate) && $endDate !== '0000-00-00' && $targetDate > $endDate) {
             return false;
         }
     }
@@ -138,7 +142,8 @@ function resetRecurringChecklist(?string $checklistJson): ?string
 }
 
 // Allow including this file in unit/CLI checks without running the HTTP/DB entrypoint.
-if (realpath(__FILE__) !== realpath($_SERVER['SCRIPT_FILENAME'] ?? '')) {
+$scriptFile = $_SERVER['SCRIPT_FILENAME'] ?? '';
+if ($scriptFile !== '' && realpath($scriptFile) !== false && realpath(__FILE__) !== realpath($scriptFile)) {
     return;
 }
 
@@ -149,12 +154,13 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
-$isCli = (PHP_SAPI === 'cli');
+$isHttp = !empty($_SERVER['REQUEST_METHOD']) && PHP_SAPI !== 'cli';
+$cliArgs = (isset($argv) && is_array($argv)) ? $argv : [];
 $expectedToken = 'TphlSecretCron2026';
-$providedToken = $isCli ? ($argv[1] ?? '') : ($_GET['token'] ?? '');
+$providedToken = (string)($_GET['token'] ?? ($cliArgs[1] ?? ''));
 
-if (!hash_equals($expectedToken, (string)$providedToken)) {
-    if (!$isCli) {
+if (!hash_equals($expectedToken, $providedToken)) {
+    if ($isHttp) {
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');
     }
@@ -165,24 +171,23 @@ if (!hash_equals($expectedToken, (string)$providedToken)) {
 $targetDate = date('Y-m-d');
 $dryRun = false;
 
-if ($isCli) {
-    foreach (array_slice($argv, 2) as $arg) {
-        if ($arg === '--dry-run') {
-            $dryRun = true;
-        } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $arg)) {
-            $targetDate = $arg;
-        }
+foreach (array_slice($cliArgs, 2) as $arg) {
+    if ($arg === '--dry-run') {
+        $dryRun = true;
+    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$arg)) {
+        $targetDate = (string)$arg;
     }
-} else {
-    if (!empty($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date'])) {
-        $targetDate = $_GET['date'];
-    }
-    $dryRun = !empty($_GET['dry_run']);
+}
+if (!empty($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$_GET['date'])) {
+    $targetDate = (string)$_GET['date'];
+}
+if (!empty($_GET['dry_run'])) {
+    $dryRun = true;
 }
 
 // Friday is weekly off (5 = Friday) — skip before touching DB
 if ((int)date('w', strtotime($targetDate)) === 5) {
-    if (!$isCli) {
+    if ($isHttp) {
         header('Content-Type: application/json; charset=utf-8');
     }
     echo json_encode([
@@ -213,7 +218,7 @@ $sql = "
 
 $stFetch = $db->prepare($sql);
 if (!$stFetch) {
-    if (!$isCli) {
+    if ($isHttp) {
         http_response_code(500);
         header('Content-Type: application/json; charset=utf-8');
     }
@@ -244,6 +249,7 @@ $summary = [
     'skipped_existing' => 0,
     'created_task_ids' => [],
     'matched_root_ids' => [],
+    'errors' => [],
 ];
 
 $insertSql = "
@@ -275,7 +281,7 @@ $stNotif = $dryRun ? null : $db->prepare("
 ");
 
 if (!$dryRun && !$stInsert) {
-    if (!$isCli) {
+    if ($isHttp) {
         http_response_code(500);
         header('Content-Type: application/json; charset=utf-8');
     }
@@ -343,7 +349,14 @@ foreach ($roots as $root) {
         $targetDate
     );
 
-    if ($stInsert->execute()) {
+    try {
+        $executed = $stInsert->execute();
+    } catch (\Throwable $e) {
+        $executed = false;
+        $summary['errors'][] = "Root T-{$rootId}: " . $e->getMessage();
+    }
+
+    if ($executed) {
         if ($stInsert->affected_rows > 0) {
             $newTaskId = (int)$stInsert->insert_id;
             $summary['tasks_created']++;
@@ -379,6 +392,8 @@ foreach ($roots as $root) {
         } else {
             $summary['skipped_existing']++;
         }
+    } elseif ($stInsert->error !== '') {
+        $summary['errors'][] = "Root T-{$rootId}: " . $stInsert->error;
     }
 }
 
@@ -386,7 +401,7 @@ if ($stInsert) $stInsert->close();
 if ($stActivity) $stActivity->close();
 if ($stNotif) $stNotif->close();
 
-if (!$isCli) {
+if ($isHttp) {
     header('Content-Type: application/json; charset=utf-8');
 }
 echo json_encode($summary, JSON_UNESCAPED_UNICODE) . PHP_EOL;
