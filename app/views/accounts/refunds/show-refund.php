@@ -45,16 +45,10 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             <a href="<?= $base_url ?>/print-debit-voucher?module=client_refund_requests&id=<?= $refund['id'] ?>" target="_blank" class="btn btn-primary btn-sm fw-semibold shadow-sm">
                 <i class="fa-solid fa-file-invoice-dollar me-1"></i> Debit Voucher (Company)
             </a>
-            <button type="button" class="btn btn-outline-success btn-sm fw-semibold shadow-sm" onclick="openReceiptModal()">
-                <i class="fa-solid fa-eye me-1"></i> View Client Receipt
-            </button>
             <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-success btn-sm fw-semibold shadow-sm">
                 <i class="fa-solid fa-print me-1"></i> Print Client Receipt
             </a>
         <?php elseif ($isApproved): ?>
-            <button type="button" class="btn btn-outline-success btn-sm fw-semibold shadow-sm" onclick="openReceiptModal()">
-                <i class="fa-solid fa-eye me-1"></i> View Receipt
-            </button>
             <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-success btn-sm fw-semibold shadow-sm">
                 <i class="fa-solid fa-print me-1"></i> Print Receipt
             </a>
@@ -110,13 +104,10 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 Client &amp; Office Copy Money Receipt has been generated with complete approval history &amp; signatures.
                             </div>
                         </div>
-                        <div class="col-md-5 text-md-end mt-2 mt-md-0 d-flex flex-wrap gap-2 justify-content-md-end">
+                        <div class="col-md-5 text-md-end mt-2 mt-md-0 d-flex gap-2 justify-content-md-end align-items-center">
                             <a href="<?= $base_url ?>/print-debit-voucher?module=client_refund_requests&id=<?= $refund['id'] ?>" target="_blank" class="btn btn-sm btn-primary fw-bold shadow-sm">
                                 <i class="fa-solid fa-file-invoice-dollar me-1"></i> Debit Voucher (Company)
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline-success fw-bold shadow-sm" onclick="openReceiptModal()">
-                                <i class="fa-solid fa-eye me-1"></i> View Client Receipt
-                            </button>
                             <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-sm btn-success fw-bold shadow-sm">
                                 <i class="fa-solid fa-print me-1"></i> Print Client Receipt
                             </a>
@@ -349,12 +340,8 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 <i class="fa-solid fa-triangle-exclamation fs-14"></i>
                             </div>
                             <div style="font-size: 12px; line-height: 1.5; color: #78350f;">
-                                <strong>Cash-In Verification Required:</strong> Total verified paid is currently <strong>৳ 0.00</strong> because client payment is awaiting accounts verification. 
-                                <?php if ($isAccountsRole): ?>
-                                    Click <strong>Verify Cash-In</strong> in the table below to verify it directly and enable company retention deduction.
-                                <?php else: ?>
-                                    Accounts department will verify this payment to enable company retention deduction.
-                                <?php endif; ?>
+                                <strong>Cash-In Verification Required:</strong> Total verified paid is currently <strong>৳ <?= number_format($refund['total_paid'], 2) ?></strong> because client payment is awaiting verification. 
+                                Click <strong>Verify Cash-In</strong> in the table below to verify it directly and enable accurate company retention deduction.
                             </div>
                         </div>
                     </div>
@@ -371,9 +358,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     <th class="py-2 px-3 text-center">Method</th>
                                     <th class="py-2 px-3 text-center">Status</th>
                                     <th class="py-2 px-3">By</th>
-                                    <?php if ($isAccountsRole): ?>
                                     <th class="py-2 px-3 text-center" style="width: 140px;">Action</th>
-                                    <?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody style="font-size: 12.5px;">
@@ -405,7 +390,6 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <?php endif; ?>
                                     </td>
                                     <td class="py-2.5 px-3 text-muted"><?= htmlspecialchars($pay['created_by_name'] ?? '—') ?></td>
-                                    <?php if ($isAccountsRole): ?>
                                     <td class="py-2.5 px-3 text-center">
                                         <?php if ($isPayPending): ?>
                                             <button type="button" class="btn btn-sm btn-success fw-bold py-1 px-2.5 shadow-sm d-inline-flex align-items-center gap-1"
@@ -417,7 +401,6 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             <span class="text-success small fw-semibold"><i class="fa-solid fa-check-circle me-1"></i>Verified</span>
                                         <?php endif; ?>
                                     </td>
-                                    <?php endif; ?>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -921,6 +904,15 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mt-2 mb-3 text-secondary" style="font-size: 12.5px; line-height: 1.6;">
                         <span class="fw-semibold text-dark d-block mb-1">Action for Accounts Department:</span>
                         Approved by Management. Now disburse refund payment with voucher/cheque attachment.
+                        <?php 
+                        $mgmtApprovalNote = !empty($arData['approval_note']) ? trim($arData['approval_note']) : (!empty($approvalReq['approval_note']) ? trim($approvalReq['approval_note']) : '');
+                        if (!empty($mgmtApprovalNote) && strtolower($mgmtApprovalNote) !== 'approved'): 
+                        ?>
+                            <div class="mt-2 pt-2 border-top text-dark fw-normal" style="font-size: 11.5px; background: #f8fafc; padding: 7px 10px; border-radius: 4px; border-left: 3px solid #16a34a;">
+                                <div class="text-muted fs-11 fw-semibold mb-0.5"><i class="bi bi-chat-quote me-1 text-success"></i>Management Approval Note:</div>
+                                <span class="fst-italic text-secondary"><?= htmlspecialchars($mgmtApprovalNote) ?></span>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <button type="button" class="btn btn-success w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#disburseRefundModal">
                         <i class="bi bi-cash-stack fs-6"></i> Pay Refund (with Attachment)
@@ -1552,37 +1544,6 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Receipt Preview Modal (Customer Copy & Office Copy) -->
-<div class="modal fade" id="receiptPreviewModal" tabindex="-1" aria-labelledby="receiptPreviewModalLabel" aria-hidden="true" style="z-index: 1070;">
-    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 950px;">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
-            <div class="modal-header bg-success text-white py-2.5 px-3 border-0">
-                <h5 class="modal-title fs-15 fw-bold text-white d-flex align-items-center" id="receiptPreviewModalLabel">
-                    <i class="fa-solid fa-receipt me-2"></i>Refund Money Receipt Preview (#<?= $refund['id'] ?>)
-                </h5>
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-light btn-sm fw-bold px-3 shadow-sm text-success" onclick="printReceiptIframe()">
-                        <i class="fa-solid fa-print me-1"></i> Print Receipt
-                    </button>
-                    <a href="<?= $base_url ?>/client-refund-receipt/<?= $refund['id'] ?>" target="_blank" class="btn btn-outline-light btn-sm" title="Open in new window">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                    </a>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-            </div>
-            <div class="modal-body p-0" style="background: #f1f5f9; height: 75vh;">
-                <iframe id="receiptPreviewIframe" src="about:blank" style="width: 100%; height: 100%; border: none; background: #ffffff;"></iframe>
-            </div>
-            <div class="modal-footer bg-white py-2 px-3 border-top d-flex justify-content-between">
-                <div class="text-muted small">
-                    <i class="fa-solid fa-circle-check text-success me-1"></i>Official 2-Part Voucher (Customer Copy &amp; Office Copy with complete audit signatures)
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const totalPaid = <?= json_encode((float)($refund['total_paid'] ?? 0)) ?>;
@@ -1730,41 +1691,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-
-    // Auto-open receipt modal if URL contains ?receipt=1
-    if (new URLSearchParams(window.location.search).get('receipt') === '1') {
-        setTimeout(function() {
-            openReceiptModal();
-        }, 500);
-    }
 });
-
-// =============================================================================
-// Receipt Preview & Print Functions
-// =============================================================================
-const receiptUrl = '<?= $base_url ?>/client-refund-receipt/<?= (int)$refund['id'] ?>';
-
-function openReceiptModal() {
-    const iframe = document.getElementById('receiptPreviewIframe');
-    if (iframe && (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes('client-refund-receipt'))) {
-        iframe.src = receiptUrl;
-    }
-    const modalEl = document.getElementById('receiptPreviewModal');
-    if (modalEl) {
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
-    }
-}
-
-function printReceiptIframe() {
-    const iframe = document.getElementById('receiptPreviewIframe');
-    if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-    } else {
-        window.open(receiptUrl, '_blank');
-    }
-}
 
 // =============================================================================
 // Direct Cash-In Payment Verification from Refund Page
