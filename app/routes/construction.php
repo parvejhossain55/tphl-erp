@@ -636,6 +636,8 @@ return [
     'asset-products/delete' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'deleteProduct'],
     'office-assets/repair-requisition/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeRepairRequisition'],
     'asset-extra-purchases' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'extraPurchases'],
+    'asset-extra-purchase/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'viewExtraPurchase'],
+    'asset-extra-purchases/view/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'viewExtraPurchase'],
     'asset-extra-purchases/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeExtraPurchase'],
     'asset-extra-purchases/approve/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'approveExtraPurchase'],
     'asset-extra-purchases/delete/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'deleteExtraPurchase'],

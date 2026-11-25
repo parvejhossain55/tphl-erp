@@ -186,7 +186,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <th class="text-center">Management</th>
                                 <th class="text-center">Payment</th>
                                 <th>Overall</th>
-                                <th class="text-center no-print" style="width:130px">Action</th>
+                                <th class="text-center no-print text-nowrap" style="min-width:140px; white-space:nowrap;">Action</th>
                             </tr>
                         </thead>
                         <tbody class="table__body">
@@ -463,8 +463,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 </span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="text-center no-print">
-                                            <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                                        <td class="text-center no-print text-nowrap" style="white-space:nowrap;">
+                                            <div class="d-inline-flex align-items-center justify-content-center gap-1 flex-nowrap">
                                                 <?php
                                                 $isCreator = (int)$r['requested_by'] === $userId;
                                                 $reportingBossId = (int)($r['reporting_user_id'] ?? $r['requester_reporting_boss_id'] ?? 0);
@@ -534,13 +534,10 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $r['can_confirm_purchase'] = $canConfirmPurchase;
                                                 ?>
 
-                                                <!-- Always show View button -->
-                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="View"
-                                                    data-id="<?= $r['id'] ?>"
-                                                    data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
-                                                    onclick="openDetailModal(this)">
+                                                <!-- Always show View button: opens dedicated view page -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchase/<?= $r['id'] ?>" class="btn btn-sm btn-outline-secondary btn-icon" title="View Details Page">
                                                     <i class="fa-solid fa-eye"></i>
-                                                </button>
+                                                </a>
 
                                                 <?php if ($r['payment_status'] === 'paid' || in_array($r['overall_status'], ['paid', 'purchased'])): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=extra_purchase&cashout_request_id=<?= $r['id'] ?>&project_id=<?= $r['project_id'] ?? '' ?>" class="btn btn-sm btn-outline-warning btn-icon" title="Settlement / Adjustment">
@@ -618,7 +615,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-12">
                             <label class="form-label mb-1">Department</label>
                             <select name="department_id" class="form-select">
@@ -1350,7 +1347,7 @@ function renderDetailModal(data) {
                             ${isOver10K ? '> ৳10,000 Flow (DCEO / Mgmt Required)' : '≤ ৳10,000 Flow'}
                         </span>
                     </div>
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-sm-6">
                             <div class="detail-label">Project</div>
                             <div class="detail-value"><i class="fa-solid fa-building text-primary me-1 fs-11"></i>${data.project_name || '—'}</div>
@@ -1909,7 +1906,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 order: [], // Preserve SQL order (pea.id DESC)
                 columnDefs: [
                     { orderable: false, searchable: false, targets: 0 },  // # serial column
-                    { orderable: false, searchable: false, targets: -1 } // Actions column
+                    { orderable: false, searchable: false, className: 'text-nowrap', targets: -1 } // Actions column
                 ],
                 language: {
                     search: "_INPUT_",
