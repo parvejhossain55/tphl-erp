@@ -7,7 +7,7 @@ $companyBanks        = $companyBanks ?? [];
 $allBangladeshBanks  = $allBangladeshBanks ?? [];
 $filters             = $filters ?? [];
 $page                = $page ?? 1;
-$perPage             = $perPage ?? 15;
+$perPage             = $perPage ?? 'all';
 $totalRecords        = $totalRecords ?? count($refunds);
 $totalPages          = $totalPages ?? 1;
 $canCreate           = $canCreate ?? false;
@@ -26,8 +26,8 @@ $statusMap = [
 /* Client Refund Report — Clean & Minimal UI */
 .refund-kpi-grid {
     display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 14px !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 12px !important;
     width: 100% !important;
 }
 .refund-kpi-grid::before,
@@ -39,7 +39,12 @@ $statusMap = [
     min-width: 0 !important;
     width: 100% !important;
 }
-@media (max-width: 1199.98px) {
+@media (max-width: 1399.98px) {
+    .refund-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+@media (max-width: 991.98px) {
     .refund-kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
@@ -50,15 +55,34 @@ $statusMap = [
     }
 }
 .refund-kpi-card {
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
     border-radius: 12px;
     border: 1px solid #e2e8f0;
     background: #fff;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    cursor: pointer;
+    user-select: none;
 }
 .refund-kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    border-color: #cbd5e1;
+}
+.refund-kpi-card.active-card {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25), 0 4px 12px rgba(59, 130, 246, 0.1) !important;
+}
+.refund-kpi-card.active-card.pending-card {
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25), 0 4px 12px rgba(245, 158, 11, 0.12) !important;
+}
+.refund-kpi-card.active-card.paid-card {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 4px 12px rgba(16, 185, 129, 0.12) !important;
+}
+.refund-kpi-card.active-card.rejected-card {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25), 0 4px 12px rgba(239, 68, 68, 0.12) !important;
 }
 .refund-kpi-label {
     font-size: 11px;
@@ -515,9 +539,9 @@ $statusMap = [
     <!-- ========================================================================= -->
     <div class="d-print-none mb-3">
         <div class="refund-kpi-grid" id="kpiStatsRow">
-        <!-- 1. Total Refund Amount -->
+        <!-- 1. Total Refund Amount (All Cases) -->
         <div>
-            <div class="card refund-kpi-card h-100 mb-0">
+            <div class="card refund-kpi-card h-100 mb-0 active-card" id="cardTotalRefund" onclick="filterByStatus('all')" title="Click to view All refunds">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-start justify-content-between gap-2">
                         <div class="min-w-0">
@@ -525,8 +549,9 @@ $statusMap = [
                             <div class="refund-kpi-value mt-1 mb-1" id="kpiTotalRefund">
                                 ৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?>
                             </div>
-                            <div class="refund-kpi-meta">
+                            <div class="refund-kpi-meta d-flex align-items-center gap-1">
                                 <span class="fw-semibold text-primary" id="kpiTotalRefundCount"><?= number_format($summaryStats['active_count'] ?? 0) ?> Cases</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-10 px-1 py-0.5" style="border-radius:4px;"><i class="fa-light fa-list-check me-0.5"></i>All</span>
                             </div>
                         </div>
                         <div class="kpi-icon-wrap kpi-icon-blue">
@@ -537,9 +562,32 @@ $statusMap = [
             </div>
         </div>
 
-        <!-- 2. Total Retention Amount -->
+        <!-- 2. Pending Refund (Clickable Filter Card) -->
         <div>
-            <div class="card refund-kpi-card h-100 mb-0">
+            <div class="card refund-kpi-card h-100 mb-0 pending-card" id="cardPendingRefund" onclick="filterByStatus('pending')" title="Click to view only Pending refunds">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="min-w-0">
+                            <div class="refund-kpi-label text-warning">Pending Refund</div>
+                            <div class="refund-kpi-value mt-1 mb-1 text-warning" id="kpiPendingRefund">
+                                ৳ <?= number_format($summaryStats['pending_refund_amount'] ?? 0, 2) ?>
+                            </div>
+                            <div class="refund-kpi-meta d-flex align-items-center gap-1">
+                                <span class="fw-semibold text-warning" id="kpiPendingCount"><?= number_format($summaryStats['pending_count'] ?? 0) ?> Cases</span>
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-10 px-1 py-0.5" style="border-radius:4px;"><i class="fa-light fa-filter me-0.5"></i>Filter</span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-wrap kpi-icon-amber">
+                            <i class="fa-solid fa-clock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Total Retention Amount -->
+        <div>
+            <div class="card refund-kpi-card h-100 mb-0" id="cardTotalRetention">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-start justify-content-between gap-2">
                         <div class="min-w-0">
@@ -559,9 +607,9 @@ $statusMap = [
             </div>
         </div>
 
-        <!-- 3. Total Refunded / Paid Amount -->
+        <!-- 4. Total Refunded / Paid Amount (Clickable Filter Card) -->
         <div>
-            <div class="card refund-kpi-card h-100 mb-0">
+            <div class="card refund-kpi-card h-100 mb-0 paid-card" id="cardPaidRefund" onclick="filterByStatus('refunded')" title="Click to view only Paid refunds">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-start justify-content-between gap-2">
                         <div class="min-w-0">
@@ -569,8 +617,9 @@ $statusMap = [
                             <div class="refund-kpi-value mt-1 mb-1" id="kpiTotalDisbursed">
                                 ৳ <?= number_format($summaryStats['total_refunded_paid'] ?? 0, 2) ?>
                             </div>
-                            <div class="refund-kpi-meta">
+                            <div class="refund-kpi-meta d-flex align-items-center gap-1">
                                 <span class="fw-semibold text-success" id="kpiPaidCount"><?= number_format($summaryStats['refunded_count'] ?? 0) ?> Cases</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle fs-10 px-1 py-0.5" style="border-radius:4px;"><i class="fa-light fa-filter me-0.5"></i>Filter</span>
                             </div>
                         </div>
                         <div class="kpi-icon-wrap kpi-icon-green">
@@ -581,9 +630,9 @@ $statusMap = [
             </div>
         </div>
 
-        <!-- 4. Total Rejected Amount -->
+        <!-- 5. Total Rejected Amount (Clickable Filter Card) -->
         <div>
-            <div class="card refund-kpi-card h-100 mb-0">
+            <div class="card refund-kpi-card h-100 mb-0 rejected-card" id="cardRejectedRefund" onclick="filterByStatus('rejected')" title="Click to view Rejected refunds">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-start justify-content-between gap-2">
                         <div class="min-w-0">
@@ -591,8 +640,9 @@ $statusMap = [
                             <div class="refund-kpi-value mt-1 mb-1" id="kpiRejectedAmount">
                                 ৳ <?= number_format($summaryStats['rejected_amount'] ?? 0, 2) ?>
                             </div>
-                            <div class="refund-kpi-meta">
+                            <div class="refund-kpi-meta d-flex align-items-center gap-1">
                                 <span class="fw-semibold text-danger" id="kpiRejectedCount"><?= number_format($summaryStats['rejected_count'] ?? 0) ?> Cases</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-10 px-1 py-0.5" style="border-radius:4px;"><i class="fa-light fa-filter me-0.5"></i>Filter</span>
                             </div>
                         </div>
                         <div class="kpi-icon-wrap kpi-icon-red">
@@ -638,7 +688,7 @@ $statusMap = [
                 <!-- Status Select -->
                 <div>
                     <label class="rf-label" for="filterStatus">Status</label>
-                    <select id="filterStatus" name="status" class="form-select form-select-sm" onchange="applyFilters(1)">
+                    <select id="filterStatus" name="status" class="form-select form-select-sm" onchange="updateCardActiveState(this.value); applyFilters(1)">
                         <option value="all">All Statuses</option>
                         <option value="pending" <?= (!empty($filters['status']) && $filters['status'] === 'pending') ? 'selected' : '' ?>>Pending</option>
                         <option value="approved" <?= (!empty($filters['status']) && $filters['status'] === 'approved') ? 'selected' : '' ?>>Approved</option>
@@ -657,11 +707,11 @@ $statusMap = [
                     </div>
                 </div>
 
-                <!-- Per Page -->
+                <!-- Per Page (Default: All Rows) -->
                 <div>
                     <label class="rf-label" for="filterPerPage">Show</label>
                     <select id="filterPerPage" name="per_page" class="form-select form-select-sm" onchange="applyFilters(1)">
-                        <option value="10" <?= $perPage == 10 ? 'selected' : '' ?>>10</option>
+                        <option value="all" <?= ($perPage === 'all' || $perPage >= 1000) ? 'selected' : '' ?>>All Rows</option>
                         <option value="15" <?= $perPage == 15 ? 'selected' : '' ?>>15</option>
                         <option value="25" <?= $perPage == 25 ? 'selected' : '' ?>>25</option>
                         <option value="50" <?= $perPage == 50 ? 'selected' : '' ?>>50</option>
@@ -703,7 +753,11 @@ $statusMap = [
                 </span>
             </div>
             <div class="fs-12 text-muted" id="paginationSummaryText">
-                Showing <?= min(1, $totalRecords) ?>–<?= min($perPage, $totalRecords) ?> of <?= $totalRecords ?>
+                <?php if ($perPage === 'all' || !is_numeric($perPage) || (int)$perPage >= $totalRecords || $totalPages <= 1): ?>
+                    Showing all <?= $totalRecords ?> entries
+                <?php else: ?>
+                    Showing <?= min(1, $totalRecords) ?>–<?= min((int)$perPage, $totalRecords) ?> of <?= $totalRecords ?> entries
+                <?php endif; ?>
             </div>
         </div>
 
@@ -713,15 +767,15 @@ $statusMap = [
                     <thead>
                         <tr>
                             <th style="width: 44px;" class="text-center">#</th>
-                            <th style="min-width: 210px;">Client &amp; Note</th>
-                            <th style="min-width: 170px;">Project &amp; Flat</th>
+                            <th style="min-width: 145px;">Requested By</th>
+                            <th style="min-width: 200px;">Client &amp; Note</th>
+                            <th style="min-width: 165px;">Project &amp; Flat</th>
                             <th style="min-width: 115px;" class="text-end">Total Paid</th>
                             <th style="min-width: 110px;" class="text-end">Retention</th>
                             <th style="min-width: 120px;" class="text-end">Net Refund</th>
                             <th style="min-width: 110px;" class="text-center">Status</th>
-                            <th style="min-width: 140px;">Requested By</th>
                             <th style="min-width: 130px;">Approved By</th>
-                            <th style="width: 130px;" class="text-center col-action d-print-none">Action</th>
+                            <th style="min-width: 190px;" class="text-center col-action d-print-none">Action</th>
                         </tr>
                     </thead>
                     <tbody id="refundTableBody">
@@ -738,10 +792,18 @@ $statusMap = [
                         <?php else: ?>
                             <?php foreach ($refunds as $idx => $r): 
                                 $sInfo = $statusMap[$r['status']] ?? ['label' => ucfirst($r['status']), 'class' => 'refund-badge bg-light text-secondary', 'icon' => 'fa-circle-info'];
-                                $rowNum = ($page - 1) * $perPage + $idx + 1;
+                                $isAllRows = ($perPage === 'all' || !is_numeric($perPage));
+                                $perPageNum = $isAllRows ? count($refunds) : (int)$perPage;
+                                $rowNum = $isAllRows ? ($idx + 1) : (($page - 1) * $perPageNum + $idx + 1);
                             ?>
                             <tr id="refund-row-<?= $r['id'] ?>">
                                 <td class="text-center text-muted font-monospace fs-12"><?= $rowNum ?></td>
+                                <td class="fs-12 text-nowrap">
+                                    <div class="fw-semibold text-dark"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></div>
+                                    <span class="text-muted fs-11 d-block mt-0.5">
+                                        <?= !empty($r['created_at']) ? date('d M Y, h:i A', strtotime($r['created_at'])) : '—' ?>
+                                    </span>
+                                </td>
                                 <td class="client-name-cell">
                                     <div class="fw-semibold text-dark fs-13"><?= htmlspecialchars($r['client_name'] ?? '—') ?></div>
                                     <?php if (!empty($r['client_phone'])): ?>
@@ -785,15 +847,9 @@ $statusMap = [
                                     </span>
                                 </td>
                                 <td class="fs-12">
-                                    <div class="fw-medium text-dark"><?= htmlspecialchars($r['requested_by_name'] ?? '—') ?></div>
-                                    <span class="text-muted fs-11 d-block">
-                                        <?= !empty($r['created_at']) ? date('d M Y, h:i A', strtotime($r['created_at'])) : '—' ?>
-                                    </span>
-                                </td>
-                                <td class="fs-12">
                                     <?php if (!empty($r['approved_by_name'])): ?>
                                         <div class="fw-medium text-dark"><?= htmlspecialchars($r['approved_by_name']) ?></div>
-                                        <span class="text-muted fs-11 d-block">
+                                        <span class="text-muted fs-11 d-block mt-0.5">
                                             <?= !empty($r['approved_at']) ? date('d M Y, h:i A', strtotime($r['approved_at'])) : '—' ?>
                                         </span>
                                     <?php else: ?>
@@ -801,44 +857,41 @@ $statusMap = [
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center text-nowrap col-action d-print-none">
-                                    <div class="d-inline-flex flex-column gap-1 align-items-stretch" style="min-width: 110px;">
-                                        <div class="d-flex justify-content-center gap-1">
-                                            <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-xs btn-outline-primary py-1 px-2 flex-grow-1" title="View Details">
-                                                <i class="fa-light fa-eye"></i> View
+                                    <div class="d-inline-flex align-items-center justify-content-center gap-1 text-nowrap">
+                                        <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-xs btn-outline-primary py-1 px-2" title="View Details">
+                                            <i class="fa-light fa-eye"></i> View
+                                        </a>
+                                        <?php if (in_array($r['status'], ['approved', 'refunded'], true)): ?>
+                                            <a href="<?= $base_url ?>/client-refund-receipt/<?= $r['id'] ?>" target="_blank" class="btn btn-xs btn-outline-success py-1 px-1.5" title="Print Refund Money Receipt">
+                                                <i class="fa-light fa-receipt"></i>
                                             </a>
-                                            <?php if (in_array($r['status'], ['approved', 'refunded'], true)): ?>
-                                                <a href="<?= $base_url ?>/client-refund-receipt/<?= $r['id'] ?>" target="_blank" class="btn btn-xs btn-outline-success py-1 px-1.5" title="Print Refund Money Receipt">
-                                                    <i class="fa-light fa-receipt"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                            <?php if ($r['status'] === 'pending' && in_array($userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37])): ?>
-                                                <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" 
-                                                        onclick="openQuickRetentionModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
-                                                        title="Cut Retention Amount or %">
-                                                    <i class="fa-light fa-scissors"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                            <?php if ($r['status'] === 'approved' && in_array($userRole, [1, 3, 6, 10, 30, 36])): ?>
-                                                <button type="button" class="btn btn-xs btn-success py-1 px-2 text-white" 
-                                                        onclick="openQuickPayModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
-                                                        title="Disburse Payment">
-                                                    <i class="fa-light fa-money-bill-wave me-1"></i> Pay
-                                                </button>
-                                            <?php endif; ?>
-                                            <?php if ($r['status'] === 'pending' && $r['requested_by'] == $currentUserId): ?>
-                                                <form action="<?= $base_url ?>/client-refund-delete/<?= $r['id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Delete this refund request?');">
-                                                    <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5" title="Delete">
-                                                        <i class="fa-light fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                        </div>
+                                        <?php endif; ?>
+                                        <?php if ($r['status'] === 'approved' && in_array($userRole, [1, 3, 6, 10, 30, 36])): ?>
+                                            <button type="button" class="btn btn-xs btn-success py-1 px-2 text-white" 
+                                                    onclick="openQuickPayModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
+                                                    title="Disburse Payment">
+                                                <i class="fa-light fa-money-bill-wave me-1"></i> Pay
+                                            </button>
+                                        <?php elseif ($r['status'] === 'pending' && in_array($userRole, [1, 3, 6, 7, 9, 10, 20, 30, 33, 37])): ?>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary py-1 px-2" 
+                                                    onclick="openQuickRetentionModal(<?= htmlspecialchars(json_encode($r), ENT_QUOTES, 'UTF-8') ?>)" 
+                                                    title="Cut Retention Amount or %">
+                                                <i class="fa-light fa-scissors"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if (!empty($r['booking_id'])): ?>
                                             <a href="<?= $base_url ?>/clients-cash-in-history/<?= (int)$r['booking_id'] ?>" target="_blank"
                                                class="btn btn-xs btn-outline-dark py-1 px-2"
                                                title="Open Client Ledger & Verify Pending Payments">
                                                 <i class="fa-light fa-book-open me-1"></i> Ledger
                                             </a>
+                                        <?php endif; ?>
+                                        <?php if ($r['status'] === 'pending' && $r['requested_by'] == $currentUserId): ?>
+                                            <form action="<?= $base_url ?>/client-refund-delete/<?= $r['id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Delete this refund request?');">
+                                                <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5" title="Delete">
+                                                    <i class="fa-light fa-trash"></i>
+                                                </button>
+                                            </form>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -848,11 +901,11 @@ $statusMap = [
                     </tbody>
                     <tfoot class="fw-bold font-monospace">
                         <tr>
-                            <td colspan="3" class="text-end text-uppercase fs-11 text-muted">Total:</td>
+                            <td colspan="4" class="text-end text-uppercase fs-11 text-muted">Total:</td>
                             <td class="text-end amount-cell" id="tfootTotalPaid">৳ <?= number_format($summaryStats['total_verified_paid'] ?? 0, 2) ?></td>
                             <td class="text-end text-danger amount-cell" id="tfootTotalRetention">৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?></td>
                             <td class="text-end text-success amount-cell" id="tfootTotalRefund">৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?></td>
-                            <td colspan="3" class="text-center font-sans-serif fs-11 text-muted fw-normal">
+                            <td colspan="2" class="text-center font-sans-serif fs-11 text-muted fw-normal">
                                 <?= $summaryStats['total_requests'] ?? 0 ?> Cases (<?= $summaryStats['pending_count'] ?? 0 ?> Pending · <?= $summaryStats['approved_count'] ?? 0 ?> Approved · <?= $summaryStats['refunded_count'] ?? 0 ?> Paid)
                             </td>
                             <td class="col-action d-print-none"></td>
@@ -1144,19 +1197,51 @@ function filterByProject(projectId, pillEl) {
     applyFilters(1);
 }
 
+function filterByStatus(status) {
+    const statusSelect = document.getElementById('filterStatus');
+    if (!statusSelect) return;
+
+    if (statusSelect.value === status) {
+        statusSelect.value = 'all';
+    } else {
+        statusSelect.value = status;
+    }
+
+    updateCardActiveState(statusSelect.value);
+    applyFilters(1);
+}
+
+function updateCardActiveState(activeStatus) {
+    document.querySelectorAll('.refund-kpi-card').forEach(c => c.classList.remove('active-card'));
+    if (!activeStatus || activeStatus === 'all') {
+        const totalCard = document.getElementById('cardTotalRefund');
+        if (totalCard) totalCard.classList.add('active-card');
+    } else if (activeStatus === 'pending') {
+        const pendingCard = document.getElementById('cardPendingRefund');
+        if (pendingCard) pendingCard.classList.add('active-card');
+    } else if (activeStatus === 'refunded') {
+        const paidCard = document.getElementById('cardPaidRefund');
+        if (paidCard) paidCard.classList.add('active-card');
+    } else if (activeStatus === 'rejected') {
+        const rejCard = document.getElementById('cardRejectedRefund');
+        if (rejCard) rejCard.classList.add('active-card');
+    }
+}
+
 function resetFilters() {
     document.getElementById('filterSearch').value = '';
     document.getElementById('filterProject').value = 'all';
     document.getElementById('filterStatus').value = 'all';
     document.getElementById('filterDateFrom').value = '';
     document.getElementById('filterDateTo').value = '';
-    document.getElementById('filterPerPage').value = '15';
+    document.getElementById('filterPerPage').value = 'all';
     currentFilterProjectId = 'all';
 
     document.querySelectorAll('.project-track-pill').forEach(el => el.classList.remove('active'));
     const firstPill = document.querySelector('.project-track-pill');
     if (firstPill) firstPill.classList.add('active');
 
+    updateCardActiveState('all');
     applyFilters(1);
 }
 
@@ -1203,6 +1288,27 @@ function applyFilters(page = 1) {
     });
 }
 
+function formatDateTime(dtStr) {
+    if (!dtStr) return '—';
+    try {
+        const d = new Date(dtStr.replace(/-/g, '/'));
+        if (isNaN(d.getTime())) return dtStr;
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = months[d.getMonth()];
+        const year = d.getFullYear();
+        let hours = d.getHours();
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const strHours = String(hours).padStart(2, '0');
+        return `${day} ${month} ${year}, ${strHours}:${minutes} ${ampm}`;
+    } catch(e) {
+        return dtStr;
+    }
+}
+
 function renderTableRows(rows, page, perPage) {
     const tbody = document.getElementById('refundTableBody');
     if (!tbody) return;
@@ -1224,8 +1330,11 @@ function renderTableRows(rows, page, perPage) {
     let html = '';
     const accountsRoles = [1, 3, 6, 10, 30, 36];
 
+    const isAll = (perPage === 'all' || !perPage || isNaN(parseInt(perPage)));
+    const perPageNum = isAll ? rows.length : parseInt(perPage);
+
     rows.forEach((r, idx) => {
-        const rowNum = (page - 1) * perPage + idx + 1;
+        const rowNum = isAll ? (idx + 1) : ((page - 1) * perPageNum + idx + 1);
         const sInfo = statusMapJs[r.status] || { label: r.status, class: 'bg-secondary text-white', icon: 'fa-circle-info' };
         
         let clientPhoneHtml = r.client_phone ? `<div class="text-muted fs-11 mt-0.5"><i class="fa-light fa-phone me-1"></i>${escapeHtml(r.client_phone)}</div>` : '';
@@ -1234,7 +1343,7 @@ function renderTableRows(rows, page, perPage) {
         let floorHtml = r.floor_no ? `<span class="text-muted fs-11">(Floor ${escapeHtml(r.floor_no)})</span>` : '';
         let approverHtml = r.approved_by_name ? `
             <div class="fw-medium text-dark">${escapeHtml(r.approved_by_name)}</div>
-            <span class="text-muted fs-11 d-block">${r.approved_at || '—'}</span>` : '<span class="text-muted">—</span>';
+            <span class="text-muted fs-11 d-block mt-0.5">${formatDateTime(r.approved_at)}</span>` : '<span class="text-muted">—</span>';
 
         let retentionBtnHtml = '';
         const retentionRoles = [1, 3, 6, 7, 9, 10, 20, 30, 33, 37];
@@ -1284,6 +1393,10 @@ function renderTableRows(rows, page, perPage) {
         html += `
             <tr id="refund-row-${r.id}">
                 <td class="text-center text-muted font-monospace fs-12">${rowNum}</td>
+                <td class="fs-12 text-nowrap">
+                    <div class="fw-semibold text-dark">${escapeHtml(r.requested_by_name || '—')}</div>
+                    <span class="text-muted fs-11 d-block mt-0.5">${formatDateTime(r.created_at)}</span>
+                </td>
                 <td class="client-name-cell">
                     <div class="fw-semibold text-dark fs-13">${escapeHtml(r.client_name || '—')}</div>
                     ${clientPhoneHtml}
@@ -1309,23 +1422,17 @@ function renderTableRows(rows, page, perPage) {
                         <i class="fa-solid ${sInfo.icon}"></i>${sInfo.label}
                     </span>
                 </td>
-                <td class="fs-12">
-                    <div class="fw-medium text-dark">${escapeHtml(r.requested_by_name || '—')}</div>
-                    <span class="text-muted fs-11 d-block">${r.created_at || '—'}</span>
-                </td>
                 <td class="fs-12">${approverHtml}</td>
                 <td class="text-center text-nowrap col-action d-print-none">
-                    <div class="d-inline-flex flex-column gap-1 align-items-stretch" style="min-width: 110px;">
-                        <div class="d-flex justify-content-center gap-1">
-                            <a href="${baseUrl}/client-refund/${r.id}" class="btn btn-xs btn-outline-primary py-1 px-2 flex-grow-1" title="View Details">
-                                <i class="fa-light fa-eye"></i> View
-                            </a>
-                            ${receiptBtnHtml}
-                            ${retentionBtnHtml}
-                            ${payBtnHtml}
-                            ${deleteBtnHtml}
-                        </div>
+                    <div class="d-inline-flex align-items-center justify-content-center gap-1 text-nowrap">
+                        <a href="${baseUrl}/client-refund/${r.id}" class="btn btn-xs btn-outline-primary py-1 px-2" title="View Details">
+                            <i class="fa-light fa-eye"></i> View
+                        </a>
+                        ${receiptBtnHtml}
+                        ${payBtnHtml}
+                        ${retentionBtnHtml}
                         ${ledgerBtnHtml}
+                        ${deleteBtnHtml}
                     </div>
                 </td>
             </tr>`;
@@ -1347,17 +1454,28 @@ function renderPagination(page, totalPgs, totalRecs) {
     const totPageSpan = document.getElementById('totalPageNum');
     if (totPageSpan) totPageSpan.innerText = totalPages;
 
-    const perPage = parseInt(document.getElementById('filterPerPage')?.value || 15);
-    const start = totalRecs === 0 ? 0 : (page - 1) * perPage + 1;
-    const end   = Math.min(page * perPage, totalRecs);
+    const perPageVal = document.getElementById('filterPerPage')?.value;
+    const isAll = (perPageVal === 'all' || !perPageVal || isNaN(parseInt(perPageVal)));
+    const perPage = isAll ? totalRecs : parseInt(perPageVal);
+    const start = totalRecs === 0 ? 0 : (isAll ? 1 : (page - 1) * perPage + 1);
+    const end   = isAll ? totalRecs : Math.min(page * perPage, totalRecs);
 
     const summaryText = document.getElementById('paginationSummaryText');
     if (summaryText) {
-        summaryText.innerText = `Showing ${start} to ${end} of ${totalRecs} entries`;
+        if (isAll || totalPgs <= 1) {
+            summaryText.innerText = `Showing all ${totalRecs} entries`;
+        } else {
+            summaryText.innerText = `Showing ${start} to ${end} of ${totalRecs} entries`;
+        }
     }
 
     const container = document.getElementById('paginationControls');
     if (!container) return;
+
+    if (isAll || totalPgs <= 1) {
+        container.innerHTML = '';
+        return;
+    }
 
     let html = '';
 
@@ -1399,6 +1517,12 @@ function updateSummaryKpis(stats) {
     }
     if (document.getElementById('kpiTotalRefundCount')) {
         document.getElementById('kpiTotalRefundCount').innerText = (stats.active_count || 0) + ' Cases';
+    }
+    if (document.getElementById('kpiPendingRefund')) {
+        document.getElementById('kpiPendingRefund').innerText = '৳ ' + formatMoney(stats.pending_refund_amount || 0);
+    }
+    if (document.getElementById('kpiPendingCount')) {
+        document.getElementById('kpiPendingCount').innerText = (stats.pending_count || 0) + ' Cases';
     }
     if (document.getElementById('kpiTotalRetention')) {
         document.getElementById('kpiTotalRetention').innerText = '৳ ' + formatMoney(stats.total_retention);
@@ -1525,6 +1649,7 @@ function toggleModalFields(method) {
 
 // Initial pagination render on page load
 document.addEventListener('DOMContentLoaded', function() {
+    updateCardActiveState('<?= htmlspecialchars($filters['status'] ?? 'all') ?>');
     renderPagination(<?= (int)$page ?>, <?= (int)max(1, $totalPages) ?>, <?= (int)$totalRecords ?>);
 
     // Debounced search
@@ -1543,6 +1668,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('filterStatus')?.addEventListener('change', function() {
+        updateCardActiveState(this.value);
         applyFilters(1);
     });
 

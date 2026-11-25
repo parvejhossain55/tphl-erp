@@ -165,7 +165,12 @@ class ClientRefundController extends Controller
         ];
 
         $page = max(1, (int)($_GET['page'] ?? 1));
-        $perPage = max(5, min(100, (int)($_GET['per_page'] ?? 15)));
+        $perPageParam = $_GET['per_page'] ?? 'all';
+        if ($perPageParam === 'all' || $perPageParam === 'All' || empty($perPageParam)) {
+            $perPage = 10000;
+        } else {
+            $perPage = max(5, min(1000, (int)$perPageParam));
+        }
         $offset = ($page - 1) * $perPage;
 
         // Check if AJAX request
@@ -185,6 +190,8 @@ class ClientRefundController extends Controller
         $companyBanks = $this->db->query("SELECT id, bank_name, account_name, account_number FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
         $allBangladeshBanks = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
 
+        $displayPerPage = ($perPageParam === 'all' || $perPage >= 5000) ? 'all' : $perPage;
+
         if ($isAjax) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
@@ -192,7 +199,7 @@ class ClientRefundController extends Controller
                 'data'          => $refunds,
                 'total'         => $totalRecords,
                 'page'          => $page,
-                'per_page'      => $perPage,
+                'per_page'      => $displayPerPage,
                 'total_pages'   => $totalPages,
                 'summary_stats' => $summaryStats,
                 'user_role'     => $this->userRole,
@@ -208,7 +215,7 @@ class ClientRefundController extends Controller
             'refunds'             => $refunds,
             'totalRecords'        => $totalRecords,
             'page'                => $page,
-            'perPage'             => $perPage,
+            'perPage'             => $displayPerPage,
             'totalPages'          => $totalPages,
             'filters'             => $filters,
             'summaryStats'        => $summaryStats,
@@ -1173,7 +1180,7 @@ class ClientRefundController extends Controller
                     client_bank_branch = IF(? != '', ?, client_bank_branch),
                     client_bank_routing_no = IF(? != '', ?, client_bank_routing_no)
                 WHERE id = ?");
-            $upStmt->bind_param("sssssssssi", 
+            $upStmt->bind_param("sssssssssssi", 
                 $proofPath, 
                 $clientBankName, $clientBankName,
                 $bankAccountName, $bankAccountName,
@@ -1229,7 +1236,7 @@ class ClientRefundController extends Controller
 
         $redirectTo = !empty($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' 
             ? "{$GLOBALS['base_url']}/client-refunds" 
-            : "{$GLOBALS['base_url']}/client-refund/{$id}?receipt=1";
+            : "{$GLOBALS['base_url']}/client-refund/{$id}";
         header("Location: {$redirectTo}");
         exit;
     }

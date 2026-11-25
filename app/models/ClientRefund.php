@@ -66,11 +66,6 @@ class ClientRefund extends Model
             $where[] = "crr.project_id = " . (int)$filters['project_id'];
         }
 
-        if (!empty($filters['status']) && $filters['status'] !== 'all') {
-            $statusEsc = $this->db->real_escape_string(trim($filters['status']));
-            $where[] = "crr.status = '{$statusEsc}'";
-        }
-
         if (!empty($filters['date_from'])) {
             $fromEsc = $this->db->real_escape_string(trim($filters['date_from']));
             $where[] = "DATE(crr.created_at) >= '{$fromEsc}'";
@@ -93,7 +88,7 @@ class ClientRefund extends Model
 
         $whereClause = !empty($where) ? " WHERE " . implode(" AND ", $where) : "";
 
-        // 1. Overall / Filtered stats
+        // 1. Overall / Filtered stats (across all statuses so KPI cards serve as clickable filters)
         $statsSql = "SELECT 
                         COUNT(crr.id) AS total_requests,
                         SUM(CASE WHEN crr.status != 'rejected' THEN 1 ELSE 0 END) AS active_count,
@@ -109,7 +104,7 @@ class ClientRefund extends Model
                         COALESCE(SUM(CASE WHEN crr.status = 'rejected' THEN crr.refund_amount ELSE 0 END), 0) AS rejected_amount,
                         COALESCE(SUM(CASE WHEN crr.status = 'refunded' THEN crr.retention_amount ELSE 0 END), 0) AS refunded_retention,
                         COALESCE(SUM(CASE WHEN crr.status IN ('pending', 'approved') THEN crr.retention_amount ELSE 0 END), 0) AS pending_retention,
-                        COALESCE(SUM(CASE WHEN crr.status IN ('pending', 'approved') THEN crr.refund_amount ELSE 0 END), 0) AS pending_refund_amount,
+                        COALESCE(SUM(CASE WHEN crr.status = 'pending' THEN crr.refund_amount ELSE 0 END), 0) AS pending_refund_amount,
                         COALESCE(SUM(CASE WHEN crr.status = 'refunded' THEN crr.total_paid ELSE 0 END), 0) AS refunded_total_paid
                      FROM {$this->table} crr
                      LEFT JOIN leads    l ON l.id = crr.lead_id
