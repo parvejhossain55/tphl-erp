@@ -1844,6 +1844,7 @@ class MyWorkController extends Controller
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
                 'can_request_extension' => (!$isCompleted && (int)$t['assigned_by'] !== $userId && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
                 'can_check' => $canCheckChecklist,
+                'can_add_checklist' => (!$isCompleted && ($canCheckChecklist || (int)$t['assigned_by'] === $userId)),
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
                 'priority' => ucfirst($t['priority'] ?? 'medium'),
@@ -2668,6 +2669,137 @@ class MyWorkController extends Controller
                 'task_status' => $newStatus,
                 'all_completed' => $allDone,
                 'message' => $allDone ? 'All acceptance completed!' : 'Acceptance updated.'
+            ]);
+            exit;
+        } else {
+            $err = $stmt->error;
+            $stmt->close();
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $err]);
+            exit;
+        }
+    }
+
+    /**
+     * Append a new acceptance checklist item (Assignee / Collaborator / Owner)
+     */
+    public function addChecklistItem($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $id = (int)$id;
+
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT * FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        if ($task['status'] === 'completed') {
+            echo json_encode(['status' => 'error', 'message' => 'Cannot add checklist items to a completed task.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $canAdd = (
+            (int)$task['user_id'] === $userId ||
+            (int)$task['assigned_by'] === $userId ||
+            in_array($userId, $collabIds, true)
+        );
+        if (!$canAdd) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the assignee, collaborators, or task owner can add checklist items.']);
+            exit;
+        }
+
+        $text = trim((string)($_POST['text'] ?? ''));
+        if ($text === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Checklist item text is required.']);
+            exit;
+        }
+        if (mb_strlen($text) > 500) {
+            $text = mb_substr($text, 0, 500);
+        }
+
+        // Load existing checklist or reconstruct from description
+        $checklist = [];
+        $raw = $task['checklist_data'] ?? '';
+        if ($raw) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $checklist = $decoded;
+            }
+        }
+        if (empty($checklist)) {
+            $descRaw = (string)($task['description'] ?? '');
+            if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $matches)) {
+                foreach ($matches[1] as $idx => $m) {
+                    $itemText = trim(html_entity_decode(strip_tags($m)));
+                    if ($itemText !== '') {
+                        $checklist[] = [
+                            'id' => $idx + 1,
+                            'text' => $itemText,
+                            'completed' => false
+                        ];
+                    }
+                }
+            } elseif (trim(strip_tags($descRaw)) !== '') {
+                $checklist[] = [
+                    'id' => 1,
+                    'text' => trim(html_entity_decode(strip_tags($descRaw))),
+                    'completed' => false
+                ];
+            }
+        }
+
+        $maxId = 0;
+        foreach ($checklist as $ci) {
+            $cid = (int)($ci['id'] ?? 0);
+            if ($cid > $maxId) $maxId = $cid;
+        }
+        $checklist[] = [
+            'id' => $maxId + 1,
+            'text' => $text,
+            'completed' => false
+        ];
+
+        // Sync description HTML so edit drawer & exports stay consistent
+        $allTexts = array_values(array_filter(array_map(fn($ci) => trim((string)($ci['text'] ?? '')), $checklist), 'strlen'));
+        $description = count($allTexts) > 1
+            ? '<ul>' . implode('', array_map(fn($d) => '<li>' . htmlspecialchars($d) . '</li>', $allTexts)) . '</ul>'
+            : ($allTexts[0] ?? '');
+
+        $totalItems = count($checklist);
+        $completedItems = 0;
+        foreach ($checklist as $ci) {
+            if (!empty($ci['completed'])) $completedItems++;
+        }
+        $progress = $totalItems > 0 ? (int)round(($completedItems / $totalItems) * 100) : 0;
+
+        $jsonChecklist = json_encode($checklist, JSON_UNESCAPED_UNICODE);
+        $stmt = $this->db->prepare("UPDATE tasks SET checklist_data = ?, description = ?, progress = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ssii", $jsonChecklist, $description, $progress, $id);
+        if ($stmt->execute()) {
+            $stmt->close();
+            $this->logTaskActivity($id, $userId, 'system', "Added acceptance checklist item: \"{$text}\"");
+            echo json_encode([
+                'status' => 'success',
+                'task_id' => $id,
+                'checklist' => $checklist,
+                'progress' => $progress,
+                'message' => 'Checklist item added.'
             ]);
             exit;
         } else {

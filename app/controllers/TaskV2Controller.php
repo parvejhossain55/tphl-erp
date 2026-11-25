@@ -2069,14 +2069,155 @@ class TaskV2Controller extends Controller
             ];
         }
 
-        // 8. CSV Export
-        if (isset($_GET['export']) && $_GET['export'] === 'csv') {
-            header('Content-Type: text/csv; charset=utf-8');
-            header('Content-Disposition: attachment; filename=Team_Performance_Report_' . date('Y-m-d') . '.csv');
-            $output = fopen('php://output', 'w');
-            fputcsv($output, ['Team Member', 'Department', 'Designation', 'Total Tasks', 'Assigned', 'Self', 'Completed', 'Overdue', 'On-Time %', 'Completion Rate %', 'Performance Score', 'Trend']);
+        // 8. Excel (.xlsx) Export with merged Member/KPI cells & per-task rows
+        if (isset($_GET['export']) && in_array($_GET['export'], ['csv', 'excel'], true)) {
+            if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+                if (defined('BASE_PATH') && file_exists(BASE_PATH . '/vendor/autoload.php')) {
+                    require_once BASE_PATH . '/vendor/autoload.php';
+                } elseif (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
+                    require_once __DIR__ . '/../../vendor/autoload.php';
+                }
+            }
+
+            $exportUserIds = [];
             foreach ($filteredMembers as $fm) {
-                fputcsv($output, [
+                $uid = (int)($fm['user_id'] ?? 0);
+                if ($uid > 0) $exportUserIds[] = $uid;
+            }
+            $exportUserIds = array_values(array_unique($exportUserIds));
+
+            $tasksByUser = [];
+            if (!empty($exportUserIds)) {
+                $uidIn = implode(',', $exportUserIds);
+                $expWhere = "t.user_id IN ($uidIn)";
+                if (!empty($monthFilter) && $monthFilter !== 'all_time') {
+                    $mSafe = $this->db->real_escape_string($monthFilter);
+                    $expWhere .= " AND DATE_FORMAT(t.created_at, '%Y-%m') = '$mSafe'";
+                }
+                if ($projectFilter > 0) {
+                    $expWhere .= " AND t.todo_project_id = $projectFilter";
+                }
+                if ($typeFilter === 'assigned') {
+                    $expWhere .= " AND (t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id)";
+                } elseif ($typeFilter === 'self') {
+                    $expWhere .= " AND (t.assigned_by IS NULL OR t.assigned_by = t.user_id)";
+                }
+                if ($statusFilter === 'completed') {
+                    $expWhere .= " AND (t.status = 'completed' OR t.progress >= 100)";
+                } elseif ($statusFilter === 'in_progress') {
+                    $expWhere .= " AND (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.deadline IS NULL OR CONCAT(DATE(t.deadline), ' 23:59:59') >= NOW())";
+                } elseif ($statusFilter === 'overdue') {
+                    $expWhere .= " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline IS NOT NULL AND CONCAT(DATE(t.deadline), ' 23:59:59') < NOW()";
+                }
+
+                $expRes = $this->db->query("
+                    SELECT t.id, t.user_id, t.title, t.expected_output, t.description, t.checklist_data, t.status, t.priority, t.deadline
+                    FROM tasks t
+                    WHERE $expWhere
+                    ORDER BY t.user_id ASC, t.id DESC
+                ");
+                if ($expRes) {
+                    while ($tr = $expRes->fetch_assoc()) {
+                        $tasksByUser[(int)$tr['user_id']][] = $tr;
+                    }
+                }
+            }
+
+            $formatSingleTask = static function (array $t): array {
+                $code = 'T-' . (int)$t['id'];
+                $title = trim((string)($t['title'] ?? ''));
+
+                $expOut = trim(html_entity_decode(strip_tags((string)($t['expected_output'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $descClean = trim(html_entity_decode(strip_tags(str_replace(['</li>', '<br>', '<br/>', '<br />', '</p>'], "\n", (string)($t['description'] ?? ''))), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $descClean = trim((string)preg_replace('/\s+/', ' ', $descClean));
+                $descText = $expOut !== '' ? $expOut : $descClean;
+
+                // Parse checklist_data JSON, fallback to <li> items in description
+                $clTexts = [];
+                $rawCl = (string)($t['checklist_data'] ?? '');
+                if ($rawCl !== '') {
+                    $decoded = json_decode($rawCl, true);
+                    if (is_array($decoded)) {
+                        foreach ($decoded as $ci) {
+                            $ct = trim((string)($ci['text'] ?? ''));
+                            if ($ct !== '') {
+                                $clTexts[] = $ct;
+                            }
+                        }
+                    }
+                }
+                if (empty($clTexts)) {
+                    $descRaw = (string)($t['description'] ?? '');
+                    if (preg_match_all('/<li>(.*?)<\/li>/is', $descRaw, $m)) {
+                        foreach ($m[1] as $li) {
+                            $ct = trim(html_entity_decode(strip_tags($li), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                            if ($ct !== '') $clTexts[] = $ct;
+                        }
+                    } elseif ($descClean !== '') {
+                        $clTexts[] = $descClean;
+                    }
+                }
+                $clItems = [];
+                foreach ($clTexts as $clIdx => $ct) {
+                    $clItems[] = ($clIdx + 1) . '. ' . $ct;
+                }
+
+                $statusMap = ['pending' => 'To Do', 'in_progress' => 'In Progress', 'completed' => 'Completed', 'expired' => 'Expired'];
+                $statusLabel = $statusMap[$t['status'] ?? ''] ?? ucfirst((string)($t['status'] ?? ''));
+                $priorityLabel = ucfirst((string)($t['priority'] ?? 'medium'));
+                $deadlineLabel = !empty($t['deadline']) ? date('d M Y', strtotime((string)$t['deadline'])) : '';
+
+                return [
+                    $code,
+                    $title,
+                    $descText,
+                    implode("\n", $clItems),
+                    $statusLabel,
+                    $priorityLabel,
+                    $deadlineLabel,
+                ];
+            };
+
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Team Performance');
+
+            $headers = [
+                'Team Member', 'Department', 'Designation', 'Total Tasks', 'Assigned', 'Self',
+                'Completed', 'Overdue', 'On-Time %', 'Completion Rate %', 'Performance Score', 'Trend',
+                'Task ID', 'Task Title', 'Description / Expected Output', 'Acceptance Checklist',
+                'Task Status', 'Priority', 'Deadline'
+            ];
+            $colWidths = [
+                'A' => 22, 'B' => 18, 'C' => 20, 'D' => 12, 'E' => 11, 'F' => 9,
+                'G' => 12, 'H' => 10, 'I' => 12, 'J' => 17, 'K' => 17, 'L' => 10,
+                'M' => 11, 'N' => 30, 'O' => 34, 'P' => 42, 'Q' => 14, 'R' => 11, 'S' => 15,
+            ];
+            foreach ($colWidths as $col => $w) {
+                $sheet->getColumnDimension($col)->setWidth($w);
+            }
+
+            foreach ($headers as $idx => $h) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($idx + 1);
+                $sheet->setCellValue($colLetter . '1', $h);
+            }
+
+            $sheet->getStyle('A1:S1')->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '087F5B']],
+                'alignment' => [
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT,
+                ],
+            ]);
+            $sheet->getRowDimension(1)->setRowHeight(24);
+            $sheet->freezePane('A2');
+
+            $rowNum = 2;
+            foreach ($filteredMembers as $fm) {
+                $uid = (int)($fm['user_id'] ?? 0);
+                $memberTasks = $tasksByUser[$uid] ?? [];
+                $memberCols = [
                     $fm['full_name'],
                     $fm['department'],
                     $fm['designation'],
@@ -2088,10 +2229,61 @@ class TaskV2Controller extends Controller
                     $fm['on_time_pct'] . '%',
                     $fm['completion_rate'] . '%',
                     $fm['score'],
-                    $fm['trend']
-                ]);
+                    $fm['trend'],
+                ];
+
+                $startRow = $rowNum;
+                $rowsToWrite = empty($memberTasks) ? [null] : $memberTasks;
+
+                foreach ($rowsToWrite as $tIdx => $t) {
+                    if ($tIdx === 0) {
+                        foreach ($memberCols as $mColIdx => $val) {
+                            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($mColIdx + 1);
+                            $sheet->setCellValue($colLetter . $rowNum, $val);
+                        }
+                    }
+
+                    $taskCols = $t !== null ? $formatSingleTask($t) : ['', '', '', '', '', '', ''];
+                    foreach ($taskCols as $tColIdx => $val) {
+                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(13 + $tColIdx);
+                        $sheet->setCellValueExplicit(
+                            $colLetter . $rowNum,
+                            (string)$val,
+                            \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                        );
+                    }
+
+                    $sheet->getStyle("M{$rowNum}:S{$rowNum}")->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+                    $sheet->getStyle("N{$rowNum}:P{$rowNum}")->getAlignment()->setWrapText(true);
+                    $rowNum++;
+                }
+
+                $endRow = $rowNum - 1;
+                if ($endRow > $startRow) {
+                    for ($cIdx = 1; $cIdx <= 12; $cIdx++) {
+                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($cIdx);
+                        $sheet->mergeCells("{$colLetter}{$startRow}:{$colLetter}{$endRow}");
+                    }
+                }
+                $sheet->getStyle("A{$startRow}:L{$endRow}")->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+                $sheet->getStyle("A{$startRow}:C{$endRow}")->getAlignment()->setWrapText(true);
             }
-            fclose($output);
+
+            if ($rowNum > 2) {
+                $lastRow = $rowNum - 1;
+                $sheet->getStyle("A1:S{$lastRow}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('D8E3DD');
+            }
+
+            $filename = 'Team_Performance_Report_' . date('Y-m-d') . '.xlsx';
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
             exit;
         }
 
