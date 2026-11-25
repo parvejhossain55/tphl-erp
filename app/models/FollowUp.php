@@ -690,7 +690,7 @@ class FollowUp extends Model
         if ($startDate && $endDate) {
             $sd = $this->db->real_escape_string($startDate);
             $ed = $this->db->real_escape_string($endDate);
-            $dateCond1 = " AND DATE(fu.follow_up_date) BETWEEN '$sd' AND '$ed' ";
+            $dateCond1 = " AND DATE(COALESCE(fu.created_at, fu.follow_up_date)) BETWEEN '$sd' AND '$ed' ";
             $dateCond2 = " AND DATE(ef.created_at) BETWEEN '$sd' AND '$ed' ";
         }
 
@@ -728,7 +728,7 @@ class FollowUp extends Model
             $breakdownSql = "
                 SELECT LPAD($groupExpr, 2, '0') AS k, COUNT(*) AS cnt
                 FROM (
-                    SELECT DATE(fu.follow_up_date) AS follow_up_date
+                    SELECT DATE(COALESCE(fu.created_at, fu.follow_up_date)) AS follow_up_date
                     FROM lead_follow_ups fu
                     WHERE fu.deleted_at IS NULL
                     $agentCond1
@@ -769,8 +769,8 @@ class FollowUp extends Model
             SELECT 
                 fu.id,
                 fu.lead_id,
-                fu.follow_up_date,
-                fu.follow_up_time,
+                DATE(COALESCE(fu.created_at, fu.follow_up_date)) AS follow_up_date,
+                COALESCE(TIME(fu.created_at), fu.follow_up_time) AS follow_up_time,
                 fu.follow_up_type,
                 fu.status,
                 fu.discussion_note,
@@ -779,8 +779,8 @@ class FollowUp extends Model
                 NULL AS activity_date,
                 NULL AS activity_mode,
                 NULL AS activity_reason,
-                l.full_name AS client_name, 
-                l.phone AS client_phone,
+                COALESCE(NULLIF(TRIM(l.full_name), ''), NULLIF(TRIM(l.company_name), ''), 'Unnamed Client') AS client_name,
+                COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS client_phone,
                 p.name AS project_name, 
                 f.flat_name AS flat_name, 
                 u1.full_name AS created_by_name
@@ -812,8 +812,8 @@ class FollowUp extends Model
                 ef.activity_date AS activity_date,
                 ef.activity_mode AS activity_mode,
                 ef.activity_reason AS activity_reason,
-                l2.full_name AS client_name, 
-                l2.phone AS client_phone,
+                COALESCE(NULLIF(TRIM(l2.full_name), ''), NULLIF(TRIM(l2.company_name), ''), 'Unnamed Client') AS client_name,
+                COALESCE(NULLIF(TRIM(l2.phone), ''), TRIM(l2.phone_number)) AS client_phone,
                 p2.name AS project_name, 
                 f2.flat_name AS flat_name, 
                 u2.full_name AS created_by_name
