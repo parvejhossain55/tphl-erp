@@ -1393,10 +1393,16 @@ class LeadInvestmentReportController extends Controller
                 "l.deleted_at IS NULL",
                 "DATE(l.created_at) >= ?",
                 "DATE(l.created_at) <= ?",
-                "l.project_id = ?",
                 "(l.is_automated = 1 OR l.is_repibee = 1 OR l.is_brocure_leads = 1 OR (l.campaign_name IS NOT NULL AND TRIM(l.campaign_name) != ''))",
             ];
-            $params = [$spendDate, $spendEndDate, $projectId];
+            $params = [$spendDate, $spendEndDate];
+
+            if ($projectId === 0) {
+                $where[] = "(l.project_id IS NULL OR l.project_id = 0)";
+            } else {
+                $where[] = "l.project_id = ?";
+                $params[] = $projectId;
+            }
 
             if ($platform === 'Meta Ads') {
                 // Meta Ads matches Meta Form, Meta Inbox, and WhatsApp CTWA leads
@@ -1505,7 +1511,8 @@ class LeadInvestmentReportController extends Controller
             $rawEndDate = trim((string)($input['spend_end_date'] ?? ''));
             $platform = $this->normalizePlatformName((string)($input['platform'] ?? 'Meta Ads'));
             $adAccount = trim((string)($input['ad_account'] ?? ''));
-            $projectId = (int)($input['project_id'] ?? 0);
+            $rawProjectId = trim((string)($input['project_id'] ?? ''));
+            $projectId = ($rawProjectId !== '' && is_numeric($rawProjectId)) ? (int)$rawProjectId : -1;
             $campaignName = trim((string)($input['campaign_name'] ?? ''));
             $adSetName = trim((string)($input['ad_set_name'] ?? ''));
             $adRawInput = trim((string)($input['ad_input'] ?? ''));
@@ -1547,7 +1554,7 @@ class LeadInvestmentReportController extends Controller
             if ($adAccount === '') {
                 throw new InvalidArgumentException("Ad Account is required.");
             }
-            if ($projectId <= 0) {
+            if ($projectId < 0) {
                 throw new InvalidArgumentException("Please select a Project.");
             }
             if ($campaignName === '') {
@@ -1770,13 +1777,14 @@ class LeadInvestmentReportController extends Controller
 
         try {
             $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-            $projectId = (int)($input['project_id'] ?? 0);
+            $rawProjectId = trim((string)($input['project_id'] ?? ''));
+            $projectId = ($rawProjectId !== '' && is_numeric($rawProjectId)) ? (int)$rawProjectId : -1;
             $platform = $this->normalizePlatformName((string)($input['platform'] ?? 'Meta Ads'));
             $dailyBudget = max(0.0, (float)($input['daily_budget_usd'] ?? 0));
             $monthlyBudget = max(0.0, (float)($input['monthly_budget_usd'] ?? ($dailyBudget * 30)));
             $targetCpl = max(0.01, (float)($input['target_cpl_usd'] ?? 0.45));
 
-            if ($projectId <= 0) {
+            if ($projectId < 0) {
                 throw new InvalidArgumentException("Please select a valid project.");
             }
 
@@ -1816,10 +1824,21 @@ class LeadInvestmentReportController extends Controller
         header('Content-Type: application/json; charset=utf-8');
 
         try {
-            $projectId = (int)($_GET['project_id'] ?? 0);
+            $rawProjectId = trim((string)($_GET['project_id'] ?? ''));
             $pdo = $this->getPdo();
 
-            if ($projectId > 0) {
+            if ($rawProjectId !== '' && is_numeric($rawProjectId) && (int)$rawProjectId === 0) {
+                $stmt = $pdo->query("
+                    SELECT DISTINCT TRIM(`campaign_name`) AS camp
+                    FROM `leads`
+                    WHERE `deleted_at` IS NULL
+                      AND (`project_id` IS NULL OR `project_id` = 0)
+                      AND `campaign_name` IS NOT NULL
+                      AND TRIM(`campaign_name`) != ''
+                    ORDER BY `id` DESC
+                    LIMIT 50
+                ");
+            } elseif ($rawProjectId !== '' && is_numeric($rawProjectId) && (int)$rawProjectId > 0) {
                 $stmt = $pdo->prepare("
                     SELECT DISTINCT TRIM(`campaign_name`) AS camp
                     FROM `leads`
@@ -1830,7 +1849,7 @@ class LeadInvestmentReportController extends Controller
                     ORDER BY `id` DESC
                     LIMIT 50
                 ");
-                $stmt->execute([$projectId]);
+                $stmt->execute([(int)$rawProjectId]);
             } else {
                 $stmt = $pdo->query("
                     SELECT DISTINCT TRIM(`campaign_name`) AS camp
