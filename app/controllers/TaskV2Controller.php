@@ -182,23 +182,34 @@ class TaskV2Controller extends Controller
                 VALUES ($assignedUserId, $pSql, '$escTitle', '$escDesc', $prioInt, '$initialStatus', $initialProgress, $dueSql)
             ");
 
-            // 1. Notification for Assigned User
-            $stmt3 = $this->db->prepare(
-                "INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES (?, ?, ?, ?)"
+            // 1. Notification for Assigned User (dedicated email sent below via sendTaskMailWithCC)
+            Notification::dispatch(
+                $this->db,
+                (int)$data['user_id'],
+                (int)$data['assigned_by'],
+                'task_assigned',
+                "New task assigned: " . $data['title'],
+                $taskId,
+                '/task-dashboard',
+                'task',
+                false
             );
-            $message = "New task assigned: " . $data['title'];
-            $stmt3->bind_param("iiis", $data['user_id'], $taskId, $data['assigned_by'], $message);
-            $stmt3->execute();
 
-            // 2. Notifications for Mentioned Users
+            // 2. Notifications for Mentioned Users (dedicated email sent below via sendMentionMail)
             foreach ($mentionUsers as $mUser) {
                 if ($mUser['id'] != $data['user_id']) {
-                    $stmtM = $this->db->prepare(
-                        "INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES (?, ?, ?, ?)"
-                    );
                     $mMiniMsg = "You were mentioned in task: " . $data['title'] . " (Assigned to: " . ($user['full_name'] ?? 'Employee') . ")";
-                    $stmtM->bind_param("iiis", $mUser['id'], $taskId, $data['assigned_by'], $mMiniMsg);
-                    $stmtM->execute();
+                    Notification::dispatch(
+                        $this->db,
+                        (int)$mUser['id'],
+                        (int)$data['assigned_by'],
+                        'task_mentioned',
+                        $mMiniMsg,
+                        $taskId,
+                        '/task-dashboard',
+                        'task',
+                        false
+                    );
                 }
             }
 
@@ -295,7 +306,30 @@ class TaskV2Controller extends Controller
             'assigned_by'        => $_SESSION['user']['id'] ?? null,
         ];
 
+        $oldTask = $this->taskModel->find($id);
+
         if ($this->taskModel->update($id, $data)) {
+            $actorId = (int)($_SESSION['user']['id'] ?? 0);
+            $actorName = $_SESSION['user']['full_name'] ?? 'System';
+            $oldAssignee = (int)($oldTask['user_id'] ?? 0);
+            $newAssignee = (int)$data['user_id'];
+            $taskTitle = $data['title'] ?: ($oldTask['title'] ?? "Task #{$id}");
+
+            if ($oldAssignee > 0 && $newAssignee > 0 && $oldAssignee !== $newAssignee) {
+                Notification::dispatch($this->db, $newAssignee, $actorId, 'task_reassigned', "{$actorName} assigned task to you: {$taskTitle}", (int)$id, '/task-dashboard');
+                Notification::dispatch($this->db, $oldAssignee, $actorId, 'task_reassigned', "{$actorName} reassigned task: {$taskTitle}", (int)$id, '/task-dashboard');
+            } elseif ($newAssignee > 0) {
+                Notification::dispatch($this->db, $newAssignee, $actorId, 'task_edited', "{$actorName} updated task: {$taskTitle}", (int)$id, '/task-dashboard');
+            }
+
+            if (!empty($mentionUserIds)) {
+                $oldMentions = !empty($oldTask['mentioned_user_ids']) ? (json_decode($oldTask['mentioned_user_ids'], true) ?: []) : [];
+                $newMentions = array_diff($mentionUserIds, array_map('intval', $oldMentions), [$newAssignee]);
+                if (!empty($newMentions)) {
+                    Notification::dispatch($this->db, $newMentions, $actorId, 'task_mentioned', "{$actorName} mentioned you in task: {$taskTitle}", (int)$id, '/task-dashboard');
+                }
+            }
+
             setSuccess("Task updated successfully!");
             header("Location: {$GLOBALS['base_url']}/task-lists");
             exit;
@@ -330,6 +364,17 @@ class TaskV2Controller extends Controller
         }
 
         if ($this->taskModel->deleteFromEverywhere($id)) {
+            $actorName = $_SESSION['user']['full_name'] ?? 'System';
+            $recipients = array_filter([(int)($task['user_id'] ?? 0), (int)($task['assigned_by'] ?? 0)]);
+            Notification::dispatch(
+                $this->db,
+                $recipients,
+                (int)$userId,
+                'task_deleted',
+                "{$actorName} deleted task: " . ($task['title'] ?? "Task #{$id}"),
+                null,
+                '/task-lists'
+            );
             setSuccess("Task has been deleted successfully from everywhere.");
         } else {
             setError("Failed to delete task.");
@@ -539,8 +584,15 @@ class TaskV2Controller extends Controller
                 $assignedBy = (int)$t['assigned_by'];
                 if ($assignedBy > 0 && $assignedBy !== $loggedUserId) {
                     $uName = $_SESSION['user']['full_name'] ?? 'Team Member';
-                    $notifMsg = $this->db->real_escape_string("{$uName} accepted the task: {$t['title']}");
-                    $this->db->query("INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES ($assignedBy, $taskId, $loggedUserId, '$notifMsg')");
+                    Notification::dispatch(
+                        $this->db,
+                        $assignedBy,
+                        $loggedUserId,
+                        'task_accepted',
+                        "{$uName} accepted the task: {$t['title']}",
+                        $taskId,
+                        '/team-performance-v2'
+                    );
                 }
             }
 
@@ -610,8 +662,19 @@ class TaskV2Controller extends Controller
                 $assignedBy = (int)$t['assigned_by'];
                 if ($assignedBy > 0 && $assignedBy !== $loggedUserId) {
                     $uName = $_SESSION['user']['full_name'] ?? 'Team Member';
-                    $notifMsg = $this->db->real_escape_string("Task progress updated to {$progress}% by {$uName}: {$t['title']}");
-                    $this->db->query("INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES ($assignedBy, $taskId, $loggedUserId, '$notifMsg')");
+                    $actType = ($progress >= 100) ? 'task_completed' : 'progress_updated';
+                    $msgText = ($progress >= 100)
+                        ? "{$uName} completed the task (100%): {$t['title']}"
+                        : "Task progress updated to {$progress}% by {$uName}: {$t['title']}";
+                    Notification::dispatch(
+                        $this->db,
+                        $assignedBy,
+                        $loggedUserId,
+                        $actType,
+                        $msgText,
+                        $taskId,
+                        '/team-performance-v2'
+                    );
                 }
             }
 
@@ -638,6 +701,19 @@ class TaskV2Controller extends Controller
                 $stmt = $this->db->prepare("UPDATE tasks SET satisfaction_rating = ? WHERE id = ?");
                 $stmt->bind_param("ii", $rating, $taskId);
                 if ($stmt->execute()) {
+                    $tInfoRes = $this->db->query("SELECT user_id, title FROM tasks WHERE id = $taskId LIMIT 1");
+                    if ($tInfoRes && $tInfo = $tInfoRes->fetch_assoc()) {
+                        $raterName = $_SESSION['user']['full_name'] ?? 'Supervisor';
+                        Notification::dispatch(
+                            $this->db,
+                            (int)$tInfo['user_id'],
+                            $userId,
+                            'task_rated',
+                            "{$raterName} rated your task ({$rating}/5 stars): {$tInfo['title']}",
+                            $taskId,
+                            '/task-dashboard'
+                        );
+                    }
                     $_SESSION['success'] = "Task rated successfully!";
                 } else {
                     $_SESSION['error'] = "Failed to rate task.";
@@ -1180,7 +1256,14 @@ class TaskV2Controller extends Controller
                 $escTitle = $this->db->real_escape_string($task['title']);
                 $projId = (int)($task['todo_project_id'] ?? 0);
                 $this->db->query("UPDATE tasks SET status = '$newStatus', progress = $newProgress WHERE title = '$escTitle' AND (user_id = {$task['user_id']} " . ($projId > 0 ? "OR todo_project_id = $projId" : "") . ")");
-                
+
+                $actorName = $_SESSION['user']['full_name'] ?? 'Team Member';
+                $actType = ($newStatus === 'completed') ? 'task_completed' : 'status_changed';
+                $notifText = ($newStatus === 'completed')
+                    ? "{$actorName} marked task as completed: {$task['title']}"
+                    : "{$actorName} reopened task as pending: {$task['title']}";
+                Notification::dispatch($this->db, (int)$task['user_id'], $userId, $actType, $notifText, $taskId, '/my-work-dashboard');
+
                 setSuccess("Task marked as " . ($newStatus === 'completed' ? 'Completed' : 'Pending') . " successfully!");
             } else {
                 setError("Task not found.");
@@ -1314,8 +1397,11 @@ class TaskV2Controller extends Controller
                             // Notify employee that supervisor/head updated progress
                             if ($ttUid > 0 && $ttUid !== $userId) {
                                 $hName = $_SESSION['user']['full_name'] ?? 'Team Head';
-                                $notifMsg = $this->db->real_escape_string("Task progress updated to {$progress}% by {$hName}: {$tt['title']}");
-                                $this->db->query("INSERT INTO notifications (user_id, assigned_by, message) VALUES ($ttUid, $userId, '$notifMsg')");
+                                $actType = ($progress >= 100) ? 'task_completed' : 'progress_updated';
+                                $notifMsg = ($progress >= 100)
+                                    ? "{$hName} marked task as completed (100%): {$tt['title']}"
+                                    : "Task progress updated to {$progress}% by {$hName}: {$tt['title']}";
+                                Notification::dispatch($this->db, $ttUid, $userId, $actType, $notifMsg, $taskId, '/my-work-dashboard');
                             }
                         }
 
@@ -2590,11 +2676,18 @@ class TaskV2Controller extends Controller
                         INSERT INTO tasks (title, user_id, description, start_date, deadline, status, progress, priority, assigned_by, todo_project_id)
                         VALUES ('$escTitle', $assignedUserId, '$escDesc', CURDATE(), '$escDueRaw', 'pending', 0, '$prioStr', $userId, $projSql)
                     ");
+                    $mirroredTaskId = (int)$this->db->insert_id ?: (int)$todoTaskId;
 
                     // Notification
-                    $notifMsg = "New team task assigned: " . $title;
-                    $escNotif = $this->db->real_escape_string($notifMsg);
-                    $this->db->query("INSERT INTO notifications (user_id, assigned_by, message) VALUES ($assignedUserId, $userId, '$escNotif')");
+                    Notification::dispatch(
+                        $this->db,
+                        $assignedUserId,
+                        $userId,
+                        'task_assigned',
+                        "New team task assigned: " . $title,
+                        $mirroredTaskId,
+                        '/my-work-dashboard'
+                    );
 
                     setSuccess("Task assigned under Team Project successfully!");
                 } else {

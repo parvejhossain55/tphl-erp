@@ -1354,13 +1354,7 @@ class MyWorkController extends Controller
                 $stAct->close();
             }
 
-            // 2. Delete associated notifications
-            $stNotif = $this->db->prepare("DELETE FROM notifications WHERE task_id = ?");
-            if ($stNotif) {
-                $stNotif->bind_param("i", $id);
-                $stNotif->execute();
-                $stNotif->close();
-            }
+            // 2. Preserve existing notifications for audit/history (do not delete)
 
             // 3. Delete attachment file from disk if exists
             if (!empty($task['attachment_image'])) {
@@ -1386,6 +1380,23 @@ class MyWorkController extends Controller
         }
 
         if ($deleteSuccess) {
+            $actorName = $_SESSION['user']['full_name'] ?? 'Task owner';
+            $idExtractor = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+            $delRecipients = array_merge(
+                [(int)($task['user_id'] ?? 0), (int)($task['assigned_by'] ?? 0)],
+                $idExtractor($task['collaborator_user_ids'] ?? ''),
+                $idExtractor($task['mentioned_user_ids'] ?? '')
+            );
+            Notification::dispatch(
+                $this->db,
+                $delRecipients,
+                $userId,
+                'task_deleted',
+                "{$actorName} deleted task T-{$id}: " . ($task['title'] ?? ''),
+                null,
+                '/my-work-dashboard'
+            );
+
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['status' => 'success', 'message' => 'Task has been deleted successfully.']);
@@ -1551,6 +1562,42 @@ class MyWorkController extends Controller
                 ? "Self-initiated task created and marked as completed."
                 : ("Task created and assigned to " . ($ownerId === $userId ? "self" : "user #{$ownerId}"));
             $this->logTaskActivity($newTaskId, $userId, 'system', $actText);
+
+            // Dispatch in-app notifications for new task
+            $actorName = $_SESSION['user']['full_name'] ?? 'Team Member';
+            if ($ownerId !== $userId) {
+                Notification::dispatch(
+                    $this->db,
+                    $ownerId,
+                    $userId,
+                    'task_assigned',
+                    "{$actorName} assigned a new task T-{$newTaskId} to you: {$title}",
+                    $newTaskId,
+                    '/my-work-dashboard'
+                );
+            }
+            if (!empty($collaboratorIds)) {
+                Notification::dispatch(
+                    $this->db,
+                    array_diff($collaboratorIds, [$ownerId]),
+                    $userId,
+                    'collaborator_added',
+                    "{$actorName} added you as a collaborator on task T-{$newTaskId}: {$title}",
+                    $newTaskId,
+                    '/my-work-dashboard'
+                );
+            }
+            if (!empty($reviewerId) && $reviewerId !== $ownerId) {
+                Notification::dispatch(
+                    $this->db,
+                    $reviewerId,
+                    $userId,
+                    'task_mentioned',
+                    "{$actorName} added you as a reviewer on task T-{$newTaskId}: {$title}",
+                    $newTaskId,
+                    '/my-work-dashboard'
+                );
+            }
 
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -2145,8 +2192,11 @@ class MyWorkController extends Controller
             $stmt->close();
 
             // Detect changes and log system activities
+            $actorName = $_SESSION['user']['full_name'] ?? 'Task owner';
             $oldDl = !empty($existingTask['deadline']) ? date('Y-m-d', strtotime($existingTask['deadline'])) : null;
             $newDl = !empty($deadline) ? date('Y-m-d', strtotime($deadline)) : null;
+            $oldAssigneeId = (int)($existingTask['user_id'] ?? 0);
+            $notifiedAssignee = false;
 
             if ($oldDl !== $newDl) {
                 $oldDlText = $oldDl ? date('d M Y', strtotime($oldDl)) : 'none';
@@ -2154,17 +2204,31 @@ class MyWorkController extends Controller
                 $actText = "Updated deadline from {$oldDlText} to {$newDlText}.";
                 $this->logTaskActivity($id, $userId, 'system', $actText);
 
-                // Notify assignee about the deadline update
-                $assigneeId = (int)$existingTask['user_id'];
-                if ($assigneeId && $assigneeId !== $userId) {
-                    $actorName = $_SESSION['user']['full_name'] ?? 'Task owner';
-                    $notifMsg = "{$actorName} updated the deadline for task T-{$id} to {$newDlText}.";
-                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                    if ($stNotif) {
-                        $stNotif->bind_param("iiis", $assigneeId, $id, $userId, $notifMsg);
-                        $stNotif->execute();
-                        $stNotif->close();
-                    }
+                Notification::dispatch(
+                    $this->db,
+                    $assignedToId,
+                    $userId,
+                    'task_edited',
+                    "{$actorName} updated the deadline for task T-{$id} to {$newDlText}: {$title}",
+                    $id,
+                    '/my-work-dashboard'
+                );
+                $notifiedAssignee = true;
+            }
+
+            if ($oldAssigneeId > 0 && $assignedToId > 0 && $oldAssigneeId !== $assignedToId) {
+                Notification::dispatch($this->db, $assignedToId, $userId, 'task_reassigned', "{$actorName} reassigned task T-{$id} to you: {$title}", $id, '/my-work-dashboard');
+                Notification::dispatch($this->db, $oldAssigneeId, $userId, 'task_reassigned', "{$actorName} reassigned task T-{$id} to another teammate: {$title}", $id, '/my-work-dashboard');
+                $notifiedAssignee = true;
+            } elseif (!$notifiedAssignee && $assignedToId > 0) {
+                Notification::dispatch($this->db, $assignedToId, $userId, 'task_edited', "{$actorName} updated task T-{$id}: {$title}", $id, '/my-work-dashboard');
+            }
+
+            if (!empty($collaboratorIds)) {
+                $oldCollabs = !empty($existingTask['collaborator_user_ids']) ? (json_decode($existingTask['collaborator_user_ids'], true) ?: []) : [];
+                $addedCollabs = array_diff($collaboratorIds, array_map('intval', $oldCollabs), [$assignedToId]);
+                if (!empty($addedCollabs)) {
+                    Notification::dispatch($this->db, $addedCollabs, $userId, 'collaborator_added', "{$actorName} added you as a collaborator on task T-{$id}: {$title}", $id, '/my-work-dashboard');
                 }
             }
 
@@ -2308,16 +2372,7 @@ class MyWorkController extends Controller
                 // Notify reviewers
                 $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
                 $notifMsg = "{$actorName} completed task T-{$id} and submitted it for your review.";
-                foreach ($reviewerIds as $rId) {
-                    if ($rId !== $userId) {
-                        $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                        if ($stNotif) {
-                            $stNotif->bind_param("iiis", $rId, $id, $userId, $notifMsg);
-                            $stNotif->execute();
-                            $stNotif->close();
-                        }
-                    }
-                }
+                Notification::dispatch($this->db, $reviewerIds, $userId, 'status_changed', $notifMsg, $id, '/my-work-dashboard');
 
                 if ($isAjax) {
                     header('Content-Type: application/json');
@@ -2344,13 +2399,8 @@ class MyWorkController extends Controller
                 $creatorId = (int)$task['assigned_by'];
                 if ($creatorId && $creatorId !== $userId) {
                     $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
-                    $notifMsg = "{$actorName} completed task T-{$id}.";
-                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                    if ($stNotif) {
-                        $stNotif->bind_param("iiis", $creatorId, $id, $userId, $notifMsg);
-                        $stNotif->execute();
-                        $stNotif->close();
-                    }
+                    $notifMsg = "{$actorName} completed task T-{$id}: " . ($task['title'] ?? '');
+                    Notification::dispatch($this->db, $creatorId, $userId, 'task_completed', $notifMsg, $id, '/my-work-dashboard');
                 }
 
                 if ($isAjax) {
@@ -2435,13 +2485,8 @@ class MyWorkController extends Controller
             $creatorId = (int)$task['assigned_by'];
             if ($creatorId && $creatorId !== $userId) {
                 $actorName = $_SESSION['user']['full_name'] ?? 'Assignee';
-                $notifMsg = "{$actorName} started working on task T-{$id}.";
-                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                if ($stNotif) {
-                    $stNotif->bind_param("iiis", $creatorId, $id, $userId, $notifMsg);
-                    $stNotif->execute();
-                    $stNotif->close();
-                }
+                $notifMsg = "{$actorName} started working on task T-{$id}: " . ($task['title'] ?? '');
+                Notification::dispatch($this->db, $creatorId, $userId, 'status_changed', $notifMsg, $id, '/my-work-dashboard');
             }
 
             echo json_encode([
@@ -2504,6 +2549,16 @@ class MyWorkController extends Controller
             $remarks = !empty($task['remarks']) ? $task['remarks'] : 'Approved by reviewer.';
             if ($taskModel->updateProgress($id, 100, $remarks)) {
                 $this->logTaskActivity($id, $userId, 'system', "Approved task as completed (Done).");
+                $reviewerName = $_SESSION['user']['full_name'] ?? 'Reviewer';
+                Notification::dispatch(
+                    $this->db,
+                    [(int)($task['user_id'] ?? 0), (int)($task['assigned_by'] ?? 0)],
+                    $userId,
+                    'task_completed',
+                    "{$reviewerName} approved task T-{$id} as completed: " . ($task['title'] ?? ''),
+                    $id,
+                    '/my-work-dashboard'
+                );
                 // Recurring occurrences are generated daily by public/cron_generate_recurring_tasks.php
                 echo json_encode([
                     'status' => 'success',
@@ -2530,6 +2585,15 @@ class MyWorkController extends Controller
             if ($stmt->execute()) {
                 $stmt->close();
                 $this->logTaskActivity($id, $userId, 'system', "Requested changes with note: \"{$note}\"");
+                Notification::dispatch(
+                    $this->db,
+                    [(int)($task['user_id'] ?? 0), (int)($task['assigned_by'] ?? 0)],
+                    $userId,
+                    'status_changed',
+                    "{$reviewerName} requested changes on task T-{$id}: " . mb_strimwidth($note, 0, 80, '...'),
+                    $id,
+                    '/my-work-dashboard'
+                );
                 echo json_encode([
                     'status' => 'success',
                     'message' => 'Review note added and task sent back for improvement.',
@@ -2660,6 +2724,18 @@ class MyWorkController extends Controller
             if ($allDone && $task['status'] !== 'completed') {
                 $this->logTaskActivity($id, $userId, 'system', "All acceptance completed.");
             }
+
+            $actorName = $_SESSION['user']['full_name'] ?? 'Teammate';
+            $clVerb = $completed ? 'completed' : 'unchecked';
+            Notification::dispatch(
+                $this->db,
+                [(int)($task['assigned_by'] ?? 0), (int)($task['user_id'] ?? 0)],
+                $userId,
+                'subtask_updated',
+                "{$actorName} {$clVerb} checklist item on task T-{$id} ({$progress}%): {$itemText}",
+                $id,
+                '/my-work-dashboard'
+            );
 
             echo json_encode([
                 'status' => 'success',
@@ -2794,6 +2870,16 @@ class MyWorkController extends Controller
         if ($stmt->execute()) {
             $stmt->close();
             $this->logTaskActivity($id, $userId, 'system', "Added acceptance checklist item: \"{$text}\"");
+            $actorName = $_SESSION['user']['full_name'] ?? 'Teammate';
+            Notification::dispatch(
+                $this->db,
+                [(int)($task['assigned_by'] ?? 0), (int)($task['user_id'] ?? 0)],
+                $userId,
+                'subtask_updated',
+                "{$actorName} added a checklist item to task T-{$id}: {$text}",
+                $id,
+                '/my-work-dashboard'
+            );
             echo json_encode([
                 'status' => 'success',
                 'task_id' => $id,
@@ -2884,20 +2970,23 @@ class MyWorkController extends Controller
                 $mentionedUserIds = array_filter(array_map('intval', $rawIds));
             }
 
-            // Also parse regex @[Name](id) or @Name if needed
-            if (!empty($mentionedUserIds)) {
-                $actorName = $_SESSION['user']['full_name'] ?? 'A teammate';
-                $notifMsg = "{$actorName} mentioned you in task T-{$id}: " . mb_strimwidth($comment ?: 'shared an attachment', 0, 60, '...');
-                foreach (array_unique($mentionedUserIds) as $mUid) {
-                    if ($mUid !== $userId) {
-                        $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                        if ($stNotif) {
-                            $stNotif->bind_param("iiis", $mUid, $id, $userId, $notifMsg);
-                            $stNotif->execute();
-                            $stNotif->close();
-                        }
-                    }
-                }
+            // Notify @mentioned users
+            $actorName = $_SESSION['user']['full_name'] ?? 'A teammate';
+            $commentSnippet = mb_strimwidth($comment ?: 'shared an attachment', 0, 60, '...');
+            $uniqueMentions = array_values(array_unique($mentionedUserIds));
+            if (!empty($uniqueMentions)) {
+                $notifMsg = "{$actorName} mentioned you in task T-{$id}: {$commentSnippet}";
+                Notification::dispatch($this->db, $uniqueMentions, $userId, 'task_mentioned', $notifMsg, $id, '/my-work-dashboard');
+            }
+
+            // Notify task assignee & creator about the new comment (excluding already-mentioned users)
+            $commentRecipients = array_diff(
+                array_filter([(int)($task['user_id'] ?? 0), (int)($task['assigned_by'] ?? 0)]),
+                $uniqueMentions
+            );
+            if (!empty($commentRecipients)) {
+                $cmtMsg = "{$actorName} commented on task T-{$id}: {$commentSnippet}";
+                Notification::dispatch($this->db, $commentRecipients, $userId, 'task_comment', $cmtMsg, $id, '/my-work-dashboard');
             }
 
             echo json_encode([
@@ -2978,16 +3067,7 @@ class MyWorkController extends Controller
                 }
             }
 
-            foreach (array_unique($notifyRecipients) as $recipientId) {
-                if ($recipientId !== $userId) {
-                    $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                    if ($stNotif) {
-                        $stNotif->bind_param("iiis", $recipientId, $id, $userId, $notifMsg);
-                        $stNotif->execute();
-                        $stNotif->close();
-                    }
-                }
-            }
+            Notification::dispatch($this->db, $notifyRecipients, $userId, 'status_changed', $notifMsg, $id, '/my-work-dashboard');
 
             echo json_encode([
                 'status' => 'success',
@@ -3087,12 +3167,7 @@ class MyWorkController extends Controller
                 $notifMsg .= '.';
             }
 
-            $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-            if ($stNotif) {
-                $stNotif->bind_param("iiis", $assigneeId, $id, $userId, $notifMsg);
-                $stNotif->execute();
-                $stNotif->close();
-            }
+            Notification::dispatch($this->db, $assigneeId, $userId, 'task_rated', $notifMsg, $id, '/my-work-dashboard');
         }
 
         echo json_encode([
@@ -3268,15 +3343,10 @@ class MyWorkController extends Controller
                 }
             }
 
-            // 2. Insert in-app notification (if recipient is not the sender themselves)
+            // 2. Insert in-app notification (custom reminder email already sent above)
             if ($rUid !== $userId) {
                 $notifMsg = "{$ownerName} sent a reminder for task {$taskCode}: \"{$taskTitle}\" (Deadline: {$deadlineFormatted}).";
-                $stNotif = $this->db->prepare("INSERT INTO notifications (user_id, task_id, assigned_by, message, created_at) VALUES (?, ?, ?, ?, NOW())");
-                if ($stNotif) {
-                    $stNotif->bind_param("iiis", $rUid, $id, $userId, $notifMsg);
-                    $stNotif->execute();
-                    $stNotif->close();
-                }
+                Notification::dispatch($this->db, $rUid, $userId, 'status_changed', $notifMsg, $id, '/my-work-dashboard', 'task', false);
             }
         }
 

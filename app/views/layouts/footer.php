@@ -921,6 +921,367 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
     </script>
 <?php endif; ?>
 
+<?php if (!empty($_SESSION['user']['id']) && function_exists('hasPermission') && hasPermission('Notifications')): ?>
+    <style>
+        #tphlNotifCenterOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1095;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #tphlNotifCenterOverlay.is-open {
+            display: flex;
+            animation: tphlNotifFadeIn 0.2s ease-out;
+        }
+        #tphlNotifToastStack {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-width: 520px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .tphl-notif-toast {
+            background: #ffffff;
+            border: 1px solid #d1e7dd;
+            border-top: 5px solid #006837;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+            padding: 24px 26px;
+            position: relative;
+            animation: tphlNotifPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .tphl-notif-toast-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .tphl-notif-toast-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: #ecfdf5;
+            color: #006837;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 22px;
+        }
+        .tphl-notif-toast-close {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            background: #f1f5f9;
+            border: none;
+            color: #64748b;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 18px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .tphl-notif-toast-close:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .tphl-notif-toast-msg {
+            font-size: 15px;
+            color: #1e293b;
+            line-height: 1.55;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 13px 15px;
+            margin-bottom: 18px;
+            word-break: break-word;
+        }
+        .tphl-notif-toast-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .tphl-notif-btn-primary {
+            background: #006837;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 18px;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            transition: background 0.15s ease;
+        }
+        .tphl-notif-btn-primary:hover {
+            background: #087F5B;
+        }
+        .tphl-notif-btn-outline {
+            background: #ffffff;
+            color: #006837;
+            border: 1px solid #006837;
+            border-radius: 8px;
+            padding: 9px 15px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .tphl-notif-btn-outline:hover {
+            background: #ecfdf5;
+            color: #006837;
+        }
+        .tphl-notif-btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 9px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .tphl-notif-btn-secondary:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        @keyframes tphlNotifFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes tphlNotifPopIn {
+            from { opacity: 0; transform: scale(0.92) translateY(10px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+    </style>
+    <div id="tphlNotifCenterOverlay" role="dialog" aria-modal="true" aria-live="polite">
+        <div id="tphlNotifToastStack"></div>
+    </div>
+    <script>
+        (function() {
+            const baseUrl = window.base_url || <?= json_encode($GLOBALS['base_url'] ?? '') ?>;
+            const userId  = <?= (int)$_SESSION['user']['id'] ?>;
+            const storageKey = 'tphl_last_seen_notif_id_' + userId;
+            const overlay = document.getElementById('tphlNotifCenterOverlay');
+            const stack = document.getElementById('tphlNotifToastStack');
+            if (!overlay || !stack || !userId) return;
+
+            const actionLabels = {
+                task_assigned:      { label: 'New Task Assigned',     icon: 'fa-user-plus',     color: '#006837', bg: '#ecfdf5' },
+                task_reassigned:    { label: 'Task Reassigned',       icon: 'fa-people-arrows', color: '#087F5B', bg: '#ecfdf5' },
+                collaborator_added: { label: 'Added as Collaborator', icon: 'fa-users',         color: '#006837', bg: '#ecfdf5' },
+                task_mentioned:     { label: 'Mentioned You',         icon: 'fa-at',            color: '#087F5B', bg: '#ecfdf5' },
+                task_accepted:      { label: 'Task Accepted',         icon: 'fa-handshake',     color: '#006837', bg: '#ecfdf5' },
+                status_changed:     { label: 'Status Updated',        icon: 'fa-arrows-rotate', color: '#087F5B', bg: '#ecfdf5' },
+                progress_updated:   { label: 'Progress Updated',      icon: 'fa-chart-line',    color: '#006837', bg: '#ecfdf5' },
+                subtask_updated:    { label: 'Checklist Updated',     icon: 'fa-list-check',    color: '#087F5B', bg: '#ecfdf5' },
+                task_completed:     { label: 'Task Completed',        icon: 'fa-circle-check',  color: '#006837', bg: '#dcfce7' },
+                task_rated:         { label: 'Task Rated',            icon: 'fa-star',          color: '#006837', bg: '#ecfdf5' },
+                task_comment:       { label: 'New Comment',           icon: 'fa-comment-dots',  color: '#087F5B', bg: '#ecfdf5' },
+                task_edited:        { label: 'Task Updated',          icon: 'fa-pen-to-square', color: '#006837', bg: '#ecfdf5' },
+                task_deleted:       { label: 'Task Deleted',          icon: 'fa-trash-can',     color: '#dc2626', bg: '#fef2f2' }
+            };
+
+            function escHtml(s) {
+                return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            }
+
+            function getLastSeenId() {
+                try {
+                    const v = parseInt(localStorage.getItem(storageKey) || '0', 10);
+                    return isNaN(v) ? 0 : v;
+                } catch (e) { return 0; }
+            }
+
+            function setLastSeenId(id) {
+                try {
+                    if (id > getLastSeenId()) localStorage.setItem(storageKey, String(id));
+                } catch (e) {}
+            }
+
+            function updateSidebarBadge(count) {
+                const c = Math.max(0, parseInt(count || 0, 10));
+                const badge = document.getElementById('sidebarNotificationBadge');
+                if (badge) {
+                    badge.textContent = c;
+                    badge.style.display = c > 0 ? '' : 'none';
+                }
+            }
+
+            function extractTaskId(item) {
+                let tid = parseInt(item.task_id || 0, 10);
+                if (!tid) {
+                    const m = String(item.message || '').match(/\bT-(\d+)\b/i);
+                    if (m) tid = parseInt(m[1], 10);
+                }
+                return tid;
+            }
+
+            function syncOverlayVisibility() {
+                if (stack.children.length > 0) {
+                    overlay.classList.add('is-open');
+                } else {
+                    overlay.classList.remove('is-open');
+                }
+            }
+
+            function closeAllToasts() {
+                stack.innerHTML = '';
+                syncOverlayVisibility();
+            }
+
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closeAllToasts();
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeAllToasts();
+            });
+
+            function showToast(item) {
+                const actKey = String(item.action_type || '').toLowerCase();
+                const isDeleted = (actKey === 'task_deleted') || (item.task_exists !== undefined && parseInt(item.task_exists, 10) === 0);
+                const meta = actionLabels[actKey] || { label: 'New Notification', icon: 'fa-bell', color: '#006837', bg: '#ecfdf5' };
+                const taskId = isDeleted ? 0 : extractTaskId(item);
+                const targetHref = taskId > 0
+                    ? (baseUrl + '/my-work-dashboard?task_id=' + encodeURIComponent(taskId))
+                    : (baseUrl + '/notifications');
+
+                const toast = document.createElement('div');
+                toast.className = 'tphl-notif-toast';
+                toast.style.borderTopColor = meta.color;
+                toast.innerHTML =
+                    '<button type="button" class="tphl-notif-toast-close" title="Close">&times;</button>' +
+                    '<div class="tphl-notif-toast-header">' +
+                        '<div class="tphl-notif-toast-icon" style="background:' + meta.bg + ';color:' + meta.color + ';">' +
+                            '<i class="fa-solid ' + meta.icon + '"></i>' +
+                        '</div>' +
+                        '<div style="min-width:0;padding-right:26px;">' +
+                            '<div style="font-size:17px;font-weight:700;color:#0f172a;line-height:1.25;">' + escHtml(meta.label) + '</div>' +
+                            '<div style="font-size:12.5px;color:#64748b;margin-top:2px;">' +
+                                (item.actor_name ? 'From <strong style="color:#334155;">' + escHtml(item.actor_name) + '</strong>' : 'Task Notification') +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="tphl-notif-toast-msg">' + escHtml(item.message || '') + '</div>' +
+                    '<div class="tphl-notif-toast-actions">' +
+                        '<button type="button" class="tphl-notif-btn-secondary tphl-notif-dismiss">' + (isDeleted ? 'Close' : 'Dismiss') + '</button>' +
+                        '<button type="button" class="tphl-notif-btn-outline tphl-notif-mark-read">' +
+                            '<i class="fa-solid fa-check"></i> Mark as Read' +
+                        '</button>' +
+                        (isDeleted ? '' : (
+                            '<button type="button" class="tphl-notif-btn-primary tphl-notif-open" style="background:' + meta.color + ';">' +
+                                '<i class="fa-solid fa-arrow-up-right-from-square"></i> ' +
+                                (taskId > 0 ? 'View Task Details' : 'Open Notifications') +
+                            '</button>'
+                        )) +
+                    '</div>';
+
+                function removeToast(markRead) {
+                    if (markRead) {
+                        const fd = new FormData();
+                        fd.append('id', String(item.id));
+                        fetch(baseUrl + '/notifications/mark-read', { method: 'POST', body: fd, keepalive: true })
+                            .then(r => r.ok ? r.json() : null)
+                            .then(d => {
+                                if (d && d.status === 'success') {
+                                    updateSidebarBadge(d.unread_count);
+                                    const pageBadge = document.getElementById('notifPageUnreadBadge');
+                                    if (pageBadge) {
+                                        const c = Math.max(0, parseInt(d.unread_count || 0, 10));
+                                        pageBadge.textContent = c + ' Unread';
+                                        pageBadge.style.display = c > 0 ? '' : 'none';
+                                    }
+                                    const pillBadge = document.getElementById('pillUnreadCount');
+                                    if (pillBadge) pillBadge.textContent = Math.max(0, parseInt(d.unread_count || 0, 10));
+                                }
+                            })
+                            .catch(() => {});
+                    }
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        toast.remove();
+                        syncOverlayVisibility();
+                    }, 180);
+                }
+
+                toast.querySelector('.tphl-notif-toast-close').addEventListener('click', () => removeToast(false));
+                toast.querySelector('.tphl-notif-dismiss').addEventListener('click', () => removeToast(false));
+                toast.querySelector('.tphl-notif-mark-read').addEventListener('click', () => removeToast(true));
+                const openBtn = toast.querySelector('.tphl-notif-open');
+                if (openBtn) {
+                    openBtn.addEventListener('click', function() {
+                        const fd = new FormData();
+                        fd.append('id', String(item.id));
+                        fetch(baseUrl + '/notifications/mark-read', { method: 'POST', body: fd, keepalive: true }).catch(() => {});
+                        window.location.href = targetHref;
+                    });
+                }
+
+                stack.appendChild(toast);
+                syncOverlayVisibility();
+            }
+
+            let isPolling = false;
+            function pollNotifications() {
+                if (isPolling || document.hidden) return;
+                isPolling = true;
+                fetch(baseUrl + '/notifications/unread-count', {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (!data || data.status !== 'success') return;
+                    updateSidebarBadge(data.unread_count);
+
+                    const latest = Array.isArray(data.latest) ? data.latest : [];
+                    if (!latest.length) return;
+
+                    const lastSeen = getLastSeenId();
+                    const unseen = latest
+                        .filter(it => parseInt(it.id || 0, 10) > lastSeen)
+                        .sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
+
+                    if (unseen.length) {
+                        const maxId = parseInt(unseen[unseen.length - 1].id, 10);
+                        setLastSeenId(maxId);
+                        unseen.slice(-3).forEach(showToast);
+                    }
+                })
+                .catch(() => {})
+                .finally(() => { isPolling = false; });
+            }
+
+            setTimeout(pollNotifications, 1000);
+            setInterval(pollNotifications, 15000);
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) pollNotifications();
+            });
+        })();
+    </script>
+<?php endif; ?>
+
         </body>
 
         </html>
