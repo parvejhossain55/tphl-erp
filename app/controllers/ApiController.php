@@ -926,12 +926,23 @@ class ApiController extends Controller
         $phone = $lead ? ($lead['phone'] ?: ($lead['phone_number'] ?? '')) : '';
         $email = $onboard ? ($onboard['login_email'] ?: $onboard['email']) : ($lead['email'] ?? '');
 
-        // Fetch bookings for this lead (by lead_id, lead_booking_id, or phone match)
+        // Fetch bookings for this lead (by lead_booking_id, lead_id, or phone match)
         $bookings = [];
         $bookingIds = [];
 
-        if ($leadId) {
-            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$leadId . " AND booking_status != 'cancelled'");
+        // 1. Explicit booking assigned to this onboard client takes highest priority
+        if (!empty($onboard['lead_booking_id'])) {
+            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE id = " . (int)$onboard['lead_booking_id'] . " AND booking_status != 'cancelled' LIMIT 1");
+            if ($bRes && $bRes->num_rows > 0) {
+                $b = $bRes->fetch_assoc();
+                $bookings[] = $b;
+                $bookingIds[] = $b['id'];
+            }
+        }
+
+        // 2. Fetch bookings for this lead_id (if not already set by explicit lead_booking_id)
+        if (empty($bookings) && $leadId) {
+            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$leadId . " AND booking_status != 'cancelled' ORDER BY (booking_status = 'completed') DESC, id DESC");
             if ($bRes) {
                 while ($b = $bRes->fetch_assoc()) {
                     if (!in_array($b['id'], $bookingIds)) {
@@ -942,27 +953,45 @@ class ApiController extends Controller
             }
         }
 
-        if (!empty($onboard['lead_booking_id'])) {
-            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE id = " . (int)$onboard['lead_booking_id'] . " AND booking_status != 'cancelled' LIMIT 1");
-            if ($bRes && $bRes->num_rows > 0) {
-                $b = $bRes->fetch_assoc();
-                if (!in_array($b['id'], $bookingIds)) {
-                    $bookings[] = $b;
-                    $bookingIds[] = $b['id'];
-                }
+        // 3. Fallback or cross-lead check: If bookings are empty OR only contain unpaid/draft bookings while a completed/paid booking exists under the same client phone
+        $hasPaidOrCompletedBooking = false;
+        foreach ($bookings as $bk) {
+            if (($bk['booking_status'] ?? '') === 'completed' || strtolower($bk['payment_status'] ?? '') === 'paid') {
+                $hasPaidOrCompletedBooking = true;
+                break;
             }
         }
 
-        if (empty($bookings) && !empty($phone)) {
+        if ((empty($bookings) || !$hasPaidOrCompletedBooking) && !empty($phone)) {
             $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
             if (strlen($cleanPhone) >= 8) {
                 $last8 = substr($cleanPhone, -8);
-                $bRes = $this->db->query("SELECT lb.* FROM lead_bookings lb INNER JOIN leads l ON lb.lead_id = l.id WHERE (l.phone LIKE '%$last8%' OR l.phone_number LIKE '%$last8%') AND lb.booking_status != 'cancelled'");
+                $bRes = $this->db->query("SELECT lb.* FROM lead_bookings lb INNER JOIN leads l ON lb.lead_id = l.id WHERE (l.phone LIKE '%$last8%' OR l.phone_number LIKE '%$last8%') AND lb.booking_status != 'cancelled' ORDER BY (lb.booking_status = 'completed') DESC, (lb.payment_status = 'paid') DESC, lb.id DESC");
                 if ($bRes) {
+                    $phoneBookings = [];
                     while ($b = $bRes->fetch_assoc()) {
-                        if (!in_array($b['id'], $bookingIds)) {
-                            $bookings[] = $b;
-                            $bookingIds[] = $b['id'];
+                        $phoneBookings[] = $b;
+                    }
+
+                    // If phone found a completed/paid booking, prefer it over uncompleted draft bookings
+                    $completedPhoneBk = null;
+                    foreach ($phoneBookings as $pb) {
+                        if (($pb['booking_status'] ?? '') === 'completed' || strtolower($pb['payment_status'] ?? '') === 'paid') {
+                            $completedPhoneBk = $pb;
+                            break;
+                        }
+                    }
+
+                    if ($completedPhoneBk && !$hasPaidOrCompletedBooking) {
+                        // Replace uncompleted draft with the completed booking
+                        $bookings = [$completedPhoneBk];
+                        $bookingIds = [$completedPhoneBk['id']];
+                    } elseif (empty($bookings)) {
+                        foreach ($phoneBookings as $pb) {
+                            if (!in_array($pb['id'], $bookingIds)) {
+                                $bookings[] = $pb;
+                                $bookingIds[] = $pb['id'];
+                            }
                         }
                     }
                 }
