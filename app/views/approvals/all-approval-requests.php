@@ -1750,10 +1750,20 @@
                                             <?php endif; ?>
 
                                         <?php elseif ($isPaidOrSettled): ?>
-                                            <?php if ($isVoucherSupported): ?>
-                                                <a href="<?= $voucherUrl ?>" target="_blank" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" title="View, Print & Download Payment Voucher">
-                                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Payment Voucher
+                                            <?php if ($sourceTable === 'client_refund_requests'): ?>
+                                                <!-- Both Receipts: 1. Debit Voucher (Company) & 2. Client Refund Money Receipt -->
+                                                <a href="<?= $voucherUrl ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-2 px-2 shadow-sm fw-semibold me-1" title="Company Debit Voucher (Office Copy)">
+                                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Debit Voucher
                                                 </a>
+                                                <a href="<?= $base_url ?>/client-refund-receipt/<?= (int)$req['source_id'] ?>" target="_blank" class="btn btn-sm btn-success rounded-2 px-2 shadow-sm fw-semibold me-1" title="Client Refund Money Receipt (Customer Copy)">
+                                                    <i class="fa-solid fa-receipt me-1"></i>Client Receipt
+                                                </a>
+                                            <?php else: ?>
+                                                <?php if ($isVoucherSupported): ?>
+                                                    <a href="<?= $voucherUrl ?>" target="_blank" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" title="View, Print & Download Payment Voucher">
+                                                        <i class="fa-solid fa-file-invoice-dollar me-1"></i>Payment Voucher
+                                                    </a>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                             <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
                                                 <i class="fa-solid fa-eye"></i>

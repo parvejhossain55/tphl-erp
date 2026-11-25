@@ -693,7 +693,7 @@ class ApiController extends Controller
                     "flat_id" => $flat ? $flat['id'] : null,
                     "flat_name" => $flat ? $flat['flat_name'] : 'N/A',
                     "floor_no" => $flat ? $flat['floor_no'] : 'N/A',
-                    "sqft" => $flat ? $flat['sqft'] : 0,
+                    "sqft" => $flat && !empty($flat['sqft']) ? (float)$flat['sqft'] : 0,
                     
                     // আপডেট করা কলামগুলো (total_share এখন project থেকে নিবে)
                     "building_type" => $project ? ($project['building_type'] ?? 'N/A') : 'N/A',
@@ -1068,6 +1068,13 @@ class ApiController extends Controller
                     : "https://api.dpremiumhomes.com/assets/Property/" . $project['image'];
             }
 
+            // Format flatSize without trailing zeros (e.g. 1630.0000 -> 1630 sqft, 1630.5000 -> 1630.5 sqft)
+            $rawSqft = $flat && !empty($flat['sqft']) ? $flat['sqft'] : '';
+            $cleanSqft = preg_replace('/[^\d.]/', '', (string)$rawSqft);
+            $flatSizeFormatted = ($cleanSqft !== '' && is_numeric($cleanSqft) && (float)$cleanSqft > 0)
+                ? ((string)(float)$cleanSqft . ' sqft')
+                : '';
+
             $savedProperties[] = [
                 "id"                   => (int)($project['id'] ?? $b['project_id']),
                 "slug"                 => $project['slug'] ?? '',
@@ -1075,7 +1082,7 @@ class ApiController extends Controller
                 "location"             => $project['location'] ?? '',
                 "image"                => $image,
                 "flatNo"               => $flat['flat_name'] ?? '',
-                "flatSize"             => $flat && !empty($flat['sqft']) ? $flat['sqft'] . ' sqft' : '',
+                "flatSize"             => $flatSizeFormatted,
                 "price"                => number_format($flatPrice),
                 "total_payable"        => number_format($totalPayable),
                 "partial_payment"      => number_format($totalPaid),
@@ -1101,6 +1108,18 @@ class ApiController extends Controller
                 "purchaseDetailsLink"  => $purchaseDetailsLink,
                 "estimatedDate"        => '2028',
             ];
+        }
+
+        if (!empty($savedProperties)) {
+            foreach ($savedProperties as &$prop) {
+                if (!empty($prop['flatSize'])) {
+                    $cVal = preg_replace('/[^\d.]/', '', (string)$prop['flatSize']);
+                    if ($cVal !== '' && is_numeric($cVal) && (float)$cVal > 0) {
+                        $prop['flatSize'] = (string)(float)$cVal . ' sqft';
+                    }
+                }
+            }
+            unset($prop);
         }
 
         return [

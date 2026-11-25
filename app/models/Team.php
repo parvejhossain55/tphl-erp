@@ -122,9 +122,9 @@ class Team extends Model
                 LEFT JOIN roles r ON r.id = u.role_id
                 LEFT JOIN roles sr ON sr.id = u.secondary_role_id
                 WHERE (
-                    (LOWER(TRIM(r.name)) = 'sales manager' AND r.id != 5)
+                    (LOWER(TRIM(r.name)) IN ('cluster head', 'sales manager') AND r.id != 5)
                     OR
-                    (LOWER(TRIM(sr.name)) = 'sales manager' AND sr.id != 5)
+                    (LOWER(TRIM(sr.name)) IN ('cluster head', 'sales manager') AND sr.id != 5)
                 )
                   AND (e.employee_status IS NULL OR (e.deleted_at IS NULL AND LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated')))
                   AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))

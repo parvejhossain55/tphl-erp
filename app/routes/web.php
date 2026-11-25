@@ -206,6 +206,15 @@ return [
     'api/client-details' => ['controller' => 'ApiController', 'method' => 'clientDetails'],
 
     // =========================================================================
+    // Controller: ClientFeedbackController (Management Portal + Public API)
+    // =========================================================================
+    'client-feedback-report' => ['controller' => 'ClientFeedbackController', 'method' => 'index'],
+    'client-feedback-report/list' => ['controller' => 'ClientFeedbackController', 'method' => 'listAjax'],
+    'client-feedback-report/update-status' => ['controller' => 'ClientFeedbackController', 'method' => 'updateStatusAjax'],
+    'client-feedback-report/export' => ['controller' => 'ClientFeedbackController', 'method' => 'exportCsv'],
+    'api/client-feedback/submit' => ['controller' => 'ClientFeedbackController', 'method' => 'submitApi'],
+
+    // =========================================================================
     // Controller: ErpTrackerController
     // =========================================================================
     'erp-tracker' => ['controller' => 'ErpTrackerController', 'method' => 'dashboard'],

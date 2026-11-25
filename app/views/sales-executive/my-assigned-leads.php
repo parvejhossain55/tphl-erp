@@ -976,18 +976,6 @@ $hasActiveFilters = !empty($search)
                                                     </a>
                                                 </div>
                                             <?php endif; ?>
-                                            <?php if (!empty($prevAssigneesMap[$lead['id']])): ?>
-                                                <div class="text-secondary ps-1 mt-1" style="font-size: 11px; line-height: 1.25;" title="Previously Assigned / Handled By">
-                                                    <i class="bi bi-arrow-counterclockwise text-warning me-1"></i>Prev: <strong><?= htmlspecialchars($prevAssigneesMap[$lead['id']]) ?></strong>
-                                                </div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($alsoWithMap[$lead['id']])): ?>
-                                                <div class="mt-1">
-                                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0.5 text-wrap" style="font-size: 10px; line-height: 1.25;" title="Same customer also assigned to: <?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']]), ENT_QUOTES, 'UTF-8') ?>">
-                                                        <i class="bi bi-people me-1"></i>Also with: <strong class="text-danger"><?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']])) ?></strong>
-                                                    </span>
-                                                </div>
-                                            <?php endif; ?>
                                         </div>
                                     </td>
 
@@ -1615,18 +1603,6 @@ $hasActiveFilters = !empty($search)
                         <div class="mt-1">
                             <i class="bi bi-geo-alt-fill text-muted me-1" style="font-size:11px"></i>
                             <span class="fs-11 text-muted"><?= htmlspecialchars($mAddr) ?></span>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($prevAssigneesMap[$lead['id']])): ?>
-                        <div class="text-muted small mt-1" title="Previously Assigned / Handled By">
-                            <i class="bi bi-arrow-counterclockwise text-warning me-1"></i>Prev: <strong><?= htmlspecialchars($prevAssigneesMap[$lead['id']]) ?></strong>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($alsoWithMap[$lead['id']])): ?>
-                        <div class="mt-1">
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0.5 text-wrap" style="font-size: 9px;" title="Same customer also assigned to: <?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']]), ENT_QUOTES, 'UTF-8') ?>">
-                                <i class="bi bi-people me-1"></i>Also with: <strong class="text-danger"><?= htmlspecialchars(implode(', ', $alsoWithMap[$lead['id']])) ?></strong>
-                            </span>
                         </div>
                         <?php endif; ?>
                         <?php
@@ -2618,7 +2594,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                   placeholder="Please explain in detail why this lead should be deleted (e.g. invalid number, fake lead, duplicate, testing, etc.)..." required></textarea>
                     </div>
                     <div class="alert alert-info py-2 px-3 small mb-0">
-                        <i class="fa-solid fa-circle-info me-1"></i> Your deletion request will be reviewed by your Team Sales Manager / Head / Management.
+                        <i class="fa-solid fa-circle-info me-1"></i> Your deletion request will be reviewed by your Team Cluster Head / Head / Management.
                     </div>
                 </div>
                 <div class="modal-footer bg-light">

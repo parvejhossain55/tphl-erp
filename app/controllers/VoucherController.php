@@ -547,12 +547,16 @@ class VoucherController extends Controller
             case 'client_refund_requests':
             case 'client_refund':
                 $stmt = $this->db->prepare("
-                    SELECT cr.*, cr.booking_id, l.lead_name, p.name as project_name 
+                    SELECT cr.*, cr.booking_id, l.full_name as client_name, l.lead_name, l.phone as client_phone, p.name as project_name,
+                           cba.bank_name as comp_bank_name, cba.account_number as comp_bank_acc, cp.payment_method as disb_method, cp.payment_date as disb_date, cp.cheque_no as disb_cheque
                     FROM client_refund_requests cr 
                     LEFT JOIN lead_bookings lb ON lb.id = cr.booking_id 
                     LEFT JOIN leads l ON l.id = cr.lead_id 
                     LEFT JOIN projects p ON p.id = cr.project_id 
+                    LEFT JOIN cashout_payments cp ON cp.cashout_request_id = cr.cashout_request_id
+                    LEFT JOIN company_bank_accounts cba ON cba.id = cp.bank_id
                     WHERE cr.id = ?
+                    ORDER BY cp.id DESC LIMIT 1
                 ");
                 if (!$stmt) die("Error preparing query: " . $this->db->error);
                 $stmt->bind_param("i", $id);
@@ -562,26 +566,31 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $clientDisplayName = !empty($req['client_name']) ? $req['client_name'] : (!empty($req['lead_name']) ? $req['lead_name'] : 'Client / Buyer');
                 $voucherData['voucher_no'] = 'REF-' . $id;
-                $voucherData['paid_to'] = $req['lead_name'] ?? 'Client / Buyer';
+                $voucherData['paid_to'] = $clientDisplayName . (!empty($req['client_phone']) ? ' (' . $req['client_phone'] . ')' : '');
                 $voucherData['project'] = $req['project_name'] ?? 'Sales Project';
                 $voucherData['purpose'] = 'Client Refund Request (' . (!empty($req['booking_id']) ? 'Booking #' . $req['booking_id'] : '') . ') - ' . ($req['reason'] ?? 'Booking Refund');
                 
                 $descParts = [];
                 if (!empty($req['booking_id'])) $descParts[] = "Booking: #" . $req['booking_id'];
+                if (!empty($req['client_bank_name'])) $descParts[] = "Client Bank: " . $req['client_bank_name'] . (!empty($req['client_bank_account_no']) ? " (A/C: " . $req['client_bank_account_no'] . ")" : "");
                 if (!empty($req['reason'])) $descParts[] = "Reason: " . $req['reason'];
                 $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Client Refund Request';
                 $voucherData['expense_details'] = $expenseDetails;
 
                 $amt = (float)($req['refund_amount'] ?? 0);
                 $voucherData['amount'] = $amt;
-                $voucherData['payment_method'] = 'Bank Transfer / Cheque';
+                $voucherData['payment_method'] = !empty($req['disb_method']) ? ucfirst($req['disb_method']) : (!empty($req['preferred_payment_method']) ? ucfirst($req['preferred_payment_method']) : 'Bank Transfer');
 
                 $voucherData['transactions'][] = [
                     'amount_paid' => $amt,
-                    'payment_method' => 'Bank Transfer / Cheque',
-                    'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
-                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                    'payment_method' => $voucherData['payment_method'],
+                    'transaction_date' => $req['disb_date'] ?? ($req['refunded_at'] ?? ($req['updated_at'] ?? date('Y-m-d'))),
+                    'bank_name' => $req['comp_bank_name'] ?? '', 
+                    'bank_account_no' => $req['comp_bank_acc'] ?? '', 
+                    'cheque_no' => $req['disb_cheque'] ?? '', 
+                    'online_type' => '',
                     'reference_number' => 'REF-' . str_pad($id, 4, '0', STR_PAD_LEFT),
                     'description' => $expenseDetails
                 ];

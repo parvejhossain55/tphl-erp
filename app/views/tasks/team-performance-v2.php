@@ -1195,7 +1195,7 @@
                     <input type="date" name="start_date" class="mw-form-input">
                 </div>
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <label class="mw-form-label">Deadline <span class="req" id="drawerDeadlineReq">*</span></label>
                     <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" required>
                 </div>
             </div>
@@ -1940,6 +1940,10 @@ function resetAssignDrawerForm() {
     if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
     const selRec = document.getElementById('taskRecurrenceType');
     if (selRec) selRec.required = false;
+    const dlInput = document.getElementById('drawerDeadline');
+    const dlReq = document.getElementById('drawerDeadlineReq');
+    if (dlInput) dlInput.required = true;
+    if (dlReq) dlReq.style.display = '';
     if (typeof window.setCustomRecurringDates === 'function') {
         window.setCustomRecurringDates([]);
     }
@@ -2034,6 +2038,10 @@ document.addEventListener('DOMContentLoaded', function() {
         chkIsRecurring.addEventListener('change', () => {
             rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
             if (selRecType) selRecType.required = chkIsRecurring.checked;
+            const dlInput = document.getElementById('drawerDeadline');
+            const dlReq = document.getElementById('drawerDeadlineReq');
+            if (dlInput) dlInput.required = !chkIsRecurring.checked;
+            if (dlReq) dlReq.style.display = chkIsRecurring.checked ? 'none' : '';
             const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
             if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
         });
@@ -2085,11 +2093,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.mw-multi.open').forEach(b => { if (!b.contains(e.target)) b.classList.remove('open'); });
     }, true);
 
-    // Acceptance checklist dynamic rows
+    // Acceptance checklist dynamic rows (+ press Enter to add new row)
     const expectedList = document.getElementById('expectedOutputList');
     const btnAddExpected = document.getElementById('btnAddExpectedOutput');
     if (expectedList && btnAddExpected) {
-        btnAddExpected.addEventListener('click', function () {
+        const addChecklistRow = () => {
             const row = document.createElement('div');
             row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
             row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another checklist item"></textarea>' +
@@ -2097,6 +2105,15 @@ document.addEventListener('DOMContentLoaded', function() {
             row.querySelector('button').addEventListener('click', () => row.remove());
             expectedList.appendChild(row);
             row.querySelector('textarea').focus();
+        };
+        btnAddExpected.addEventListener('click', addChecklistRow);
+        expectedList.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.matches('textarea[name="description[]"]')) {
+                e.preventDefault();
+                if (e.target.value.trim() !== '') {
+                    addChecklistRow();
+                }
+            }
         });
     }
 

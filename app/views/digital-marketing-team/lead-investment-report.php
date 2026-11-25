@@ -554,6 +554,7 @@ $todayLabel = date('d M Y');
                 <label class="lir-field-label">PROJECT</label>
                 <select id="filterProjectId" class="lir-select">
                     <option value="">All projects</option>
+                    <option value="0">Common / Unmapped Project</option>
                     <?php foreach ($projects as $proj): ?>
                         <option value="<?= (int)$proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
                     <?php endforeach; ?>
@@ -734,6 +735,7 @@ $todayLabel = date('d M Y');
                     <label class="lir-field-label">PROJECT *</label>
                     <select id="entryProjectId" class="lir-select" onchange="onEntryProjectChanged()">
                         <option value="">-- Select Project --</option>
+                        <option value="0">Common / Unmapped Project</option>
                         <?php foreach ($projects as $proj): ?>
                             <option value="<?= (int)$proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
                         <?php endforeach; ?>
@@ -981,6 +983,7 @@ $todayLabel = date('d M Y');
                     <label class="lir-field-label">PROJECT *</label>
                     <select id="budgetModalProjectId" class="lir-select">
                         <option value="">-- Select Project --</option>
+                        <option value="0">Common / Unmapped Project</option>
                         <?php foreach ($projects as $proj): ?>
                             <option value="<?= (int)$proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
                         <?php endforeach; ?>

@@ -10,6 +10,11 @@ class AiDataService
         $itemLower = strtolower(trim($itemName));
         $catLower = strtolower(trim($originalCategory));
 
+        // 0. Material Expense (approved Purchase Orders)
+        if ($sourceModule === 'material_expense') {
+            return 'Material Expense';
+        }
+
         // 1. Contractor & Civil Works (both legacy contractor PO items and modern contractor bills)
         if ($sourceModule === 'contractor_bill' || strpos($itemLower, 'contractor') !== false || strpos($itemLower, 'contracter') !== false) {
             return 'Contractor & Civil Works';
@@ -66,6 +71,7 @@ class AiDataService
     {
         $breakdown = [];
         $moduleTotals = [
+            'material_expenses'   => 0.0,
             'vendor_payments'     => 0.0,
             'contractor_bills'    => 0.0,
             'labor_bills'         => 0.0,
@@ -74,6 +80,7 @@ class AiDataService
             'expense_adjustments' => 0.0
         ];
         $moduleDues = [
+            'material_expenses'   => 0.0,
             'vendor_payments'     => 0.0,
             'contractor_bills'    => 0.0,
             'labor_bills'         => 0.0,
@@ -84,139 +91,81 @@ class AiDataService
         $totalDue = 0.0;
 
         // -------------------------------------------------------------
-        // 1. VENDOR PAYMENTS & MATERIAL PURCHASES (PO ITEMS - STRICT PAID)
+        // 1. MATERIAL EXPENSES (APPROVED PURCHASE ORDERS & PO ITEMS)
         // -------------------------------------------------------------
-        $vprSql = "
+        $poSql = "
             SELECT 
-                vpr.id as vpr_id,
-                vpr.purchase_order_id,
-                vpr.approved_amount,
-                vpr.invoice_amount,
-                vpr.due_amount,
-                vpr.status as vpr_status,
-                COALESCE(ft.transaction_date_str, DATE(vpr.created_at)) as payment_date,
-                COALESCE(v.name, 'Unknown') as vendor_name
-            FROM vendor_payment_requests vpr
-            LEFT JOIN vendors v ON vpr.vendor_id = v.id
-            LEFT JOIN con_financial_transactions ft ON ft.ref_type = 'vendor_payment' AND ft.ref_id = vpr.id
-            WHERE vpr.project_id = ?
-            ORDER BY payment_date DESC, vpr.id DESC
+                po.id as po_id,
+                po.status as po_status,
+                COALESCE(po.order_date, DATE(po.created_at)) as order_date,
+                COALESCE(NULLIF(TRIM(v.company_name), ''), v.name, 'Unknown') as vendor_name,
+                poi.id as poi_id,
+                poi.material_id,
+                poi.quantity as qty,
+                poi.unit_price,
+                COALESCE(poi.total_price, poi.quantity * poi.unit_price) as item_total,
+                m.name as expense_name,
+                COALESCE(m.unit, 'Unit') as unit,
+                COALESCE(c.name, 'Uncategorized') as category_name
+            FROM purchase_orders po
+            JOIN purchase_requests pr ON po.request_id = pr.id
+            JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+            JOIN con_materials m ON poi.material_id = m.id
+            LEFT JOIN con_material_categories c ON m.category_id = c.id
+            LEFT JOIN vendors v ON COALESCE(poi.selected_vendor_id, po.vendor_id) = v.id
+            WHERE pr.project_id = ?
+              AND po.status NOT IN ('Cancelled', 'Draft')
+              AND (
+                  po.status IN ('Approved', 'Fully Received', 'Partially Received', 'QC Approved', 'Purchase Head Approved')
+                  OR po.op_head_approved_by_id IS NOT NULL 
+                  OR po.mgmt_approved_by_id IS NOT NULL 
+                  OR po.purchase_head_approved_by_id IS NOT NULL 
+                  OR po.qc_approved_by_id IS NOT NULL
+              )
+            ORDER BY order_date DESC, po.id DESC, poi.id ASC
         ";
-        $stmt = $db->prepare($vprSql);
+        $stmt = $db->prepare($poSql);
         if ($stmt) {
             $stmt->bind_param("i", $projectId);
             $stmt->execute();
             $result = $stmt->get_result();
 
-            while ($v = $result->fetch_assoc()) {
-                $st = $v['vpr_status'];
-                $app = (float)($v['approved_amount'] ?: $v['invoice_amount']);
-                $due = (float)($v['due_amount'] ?? 0);
-                $paid = 0.0;
+            while ($row = $result->fetch_assoc()) {
+                $qty = (float)$row['qty'];
+                $unitPrice = (float)$row['unit_price'];
+                $itemTotal = (float)($row['item_total'] ?: ($qty * $unitPrice));
 
-                if (in_array($st, ['Paid', 'Fully_Paid'])) {
-                    $paid = $app;
-                } elseif ($st === 'Partially_Paid') {
-                    $paid = max(0.0, $app - $due);
-                    $moduleDues['vendor_payments'] += $due;
-                } elseif (in_array($st, ['Approved', 'QC Approved'])) {
-                    $moduleDues['vendor_payments'] += ($due > 0 ? $due : $app);
-                }
-
-                if ($paid <= 0) {
+                if ($itemTotal <= 0 && $qty <= 0) {
                     continue;
                 }
 
-                $moduleTotals['vendor_payments'] += $paid;
-                $totalExpense += $paid;
-
-                // Fetch PO items for item-level category breakdown
-                $poId = (int)$v['purchase_order_id'];
-                $itemsAdded = false;
-
-                if ($poId > 0) {
-                    $poiSql = "
-                        SELECT 
-                            poi.quantity as qty,
-                            poi.unit_price,
-                            (poi.quantity * poi.unit_price) as item_total,
-                            m.name as expense_name,
-                            COALESCE(m.unit, 'Unit') as unit,
-                            COALESCE(c.name, 'Uncategorized') as category_name
-                        FROM purchase_order_items poi
-                        JOIN con_materials m ON poi.material_id = m.id
-                        LEFT JOIN con_material_categories c ON m.category_id = c.id
-                        WHERE poi.purchase_order_id = ?
-                    ";
-                    $pStmt = $db->prepare($poiSql);
-                    if ($pStmt) {
-                        $pStmt->bind_param("i", $poId);
-                        $pStmt->execute();
-                        $poiRes = $pStmt->get_result();
-                        $poiRows = [];
-                        $poSum = 0.0;
-
-                        while ($pRow = $poiRes->fetch_assoc()) {
-                            $poiRows[] = $pRow;
-                            $poSum += (float)$pRow['item_total'];
-                        }
-                        $pStmt->close();
-
-                        if (!empty($poiRows) && $poSum > 0) {
-                            $ratio = $paid / $poSum;
-                            $runningSum = 0.0;
-                            $rowCount = count($poiRows);
-
-                            foreach ($poiRows as $idx => $pRow) {
-                                if ($idx === $rowCount - 1) {
-                                    $itemPaid = round($paid - $runningSum, 2);
-                                } else {
-                                    $itemPaid = round((float)$pRow['item_total'] * $ratio, 2);
-                                    $runningSum += $itemPaid;
-                                }
-
-                                if ($itemPaid <= 0) continue;
-
-                                $category = self::categorizeProjectExpense($pRow['category_name'], $pRow['expense_name'], 'vendor_payment');
-                                if (!isset($breakdown[$category])) {
-                                    $breakdown[$category] = [];
-                                }
-
-                                $breakdown[$category][] = [
-                                    'expense_name' => $pRow['expense_name'],
-                                    'vendor_name'  => $v['vendor_name'],
-                                    'qty'          => (float)$pRow['qty'],
-                                    'unit'         => $pRow['unit'],
-                                    'unit_price'   => (float)$pRow['unit_price'],
-                                    'total_amount' => $itemPaid,
-                                    'payment_date' => $v['payment_date'],
-                                    'source_module'=> 'vendor_payment'
-                                ];
-                                $itemsAdded = true;
-                            }
-                        }
-                    }
+                $category = 'Material Expense';
+                if (!isset($breakdown[$category])) {
+                    $breakdown[$category] = [];
                 }
 
-                if (!$itemsAdded) {
-                    $category = 'Others (Site Development & Construction Cost)';
-                    if (!isset($breakdown[$category])) {
-                        $breakdown[$category] = [];
-                    }
-                    $breakdown[$category][] = [
-                        'expense_name' => 'Vendor Payment Request #' . $v['vpr_id'],
-                        'vendor_name'  => $v['vendor_name'],
-                        'qty'          => 1.0,
-                        'unit'         => 'Payment',
-                        'unit_price'   => $paid,
-                        'total_amount' => $paid,
-                        'payment_date' => $v['payment_date'],
-                        'source_module'=> 'vendor_payment'
-                    ];
-                }
+                $breakdown[$category][] = [
+                    'expense_name'      => $row['expense_name'],
+                    'material_category' => $row['category_name'],
+                    'vendor_name'       => $row['vendor_name'],
+                    'qty'               => $qty,
+                    'unit'              => $row['unit'],
+                    'unit_price'        => $unitPrice,
+                    'total_amount'      => round($itemTotal, 2),
+                    'payment_date'      => $row['order_date'],
+                    'source_module'     => 'material_expense',
+                    'po_id'             => (int)$row['po_id'],
+                    'po_status'         => $row['po_status']
+                ];
+
+                $moduleTotals['material_expenses'] += $itemTotal;
+                $totalExpense += $itemTotal;
             }
             $stmt->close();
         }
+
+        // Keep vendor_payments in sync as alias for backwards compatibility
+        $moduleTotals['vendor_payments'] = $moduleTotals['material_expenses'];
 
         // -------------------------------------------------------------
         // 2. CONTRACTOR BILLS (STRICT PAID)
@@ -619,6 +568,7 @@ class AiDataService
                 'total_share'        => $totalShare,
                 'cost_per_share'     => $totalShare > 0 ? round($totalExpense / $totalShare, 2) : 0,
                 'module_summary'     => [
+                    'material_expenses'   => round($moduleTotals['material_expenses'], 2),
                     'vendor_payments'     => round($moduleTotals['vendor_payments'], 2),
                     'contractor_bills'    => round($moduleTotals['contractor_bills'], 2),
                     'labor_bills'         => round($moduleTotals['labor_bills'], 2),
@@ -627,6 +577,7 @@ class AiDataService
                     'expense_adjustments' => round($moduleTotals['expense_adjustments'], 2),
                 ],
                 'module_due_summary' => [
+                    'material_expenses'   => round($moduleDues['material_expenses'], 2),
                     'vendor_payments'     => round($moduleDues['vendor_payments'], 2),
                     'contractor_bills'    => round($moduleDues['contractor_bills'], 2),
                     'labor_bills'         => round($moduleDues['labor_bills'], 2),
