@@ -56,6 +56,7 @@ return [
     'my-work/start-task/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'startTask'],
     'my-work/reviewer-action/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'reviewerAction'],
     'my-work/toggle-checklist/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'toggleChecklist'],
+    'my-work/add-checklist-item/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addChecklistItem'],
     'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
     'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
     'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],

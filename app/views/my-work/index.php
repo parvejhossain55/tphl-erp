@@ -2121,7 +2121,7 @@ $todayDateFormatted = date('j F');
                     <input type="date" name="start_date" class="mw-form-input">
                 </div>
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <label class="mw-form-label">Deadline <span class="req" id="drawerDeadlineReq">*</span></label>
                     <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" required>
                 </div>
             </div>
@@ -2202,11 +2202,11 @@ $todayDateFormatted = date('j F');
 
             <!-- Assigned to & CC -->
             <div class="mw-form-row mw-form-group" id="rowAssignedToCc">
-                <div class="mw-form-col">
+                <div class="mw-form-col" id="colAssignedTo">
                     <label class="mw-form-label">Assigned to</label>
                     <?php $mwMulti('assigned_to_id', 'Select Assigned to...', true, (int)$userId, 'taskAssignedToSelect'); ?>
                 </div>
-                <div class="mw-form-col">
+                <div class="mw-form-col" id="colTaskCc">
                     <label class="mw-form-label">CC</label>
                     <?php $mwMulti('cc_ids[]', 'Select CC...'); ?>
                 </div>
@@ -3143,10 +3143,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const isSelf = !isEdit && (arguments[1] === 'self');
 
             const colTaskOwner = document.getElementById('colTaskOwner');
-            const rowAssignedToCc = document.getElementById('rowAssignedToCc');
+            const colAssignedTo = document.getElementById('colAssignedTo');
             const colWorkingHour = document.getElementById('colWorkingHour');
             if (colTaskOwner) colTaskOwner.style.display = isSelf ? 'none' : '';
-            if (rowAssignedToCc) rowAssignedToCc.style.display = isSelf ? 'none' : '';
+            if (colAssignedTo) colAssignedTo.style.display = isSelf ? 'none' : '';
             if (colWorkingHour) {
                 colWorkingHour.style.display = isSelf ? '' : 'none';
                 if (!isSelf && !isEdit) {
@@ -3198,6 +3198,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
         const selRec = document.getElementById('taskRecurrenceType');
         if (selRec) selRec.required = false;
+        if (typeof window.syncDeadlineRequirement === 'function') {
+            window.syncDeadlineRequirement(false);
+        }
         if (typeof window.setCustomRecurringDates === 'function') {
             window.setCustomRecurringDates([]);
         }
@@ -3328,6 +3331,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (selRec) {
                         selRec.value = t.recurrence_type || '';
                         selRec.required = chkRec.checked;
+                    }
+                    if (typeof window.syncDeadlineRequirement === 'function') {
+                        window.syncDeadlineRequirement(chkRec.checked);
                     }
                     if (typeof window.setCustomRecurringDates === 'function') {
                         window.setCustomRecurringDates(Array.isArray(t.recurrence_custom_dates) ? t.recurrence_custom_dates : []);
@@ -3739,40 +3745,46 @@ document.addEventListener('DOMContentLoaded', function () {
             ? `<div class="mw-td-text">${tdEsc(t.expected_output).replace(/\n/g, '<br>')}</div>` : '<div class="mw-td-empty">No expected output specified.</div>';
 
         // Render Acceptance Checklist matching Figma spec
-        let checklistHtml = '';
-        if (Array.isArray(t.checklist) && t.checklist.length > 0) {
-            const completedCount = t.checklist.filter(c => !!c.completed).length;
-            const pct = Math.round((completedCount / t.checklist.length) * 100);
-            checklistHtml = `
-                <div class="mw-td-sec-head">
-                    <h4>Acceptance checklist</h4>
-                    <span class="mw-cl-counter-badge">${completedCount} of ${t.checklist.length} complete</span>
-                </div>
-                <div class="mw-cl-progress-bar">
-                    <div class="mw-cl-progress-fill" style="width: ${pct}%;"></div>
-                </div>
-                <div class="mw-cl-items-wrap">` +
-                t.checklist.map((item, idx) => {
-                    const isChecked = !!item.completed;
-                    const canCheck = !!t.can_check;
-                    const boxClass = isChecked ? 'checked' : 'unchecked';
-                    const textClass = isChecked ? 'checked' : 'unchecked';
-                    return `
-                        <div class="mw-cl-item" data-cl-idx="${idx}" style="cursor:${canCheck ? 'pointer' : 'default'};">
-                            <span class="mw-cl-box ${boxClass}">
-                                ${isChecked ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.25 4L3.75 6.5L8.75 1.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
-                            </span>
-                            <span class="mw-cl-item-text ${textClass}">${tdEsc(item.text)}</span>
-                        </div>`;
-                }).join('') +
-                `</div>`;
-        } else {
-            checklistHtml = `
+        const buildChecklistInnerHtml = (items, canCheck) => {
+            if (Array.isArray(items) && items.length > 0) {
+                const completedCount = items.filter(c => !!c.completed).length;
+                const pct = Math.round((completedCount / items.length) * 100);
+                return `
+                    <div class="mw-td-sec-head">
+                        <h4>Acceptance checklist</h4>
+                        <span class="mw-cl-counter-badge">${completedCount} of ${items.length} complete</span>
+                    </div>
+                    <div class="mw-cl-progress-bar">
+                        <div class="mw-cl-progress-fill" style="width: ${pct}%;"></div>
+                    </div>
+                    <div class="mw-cl-items-wrap">` +
+                    items.map((item, idx) => {
+                        const isChecked = !!item.completed;
+                        const boxClass = isChecked ? 'checked' : 'unchecked';
+                        const textClass = isChecked ? 'checked' : 'unchecked';
+                        return `
+                            <div class="mw-cl-item" data-cl-idx="${idx}" style="cursor:${canCheck ? 'pointer' : 'default'};">
+                                <span class="mw-cl-box ${boxClass}">
+                                    ${isChecked ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.25 4L3.75 6.5L8.75 1.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+                                </span>
+                                <span class="mw-cl-item-text ${textClass}">${tdEsc(item.text)}</span>
+                            </div>`;
+                    }).join('') +
+                    `</div>`;
+            }
+            return `
                 <div class="mw-td-sec-head">
                     <h4>Acceptance checklist</h4>
                 </div>
                 <div class="mw-td-empty">No checklist items added.</div>`;
-        }
+        };
+
+        const addChecklistInputHtml = t.can_add_checklist ? `
+            <div class="mw-cl-add-wrap" style="margin-top:10px;">
+                <input type="text" id="mwClAddInput" class="mw-form-input" placeholder="Add acceptance checklist item and press Enter..." maxlength="500" style="height:34px; font-size:12.5px; padding:6px 12px;">
+            </div>` : '';
+
+        let checklistHtml = `<div id="mwClListContainer">${buildChecklistInnerHtml(t.checklist, !!t.can_check)}</div>${addChecklistInputHtml}`;
 
         // Precompile sorted teammates regex for full-name @mentions
         const teammatesList = Array.isArray(t.teammates) ? t.teammates : [];
@@ -4080,73 +4092,86 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Wire up checklist item click handlers (Figma custom checkbox)
         let isChecklistToggling = false;
-        tdBody.querySelectorAll('.mw-cl-item').forEach(itemEl => {
-            itemEl.addEventListener('click', function() {
-                if (!t.can_check || isChecklistToggling) return;
-                const itemIdx = parseInt(this.getAttribute('data-cl-idx'), 10);
-                const box = this.querySelector('.mw-cl-box');
-                const textSpan = this.querySelector('.mw-cl-item-text');
-                const willBeChecked = !box.classList.contains('checked');
+        const bindChecklistToggleHandlers = () => {
+            tdBody.querySelectorAll('.mw-cl-item').forEach(itemEl => {
+                itemEl.addEventListener('click', function() {
+                    if (!t.can_check || isChecklistToggling) return;
+                    const itemIdx = parseInt(this.getAttribute('data-cl-idx'), 10);
+                    const box = this.querySelector('.mw-cl-box');
+                    const textSpan = this.querySelector('.mw-cl-item-text');
+                    const willBeChecked = !box.classList.contains('checked');
 
-                isChecklistToggling = true;
-                this.style.opacity = '0.6';
-                this.style.pointerEvents = 'none';
+                    isChecklistToggling = true;
+                    this.style.opacity = '0.6';
+                    this.style.pointerEvents = 'none';
 
-                // Optimistic UI toggle
-                box.classList.toggle('checked', willBeChecked);
-                box.classList.toggle('unchecked', !willBeChecked);
-                box.innerHTML = willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
-                if (textSpan) {
-                    textSpan.classList.toggle('checked', willBeChecked);
-                    textSpan.classList.toggle('unchecked', !willBeChecked);
-                }
+                    // Optimistic UI toggle
+                    box.classList.toggle('checked', willBeChecked);
+                    box.classList.toggle('unchecked', !willBeChecked);
+                    box.innerHTML = willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
+                    if (textSpan) {
+                        textSpan.classList.toggle('checked', willBeChecked);
+                        textSpan.classList.toggle('unchecked', !willBeChecked);
+                    }
 
-                // Update local task checklist model and progress counter immediately
-                if (Array.isArray(t.checklist) && t.checklist[itemIdx]) {
-                    t.checklist[itemIdx].completed = willBeChecked;
-                    const doneCount = t.checklist.filter(c => !!c.completed).length;
-                    const totalCount = t.checklist.length;
-                    const pct = Math.round((doneCount / totalCount) * 100);
+                    // Update local task checklist model and progress counter immediately
+                    if (Array.isArray(t.checklist) && t.checklist[itemIdx]) {
+                        t.checklist[itemIdx].completed = willBeChecked;
+                        const doneCount = t.checklist.filter(c => !!c.completed).length;
+                        const totalCount = t.checklist.length;
+                        const pct = Math.round((doneCount / totalCount) * 100);
 
-                    const badgeEl = tdBody.querySelector('.mw-cl-counter-badge');
-                    if (badgeEl) badgeEl.textContent = `${doneCount} of ${totalCount} complete`;
+                        const badgeEl = tdBody.querySelector('.mw-cl-counter-badge');
+                        if (badgeEl) badgeEl.textContent = `${doneCount} of ${totalCount} complete`;
 
-                    const barEl = tdBody.querySelector('.mw-cl-progress-fill');
-                    if (barEl) barEl.style.width = `${pct}%`;
-                }
+                        const barEl = tdBody.querySelector('.mw-cl-progress-fill');
+                        if (barEl) barEl.style.width = `${pct}%`;
+                    }
 
-                // Send AJAX toggle request
-                const fd = new FormData();
-                fd.append('index', itemIdx);
-                fd.append('completed', willBeChecked ? 1 : 0);
+                    // Send AJAX toggle request
+                    const fd = new FormData();
+                    fd.append('index', itemIdx);
+                    fd.append('completed', willBeChecked ? 1 : 0);
 
-                fetch(`${baseUrl}/my-work/toggle-checklist/${t.id}`, {
-                    method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: fd
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        if (data.all_completed) {
-                            const hasRev = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
-                            showMwToast(hasRev ? 'All acceptance completed. You can now submit for review.' : 'All acceptance completed. You can now complete the task.', 'success');
-                            if (window.openTaskDetail && currentDetailTaskId) {
-                                window.openTaskDetail(currentDetailTaskId);
+                    fetch(`${baseUrl}/my-work/toggle-checklist/${t.id}`, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            if (data.all_completed) {
+                                const hasRev = (Array.isArray(t.reviewers) && t.reviewers.length > 0);
+                                showMwToast(hasRev ? 'All acceptance completed. You can now submit for review.' : 'All acceptance completed. You can now complete the task.', 'success');
+                                if (window.openTaskDetail && currentDetailTaskId) {
+                                    window.openTaskDetail(currentDetailTaskId);
+                                }
+                            } else if (t.status_class === 'in_review') {
+                                // Unchecking an item while in review refreshes drawer back to in_progress
+                                if (window.openTaskDetail && currentDetailTaskId) {
+                                    window.openTaskDetail(currentDetailTaskId);
+                                }
                             }
-                        } else if (t.status_class === 'in_review') {
-                            // Unchecking an item while in review refreshes drawer back to in_progress
-                            if (window.openTaskDetail && currentDetailTaskId) {
-                                window.openTaskDetail(currentDetailTaskId);
+                            // Refresh background workspace tables and count cards without destroying open drawer
+                            if (typeof fetchWorkspaceData === 'function') {
+                                fetchWorkspaceData();
+                            }
+                        } else {
+                            showMwToast(data.message || 'Failed to update checklist item.', 'error');
+                            // Rollback
+                            box.classList.toggle('checked', !willBeChecked);
+                            box.classList.toggle('unchecked', willBeChecked);
+                            box.innerHTML = !willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
+                            if (textSpan) {
+                                textSpan.classList.toggle('checked', !willBeChecked);
+                                textSpan.classList.toggle('unchecked', willBeChecked);
                             }
                         }
-                        // Refresh background workspace tables and count cards without destroying open drawer
-                        if (typeof fetchWorkspaceData === 'function') {
-                            fetchWorkspaceData();
-                        }
-                    } else {
-                        showMwToast(data.message || 'Failed to update checklist item.', 'error');
-                        // Rollback
+                    })
+                    .catch(err => {
+                        console.error('Error toggling checklist:', err);
+                        showMwToast('Network error while updating checklist.', 'error');
                         box.classList.toggle('checked', !willBeChecked);
                         box.classList.toggle('unchecked', willBeChecked);
                         box.innerHTML = !willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
@@ -4154,26 +4179,64 @@ document.addEventListener('DOMContentLoaded', function () {
                             textSpan.classList.toggle('checked', !willBeChecked);
                             textSpan.classList.toggle('unchecked', willBeChecked);
                         }
-                    }
-                })
-                .catch(err => {
-                    console.error('Error toggling checklist:', err);
-                    showMwToast('Network error while updating checklist.', 'error');
-                    box.classList.toggle('checked', !willBeChecked);
-                    box.classList.toggle('unchecked', willBeChecked);
-                    box.innerHTML = !willBeChecked ? '<i class="fa-solid fa-check" style="font-size:9px;"></i>' : '';
-                    if (textSpan) {
-                        textSpan.classList.toggle('checked', !willBeChecked);
-                        textSpan.classList.toggle('unchecked', willBeChecked);
-                    }
-                })
-                .finally(() => {
-                    this.style.opacity = '1';
-                    this.style.pointerEvents = 'auto';
-                    isChecklistToggling = false;
+                    })
+                    .finally(() => {
+                        this.style.opacity = '1';
+                        this.style.pointerEvents = 'auto';
+                        isChecklistToggling = false;
+                    });
                 });
             });
-        });
+        };
+        bindChecklistToggleHandlers();
+
+        // Wire up inline Enter-to-add acceptance checklist item
+        const clAddInput = document.getElementById('mwClAddInput');
+        if (clAddInput && t.can_add_checklist) {
+            let isAddingChecklist = false;
+            clAddInput.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                const textVal = this.value.trim();
+                if (!textVal || isAddingChecklist) return;
+
+                isAddingChecklist = true;
+                this.disabled = true;
+                const fd = new FormData();
+                fd.append('text', textVal);
+
+                fetch(`${baseUrl}/my-work/add-checklist-item/${t.id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success' && Array.isArray(data.checklist)) {
+                        t.checklist = data.checklist;
+                        this.value = '';
+                        const clWrap = document.getElementById('mwClListContainer');
+                        if (clWrap) {
+                            clWrap.innerHTML = buildChecklistInnerHtml(t.checklist, !!t.can_check);
+                            bindChecklistToggleHandlers();
+                        }
+                        if (typeof fetchWorkspaceData === 'function') {
+                            fetchWorkspaceData();
+                        }
+                    } else {
+                        showMwToast(data.message || 'Failed to add checklist item.', 'error');
+                    }
+                })
+                .catch(() => {
+                    showMwToast('Network error adding checklist item.', 'error');
+                })
+                .finally(() => {
+                    isAddingChecklist = false;
+                    this.disabled = false;
+                    this.focus();
+                });
+            });
+        }
         // Wire up comment send, @mention autocomplete, and file attachment handlers
         const commentBoxes = tdBody.querySelectorAll('.mw-figma-comment-box');
         commentBoxes.forEach(commentBox => {
@@ -4927,10 +4990,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    window.syncDeadlineRequirement = function (isRecurring) {
+        const dlInput = document.getElementById('drawerDeadline');
+        const dlReq = document.getElementById('drawerDeadlineReq');
+        if (dlInput) dlInput.required = !isRecurring;
+        if (dlReq) dlReq.style.display = isRecurring ? 'none' : '';
+    };
+
     if (chkIsRecurring && rowRecurrenceEnd) {
         chkIsRecurring.addEventListener('change', () => {
             rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
             if (selRecType) selRecType.required = chkIsRecurring.checked;
+            window.syncDeadlineRequirement(chkIsRecurring.checked);
             const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
             if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
         });
@@ -4983,11 +5054,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.mw-multi.open').forEach(b => { if (!b.contains(e.target)) b.classList.remove('open'); });
     }, true);
 
-    // Acceptance checklist: add / remove extra rows
+    // Acceptance checklist: add / remove extra rows (+ press Enter to add new row)
     const expectedList = document.getElementById('expectedOutputList');
     const btnAddExpected = document.getElementById('btnAddExpectedOutput');
     if (expectedList && btnAddExpected) {
-        btnAddExpected.addEventListener('click', function () {
+        const addChecklistRow = () => {
             const row = document.createElement('div');
             row.className = 'd-flex align-items-start gap-2 mb-2 mw-expected-row';
             row.innerHTML = '<textarea name="description[]" class="mw-form-textarea" rows="1" placeholder="Another checklist item"></textarea>' +
@@ -4995,6 +5066,15 @@ document.addEventListener('DOMContentLoaded', function () {
             row.querySelector('button').addEventListener('click', () => row.remove());
             expectedList.appendChild(row);
             row.querySelector('textarea').focus();
+        };
+        btnAddExpected.addEventListener('click', addChecklistRow);
+        expectedList.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.matches('textarea[name="description[]"]')) {
+                e.preventDefault();
+                if (e.target.value.trim() !== '') {
+                    addChecklistRow();
+                }
+            }
         });
     }
 
