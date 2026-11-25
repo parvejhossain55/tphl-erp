@@ -95,6 +95,14 @@ $todayDateFormatted = date('j F');
     margin-bottom: 20px;
     display: flex;
     gap: 28px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+}
+
+.mw-tabs-wrap::-webkit-scrollbar {
+    display: none;
 }
 
 .mw-tab-item {
@@ -109,6 +117,8 @@ $todayDateFormatted = date('j F');
     gap: 6px;
     position: relative;
     cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
     transition: color 0.15s ease;
 }
 
@@ -332,7 +342,7 @@ $todayDateFormatted = date('j F');
 
 @media (max-width: 575px) {
     .mw-stats-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -1470,6 +1480,908 @@ $todayDateFormatted = date('j F');
     color: #65776F;
     margin-top: 10px;
 }
+
+/* =========================================================================
+   Full Responsive Rules (Tablet & Mobile)
+   ========================================================================= */
+.mw-tasks-header {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Tablet (768px - 1199px) */
+@media (min-width: 768px) and (max-width: 1199px) {
+    .my-work-workspace {
+        padding: 18px 20px 32px;
+    }
+    .mw-grid-layout > div:last-child {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        align-items: start;
+    }
+    .mw-grid-layout > div:last-child .mw-focus-card {
+        margin-bottom: 0;
+    }
+    .mw-search-box {
+        width: 220px;
+        flex: 1 1 220px;
+    }
+}
+
+/* Mobile (<= 767px) - Aligned with Figma Mobile Design (01 · My Work) */
+.mw-bottom-nav {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .my-work-workspace {
+        background-color: #F5F8F6;
+        padding: 16px 16px 84px;
+    }
+
+    /* Mobile Bottom Navigation (Figma spec) */
+    .mw-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 63px;
+        padding: 9px 18px;
+        gap: 8px;
+        background: #FFFFFF;
+        border-top: 1px solid #DCE7E0;
+        box-shadow: 0 -4px 16px rgba(20, 46, 37, 0.05);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        z-index: 990;
+        font-family: 'Inter', sans-serif;
+    }
+    .mw-bn-item {
+        flex: 1 1 0;
+        height: 45px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        background: transparent;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        text-decoration: none;
+        outline: none;
+    }
+    .mw-bn-pill {
+        width: 58px;
+        height: 28px;
+        border-radius: 14px;
+        background: #FFFFFF;
+        color: #52675E;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: background-color 0.16s ease, color 0.16s ease;
+    }
+    .mw-bn-label {
+        font-size: 11px;
+        line-height: 13px;
+        font-weight: 500;
+        color: #52675E;
+        transition: color 0.16s ease;
+    }
+    .mw-bn-item.active .mw-bn-pill {
+        background: #E8F5ED;
+        color: #087955;
+    }
+    .mw-bn-item.active .mw-bn-label {
+        font-weight: 700;
+        color: #13563F;
+    }
+
+    /* Heading row: Greeting on left, + Create task button on right */
+    .my-work-workspace > .d-flex {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-wrap: nowrap !important;
+        gap: 10px !important;
+    }
+    .my-work-workspace > .d-flex > div:first-child {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+    .mw-header-tag {
+        display: none;
+    }
+    .mw-header-title {
+        font-size: 26px;
+        line-height: 32px;
+        color: #142E25;
+        margin-bottom: 2px;
+    }
+    .mw-header-subtitle {
+        font-size: 12.5px;
+        line-height: 16px;
+        color: #52675E;
+    }
+    .my-work-workspace > .d-flex > div:last-child {
+        width: auto;
+        flex-shrink: 0;
+        margin-top: 0;
+    }
+    .my-work-workspace > .d-flex .mw-btn-create {
+        width: auto;
+        height: 44px;
+        padding: 0 14px;
+        background-color: #087955;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 13.5px;
+        white-space: nowrap;
+        justify-content: center;
+    }
+
+    /* Scope tabs -> horizontal pill selector */
+    .mw-tabs-wrap {
+        border-bottom: none;
+        margin-top: 14px;
+        margin-bottom: 12px;
+        gap: 8px;
+        padding: 2px 0;
+    }
+    .mw-tab-item {
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 8px 12px;
+        border-radius: 9px;
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        color: #52675E;
+    }
+    .mw-tab-item.active {
+        background: #E8F5ED;
+        border-color: #E8F5ED;
+        color: #13563F;
+    }
+    .mw-tab-item.active::after {
+        display: none;
+    }
+    .mw-tab-item.active .mw-tab-badge {
+        background-color: #FFFFFF;
+        color: #13563F;
+    }
+
+    /* Task Summary Card -> single white card with 3x2 soft-mint metric tiles */
+    #mwStatsAll.mw-stats-row.mw-stats-all {
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 14px;
+        padding: 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+        margin-bottom: 14px;
+    }
+    #mwStatsAll .mw-stat-card {
+        background: #E8F5ED;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        padding: 9px 10px;
+        gap: 3px;
+        box-shadow: none;
+    }
+    #mwStatsAll .mw-stat-card.active-metric {
+        border-color: #087955;
+        background: #D9F0E3;
+        box-shadow: 0 0 0 1px #087955;
+    }
+    #mwStatsAll .mw-stat-count {
+        order: 0;
+        font-size: 21px;
+        line-height: 25px;
+        font-weight: 700;
+        color: #13563F;
+        margin-bottom: 0;
+    }
+    #mwStatsAll .mw-stat-count.overdue {
+        color: #A33A2F;
+    }
+    #mwStatsAll .mw-stat-label {
+        order: 1;
+        font-size: 10px;
+        line-height: 13px;
+        font-weight: 500;
+        color: #52675E;
+        margin-bottom: 0;
+    }
+
+    /* Previous task sheet stats */
+    #mwPreviousTaskSheetSection .mw-stats-row {
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    #mwPreviousTaskSheetSection .mw-stat-card {
+        padding: 12px;
+        border-radius: 12px;
+        border-color: #DCE7E0;
+    }
+    #mwPreviousTaskSheetSection .mw-stat-count {
+        font-size: 21px;
+        line-height: 25px;
+    }
+
+    /* Seamless mobile surface for worklist */
+    #mwMainGrid > .mw-card {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        overflow: visible;
+    }
+
+    /* Actionable / Completed -> Figma 50/50 segmented tab container */
+    #mwMainGrid .mw-tasks-header {
+        padding: 0;
+        margin-bottom: 12px;
+    }
+    #mwMainGrid .mw-tasks-title-group {
+        width: 100%;
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px !important;
+        flex-wrap: nowrap !important;
+    }
+    #mwMainGrid .mw-header-tab {
+        flex: 1 1 0;
+        height: 42px;
+        justify-content: center;
+        border-radius: 8px;
+        border: none;
+        padding: 0 8px;
+        background: #FFFFFF;
+        gap: 6px;
+    }
+    #mwMainGrid .mw-header-tab.active {
+        background: #E8F5ED;
+        border: none;
+    }
+    #mwMainGrid .mw-header-tab .mw-tasks-title {
+        font-size: 13px;
+        line-height: 16px;
+        font-weight: 500;
+        color: #52675E !important;
+    }
+    #mwMainGrid .mw-header-tab.active .mw-tasks-title {
+        font-weight: 700;
+        color: #087955 !important;
+    }
+    #mwMainGrid .mw-header-tab .mw-badge-open {
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+
+    /* Search & Filter bar */
+    #mwMainGrid .mw-toolbar {
+        padding: 0 0 12px;
+        gap: 8px;
+    }
+    .mw-search-box {
+        width: 100%;
+        flex: 1 1 100%;
+    }
+    .mw-search-input {
+        height: 44px !important;
+        background: #FFFFFF !important;
+        border: 1px solid #DCE7E0 !important;
+        border-radius: 10px !important;
+        font-size: 13.5px !important;
+    }
+    .mw-pill-btn {
+        height: 40px !important;
+        padding: 0 12px !important;
+        background: #FFFFFF !important;
+        border: 1px solid #DCE7E0 !important;
+        border-radius: 10px !important;
+        font-size: 12.5px !important;
+        font-weight: 600 !important;
+        color: #13563F !important;
+        gap: 6px !important;
+    }
+    .mw-pill-btn.active {
+        background: #E8F5ED !important;
+        border-color: #087955 !important;
+        color: #087955 !important;
+    }
+    .mw-popup-menu {
+        max-width: calc(100vw - 32px);
+    }
+    .mw-period-menu {
+        left: 0;
+        right: auto;
+        min-width: min(260px, calc(100vw - 32px));
+    }
+    .mw-tasks-footer {
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    /* Main Tasks Table -> Figma Floating Task Cards (works for both SSR & AJAX rows) */
+    #mwMainGrid .mw-table-wrap {
+        overflow-x: visible;
+    }
+    #mwMainGrid .mw-table thead {
+        display: none;
+    }
+    #mwMainGrid .mw-table,
+    #mwMainGrid .mw-table tbody {
+        display: block;
+        width: 100%;
+    }
+    #mwMainGrid .mw-table tbody tr {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr) auto;
+        gap: 8px 8px;
+        padding: 13px;
+        margin-bottom: 10px;
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 14px;
+        align-items: start;
+    }
+    #mwMainGrid .mw-table tbody tr.row-selected {
+        background: #F4FAF7;
+        border-color: #087955;
+        border-left-width: 1px;
+    }
+    #mwMainGrid .mw-table tbody tr:has(td[colspan]) {
+        display: block;
+        padding: 0;
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 14px;
+    }
+    #mwMainGrid .mw-table tbody tr td {
+        display: block;
+        padding: 0;
+        width: auto !important;
+        text-align: left !important;
+        border: none;
+    }
+    #mwMainGrid .mw-table tbody tr td[colspan] {
+        width: 100% !important;
+    }
+    /* Row 1: Checkbox + Title & Context */
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(1) {
+        grid-column: 1;
+        grid-row: 1;
+        padding-top: 2px;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(2) {
+        grid-column: 2 / 4;
+        grid-row: 1;
+        min-width: 0;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-task-name {
+        font-size: 15px;
+        line-height: 19px;
+        font-weight: 600;
+        color: #142E25;
+        word-break: break-word;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-task-sub {
+        font-size: 11px;
+        line-height: 14px;
+        font-weight: 500;
+        color: #52675E;
+        margin-top: 2px;
+    }
+    /* Row 2: Status pill (left) + Priority (right) */
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(4) {
+        grid-column: 1 / 3;
+        grid-row: 2;
+        align-self: center;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-status-pill {
+        padding: 5px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(3) {
+        grid-column: 3;
+        grid-row: 2;
+        justify-self: end;
+        align-self: center;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-priority-text {
+        font-size: 11px;
+        font-weight: 500;
+        color: #52675E;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-priority-text.urgent {
+        color: #855000;
+        font-weight: 600;
+    }
+    /* Row 3 (with top divider): Deadline (left) + Next Action & Actions (right) */
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(5) {
+        grid-column: 1 / 3;
+        grid-row: 3;
+        border-top: 1px solid #DCE7E0;
+        padding-top: 8px;
+        margin-top: 2px;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-due-date {
+        font-size: 12px;
+        font-weight: 600;
+        color: #142E25;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-due-date.overdue,
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) .mw-due-sub.overdue {
+        color: #A33A2F;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(6) {
+        grid-column: 3;
+        grid-row: 3;
+        border-top: 1px solid #DCE7E0;
+        padding-top: 8px;
+        margin-top: 2px;
+        justify-self: end;
+        align-self: center;
+        text-align: right !important;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(6) .mw-assignee {
+        font-size: 11px;
+        font-weight: 500;
+        color: #52675E;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(6) .mw-assignee::before {
+        content: 'Next: ';
+        color: #65776F;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(7) {
+        grid-column: 1 / 4;
+        grid-row: 4;
+        justify-self: end;
+    }
+    #mwMainGrid .mw-table tbody tr:not(:has(td[colspan])) td:nth-child(7):has(.mw-actions-group:empty) {
+        display: none;
+    }
+    .mw-action-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+        border-radius: 8px;
+    }
+
+    /* Previous Task Sheet filters on mobile */
+    #mwPreviousTaskSheetSection .mw-tasks-header > .d-flex {
+        width: 100%;
+    }
+    #mwPreviousTaskSheetSection #tsYear,
+    #mwPreviousTaskSheetSection #tsMonth,
+    #mwPreviousTaskSheetSection #tsDateFrom,
+    #mwPreviousTaskSheetSection #tsDateTo {
+        width: calc(50% - 4px) !important;
+        flex: 1 1 calc(50% - 4px);
+    }
+
+    /* Right Focus Panel -> Figma rounded cards */
+    .mw-focus-card {
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 12px;
+    }
+    .mw-focus-title {
+        font-size: 17px;
+        line-height: 21px;
+        color: #142E25;
+    }
+    .mw-focus-subtitle {
+        font-size: 13px;
+        color: #52675E;
+    }
+
+    /* Create/Edit Drawer (aligned with Figma 07 · Create Self Task mobile polish, keeping existing design first) */
+    .mw-drawer {
+        background: #F5F8F6;
+    }
+    .mw-drawer-header {
+        background: #FFFFFF;
+        padding: 16px 16px 12px;
+        border-bottom: 1px solid #DCE7E0;
+    }
+    .mw-drawer-title {
+        font-size: 22px;
+        line-height: 28px;
+        color: #142E25;
+    }
+    .mw-drawer-subtitle {
+        font-size: 12.5px;
+        color: #52675E;
+    }
+    .mw-drawer-meta-bar {
+        background: #F5F8F6;
+        padding: 10px 16px;
+        border-bottom: 1px solid #DCE7E0;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .mw-status-badge-todo {
+        background: #ECF1EE;
+        border: none;
+        border-radius: 6px;
+        color: #52675E;
+        padding: 5px 8px;
+        font-weight: 600;
+    }
+    .mw-drawer-body {
+        padding: 16px;
+    }
+    .mw-form-label {
+        font-size: 13px;
+        line-height: 16px;
+        color: #142E25;
+    }
+    .mw-form-input,
+    .mw-form-select {
+        min-height: 44px;
+        padding: 10px 12px;
+        border-color: #DCE7E0;
+        border-radius: 9px;
+        font-size: 14px;
+        color: #142E25;
+    }
+    .mw-form-textarea {
+        padding: 10px 12px;
+        border-color: #DCE7E0;
+        border-radius: 9px;
+        font-size: 14px;
+    }
+    .mw-form-row {
+        flex-direction: row;
+        gap: 9px;
+    }
+    .mw-checkbox-wrap {
+        min-height: 40px;
+        gap: 9px;
+    }
+    .mw-checkbox-wrap input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+    }
+    .mw-checkbox-wrap span {
+        font-size: 13.5px;
+        color: #142E25;
+    }
+    .mw-callout-box {
+        background: #E8F5ED;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+    .mw-accordion-toggle {
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 10px;
+        padding: 12px 14px;
+    }
+    .mw-drawer-footer {
+        background: #FFFFFF;
+        border-top: 1px solid #DCE7E0;
+        padding: 12px 16px 14px;
+    }
+    .mw-drawer-footer-actions {
+        flex-wrap: nowrap;
+        gap: 10px;
+    }
+    .mw-drawer-btn {
+        height: 46px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .mw-drawer-btn.secondary {
+        flex: 0 0 112px;
+        border-color: #DCE7E0;
+        color: #13563F;
+    }
+    .mw-drawer-btn.primary {
+        flex: 1 1 auto;
+        background: #087955;
+        border-color: #087955;
+    }
+    @media (max-width: 380px) {
+        .mw-form-row {
+            flex-direction: column;
+            gap: 12px;
+        }
+        .mw-drawer-footer-actions {
+            flex-wrap: wrap;
+        }
+        .mw-drawer-btn.secondary {
+            flex: 1 1 auto;
+        }
+    }
+
+    /* Task Detail Drawer (aligned with Figma 03 · Task details mobile polish, keeping existing design first) */
+    .mw-td {
+        background: #F5F8F6;
+    }
+    .mw-td-body {
+        padding: 14px 16px 20px;
+    }
+    .mw-td-top {
+        font-size: 12px;
+        font-weight: 600;
+        color: #52675E;
+        min-height: 36px;
+    }
+    .mw-td-title {
+        font-size: 22px;
+        line-height: 27px;
+        color: #142E25;
+        margin: 10px 0 10px;
+        word-break: break-word;
+    }
+    .mw-td-pills {
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+    .mw-td-pill {
+        padding: 5px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .mw-td-pill.overdue {
+        background: #FCECE7;
+        color: #A33A2F;
+    }
+    .mw-td-tabs {
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+    .mw-td-tab {
+        flex: 1 1 0;
+        min-width: 78px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 8px;
+        border-radius: 8px;
+        border-bottom: none;
+        margin-bottom: 0;
+        font-size: 13px;
+        font-weight: 500;
+        color: #52675E;
+    }
+    .mw-td-tab.active {
+        background: #E8F5ED;
+        color: #087955;
+        font-weight: 700;
+    }
+    .mw-td-tabs .mw-td-remind-btn {
+        margin-bottom: 0;
+        height: 36px;
+        border-radius: 8px;
+    }
+    .mw-td-grid {
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 14px;
+        padding: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .mw-td-label {
+        font-size: 11.5px;
+        font-weight: 500;
+        color: #52675E;
+        margin-bottom: 4px;
+    }
+    .mw-td-val {
+        font-size: 13.5px;
+        line-height: 17px;
+        font-weight: 600;
+        color: #142E25;
+        word-break: break-word;
+    }
+    .mw-td-val.late {
+        color: #A33A2F;
+    }
+    .mw-td-sec {
+        background: #FFFFFF;
+        border: 1px solid #DCE7E0;
+        border-radius: 14px;
+        padding: 14px;
+        margin-top: 0;
+        margin-bottom: 12px;
+    }
+    .mw-td-sec h4 {
+        font-size: 16px;
+        line-height: 20px;
+        color: #142E25;
+        margin-bottom: 10px;
+    }
+    .mw-act-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 11.5px;
+        background: #E8F5ED;
+        color: #13563F;
+    }
+    .mw-activity-item {
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #EDF2EF;
+    }
+    .mw-activity-item:last-child {
+        padding-bottom: 0;
+        margin-bottom: 0;
+        border-bottom: none;
+    }
+    .mw-td-foot {
+        background: #FFFFFF;
+        border-top: 1px solid #DCE7E0;
+        padding: 12px 16px;
+    }
+    .mw-td-foot-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .mw-td-btn {
+        flex: 1 1 auto;
+        min-height: 44px;
+        border-radius: 10px;
+        font-size: 13.5px;
+        font-weight: 600;
+    }
+    .mw-td-close,
+    .mw-drawer-close {
+        min-width: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    @media (max-width: 380px) {
+        .mw-td-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Modals & Toasts */
+    .mw-confirm-modal {
+        padding: 18px;
+    }
+    .mw-confirm-actions {
+        flex-wrap: wrap;
+    }
+    .mw-toast-wrap {
+        top: 12px;
+        left: 12px;
+        right: 12px;
+    }
+    .mw-toast {
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+    }
+}
+/* Create Task Type Modal (Self vs Others) - immune to mobile .btn/.d-flex overrides */
+#mwTaskTypeModal .modal-dialog {
+    max-width: 420px;
+    margin: 16px auto;
+    padding: 0 12px;
+}
+#mwTaskTypeModal .modal-content {
+    border-radius: 16px;
+    border: 1px solid #E2EAE5;
+    box-shadow: 0 20px 50px rgba(20, 45, 38, 0.18);
+    overflow: hidden;
+}
+#mwTaskTypeModal .modal-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    padding: 20px 22px 12px !important;
+    border-bottom: 1px solid #F0F4F2 !important;
+}
+#mwTaskTypeModal .modal-body {
+    padding: 16px 22px 22px !important;
+}
+.mw-type-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.mw-type-option {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 14px !important;
+    width: 100% !important;
+    padding: 14px 16px !important;
+    border: 1.5px solid #E2EAE5 !important;
+    border-radius: 12px !important;
+    background: #FFFFFF !important;
+    text-align: left !important;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.mw-type-option:hover,
+.mw-type-option:focus {
+    border-color: #087F5B !important;
+    background: #F4FAF7 !important;
+    box-shadow: 0 4px 14px rgba(8, 127, 91, 0.10) !important;
+    transform: translateY(-1px);
+    outline: none;
+}
+.mw-type-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0;
+    font-size: 17px;
+}
+.mw-type-icon.self {
+    background: #E9F5EF;
+    color: #087F5B;
+}
+.mw-type-icon.others {
+    background: #EBF2FE;
+    color: #1864AB;
+}
+.mw-type-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.mw-type-title {
+    font-weight: 700;
+    font-size: 14.5px;
+    line-height: 19px;
+    color: #142D26;
+    margin-bottom: 2px;
+}
+.mw-type-desc {
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 16px;
+    color: #65776F;
+}
+.mw-type-arrow {
+    color: #94A39B;
+    font-size: 13px;
+    flex-shrink: 0;
+    transition: transform 0.16s ease, color 0.16s ease;
+}
+.mw-type-option:hover .mw-type-arrow {
+    color: #087F5B;
+    transform: translateX(3px);
+}
 </style>
 
 <div class="my-work-workspace">
@@ -1533,7 +2445,7 @@ $todayDateFormatted = date('j F');
     <!-- Previous Task Sheet (Read-only History View) -->
     <?php $pts = $previousTaskSheetData ?? null; ?>
     <div id="mwPreviousTaskSheetSection" style="<?= $tab === 'previous_task_sheet' ? '' : 'display:none;' ?>">
-        <div class="mw-stats-row mw-stats-all" style="margin-bottom: 16px;">
+        <div class="mw-stats-row" style="margin-bottom: 16px;">
             <div class="mw-stat-card"><span class="mw-stat-label">TOTAL RECORDS</span><span class="mw-stat-count" id="tsStatTotal"><?= (int) ($pts['summary']['total'] ?? 0) ?></span></div>
             <div class="mw-stat-card"><span class="mw-stat-label">DONE</span><span class="mw-stat-count review" id="tsStatDone"><?= (int) ($pts['summary']['done'] ?? 0) ?></span></div>
             <div class="mw-stat-card"><span class="mw-stat-label">PENDING</span><span class="mw-stat-count today" id="tsStatPending"><?= (int) ($pts['summary']['pending'] ?? 0) ?></span></div>
@@ -1659,9 +2571,6 @@ $todayDateFormatted = date('j F');
                             <?= $completedTasksCount ?> completed
                         </span>
                     </button>
-                </div>
-                <div class="mw-tasks-completed-text" id="textCompletedCount">
-                    <?= $openTasksCount + $completedTasksCount ?> total
                 </div>
             </div>
 
@@ -2266,41 +3175,37 @@ $todayDateFormatted = date('j F');
 
 <!-- Task Type Selection Modal (Self vs Others) -->
 <div class="modal fade" id="mwTaskTypeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm" style="max-width: 440px;">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
-            <div class="modal-header border-bottom-0 pb-1 pt-4 px-4">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
                 <div>
-                    <h5 class="modal-title fw-bold mb-1" style="color:#142D26; font-size:18px;">Create Task</h5>
+                    <h5 class="modal-title fw-bold mb-1" style="color:#142D26; font-size:17px;">Create Task</h5>
                     <p class="mb-0 text-muted" style="font-size:12.5px;">Choose who this task is for</p>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="margin-top: 2px;"></button>
             </div>
-            <div class="modal-body px-4 pb-4 pt-3">
-                <div style="display:flex; flex-direction:column; gap:12px;">
-                    <button type="button" id="btnChooseSelfTask" class="btn text-start p-3 d-flex align-items-center"
-                            style="gap:14px; border:1px solid #D1DDD6; border-radius:10px; background:#FAFCFA; transition:all 0.15s ease;">
-                        <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
-                             style="width:42px; height:42px; background:#E9F5EF; color:#087F5B; font-size:17px;">
+            <div class="modal-body">
+                <div class="mw-type-list">
+                    <button type="button" id="btnChooseSelfTask" class="mw-type-option">
+                        <span class="mw-type-icon self">
                             <i class="fa-solid fa-user-check"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-bold" style="color:#142D26; font-size:14px;">Self</div>
-                            <div class="text-muted" style="font-size:12px;">Create a personal task for yourself</div>
-                        </div>
-                        <i class="fa-solid fa-chevron-right text-muted" style="font-size:12px;"></i>
+                        </span>
+                        <span class="mw-type-text">
+                            <span class="mw-type-title d-block">Self</span>
+                            <span class="mw-type-desc d-block">Create a personal task for yourself</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right mw-type-arrow"></i>
                     </button>
 
-                    <button type="button" id="btnChooseOthersTask" class="btn text-start p-3 d-flex align-items-center"
-                            style="gap:14px; border:1px solid #D1DDD6; border-radius:10px; background:#FFFFFF; transition:all 0.15s ease;">
-                        <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
-                             style="width:42px; height:42px; background:#EBF2FE; color:#1864AB; font-size:17px;">
+                    <button type="button" id="btnChooseOthersTask" class="mw-type-option">
+                        <span class="mw-type-icon others">
                             <i class="fa-solid fa-users"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-bold" style="color:#142D26; font-size:14px;">Others</div>
-                            <div class="text-muted" style="font-size:12px;">Assign a task to a team member</div>
-                        </div>
-                        <i class="fa-solid fa-chevron-right text-muted" style="font-size:12px;"></i>
+                        </span>
+                        <span class="mw-type-text">
+                            <span class="mw-type-title d-block">Others</span>
+                            <span class="mw-type-desc d-block">Assign a task to a team member</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right mw-type-arrow"></i>
                     </button>
                 </div>
             </div>
@@ -5171,5 +6076,57 @@ document.addEventListener('DOMContentLoaded', function () {
     if (initialTaskId > 0 && typeof window.openTaskDetail === 'function') {
         window.openTaskDetail(initialTaskId);
     }
+
+    // Mobile Bottom Navigation wiring (My Work / Review / Menu)
+    const mobileNav = document.getElementById('mwMobileBottomNav');
+    if (mobileNav) {
+        const setMobileNavActive = (key) => {
+            mobileNav.querySelectorAll('.mw-bn-item').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.bn === key);
+            });
+        };
+
+        mobileNav.querySelectorAll('.mw-bn-item').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const action = this.dataset.bn;
+                if (action === 'work') {
+                    const allTab = document.querySelector('.mw-tab-item[data-tab="all"]');
+                    if (allTab) allTab.click();
+                    setMobileNavActive('work');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else if (action === 'review') {
+                    const revTab = document.querySelector('.mw-tab-item[data-tab="reviewer"]');
+                    if (revTab) revTab.click();
+                    setMobileNavActive('review');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else if (action === 'menu') {
+                    const sidebarBtn = document.getElementById('sidebar__active');
+                    if (sidebarBtn) sidebarBtn.click();
+                }
+            });
+        });
+
+        document.querySelectorAll('.mw-tab-item').forEach(tabEl => {
+            tabEl.addEventListener('click', function () {
+                setMobileNavActive(this.dataset.tab === 'reviewer' ? 'review' : 'work');
+            });
+        });
+    }
 });
 </script>
+
+<!-- Mobile Bottom Navigation (visible only on <= 767px) -->
+<nav class="mw-bottom-nav" id="mwMobileBottomNav" aria-label="My Work mobile navigation">
+    <button type="button" class="mw-bn-item <?= $tab !== 'reviewer' ? 'active' : '' ?>" data-bn="work">
+        <span class="mw-bn-pill"><i class="fa-solid fa-briefcase"></i></span>
+        <span class="mw-bn-label">My Work</span>
+    </button>
+    <button type="button" class="mw-bn-item <?= $tab === 'reviewer' ? 'active' : '' ?>" data-bn="review">
+        <span class="mw-bn-pill"><i class="fa-solid fa-clipboard-check"></i></span>
+        <span class="mw-bn-label">Review</span>
+    </button>
+    <button type="button" class="mw-bn-item" data-bn="menu">
+        <span class="mw-bn-pill"><i class="fa-solid fa-bars"></i></span>
+        <span class="mw-bn-label">Menu</span>
+    </button>
+</nav>

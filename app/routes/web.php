@@ -307,6 +307,14 @@ return [
     'expense-analytics' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'index'],
     'expense-analytics/ajax-ledger' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'getLedgerAjax'],
     'expense-analytics/export' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'exportExcel'],
+
+    // =========================================================================
+    // Controller: NotificationController (Dedicated Notifications Page)
+    // =========================================================================
+    'notifications' => ['controller' => 'NotificationController', 'method' => 'index'],
+    'notifications/unread-count' => ['controller' => 'NotificationController', 'method' => 'unreadCount'],
+    'notifications/mark-read' => ['controller' => 'NotificationController', 'method' => 'markRead'],
+    'notifications/mark-all-read' => ['controller' => 'NotificationController', 'method' => 'markAllRead'],
 ];
 
 

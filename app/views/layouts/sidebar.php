@@ -648,6 +648,27 @@
                     </li>
                 <?php endif; ?>
 
+                <?php if (hasPermission('Notifications')): ?>
+                    <?php
+                    $sidebarUnreadNotifCount = 0;
+                    if (isset($db) && !empty($_SESSION['user']['id'])) {
+                        $nUid = (int)$_SESSION['user']['id'];
+                        $nRes = $db->query("SELECT COUNT(*) AS c FROM notifications WHERE user_id = $nUid AND is_read = 0");
+                        if ($nRes) {
+                            $sidebarUnreadNotifCount = (int)($nRes->fetch_assoc()['c'] ?? 0);
+                        }
+                    }
+                    ?>
+                    <!-- Notifications -->
+                    <li class="slide <?= isActive('notifications', $current_route) ?>">
+                        <a href="<?= $base_url ?>/notifications" class="sidebar__menu-item <?= isActive('notifications', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bell text-warning"></i></div>
+                            <span class="sidebar__menu-label">Notifications</span>
+                            <span id="sidebarNotificationBadge" class="badge bg-danger rounded-pill ms-auto me-2" style="<?= $sidebarUnreadNotifCount > 0 ? '' : 'display:none;' ?>"><?= $sidebarUnreadNotifCount ?></span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <?php
                 $inTopMgmtBlock = ($isManagement || $isSbHeadOfSales || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20, 24, 25, 13, 17]));
                 if ($inTopMgmtBlock): ?>
