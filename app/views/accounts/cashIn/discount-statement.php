@@ -2,6 +2,9 @@
 // Disable layout for this page (standalone printable page)
 $disable_layout = true;
 
+// Resolve dynamic project/category branding (The Nature, The Olympus Real Estate, or Default)
+require __DIR__ . '/_project-branding.php';
+
 // Gather discount data
 $bookingDiscount   = (float)(!empty($paymentSummary['discount_amount']) ? $paymentSummary['discount_amount'] : ($clientDetails['discount_amount'] ?? 0));
 
@@ -53,6 +56,7 @@ $effectivePrice     = max(0, $agreementValue - $bookingDiscount);
             /* Header compact */
             .statement-header { margin-bottom: 3mm !important; padding-bottom: 2mm !important; }
             .company-header { flex-direction: row !important; gap: 10px !important; }
+            .company-logo-img { height: 34px !important; max-width: 110px !important; }
             .company-name { font-size: 12pt !important; }
             .company-details { font-size: 7pt !important; }
             .statement-info { text-align: right !important; border-left: 1px solid #ccc !important; border-top: none !important; padding-left: 8px !important; padding-top: 0 !important; }
@@ -124,7 +128,7 @@ $effectivePrice     = max(0, $agreementValue - $bookingDiscount);
         /* ─── Header ─── */
         .statement-header {
             margin-bottom: 12px;
-            border-bottom: 2px solid #000;
+            border-bottom: 2px solid <?= ($isOlympusProject || $isNatureProject) ? $stmtThemePrimary : '#000' ?>;
             padding-bottom: 10px;
         }
 
@@ -135,11 +139,12 @@ $effectivePrice     = max(0, $agreementValue - $bookingDiscount);
             gap: 20px;
         }
 
-        .company-info { flex: 2; }
-        .company-name { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; }
+        .company-info { flex: 2; display: flex; align-items: flex-start; gap: 12px; }
+        .company-logo-img { height: 46px; width: auto; max-width: 140px; object-fit: contain; flex-shrink: 0; }
+        .company-name { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; color: <?= ($isOlympusProject || $isNatureProject) ? $stmtThemeDark : '#000' ?>; }
         .company-details { font-size: 10px; line-height: 1.4; }
-        .statement-info { flex: 1; text-align: right; border-left: 1px solid #ccc; padding-left: 15px; }
-        .statement-title { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+        .statement-info { flex: 1; text-align: right; border-left: 1px solid <?= ($isOlympusProject || $isNatureProject) ? $stmtThemeBorder : '#ccc' ?>; padding-left: 15px; }
+        .statement-title { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; color: <?= ($isOlympusProject || $isNatureProject) ? $stmtThemeDark : '#000' ?>; }
         .statement-meta { font-size: 10px; }
         .meta-row { margin-bottom: 3px; }
         .meta-label { font-weight: bold; display: inline-block; min-width: 80px; }
@@ -317,10 +322,15 @@ $effectivePrice     = max(0, $agreementValue - $bookingDiscount);
         <div class="statement-header">
             <div class="company-header">
                 <div class="company-info">
-                    <div class="company-name">The Premium Homes Ltd.</div>
-                    <div class="company-details">
-                        Land View Commercial Center, 9th Floor 28 Gulshan North C/A, <br> Gulshan Circle-2, Dhaka<br>
-                        Phone: +8801958253300 | Email: info@dpremiumhomes.com
+                    <?php if (!empty($stmtLogoSrc)): ?>
+                        <img src="<?= $stmtLogoSrc ?>" alt="<?= htmlspecialchars($stmtCompanyTitle) ?>" class="company-logo-img">
+                    <?php endif; ?>
+                    <div>
+                        <div class="company-name"><?= htmlspecialchars($stmtCompanyTitle) ?></div>
+                        <div class="company-details">
+                            <?= htmlspecialchars($stmtCompanyAddress) ?><br>
+                            Phone: <?= htmlspecialchars($stmtCompanyPhone) ?> | Email: <?= htmlspecialchars($stmtCompanyEmail) ?><?= !empty($stmtCompanyWebsite) ? ' | Web: ' . htmlspecialchars($stmtCompanyWebsite) : '' ?>
+                        </div>
                     </div>
                 </div>
 

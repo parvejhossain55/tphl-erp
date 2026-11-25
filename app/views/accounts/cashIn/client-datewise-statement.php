@@ -46,6 +46,9 @@ $agentName   = !empty($clientDetails['agent_name']) ? $clientDetails['agent_name
 
 // Helper for amount in words
 $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : '';
+
+// Resolve dynamic project/category branding (The Nature, The Olympus Real Estate, or Default)
+require __DIR__ . '/_project-branding.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -132,15 +135,29 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 2px solid #0f172a;
+            border-bottom: 2px solid <?= ($isOlympusProject || $isNatureProject) ? $stmtThemePrimary : '#0f172a' ?>;
             padding-bottom: 14px;
             margin-bottom: 16px;
+        }
+
+        .brand-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .brand-logo-img {
+            height: 46px;
+            width: auto;
+            max-width: 140px;
+            object-fit: contain;
+            flex-shrink: 0;
         }
 
         .brand-title {
             font-size: 20px;
             font-weight: 800;
-            color: #0f172a;
+            color: <?= ($isOlympusProject || $isNatureProject) ? $stmtThemeDark : '#0f172a' ?>;
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
@@ -157,7 +174,7 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
 
         .doc-badge {
             display: inline-block;
-            background: #0f172a;
+            background: <?= ($isOlympusProject || $isNatureProject) ? $stmtThemeDark : '#0f172a' ?>;
             color: #ffffff;
             font-size: 11px;
             font-weight: 700;
@@ -450,10 +467,15 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
 
         <!-- Company Header -->
         <div class="company-header">
-            <div>
-                <div class="brand-title">The Premium Homes Ltd.</div>
-                <div class="brand-tagline">Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka</div>
-                <div class="brand-tagline">Phone: +880 9611 678 678 | Email: info@thepremiumhomes.com</div>
+            <div class="brand-wrap">
+                <?php if (!empty($stmtLogoSrc)): ?>
+                    <img src="<?= $stmtLogoSrc ?>" alt="<?= htmlspecialchars($stmtCompanyTitle) ?>" class="brand-logo-img">
+                <?php endif; ?>
+                <div>
+                    <div class="brand-title"><?= htmlspecialchars($stmtCompanyTitle) ?></div>
+                    <div class="brand-tagline"><?= htmlspecialchars($stmtCompanyAddress) ?></div>
+                    <div class="brand-tagline">Phone: <?= htmlspecialchars($stmtCompanyPhone) ?> | Email: <?= htmlspecialchars($stmtCompanyEmail) ?><?= !empty($stmtCompanyWebsite) ? ' | Web: ' . htmlspecialchars($stmtCompanyWebsite) : '' ?></div>
+                </div>
             </div>
             <div class="header-doc-title">
                 <div class="doc-badge">Date-Wise Payment Statement</div>
@@ -667,7 +689,7 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalPaid) : 
             <div class="sig-box">
                 <div class="sig-line"></div>
                 <div class="sig-title">Authorized Signature</div>
-                <div class="sig-sub">The Premium Homes Ltd.</div>
+                <div class="sig-sub"><?= htmlspecialchars($stmtCompanyTitle) ?></div>
             </div>
         </div>
 
