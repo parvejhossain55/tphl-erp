@@ -78,6 +78,7 @@ $sql = "
     WHERE t.status != 'completed'
       AND t.deadline IS NOT NULL
       AND DATE(t.deadline) = CURDATE()
+      AND NOT (t.parent_recurring_task_id IS NOT NULL AND DATE(t.created_at) = CURDATE())
     ORDER BY
         FIELD(LOWER(COALESCE(t.priority, 'medium')), 'urgent', 'high', 'medium', 'low'),
         t.id ASC
