@@ -329,7 +329,7 @@ if (!isset($discountApprovalReq)) {
     <?php endif; ?>
 
     <!-- Client Header Section -->
-    <div class="col-xxl-12 mb-4">
+    <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="card__body">
                 <h3 class="mb-2 card__icon">
@@ -535,8 +535,8 @@ if (!isset($discountApprovalReq)) {
                         ];
                         $totalDueEmiAmount += $dueAmt;
                     }
-                } elseif (isset($dueEmisList[$emiNo]) && ($maturity === 'future' || ($maturity === 'pending' && !$isExpired))) {
-                    // CED rescheduled this EMI to a future date — remove from overdue card
+                } elseif (isset($dueEmisList[$emiNo]) && ($maturity === 'future' || $maturity === 'unscheduled' || ($maturity === 'pending' && !$isExpired))) {
+                    // CED rescheduled this EMI to a future date or project EMI is not activated yet — remove from overdue card
                     $totalDueEmiAmount -= $dueEmisList[$emiNo]['due_amount'];
                     unset($dueEmisList[$emiNo]);
                 }
@@ -581,603 +581,438 @@ if (!isset($discountApprovalReq)) {
     </div>
     <?php endif; ?>
 
-    <div class="row">
+    <style>
+        .cl-kpi-grid .cl-kpi-card {
+            padding: 12px 14px !important;
+            margin-bottom: 0 !important;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-radius: 10px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .cl-kpi-grid .cl-kpi-card:hover {
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        }
+        .cl-kpi-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .cl-kpi-label-wrap {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+        }
+        .cl-kpi-ico {
+            width: 26px;
+            height: 26px;
+            min-width: 26px;
+            border-radius: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            background: rgba(100, 116, 139, 0.1);
+            color: #475569;
+        }
+        .cl-kpi-label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #64748b;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cl-kpi-val {
+            font-size: 17.5px;
+            font-weight: 700;
+            line-height: 1.25;
+            margin: 0;
+            font-variant-numeric: tabular-nums;
+            word-break: break-word;
+        }
+        .cl-kpi-bar {
+            height: 4px;
+            border-radius: 99px;
+            background: rgba(148, 163, 184, 0.22);
+            overflow: hidden;
+            margin-top: 7px;
+        }
+        .cl-kpi-bar > span {
+            display: block;
+            height: 100%;
+            border-radius: 99px;
+            transition: width 0.3s ease;
+        }
+        .cl-kpi-meta {
+            margin-top: 7px;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(148, 163, 184, 0.35);
+            font-size: 11px;
+            color: #64748b;
+            line-height: 1.45;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px 8px;
+        }
+        .cl-kpi-meta strong {
+            color: inherit;
+            font-weight: 600;
+        }
+        .cl-kpi-pill {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 99px;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+    </style>
 
-        <!-- ROW 1: Agreement Overview -->
-        <!-- 1. Total Value -->
+    <?php
+        // Compact KPI derived values (read-only UI presentation helpers — zero business logic change)
+        $kpiTotalPrice      = (float)($paymentSummary['total_price'] ?? 0);
+        $kpiBookingMoney    = (float)($paymentSummary['booking_money'] ?? 0);
+        $kpiDiscountAmt     = (float)($paymentSummary['discount_amount'] ?? 0);
+        $kpiNetReceived     = (float)($paymentSummary['net_received'] ?? 0);
+        $kpiTotalDue        = (float)($paymentSummary['total_due'] ?? 0);
+        $liveAccruedPenaltyCard = round((float)($paymentSummary['accrued_penalty'] ?? 0), 2);
+        $displayTotalPenaltyDue = (float)($paymentSummary['total_penalty_due'] ?? max(0, $totalPenaltyChargedCalculated - $totalPenaltyWaivedCalculated - $displayTotalPenaltyPaid));
+
+        $kpiLandTotal       = (float)($paymentSummary['total_land_share'] ?? 0);
+        $kpiLandPaid        = (float)($paymentSummary['total_land_share_paid'] ?? 0);
+        $remLandShare       = (float)($paymentSummary['remaining_land_share'] ?? 0);
+        $kpiLandByDiscount  = !empty($paymentSummary['discount_amount']) && (float)$paymentSummary['discount_amount'] == $kpiLandTotal;
+        $pendingLandShare   = max(0, (float)($paymentSummary['total_land_share_paid_total'] ?? 0) - (float)($paymentSummary['landshare_paid'] ?? 0));
+        $kpiLandPct         = $kpiLandByDiscount ? 100 : ($kpiLandTotal > 0 ? min(100, max(0, round(($kpiLandPaid / $kpiLandTotal) * 100))) : ($remLandShare <= 0 ? 100 : 0));
+
+        $kpiDevPct          = $devTarget > 0 ? min(100, max(0, round(($devPaid / $devTarget) * 100))) : ($devRemain <= 0 ? 100 : 0);
+
+        $kpiConsTotal       = (float)($paymentSummary['construction_fee'] ?? 0);
+        $kpiConsPaid        = (float)($paymentSummary['construction_fee_paid_after_service'] ?? 0);
+        $kpiConsRem         = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
+        $kpiEmiDisc         = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
+        $kpiConsPct         = $kpiConsTotal > 0 ? min(100, max(0, round((($kpiConsPaid + $kpiEmiDisc) / $kpiConsTotal) * 100))) : ($kpiConsRem <= 0 ? 100 : 0);
+
+        $kpiCompletedEmi    = (int)($paymentSummary['completed_emi'] ?? 0);
+        $kpiTotalEmi        = (int)($paymentSummary['total_emi'] ?? 0);
+        $kpiEmiPct          = $kpiTotalEmi > 0 ? min(100, max(0, round(($kpiCompletedEmi / $kpiTotalEmi) * 100))) : 0;
+        $svcRate            = (float)($paymentSummary['service_charge_per_emi'] ?? 0);
+    ?>
+
+    <div class="row g-2 mb-3 cl-kpi-grid">
+
+        <!-- ROW 1: Financial Snapshot (4 Compact Cards) -->
+
+        <!-- 1. Total Value (incl. Booking & Discount) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-money-bill"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Value</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></h4>
+            <div class="card__wrapper cl-kpi-card">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="background:rgba(37,99,235,0.1);color:#2563eb;"><i class="fa-light fa-money-bill"></i></span>
+                            <h6 class="cl-kpi-label">Total Value</h6>
                         </div>
+                        <?php if (!empty($clientDetails['past_approval_attachment'])): ?>
+                            <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars(ltrim($clientDetails['past_approval_attachment'], '/')) ?>" target="_blank" class="badge bg-light text-success border border-success-subtle" style="font-size:10px;padding:2px 6px;" title="View discount supporting document">
+                                <i class="fa-solid fa-paperclip me-1"></i>Attachment
+                            </a>
+                        <?php endif; ?>
                     </div>
+                    <h4 class="cl-kpi-val">TK. <?= number_format($kpiTotalPrice, 2) ?></h4>
                 </div>
-            </div>
-        </div>
-        <!-- 2. Booking Money -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-hand-holding-usd"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Booking Money</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['booking_money'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 3. Discount Amount -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-tag"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Discount Amount</h6>
-                        <div class="d-flex flex-wrap align-items-end justify-content-between gap-10">
-                            <h4 class="card__title text-success mb-0">TK.<?= number_format($paymentSummary['discount_amount'] ?? 0, 2) ?></h4>
-                            <?php if (!empty($clientDetails['past_approval_attachment'])): ?>
-                                <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars(ltrim($clientDetails['past_approval_attachment'], '/')) ?>" target="_blank" class="badge bg-light text-success border border-success-subtle" title="View discount supporting document">
-                                    <i class="fa-solid fa-paperclip me-1"></i> Attachment
-                                </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 4. Registration Money -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-file-certificate"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Registration Money</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['registration_paid'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
+                <div class="cl-kpi-meta">
+                    <span>Booking: <strong>TK. <?= number_format($kpiBookingMoney, 2) ?></strong></span>
+                    <span class="<?= $kpiDiscountAmt > 0 ? 'text-success' : '' ?>">Disc: <strong>TK. <?= number_format($kpiDiscountAmt, 2) ?></strong></span>
                 </div>
             </div>
         </div>
 
-        <!-- ROW 2: Land Share & Dev Charges -->
-        <!-- 5. Total Land Share -->
+        <!-- 2. Net Received (incl. Last Payment Date) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-landmark"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Land Share</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share'] ?? 0, 2) ?></h4>
+            <div class="card__wrapper cl-kpi-card">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="background:rgba(22,163,74,0.12);color:#16a34a;"><i class="fa-light fa-sack-dollar"></i></span>
+                            <h6 class="cl-kpi-label">Net Received</h6>
                         </div>
                     </div>
+                    <h4 class="cl-kpi-val" style="color:#16a34a;">TK. <?= number_format($kpiNetReceived, 2) ?></h4>
+                </div>
+                <div class="cl-kpi-meta">
+                    <span>
+                        <i class="fa-light fa-calendar-check me-1"></i>Last Paid:
+                        <strong><?= !empty($paymentSummary['last_payment_date']) ? date('d M, Y', strtotime($paymentSummary['last_payment_date'])) : 'N/A' ?></strong>
+                    </span>
                 </div>
             </div>
         </div>
-        <!-- 6. Land Share Paid -->
+
+        <!-- 3. Total Due -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-hand-holding-usd"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Land Share Paid</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <?php if (!empty($paymentSummary['discount_amount']) && (float)$paymentSummary['discount_amount'] == (float)$paymentSummary['total_land_share']): ?>
-                                <h4 class="card__title text-success" style="font-size: 14px;">Paid by Discount Approved</h4>
+            <div class="card__wrapper cl-kpi-card" style="<?= $kpiTotalDue > 0 ? 'border-left: 3px solid #e74c3c;' : 'border-left: 3px solid #27ae60;' ?>">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="background:<?= $kpiTotalDue > 0 ? 'rgba(231,76,60,0.12)' : 'rgba(39,174,96,0.12)' ?>;color:<?= $kpiTotalDue > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-file-invoice-dollar"></i></span>
+                            <h6 class="cl-kpi-label">Total Due</h6>
+                        </div>
+                    </div>
+                    <h4 class="cl-kpi-val" style="color:<?= $kpiTotalDue <= 0 ? '#27ae60' : '#e74c3c' ?>;">
+                        <?php if ($kpiTotalDue <= 0): ?>
+                            All Clear ✓
+                        <?php else: ?>
+                            TK. <?= number_format($kpiTotalDue, 2) ?>
+                        <?php endif; ?>
+                    </h4>
+                </div>
+                <div class="cl-kpi-meta">
+                    <?php if ($liveAccruedPenaltyCard > 0): ?>
+                        <span style="color:#b45309;font-weight:600;">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Incl. 5% Penalty: TK. <?= number_format($liveAccruedPenaltyCard, 2) ?>
+                        </span>
+                    <?php else: ?>
+                        <span class="text-success"><i class="fa-solid fa-circle-check me-1"></i>No overdue penalty</span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Late Penalty (5%) — Accrued + Paid + Breakdown Modal -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper cl-kpi-card"
+                 data-bs-toggle="modal"
+                 data-bs-target="#clientPenaltyHistoryModal"
+                 style="cursor: pointer;<?= $liveAccruedPenaltyCard > 0 ? ' border-left: 3px solid #dc2626;' : '' ?>"
+                 title="Click to view detailed late penalty breakdown">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="color:<?= $liveAccruedPenaltyCard > 0 ? '#dc2626' : '#27ae60' ?>;background:<?= $liveAccruedPenaltyCard > 0 ? 'rgba(220,38,38,0.12)' : 'rgba(39,174,96,0.12)' ?>;">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </span>
+                            <h6 class="cl-kpi-label">Accrued Penalty (5%)</h6>
+                        </div>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size:10px;padding:2px 6px;">
+                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Breakdown
+                        </span>
+                    </div>
+                    <h4 class="cl-kpi-val" style="color:<?= $liveAccruedPenaltyCard > 0 ? '#dc2626' : '#27ae60' ?>;">
+                        TK. <?= number_format($liveAccruedPenaltyCard, 2) ?>
+                    </h4>
+                </div>
+                <div class="cl-kpi-meta">
+                    <span>Paid: <strong style="color:<?= $displayTotalPenaltyPaid > 0 ? '#d97706' : '#27ae60' ?>;">TK. <?= number_format($displayTotalPenaltyPaid, 2) ?></strong></span>
+                    <?php if ($displayTotalPenaltyDue > 0): ?>
+                        <span class="text-danger fw-bold">Due: ৳<?= number_format($displayTotalPenaltyDue, 2) ?></span>
+                    <?php elseif ($totalPenaltyWaivedCalculated > 0): ?>
+                        <span class="text-info fw-semibold">Waived: ৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?></span>
+                    <?php elseif (!empty($penaltyHistory)): ?>
+                        <span><i class="fa-solid fa-receipt text-warning me-1"></i><?= count($penaltyHistory) ?> rec(s)</span>
+                    <?php else: ?>
+                        <span class="text-success"><i class="fa-solid fa-circle-check me-1"></i>Clear</span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 2: Payment Buckets & EMI Progress (4 Compact Cards) -->
+
+        <!-- 5. Land Share (Due + Total + Paid + Registration) -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper cl-kpi-card">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="color:<?= ($remLandShare > 0 && !$kpiLandByDiscount) ? '#e74c3c' : '#27ae60' ?>;background:<?= ($remLandShare > 0 && !$kpiLandByDiscount) ? 'rgba(231,76,60,0.1)' : 'rgba(39,174,96,0.1)' ?>;"><i class="fa-light fa-landmark"></i></span>
+                            <h6 class="cl-kpi-label">Land Share</h6>
+                        </div>
+                        <span class="cl-kpi-pill" style="background:<?= ($remLandShare > 0 && !$kpiLandByDiscount) ? 'rgba(231,76,60,0.12)' : 'rgba(39,174,96,0.12)' ?>;color:<?= ($remLandShare > 0 && !$kpiLandByDiscount) ? '#dc2626' : '#16a34a' ?>;">
+                            <?= ($remLandShare > 0 && !$kpiLandByDiscount) ? 'Due' : 'Cleared' ?>
+                        </span>
+                    </div>
+                    <?php if ($kpiLandByDiscount): ?>
+                        <h4 class="cl-kpi-val text-success" style="font-size:14px;">Paid by Discount Approved</h4>
+                    <?php else: ?>
+                        <h4 class="cl-kpi-val" style="color:<?= $remLandShare > 0 ? '#e74c3c' : '#27ae60' ?>;">
+                            <?= $remLandShare <= 0 ? 'Fully Paid ✓' : 'TK. ' . number_format($remLandShare, 2) ?>
+                        </h4>
+                    <?php endif; ?>
+                    <div class="cl-kpi-bar"><span style="width:<?= $kpiLandPct ?>%;background:<?= ($remLandShare > 0 && !$kpiLandByDiscount) ? '#3b82f6' : '#16a34a' ?>;"></span></div>
+                </div>
+                <div class="cl-kpi-meta">
+                    <span>Total: <strong><?= number_format($kpiLandTotal, 0) ?></strong> • Paid: <strong><?= number_format($kpiLandPaid, 0) ?></strong></span>
+                    <span>Reg: <strong><?= number_format($paymentSummary['registration_paid'] ?? 0, 0) ?></strong></span>
+                    <?php if ($pendingLandShare > 0): ?>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle w-100 text-start" style="font-size:10.5px;" title="Unverified/Pending in ledger: TK. <?= number_format($pendingLandShare, 2) ?>">
+                            <i class="fa-light fa-clock me-1"></i>Pending: TK. <?= number_format($pendingLandShare, 2) ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Development Charges / Shop Service Charge -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper cl-kpi-card">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;background:<?= $devRemain > 0 ? 'rgba(231,76,60,0.1)' : 'rgba(39,174,96,0.1)' ?>;"><i class="fa-light <?= $isShop ? 'fa-store' : 'fa-wrench' ?>"></i></span>
+                            <h6 class="cl-kpi-label"><?= $isShop ? 'Shop Service Charge' : 'Development Charges' ?></h6>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <?php if ($isShop && !empty($clientDetails['flat_id']) && $canEditBookingInfo): ?>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-1"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editShopServiceChargeModal"
+                                        title="Edit Shop Service Charge"
+                                        style="font-size: 10px; height: 20px; display: inline-flex; align-items: center; border-radius: 4px;">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                                </button>
                             <?php else: ?>
-                                <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 7. Remaining Land Share -->
-        <?php $remLandShare = (float)($paymentSummary['remaining_land_share'] ?? 0); ?>
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:<?= $remLandShare > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-scale-balanced"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:<?= $remLandShare > 0 ? '#e74c3c' : '#27ae60' ?>;">TK.<?= number_format($remLandShare, 2) ?></h4>
-                            <?php 
-                                $pendingLandShare = max(0, (float)($paymentSummary['total_land_share_paid_total'] ?? 0) - (float)($paymentSummary['landshare_paid'] ?? 0));
-                                if ($pendingLandShare > 0): 
-                            ?>
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-11" title="Unverified/Pending in ledger: TK. <?= number_format($pendingLandShare, 2) ?>">
-                                    <i class="fa-light fa-clock me-1"></i>Pending: TK. <?= number_format($pendingLandShare, 2) ?>
+                                <span class="cl-kpi-pill" style="background:<?= $devRemain > 0 ? 'rgba(231,76,60,0.12)' : 'rgba(39,174,96,0.12)' ?>;color:<?= $devRemain > 0 ? '#dc2626' : '#16a34a' ?>;">
+                                    <?= $devRemain > 0 ? 'Due' : 'Cleared' ?>
                                 </span>
                             <?php endif; ?>
                         </div>
                     </div>
+                    <h4 class="cl-kpi-val" style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;">
+                        <?= $devRemain <= 0 ? 'Fully Paid ✓' : 'TK. ' . number_format($devRemain, 2) ?>
+                    </h4>
+                    <div class="cl-kpi-bar"><span style="width:<?= $kpiDevPct ?>%;background:<?= $devRemain > 0 ? '#f59e0b' : '#16a34a' ?>;"></span></div>
+                </div>
+                <div class="cl-kpi-meta">
+                    <span>Total: <strong>TK. <?= number_format($devTarget, 2) ?></strong></span>
+                    <span>Paid: <strong>TK. <?= number_format($devPaid, 2) ?></strong></span>
+                    <?php if ($showShopDev): ?>
+                        <div class="w-100 pt-1 mt-1 border-top border-light-subtle" style="font-size:10.5px;">
+                            Dev Chg: <strong><?= number_format($shopDevTarget, 0) ?></strong> • Paid: <strong><?= number_format($shopDevPaid, 0) ?></strong> •
+                            <span style="color:<?= $shopDevRemain > 0 ? '#e74c3c' : '#27ae60' ?>;font-weight:600;">
+                                <?= $shopDevRemain <= 0 ? 'Cleared ✓' : 'Due: ' . number_format($shopDevRemain, 0) ?>
+                            </span>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
-        <!-- 8. Development Charges -->
+
+        <!-- 7. Construction Fee (Remaining + Total + Paid + EMI Discount) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light <?= $isShop ? 'fa-store' : 'fa-wrench' ?>"></i></span></div>
-                    <div class="card__title-wrap" style="width: 100%;">
-                        <div class="d-flex justify-content-between align-items-center mb-10">
-                            <h6 class="card__sub-title mb-0"><?= $isShop ? 'Shop Service Charge' : 'Development Charges' ?></h6>
-                            <?php if ($isShop && !empty($clientDetails['flat_id']) && $canEditBookingInfo): ?>
-                                <button type="button" 
-                                        class="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-2" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#editShopServiceChargeModal" 
-                                        title="Edit Shop Service Charge" 
-                                        style="font-size: 11px; height: 23px; display: inline-flex; align-items: center; border-radius: 4px;">
+            <div class="card__wrapper cl-kpi-card">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="color:<?= $kpiConsRem > 0 ? '#e74c3c' : '#27ae60' ?>;background:<?= $kpiConsRem > 0 ? 'rgba(231,76,60,0.1)' : 'rgba(39,174,96,0.1)' ?>;"><i class="fa-light fa-building"></i></span>
+                            <h6 class="cl-kpi-label">Construction Fee</h6>
+                        </div>
+                        <span class="cl-kpi-pill" style="background:<?= $kpiConsRem > 0 ? 'rgba(231,76,60,0.12)' : 'rgba(39,174,96,0.12)' ?>;color:<?= $kpiConsRem > 0 ? '#dc2626' : '#16a34a' ?>;">
+                            <?= $kpiConsRem > 0 ? 'Remaining' : 'Cleared' ?>
+                        </span>
+                    </div>
+                    <h4 class="cl-kpi-val" style="color:<?= $kpiConsRem <= 0 ? '#27ae60' : '#e74c3c' ?>;">
+                        <?= $kpiConsRem <= 0 ? 'Fully Paid ✓' : 'TK. ' . number_format($kpiConsRem, 2) ?>
+                    </h4>
+                    <div class="cl-kpi-bar"><span style="width:<?= $kpiConsPct ?>%;background:<?= $kpiConsRem > 0 ? '#6366f1' : '#16a34a' ?>;"></span></div>
+                </div>
+                <div class="cl-kpi-meta">
+                    <span>Total: <strong><?= number_format($kpiConsTotal, 0) ?></strong> • Paid: <strong><?= number_format($kpiConsPaid, 0) ?></strong></span>
+                    <?php if ($kpiEmiDisc > 0): ?>
+                        <span style="color:#6c5ffc;">EMI Disc: <strong><?= number_format($kpiEmiDisc, 0) ?></strong></span>
+                    <?php endif; ?>
+                    <?php if (!empty($paymentSummary['unverified_emi_amount']) && $paymentSummary['unverified_emi_amount'] > 0): ?>
+                        <span class="badge bg-warning text-dark w-100 text-start" style="font-size:10.5px;font-weight:600;padding:3px 6px;" title="Uploaded EMI payments awaiting verification">
+                            <i class="fa-light fa-clock me-1"></i>+TK. <?= number_format($paymentSummary['unverified_emi_amount'], 2) ?> Pending Verification
+                        </span>
+                    <?php endif; ?>
+                    <?php if (!empty($paymentSummary['unverified_bulk_emi_discount']) && $paymentSummary['unverified_bulk_emi_discount'] > 0): ?>
+                        <span class="badge bg-warning text-dark w-100 text-start" style="font-size:10.5px;font-weight:600;padding:3px 6px;" title="Uploaded EMI discounts awaiting verification">
+                            <i class="fa-light fa-clock me-1"></i>+TK. <?= number_format($paymentSummary['unverified_bulk_emi_discount'], 2) ?> Disc Pending
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. EMI Status & Plan (Completed/Total + Per EMI + Service Fee + Track/Edit) -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper cl-kpi-card">
+                <div>
+                    <div class="cl-kpi-head">
+                        <div class="cl-kpi-label-wrap">
+                            <span class="cl-kpi-ico" style="background:rgba(37,99,235,0.1);color:#2563eb;"><i class="fa-light fa-check-circle"></i></span>
+                            <h6 class="cl-kpi-label">EMI Progress</h6>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <a href="<?= $GLOBALS['base_url'] ?>/client-emi-tracking/<?= $bookingId ?>"
+                               class="btn btn-sm btn-primary py-0 px-2 fw-semibold"
+                               title="View Full EMI Tracking & Statement"
+                               style="font-size: 10px; height: 20px; display: inline-flex; align-items: center; border-radius: 4px; background: #2563eb; border-color: #2563eb;">
+                                <i class="fa-solid fa-chart-line me-1"></i>Track
+                            </a>
+                            <?php if ($canEditBookingInfo): ?>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary py-0 px-1 edit-emi-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editBookingInfoModal"
+                                        data-focus="emi"
+                                        title="Edit Total EMI"
+                                        style="font-size: 10px; height: 20px; display: inline-flex; align-items: center; border-radius: 4px; font-weight: 600;">
                                     <i class="fa-solid fa-pen-to-square me-1"></i>Edit
                                 </button>
                             <?php endif; ?>
                         </div>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($devTarget, 2) ?></h4>
-                        </div>
                     </div>
+                    <div class="d-flex align-items-baseline justify-content-between gap-2">
+                        <h4 class="cl-kpi-val"><?= $kpiCompletedEmi ?> / <?= $kpiTotalEmi ?> <small style="font-size:11px;font-weight:500;color:#64748b;">EMIs</small></h4>
+                        <span style="font-size:11px;font-weight:600;color:#475569;">TK. <?= number_format($paymentSummary['per_emi_amount'] ?? 0, 0) ?>/mo</span>
+                    </div>
+                    <div class="cl-kpi-bar"><span style="width:<?= $kpiEmiPct ?>%;background:#2563eb;"></span></div>
                 </div>
-            </div>
-        </div>
-
-        <!-- ROW 3: Dev Status & Construction -->
-        <!-- 9. Dev Charges Paid -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-hammer"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Service Charge Paid' : 'Dev. Charges Paid' ?></h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($devPaid, 2) ?></h4>
+                <div class="cl-kpi-meta">
+                    <?php if (!$isShop): ?>
+                        <span>Svc: <strong style="color:#e67e22;"><?= (float)round($svcRate, 4) ?>%</strong></span>
+                        <span>Fee Collected : <strong style="color:#8e44ad;">TK. <?= number_format($paymentSummary['total_service_fee'] ?? 0, 0) ?></strong></span>
+                    <?php else: ?>
+                        <span>Per EMI: <strong>TK. <?= number_format($paymentSummary['per_emi_amount'] ?? 0, 2) ?></strong></span>
+                    <?php endif; ?>
+                    <?php if (!empty($paymentSummary['emi_updated_at'])): ?>
+                        <div class="w-100" style="font-size:10.5px;color:#64748b;line-height:1.3;" title="Last updated by <?= htmlspecialchars($paymentSummary['emi_updated_by_name'] ?? 'User') ?> on <?= date('d M, Y h:i A', strtotime($paymentSummary['emi_updated_at'])) ?>">
+                            <i class="fa-regular fa-clock me-1 text-primary"></i>Updated <?= !empty($paymentSummary['emi_updated_by_name']) ? 'by <strong class="text-dark">' . htmlspecialchars($paymentSummary['emi_updated_by_name']) . '</strong>' : '' ?> on <?= date('d M, Y', strtotime($paymentSummary['emi_updated_at'])) ?>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 10. Dev Charges Remaining -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-hourglass-end"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Svc Charge Remaining' : 'Dev. Charges Remaining' ?></h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;">
-                                <?php if ($devRemain <= 0): ?>
-                                    Fully Paid ✓
-                                <?php else: ?>
-                                    TK.<?= number_format($devRemain, 2) ?>
-                                <?php endif; ?>
-                            </h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php if ($showShopDev): ?>
-        <!-- 10a. Shop Development Charges (Total) -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-wrench"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Development Charges</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($shopDevTarget, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 10b. Shop Dev. Charges Paid -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-hammer"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Dev. Charges Paid</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($shopDevPaid, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 10c. Shop Dev. Charges Remaining -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:<?= $shopDevRemain > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-hourglass-end"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Dev. Charges Remaining</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:<?= $shopDevRemain > 0 ? '#e74c3c' : '#27ae60' ?>;">
-                                <?php if ($shopDevRemain <= 0): ?>
-                                    Fully Paid ✓
-                                <?php else: ?>
-                                    TK.<?= number_format($shopDevRemain, 2) ?>
-                                <?php endif; ?>
-                            </h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-        <!-- 11. Total Construction Fee -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-building"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Construction Fee</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 12. Construction Fee Paid -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-money-check-dollar"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Construction Fee Paid</h6>
-                        <div class="d-flex flex-column align-items-start">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['construction_fee_paid_after_service'] ?? 0, 2) ?></h4>
-                            <?php if (!empty($paymentSummary['unverified_emi_amount']) && $paymentSummary['unverified_emi_amount'] > 0): ?>
-                                <div style="margin-top: 4px;">
-                                    <span class="badge bg-warning text-dark" style="font-size:11px; font-weight:600; padding:4px 8px;" title="Uploaded EMI payments awaiting verification">
-                                        <i class="fa-light fa-clock"></i> +TK.<?= number_format($paymentSummary['unverified_emi_amount'], 2) ?> Pending Verification
-                                    </span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ROW 4: CF Remaining & EMI Status -->
-        <!-- 13a. Approved EMI Discount -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:#6c5ffc;"><i class="fa-light fa-tags"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Approved EMI Discount</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <div class="d-flex flex-column align-items-start">
-                                <h4 class="card__title text-primary">
-                                    TK.<?= number_format($paymentSummary['total_bulk_emi_discount'] ?? 0, 2) ?>
-                                </h4>
-                                <?php if (!empty($paymentSummary['unverified_bulk_emi_discount']) && $paymentSummary['unverified_bulk_emi_discount'] > 0): ?>
-                                    <div style="margin-top: 4px;">
-                                        <span class="badge bg-warning text-dark" style="font-size:11px; font-weight:600; padding:4px 8px;" title="Uploaded EMI discounts awaiting verification">
-                                            <i class="fa-light fa-clock"></i> +TK.<?= number_format($paymentSummary['unverified_bulk_emi_discount'], 2) ?> Pending Verification
-                                        </span>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 13b. After EMI Discount Remaining Cons Fee -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:#e74c3c;"><i class="fa-light fa-hourglass-end"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">After EMI Discount Remaining Cons Fee</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:<?= ($paymentSummary['remaining_construction_fee'] ?? 0) <= 0 ? '#27ae60' : '#e74c3c' ?>;">
-                                <?php if (($paymentSummary['remaining_construction_fee'] ?? 0) <= 0): ?>
-                                    Fully Paid ✓
-                                <?php else: ?>
-                                    TK.<?= number_format($paymentSummary['remaining_construction_fee'], 2) ?>
-                                <?php endif; ?>
-                            </h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 14. Per EMI Amount -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-calculator"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Per EMI Amount</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['per_emi_amount'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 15. Completed EMI -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-check-circle"></i></span></div>
-                    <div class="card__title-wrap" style="width: 100%;">
-                        <h6 class="card__sub-title mb-10">Completed EMI</h6>
-                        <div class="d-flex flex-column align-items-start">
-                            <div class="d-flex align-items-center gap-2">
-                                <h4 class="card__title mb-0"><?= $paymentSummary['completed_emi'] ?? 0 ?> / <?= $paymentSummary['total_emi'] ?? 0 ?></h4>
-                                <a href="<?= $GLOBALS['base_url'] ?>/client-emi-tracking/<?= $bookingId ?>" 
-                                   class="btn btn-sm btn-primary py-0 px-2 fw-semibold" 
-                                   title="View Full EMI Tracking & Statement" 
-                                   style="font-size: 11px; height: 23px; display: inline-flex; align-items: center; border-radius: 4px; background: #2563eb; border-color: #2563eb;">
-                                    <i class="fa-solid fa-chart-line me-1"></i>Track EMIs
-                                </a>
-                                <?php if ($canEditBookingInfo): ?>
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-primary py-0 px-2 edit-emi-btn" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#editBookingInfoModal" 
-                                            data-focus="emi" 
-                                            title="Edit Total EMI" 
-                                            style="font-size: 11px; height: 23px; display: inline-flex; align-items: center; border-radius: 4px; font-weight: 600;">
-                                        <i class="fa-solid fa-pen-to-square me-1"></i>Edit
-                                    </button>
-                                <?php endif; ?>
-                            </div>
-                            <?php if (!empty($paymentSummary['emi_updated_at'])): ?>
-                                <div class="mt-1" style="font-size: 11px; color: #64748b; line-height: 1.3;" title="Last updated by <?= htmlspecialchars($paymentSummary['emi_updated_by_name'] ?? 'User') ?> on <?= date('d M, Y h:i A', strtotime($paymentSummary['emi_updated_at'])) ?>">
-                                    <i class="fa-regular fa-clock me-1 text-primary"></i>
-                                    <span>Updated <?= !empty($paymentSummary['emi_updated_by_name']) ? 'by <strong class="text-dark">' . htmlspecialchars($paymentSummary['emi_updated_by_name']) . '</strong>' : '' ?> on <?= date('d M, Y', strtotime($paymentSummary['emi_updated_at'])) ?></span>
-                                </div>
-                            <?php endif; ?>
-                            <?php if (!empty($paymentSummary['unverified_emi_count']) && $paymentSummary['unverified_emi_count'] > 0): ?>
-                                <div style="margin-top: 4px;">
-                                    <span class="badge bg-warning text-dark" style="font-size:11px; font-weight:600; padding:4px 8px;" title="EMI payments awaiting verification">
-                                        <i class="fa-light fa-clock"></i> +<?= $paymentSummary['unverified_emi_count'] ?> EMI Pending Verification
-                                    </span>
-                                </div>
-                            <?php endif; ?>
-                            <?php if (!empty($dueEmisList)): ?>
-                                <div style="margin-top: 4px; max-width: 100%;">
-                                    <?php
-                                        $dueCount = count($dueEmisList);
-                                        $dueKeys = array_keys($dueEmisList);
-                                        $visibleKeys = array_slice($dueKeys, 0, 4);
-                                        $moreDueCount = $dueCount - count($visibleKeys);
-                                        $dueText = implode(', ', array_map(fn($n) => "#{$n}", $visibleKeys));
-                                        if ($moreDueCount > 0) {
-                                            $dueText .= " (+{$moreDueCount} more)";
-                                        }
-                                    ?>
-                                    <span class="badge bg-danger text-white text-wrap text-start" 
-                                          style="font-size:11px; font-weight:600; padding:4px 8px; line-height: 1.3; max-width: 100%; white-space: normal; display: inline-block;" 
-                                          title="Due / Overdue EMI numbers: <?= implode(', ', array_map(fn($n) => "#{$n}", $dueKeys)) ?>">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Due (<?= $dueCount ?>): <?= $dueText ?>
-                                    </span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php if (!$isShop): ?>
-        <!-- 16. Service Charge Rate (Residential Flats Only) -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:#e67e22;"><i class="fa-light fa-percent"></i></span>
-                    </div>
-                    <div class="card__title-wrap" style="width: 100%;">
-                        <div class="d-flex justify-content-between align-items-center mb-10">
-                            <h6 class="card__sub-title mb-0">Service Charge Rate</h6>
-                        </div>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <?php $svcRate = (float)($paymentSummary['service_charge_per_emi'] ?? 0); ?>
-                            <h4 class="card__title" style="color:#e67e22;"><?= (float)round($svcRate, 4) ?>% <small style="font-size:13px;color:#999;">per EMI</small></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 17. Total Service Fee Collected (Residential Flats Only) -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:#8e44ad;"><i class="fa-light fa-hand-holding-dollar"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Service Fee Collected</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:#8e44ad;">TK.<?= number_format($paymentSummary['total_service_fee'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- ROW 5: Revenue & Meta -->
-        <!-- 18. Net Received -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-sack-dollar"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Net Received</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['net_received'] ?? 0, 2) ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 19. Total Due -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:#e74c3c;"><i class="fa-light fa-file-invoice-dollar"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Total Due</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:<?= ($paymentSummary['total_due'] ?? 0) <= 0 ? '#27ae60' : '#e74c3c' ?>;">
-                                <?php if (($paymentSummary['total_due'] ?? 0) <= 0): ?>
-                                    All Clear ✓
-                                <?php else: ?>
-                                    TK.<?= number_format($paymentSummary['total_due'], 2) ?>
-                                <?php endif; ?>
-                            </h4>
-                        </div>
-                        <?php if (!empty($paymentSummary['accrued_penalty']) && (float)$paymentSummary['accrued_penalty'] > 0): ?>
-                            <div class="mt-1" style="font-size: 11px; color: #b45309; font-weight: 600;">
-                                <i class="fa-solid fa-triangle-exclamation me-1"></i>Incl. 5% Penalty: TK. <?= number_format((float)$paymentSummary['accrued_penalty'], 2) ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- 20. Last Payment -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-calendar-check"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Last Payment</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">
-                                <?php if ($paymentSummary['last_payment_date']): ?>
-                                    <?= date('d M, Y', strtotime($paymentSummary['last_payment_date'])) ?>
-                                <?php else: ?>
-                                    N/A
-                                <?php endif; ?>
-                            </h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <?php if (($paymentSummary['total_bulk_emi_discount'] ?? 0) > 0): ?>
-        <!-- 21. Bulk EMI Discount (conditional) -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:#6c5ffc;"><i class="fa-light fa-tags"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Bulk EMI Discount</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:#6c5ffc;">
-                                TK.<?= number_format($paymentSummary['total_bulk_emi_discount'], 2) ?>
-                            </h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- 21b. Total Accrued Penalty (Current Live 5% Overdue Penalty) -->
-        <?php $liveAccruedPenaltyCard = round((float)($paymentSummary['accrued_penalty'] ?? 0), 2); ?>
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper" style="<?= $liveAccruedPenaltyCard > 0 ? 'border-left: 3px solid #dc2626;' : '' ?>">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:<?= $liveAccruedPenaltyCard > 0 ? '#dc2626' : '#27ae60' ?>; background: <?= $liveAccruedPenaltyCard > 0 ? 'rgba(220, 38, 38, 0.1)' : 'rgba(39, 174, 96, 0.1)' ?>;">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
+                    <?php endif; ?>
+                    <?php if (!empty($paymentSummary['unverified_emi_count']) && $paymentSummary['unverified_emi_count'] > 0): ?>
+                        <span class="badge bg-warning text-dark w-100 text-start" style="font-size:10.5px;font-weight:600;padding:3px 6px;" title="EMI payments awaiting verification">
+                            <i class="fa-light fa-clock me-1"></i>+<?= $paymentSummary['unverified_emi_count'] ?> EMI Pending Verification
                         </span>
-                    </div>
-                    <div class="card__title-wrap" style="width: 100%;">
-                        <h6 class="card__sub-title mb-10">Total Accrued Penalty</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:<?= $liveAccruedPenaltyCard > 0 ? '#dc2626' : '#27ae60' ?>;">
-                                TK.<?= number_format($liveAccruedPenaltyCard, 2) ?>
-                            </h4>
-                        </div>
-                        <small class="text-muted" style="font-size: 11px;">
-                            <?= $liveAccruedPenaltyCard > 0 ? 'Current unpaid 5% overdue penalty' : 'No accrued penalty' ?>
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 22. Total Late Penalty Paid -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
-            <div class="card__wrapper" data-bs-toggle="modal" data-bs-target="#clientPenaltyHistoryModal" style="cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;" title="Click to view detailed late penalty breakdown">
-                <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon">
-                        <span style="color:#d97706; background: rgba(217, 119, 6, 0.1);"><i class="fa-solid fa-clock-rotate-left"></i></span>
-                    </div>
-                    <div class="card__title-wrap" style="width: 100%;">
-                        <div class="d-flex justify-content-between align-items-center mb-10">
-                            <h6 class="card__sub-title mb-0">Total Penalty Paid</h6>
-                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 11px;">
-                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Breakdown
-                            </span>
-                        </div>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:<?= $displayTotalPenaltyPaid > 0 ? '#d97706' : '#27ae60' ?>;">
-                                <?php if ($displayTotalPenaltyPaid > 0): ?>
-                                    TK.<?= number_format($displayTotalPenaltyPaid, 2) ?>
-                                <?php else: ?>
-                                    TK. 0.00
-                                <?php endif; ?>
-                            </h4>
-                        </div>
-                        <div class="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-light-subtle">
-                            <small class="text-muted" style="font-size: 11px;">
-                                <?php if (!empty($penaltyHistory)): ?>
-                                    <i class="fa-solid fa-receipt text-warning me-1"></i><?= count($penaltyHistory) ?> penalty record(s)
-                                <?php else: ?>
-                                    <i class="fa-solid fa-circle-check text-success me-1"></i>No late penalty
-                                <?php endif; ?>
-                            </small>
-                            <?php
-                            $displayTotalPenaltyDue = (float)($paymentSummary['total_penalty_due'] ?? max(0, $totalPenaltyChargedCalculated - $totalPenaltyWaivedCalculated - $displayTotalPenaltyPaid));
-                            ?>
-                            <?php if ($displayTotalPenaltyDue > 0): ?>
-                                <small class="text-danger fw-bold" style="font-size: 11px;">
-                                    Due: ৳<?= number_format($displayTotalPenaltyDue, 2) ?>
-                                </small>
-                            <?php elseif ($totalPenaltyWaivedCalculated > 0): ?>
-                                <small class="text-info fw-semibold" style="font-size: 11px;">
-                                    Waived: ৳<?= number_format($totalPenaltyWaivedCalculated, 2) ?>
-                                </small>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($dueEmisList)): ?>
+                        <?php
+                            $dueCount = count($dueEmisList);
+                            $dueKeys = array_keys($dueEmisList);
+                            $visibleKeys = array_slice($dueKeys, 0, 4);
+                            $moreDueCount = $dueCount - count($visibleKeys);
+                            $dueText = implode(', ', array_map(fn($n) => "#{$n}", $visibleKeys));
+                            if ($moreDueCount > 0) {
+                                $dueText .= " (+{$moreDueCount} more)";
+                            }
+                        ?>
+                        <span class="badge bg-danger text-white text-wrap text-start w-100"
+                              style="font-size:10.5px;font-weight:600;padding:3px 6px;line-height:1.3;white-space:normal;"
+                              title="Due / Overdue EMI numbers: <?= implode(', ', array_map(fn($n) => "#{$n}", $dueKeys)) ?>">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Due (<?= $dueCount ?>): <?= $dueText ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

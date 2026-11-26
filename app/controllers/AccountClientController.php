@@ -6068,6 +6068,47 @@ public function discountStatement($bookingId = null)
         exit;
     }
 
+    public function updateEmiFollowup()
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request']);
+            exit;
+        }
+
+        if (!$this->isFollowupUserAuthorized()) {
+            echo json_encode(['success' => false, 'message' => 'Permission denied.']);
+            exit;
+        }
+
+        $followupId = (int)($_POST['followup_id'] ?? 0);
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $emiNo = isset($_POST['emi_no']) ? (int)$_POST['emi_no'] : 0;
+        $note = trim($_POST['note'] ?? '');
+        $activityDate = trim($_POST['activity_date'] ?? '');
+        $activityMode = trim($_POST['activity_mode'] ?? '');
+        $callStatus = trim($_POST['call_status'] ?? '');
+        $activityReason = trim($_POST['activity_reason'] ?? '');
+        $nextFollowUpDate = !empty($_POST['next_follow_up_date']) ? trim($_POST['next_follow_up_date']) : null;
+        $nextFollowUpNote = !empty($_POST['next_follow_up_note']) ? trim($_POST['next_follow_up_note']) : null;
+
+        if (!$followupId || !$bookingId || empty($note) || empty($activityDate) || empty($activityMode) || empty($activityReason)) {
+            echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("UPDATE emi_followups SET emi_no = ?, note = ?, activity_date = ?, activity_mode = ?, call_status = ?, activity_reason = ?, next_follow_up_date = ?, next_follow_up_note = ? WHERE id = ? AND booking_id = ?");
+        $stmt->bind_param("isssssssii", $emiNo, $note, $activityDate, $activityMode, $callStatus, $activityReason, $nextFollowUpDate, $nextFollowUpNote, $followupId, $bookingId);
+
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $stmt->error]);
+        }
+        exit;
+    }
+
     /**
      * Save custom EMI Due Date fixed by CED (Client Experience Department)
      * Permission: Only CED role (7, 37, Credit Recovery, Client Experience) & Admin (1, 3)

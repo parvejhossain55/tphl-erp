@@ -148,6 +148,7 @@ return [
     // EMI Followups & CED Fixed Due Dates
     'account-client/getEmiFollowups' => ['controller' => 'AccountClientController', 'method' => 'getEmiFollowups'],
     'account-client/saveEmiFollowup' => ['controller' => 'AccountClientController', 'method' => 'saveEmiFollowup'],
+    'account-client/updateEmiFollowup' => ['controller' => 'AccountClientController', 'method' => 'updateEmiFollowup'],
     'account-client/saveEmiDueDate'  => ['controller' => 'AccountClientController', 'method' => 'saveEmiDueDate'],
     
     // Financial Dashboard
