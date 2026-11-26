@@ -4246,8 +4246,8 @@
                     <?php endif; ?>
 
                     <?php 
-                    $canSeeApprovalRequestsMenu = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 17, 20, 31, 38], true)
-                        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 17, 20, 31, 38], true)
+                    $canSeeApprovalRequestsMenu = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 17, 20, 31, 32, 38], true)
+                        || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 17, 20, 31, 32, 38], true)
                         || ($totalEnrollmentPending > 0)
                         || (!empty($isManagement));
                     if ($canSeeApprovalRequestsMenu): 
@@ -4573,6 +4573,28 @@
                             </a>
                         </li>
                     <?php endif; ?>
+                    <?php
+                    $sbOpoPending = 0;
+                    if (isset($db) && !empty($_SESSION['user']['id']) && file_exists(dirname(dirname(__DIR__)) . '/models/OfficeProcurementOrder.php')) {
+                        try {
+                            require_once dirname(dirname(__DIR__)) . '/models/OfficeProcurementOrder.php';
+                            $sbOpoModel = new OfficeProcurementOrder($db);
+                            $sbOpoPending = $sbOpoModel->getPendingOpoCountForUser((int)$_SESSION['user']['id'], (int)($_SESSION['user']['role_id'] ?? 0));
+                        } catch (\Throwable $e) {
+                            $sbOpoPending = 0;
+                        }
+                    }
+                    ?>
+                    <li class="slide <?= isActive('office-procurement-orders', $current_route) ?>">
+                        <a href="<?= $base_url ?>/office-procurement/orders"
+                            class="sidebar__menu-item <?= isActive('office-procurement-orders', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                            <span class="sidebar__menu-label">Office Procurement Orders</span>
+                            <?php if ($sbOpoPending > 0): ?>
+                                <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"><?= $sbOpoPending ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
                     <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [18, 16, 21])): ?>
                         <li class="slide <?= isActive('con-monthly-work-report', $current_route) ?>">
                             <a href="<?= $base_url ?>/con-monthly-work-report"

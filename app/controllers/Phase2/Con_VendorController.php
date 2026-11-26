@@ -310,17 +310,19 @@ class Con_VendorController extends Controller
             exit;
         }
 
-        $stats     = $this->vendorModel->getStats($id);
-        $penalties = $this->vendorModel->getPenalties($id);
-        $poHistory = $this->vendorModel->getPurchaseHistory($id);
+        $stats             = $this->vendorModel->getStats($id);
+        $penalties         = $this->vendorModel->getPenalties($id);
+        $poHistory         = $this->vendorModel->getPurchaseHistory($id);
+        $officeProcHistory = $this->vendorModel->getOfficeProcurementHistory($id);
 
         $this->view('phase2/vendors/show-vendor', [
-            'current_route' => 'con-vendors',
-            'page_title'    => 'Vendor Profile — ' . Con_Vendor::displayName($vendor),
-            'vendor'        => $vendor,
-            'stats'         => $stats,
-            'penalties'     => $penalties,
-            'poHistory'     => $poHistory,
+            'current_route'     => 'con-vendors',
+            'page_title'        => 'Vendor Profile — ' . Con_Vendor::displayName($vendor),
+            'vendor'            => $vendor,
+            'stats'             => $stats,
+            'penalties'         => $penalties,
+            'poHistory'         => $poHistory,
+            'officeProcHistory' => $officeProcHistory,
         ]);
     }
 

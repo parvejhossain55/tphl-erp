@@ -49,17 +49,45 @@ class CentralStatementV2 extends Model
 
         $q = "
             SELECT MIN(d) AS min_d, MAX(d) AS max_d FROM (
-                SELECT MIN(DATE(payment_date)) AS d FROM lead_payments WHERE is_trashed = 0 AND verification_status = 'verified'
+                SELECT MIN(DATE(payment_date)) AS d FROM lead_payments WHERE is_trashed = 0 AND verification_status = 'verified' AND payment_status IN ('paid', 'partially_paid') AND COALESCE(is_emi_discount, 0) = 0
                 UNION ALL
-                SELECT MAX(DATE(payment_date)) AS d FROM lead_payments WHERE is_trashed = 0 AND verification_status = 'verified'
+                SELECT MAX(DATE(payment_date)) AS d FROM lead_payments WHERE is_trashed = 0 AND verification_status = 'verified' AND payment_status IN ('paid', 'partially_paid') AND COALESCE(is_emi_discount, 0) = 0
                 UNION ALL
-                SELECT MIN(DATE(transaction_date)) AS d FROM con_financial_transactions
+                SELECT MIN(DATE(transaction_date)) AS d FROM management_cashin WHERE payment_status = 'paid'
                 UNION ALL
-                SELECT MAX(DATE(transaction_date)) AS d FROM con_financial_transactions
+                SELECT MAX(DATE(transaction_date)) AS d FROM management_cashin WHERE payment_status = 'paid'
                 UNION ALL
-                SELECT MIN(DATE(paid_at)) AS d FROM fund_requisitions WHERE status = 'paid'
+                SELECT MIN(DATE(transaction_date)) AS d FROM con_financial_transactions WHERE ref_type IN ('vendor_payment', 'contractor_bill', 'operational_fund')
                 UNION ALL
-                SELECT MAX(DATE(paid_at)) AS d FROM fund_requisitions WHERE status = 'paid'
+                SELECT MAX(DATE(transaction_date)) AS d FROM con_financial_transactions WHERE ref_type IN ('vendor_payment', 'contractor_bill', 'operational_fund')
+                UNION ALL
+                SELECT MIN(DATE(cp.payment_date)) AS d FROM cashout_payments cp LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                UNION ALL
+                SELECT MAX(DATE(cp.payment_date)) AS d FROM cashout_payments cp LEFT JOIN cashout_requests cr ON cp.cashout_request_id = cr.id WHERE cr.status IN ('approved', 'partially_paid', 'fully_paid')
+                UNION ALL
+                SELECT MIN(DATE(COALESCE(disbursed_at, payslip_month, updated_at))) AS d FROM payslips WHERE status = 'paid'
+                UNION ALL
+                SELECT MAX(DATE(COALESCE(disbursed_at, payslip_month, updated_at))) AS d FROM payslips WHERE status = 'paid'
+                UNION ALL
+                SELECT MIN(DATE(paid_at)) AS d FROM fund_requisitions WHERE status IN ('paid', 'partially_paid')
+                UNION ALL
+                SELECT MAX(DATE(paid_at)) AS d FROM fund_requisitions WHERE status IN ('paid', 'partially_paid')
+                UNION ALL
+                SELECT MIN(DATE(accounts_paid_at)) AS d FROM land_fund_requisitions WHERE mgmt_status = 'Approved' AND accounts_status = 'Paid'
+                UNION ALL
+                SELECT MAX(DATE(accounts_paid_at)) AS d FROM land_fund_requisitions WHERE mgmt_status = 'Approved' AND accounts_status = 'Paid'
+                UNION ALL
+                SELECT MIN(DATE(paid_at)) AS d FROM project_extra_assets WHERE payment_status = 'paid'
+                UNION ALL
+                SELECT MAX(DATE(paid_at)) AS d FROM project_extra_assets WHERE payment_status = 'paid'
+                UNION ALL
+                SELECT MIN(DATE(transaction_date)) AS d FROM management_cashout WHERE payment_status = 'paid'
+                UNION ALL
+                SELECT MAX(DATE(transaction_date)) AS d FROM management_cashout WHERE payment_status = 'paid'
+                UNION ALL
+                SELECT MIN(DATE(atx.payment_date)) AS d FROM adjustment_transactions atx INNER JOIN expense_adjustments ea ON atx.adjustment_id = ea.id WHERE ea.status IN ('approved', 'partially_paid', 'fully_paid')
+                UNION ALL
+                SELECT MAX(DATE(atx.payment_date)) AS d FROM adjustment_transactions atx INNER JOIN expense_adjustments ea ON atx.adjustment_id = ea.id WHERE ea.status IN ('approved', 'partially_paid', 'fully_paid')
             ) t WHERE d IS NOT NULL AND d >= '2020-01-01'
         ";
         $res = $this->db->query($q);
@@ -91,7 +119,9 @@ class CentralStatementV2 extends Model
             'fund_requisitions' => ['label' => 'Fund Requisitions', 'type' => 'cash_out'],
             'land_fund_requisitions' => ['label' => 'Land Fund Requisitions', 'type' => 'cash_out'],
             'payroll' => ['label' => 'Payroll & Salary', 'type' => 'cash_out'],
+            'operational_fund' => ['label' => 'Operational Fund', 'type' => 'cash_out'],
             'cashout' => ['label' => 'Cashout & Utilities', 'type' => 'cash_out'],
+            'management_cashout' => ['label' => 'Management Cash Out', 'type' => 'cash_out'],
             'expense_adjustment' => ['label' => 'Expense Adjustments', 'type' => 'cash_out'],
         ];
     }
@@ -158,6 +188,8 @@ class CentralStatementV2 extends Model
             LEFT JOIN office_branches ob ON COALESCE(lp.office_branch_id, emp.office_branch_id) = ob.id
             WHERE lp.is_trashed = 0
               AND lp.verification_status = 'verified'
+              AND lp.payment_status IN ('paid', 'partially_paid')
+              AND COALESCE(lp.is_emi_discount, 0) = 0
               AND DATE(lp.payment_date) BETWEEN '$s' AND '$e'
 
             UNION ALL
@@ -194,7 +226,7 @@ class CentralStatementV2 extends Model
                 CASE
                     WHEN cft.ref_type = 'vendor_payment' THEN 'vendor_payment'
                     WHEN cft.ref_type = 'contractor_bill' THEN 'contractor_bill'
-                    ELSE 'cashout'
+                    ELSE 'operational_fund'
                 END AS category_key,
                 CASE
                     WHEN cft.ref_type = 'vendor_payment' THEN 'Vendor Payments'
@@ -287,7 +319,7 @@ class CentralStatementV2 extends Model
                 COALESCE(fr.office_branch_id, emp.office_branch_id, 0) AS branch_id,
                 COALESCE(ob.name, 'General') AS branch_name,
                 {$this->normalizePaymentModeSql('fr.payment_method')} AS payment_mode,
-                CAST(fr.amount AS DECIMAL(16,2)) AS amount,
+                CAST(COALESCE(NULLIF(fr.paid_amount, 0), NULLIF(fr.approved_amount, 0), fr.amount) AS DECIMAL(16,2)) AS amount,
                 COALESCE(emp.full_name, fr.category, 'Fund Requisition') AS party_name,
                 CONCAT('FR-', fr.id) AS reference_no,
                 'fund_requisitions' AS source_table,
@@ -297,7 +329,7 @@ class CentralStatementV2 extends Model
             LEFT JOIN users u ON fr.requested_by = u.id
             LEFT JOIN employees emp ON u.employee_id = emp.id
             LEFT JOIN office_branches ob ON COALESCE(fr.office_branch_id, emp.office_branch_id) = ob.id
-            WHERE fr.status = 'paid'
+            WHERE fr.status IN ('paid', 'partially_paid')
               AND DATE(fr.paid_at) BETWEEN '$s' AND '$e'
 
             UNION ALL
@@ -360,7 +392,7 @@ class CentralStatementV2 extends Model
             SELECT
                 DATE(mo.transaction_date) AS txn_date,
                 'cash_out' AS flow_type,
-                'cashout' AS category_key,
+                'management_cashout' AS category_key,
                 'Management Cash Out' AS category_label,
                 0 AS project_id,
                 'General' AS project_name,
@@ -403,7 +435,8 @@ class CentralStatementV2 extends Model
             LEFT JOIN users u ON COALESCE(atx.created_by, ea.user_id) = u.id
             LEFT JOIN employees emp ON u.employee_id = emp.id
             LEFT JOIN office_branches ob ON emp.office_branch_id = ob.id
-            WHERE DATE(atx.payment_date) BETWEEN '$s' AND '$e'
+            WHERE ea.status IN ('approved', 'partially_paid', 'fully_paid')
+              AND DATE(atx.payment_date) BETWEEN '$s' AND '$e'
         ";
     }
 
@@ -785,7 +818,7 @@ class CentralStatementV2 extends Model
             }
         }
 
-        $rows = [];
+        $rowsByPid = [];
         $totals = ['collected' => 0.0, 'cost_paid' => 0.0, 'surplus' => 0.0, 'overdue_emi' => 0.0, 'unpaid_bills' => 0.0];
         if ($res) {
             while ($r = $res->fetch_assoc()) {
@@ -797,7 +830,7 @@ class CentralStatementV2 extends Model
                 $ov = $overdueMap[$pid]['amount'] ?? 0.0;
                 $up = $unpaidMap[$pid] ?? 0.0;
 
-                $rows[] = [
+                $rowsByPid[$pid] = [
                     'project_id' => $pid,
                     'project_name' => $r['project_name'],
                     'collected' => $col,
@@ -807,12 +840,69 @@ class CentralStatementV2 extends Model
                     'overdue_emi' => $ov,
                     'unpaid_bills' => $up,
                 ];
-                $totals['collected'] += $col;
-                $totals['cost_paid'] += $cost;
-                $totals['surplus'] += $surplus;
-                $totals['overdue_emi'] += $ov;
-                $totals['unpaid_bills'] += $up;
             }
+        }
+
+        // Determine active project filter (if any) so we only add non-transacting projects that match the filter
+        $allowedPids = [];
+        if (!empty($filters['project_ids']) && is_array($filters['project_ids'])) {
+            foreach ($filters['project_ids'] as $p) {
+                if ($p === 'general' || $p === 0 || $p === '0') {
+                    $allowedPids[] = 0;
+                } elseif (is_numeric($p) && (int)$p > 0) {
+                    $allowedPids[] = (int)$p;
+                }
+            }
+        } elseif (!empty($filters['project_id'])) {
+            if ($filters['project_id'] === 'general') {
+                $allowedPids[] = 0;
+            } elseif (is_numeric($filters['project_id'])) {
+                $allowedPids[] = (int)$filters['project_id'];
+            }
+        }
+
+        // Include projects that have overdue EMI or unpaid bills even if they had no Cash In/Out in the date range
+        $extraPids = array_diff(array_unique(array_merge(array_keys($overdueMap), array_keys($unpaidMap))), array_keys($rowsByPid));
+        if (!empty($extraPids)) {
+            $projectNames = [0 => 'General'];
+            $nonZeroExtra = array_values(array_filter($extraPids, fn($id) => $id > 0));
+            if (!empty($nonZeroExtra)) {
+                $pRes = $this->db->query("SELECT id, name FROM projects WHERE id IN (" . implode(',', array_map('intval', $nonZeroExtra)) . ")");
+                if ($pRes) {
+                    while ($pr = $pRes->fetch_assoc()) {
+                        $projectNames[(int)$pr['id']] = $pr['name'];
+                    }
+                }
+            }
+            foreach ($extraPids as $pid) {
+                if (!empty($allowedPids) && !in_array($pid, $allowedPids, true)) {
+                    continue;
+                }
+                $ov = $overdueMap[$pid]['amount'] ?? 0.0;
+                $up = $unpaidMap[$pid] ?? 0.0;
+                if ($ov <= 0 && $up <= 0) {
+                    continue;
+                }
+                $rowsByPid[$pid] = [
+                    'project_id' => $pid,
+                    'project_name' => $projectNames[$pid] ?? ('Project #' . $pid),
+                    'collected' => 0.0,
+                    'cost_paid' => 0.0,
+                    'coverage_pct' => null,
+                    'surplus' => 0.0,
+                    'overdue_emi' => $ov,
+                    'unpaid_bills' => $up,
+                ];
+            }
+        }
+
+        $rows = array_values($rowsByPid);
+        foreach ($rows as $row) {
+            $totals['collected'] += $row['collected'];
+            $totals['cost_paid'] += $row['cost_paid'];
+            $totals['surplus'] += $row['surplus'];
+            $totals['overdue_emi'] += $row['overdue_emi'];
+            $totals['unpaid_bills'] += $row['unpaid_bills'];
         }
         $totals['coverage_pct'] = $totals['cost_paid'] > 0 ? round(($totals['collected'] / $totals['cost_paid']) * 100, 1) : null;
 

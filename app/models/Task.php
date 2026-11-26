@@ -405,7 +405,11 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
             //  Update task progress
             $status = ($progress >= 100) ? 'completed' : 'in_progress';
 
-            $sql = "UPDATE tasks SET progress = ?, status = ?";
+            if ($progress >= 100) {
+                $sql = "UPDATE tasks SET progress = ?, status = ?, completed_at = COALESCE(completed_at, NOW())";
+            } else {
+                $sql = "UPDATE tasks SET progress = ?, status = ?, completed_at = NULL";
+            }
             $types = "is";
             $params = [$progress, $status];
 

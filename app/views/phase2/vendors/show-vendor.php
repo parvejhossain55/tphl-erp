@@ -84,17 +84,23 @@ $displayVendorName = $hasCompany ? trim($vendor['company_name']) : $vendor['name
 
                         <!-- Stats Cards -->
                         <div class="col-md-7">
-                            <div class="row ">
-                                <div class="col-6 mb-3">
+                            <div class="row g-2">
+                                <div class="col-6 col-sm-4 mb-2">
                                     <div class="border rounded p-3 text-center">
                                         <div class="fs-3 fw-bold text-primary"><?= $stats['po_count'] ?? 0 ?></div>
                                         <div class="small text-muted">Purchase Orders</div>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-6 col-sm-4 mb-2">
                                     <div class="border rounded p-3 text-center">
                                         <div class="fs-3 fw-bold text-info">৳ <?= number_format($stats['total_value'] ?? 0, 0) ?></div>
                                         <div class="small text-muted">Total PO Value</div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-sm-4 mb-2">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="fs-3 fw-bold text-teal"><?= $stats['office_proc_count'] ?? 0 ?></div>
+                                        <div class="small text-muted">Office Procurements (৳ <?= number_format($stats['office_proc_value'] ?? 0, 0) ?>)</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
@@ -193,6 +199,80 @@ $displayVendorName = $hasCompany ? trim($vendor['company_name']) : $vendor['name
                     <?php else: ?>
                     <div class="p-4 text-center text-muted">
                         <i class="bi bi-inbox me-2"></i>No purchase order history.
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Office Procurement History -->
+            <div class="card__wrapper shadow-sm mb-4">
+                <div class="card__header">
+                    <h6 class="card__title mb-0"><i class="bi bi-bag-check me-2 text-primary"></i>Office Procurement History</h6>
+                </div>
+                <div class="card__body p-0">
+                    <?php if (!empty($officeProcHistory)): ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>PR #</th>
+                                    <th>Item &amp; Category</th>
+                                    <th>Location / Project</th>
+                                    <th class="text-end">Qty</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Total</th>
+                                    <th>Payment</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($officeProcHistory as $op): ?>
+                                <tr>
+                                    <td>
+                                        <a href="<?= $base_url ?>/asset-extra-purchase/<?= $op['id'] ?>" class="fw-bold text-primary">
+                                            PR-<?= $op['id'] ?>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold"><?= htmlspecialchars($op['item_name'] ?? '—') ?></div>
+                                        <?php if (!empty($op['category_name'])): ?>
+                                            <small class="text-muted"><?= htmlspecialchars($op['category_name']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= htmlspecialchars($op['project_name'] ?: ($op['location_name'] ?? 'Head Office')) ?></td>
+                                    <td class="text-end"><?= (int)($op['quantity'] ?? 1) ?></td>
+                                    <td class="text-end">৳ <?= number_format((float)($op['unit_price'] ?? 0), 2) ?></td>
+                                    <td class="text-end fw-bold">৳ <?= number_format((float)($op['total_price'] ?? 0), 2) ?></td>
+                                    <td>
+                                        <?php if (($op['payment_status'] ?? '') === 'paid'): ?>
+                                            <span class="badge bg-success">Paid</span>
+                                            <div class="small text-muted">৳ <?= number_format((float)($op['paid_amount'] ?? $op['total_price']), 2) ?></div>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark">Unpaid</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php
+                                        $opSt = $op['overall_status'] ?? 'pending';
+                                        $opBadge = match($opSt) {
+                                            'approved', 'paid', 'purchased' => 'bg-success',
+                                            'rejected' => 'bg-danger',
+                                            'in_review' => 'bg-info',
+                                            default => 'bg-warning text-dark',
+                                        };
+                                        ?>
+                                        <span class="badge <?= $opBadge ?>"><?= ucfirst(str_replace('_', ' ', $opSt)) ?></span>
+                                    </td>
+                                    <td class="text-muted small"><?= !empty($op['created_at']) ? date('d M Y', strtotime($op['created_at'])) : '—' ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php else: ?>
+                    <div class="p-4 text-center text-muted">
+                        <i class="bi bi-inbox me-2"></i>No office procurement history.
                     </div>
                     <?php endif; ?>
                 </div>

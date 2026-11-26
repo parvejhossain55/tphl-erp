@@ -424,7 +424,10 @@
                                 ?>
                                 <?php foreach ($ledgerEntries as $entry): ?>
                                     <?php 
-                                    $isPo = ($entry['entry_type'] === 'PURCHASE_ORDER');
+                                    $entryType = $entry['entry_type'] ?? '';
+                                    $isPo = ($entryType === 'PURCHASE_ORDER');
+                                    $isOfficeProc = ($entryType === 'OFFICE_PROCUREMENT');
+                                    $isOfficePay = ($entryType === 'OFFICE_PAYMENT');
                                     $totalDebit += (float)$entry['debit_amount'];
                                     $totalCredit += (float)$entry['credit_amount'];
                                     ?>
@@ -438,6 +441,14 @@
                                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1" style="font-size: 11px;">
                                                     <i class="fa-solid fa-file-invoice me-1"></i> Purchase Order
                                                 </span>
+                                            <?php elseif ($isOfficeProc): ?>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1" style="font-size: 11px;">
+                                                    <i class="fa-solid fa-boxes-stacked me-1"></i> Office Procurement
+                                                </span>
+                                            <?php elseif ($isOfficePay): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 11px;">
+                                                    <i class="fa-solid fa-money-bill-wave me-1"></i> Office Payment
+                                                </span>
                                             <?php else: ?>
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 11px;">
                                                     <i class="fa-solid fa-receipt me-1"></i> Payment Paid
@@ -448,6 +459,11 @@
                                             <?php if ($isPo): ?>
                                                 <a href="<?= $base_url ?>/con-purchase-order/<?= $entry['ref_id'] ?>" 
                                                    class="text-primary text-decoration-none" title="View Purchase Order">
+                                                    <?= htmlspecialchars($entry['ref_no']) ?>
+                                                </a>
+                                            <?php elseif ($isOfficeProc || $isOfficePay): ?>
+                                                <a href="<?= $base_url ?>/asset-extra-purchase/<?= $entry['ref_id'] ?>" 
+                                                   class="text-info text-decoration-none" title="View Office Procurement">
                                                     <?= htmlspecialchars($entry['ref_no']) ?>
                                                 </a>
                                             <?php else: ?>

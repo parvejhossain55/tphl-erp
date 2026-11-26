@@ -646,6 +646,19 @@ return [
     'asset-extra-purchases/category/store' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'storeProcurementCategory'],
     'asset-extra-purchases/category/update' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'updateProcurementCategory'],
     'asset-extra-purchases/category/delete' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'deleteProcurementCategory'],
+    'asset-extra-purchases/assign-cst/(\d+)' => ['controller' => 'Phase2\AssetManagementController', 'method' => 'assignCstEmployee'],
+
+    // =========================================================================
+    // Controller: Phase2\OfficeProcurementOrderController (PR -> CST -> OPO)
+    // =========================================================================
+    'office-procurement/orders' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'index'],
+    'office-procurement/cst/(\d+)' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'cstPage'],
+    'office-procurement/cst/save/(\d+)' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'saveCstAndGenerateOpo'],
+    'office-procurement/order/(\d+)' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'show'],
+    'office-procurement/order/action/(\d+)' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'handleOpoAction'],
+    'office-procurement/order/receive-payment/(\d+)' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'markPaymentReceived'],
+    'office-procurement/order/mark-purchased/(\d+)' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'markPurchasedByAssignee'],
+    'office-procurement/order/receive-asset/(\d+)' => ['controller' => 'Phase2\OfficeProcurementOrderController', 'method' => 'markAssetReceived'],
 
     // =========================================================================
     // Controller: Phase2\Con_ProgressReportController
