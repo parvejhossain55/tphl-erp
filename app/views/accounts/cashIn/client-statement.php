@@ -132,10 +132,12 @@ foreach ($validTransactions as $t) {
     $actualPaid += $amt;
 }
 
-// Track penalty payments & carried-forward penalty due
+// Track penalty payments & carried-forward penalty due (strictly from penalty_settlement vouchers)
 $totalPenaltyPaidStmt = 0.0;
 foreach ($validTransactions as $t) {
-    $totalPenaltyPaidStmt += (float)($t['penalty_paid'] ?? 0);
+    if (strtolower((string)($t['payment_type'] ?? '')) === 'penalty_settlement') {
+        $totalPenaltyPaidStmt += (float)($t['penalty_paid'] > 0 ? $t['penalty_paid'] : ($t['amount'] ?? 0));
+    }
 }
 $carriedPenaltyDue = round((float)($paymentSummary['total_penalty_due'] ?? ($clientDetails['total_penalty_due'] ?? 0)), 2);
 
