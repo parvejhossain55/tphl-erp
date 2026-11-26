@@ -80,7 +80,7 @@ $statusBadges = [
             <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="stat-card-link">
                 <div class="card custom-card">
                     <div class="card-body text-center p-2 p-md-3">
-                        <h3 class="fw-bold text-info mb-0">৳ <?= number_format($stats['total_value'] ?? 0, 2) ?></h3>
+                        <h3 class="fw-bold text-info mb-0">TK <?= number_format($stats['total_value'] ?? 0, 2) ?></h3>
                         <p class="text-muted mb-0 fs-11">Total Asset Value</p>
                     </div>
                 </div>
