@@ -55,11 +55,76 @@
 
 
                 <div class="card__wrapper">
-                    <div class="card__title-wrap mb-25">
+                    <div class="card__title-wrap mb-20">
                         <h5 class="card__heading-title">Summary</h5>
                     </div>
-                    <?= $task['description'] ?>
-                    <div class="row gy-3 mb-15">
+
+                    <?php
+                    $rawDesc = trim((string)($task['description'] ?? ''));
+                    $rawExpected = trim((string)($task['expected_output'] ?? ''));
+                    $checklistItems = [];
+                    if (!empty($task['checklist_data'])) {
+                        $decodedCl = json_decode((string)$task['checklist_data'], true);
+                        if (is_array($decodedCl)) {
+                            $checklistItems = $decodedCl;
+                        }
+                    }
+                    $clTotal = count($checklistItems);
+                    $clDone = 0;
+                    foreach ($checklistItems as $ci) {
+                        if (!empty($ci['completed'])) $clDone++;
+                    }
+                    ?>
+
+                    <?php if ($rawDesc !== ''): ?>
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-dark mb-2" style="font-size: 0.9rem;">Description</h6>
+                            <div class="p-3 rounded-3 border bg-light bg-opacity-50 text-dark" style="font-size: 0.9rem; line-height: 1.6;">
+                                <?= (strip_tags($rawDesc) !== $rawDesc) ? $rawDesc : nl2br(htmlspecialchars($rawDesc)) ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($rawExpected !== ''): ?>
+                        <div class="mb-4">
+                            <h6 class="fw-bold text-dark mb-2" style="font-size: 0.9rem;">Expected Output</h6>
+                            <div class="p-3 rounded-3 border bg-success bg-opacity-10 border-success border-opacity-25 text-dark" style="font-size: 0.9rem; line-height: 1.6;">
+                                <?= (strip_tags($rawExpected) !== $rawExpected) ? $rawExpected : nl2br(htmlspecialchars($rawExpected)) ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($clTotal > 0): ?>
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="fw-bold text-dark mb-0" style="font-size: 0.9rem;">Acceptance Checklist</h6>
+                                <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                    <?= $clDone ?> of <?= $clTotal ?> completed
+                                </span>
+                            </div>
+                            <ul class="list-group">
+                                <?php foreach ($checklistItems as $idx => $ci):
+                                    $isDone = !empty($ci['completed']);
+                                    $itemText = trim((string)($ci['text'] ?? ''));
+                                ?>
+                                    <li class="list-group-item d-flex align-items-start gap-2 py-2 px-3" style="background: <?= $isDone ? '#f8fafc' : '#ffffff' ?>;">
+                                        <span class="mt-1 flex-shrink-0">
+                                            <?php if ($isDone): ?>
+                                                <i class="fa-solid fa-circle-check text-success"></i>
+                                            <?php else: ?>
+                                                <i class="fa-regular fa-circle text-muted"></i>
+                                            <?php endif; ?>
+                                        </span>
+                                        <span class="<?= $isDone ? 'text-muted text-decoration-line-through' : 'text-dark' ?>" style="font-size: 0.88rem; line-height: 1.45;">
+                                            <?= htmlspecialchars($itemText) ?>
+                                        </span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="row gy-3 mb-15 pt-3 border-top">
                         <div class="col-lg-3 col-sm-6 col-6">
                             <div>
                                 <p class="mb-5 fw-medium">Create Date:</p>

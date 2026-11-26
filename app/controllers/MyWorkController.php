@@ -1874,6 +1874,19 @@ class MyWorkController extends Controller
             ];
         }
 
+        $pendingExt = null;
+        if (!empty($t['pending_extension_deadline'])) {
+            $extById = (int)($t['pending_extension_by'] ?? 0);
+            $pendingExt = [
+                'deadline' => $t['pending_extension_deadline'],
+                'deadline_formatted' => date('d M Y', strtotime($t['pending_extension_deadline'])),
+                'reason' => $t['pending_extension_reason'] ?? '',
+                'requested_by' => !empty($peopleMap[$extById]['name']) ? $peopleMap[$extById]['name'] : 'Assignee',
+                'requested_at' => !empty($t['pending_extension_at']) ? date('d M Y, h:i A', strtotime($t['pending_extension_at'])) : '',
+                'can_approve' => (((int)$t['assigned_by'] === $userId) || in_array($userId, $reviewerIds, true))
+            ];
+        }
+
         echo json_encode([
             'status' => 'success',
             'task' => [
@@ -1890,6 +1903,7 @@ class MyWorkController extends Controller
                 'is_reviewer' => in_array($userId, $reviewerIds, true),
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
                 'can_request_extension' => (!$isCompleted && (int)$t['assigned_by'] !== $userId && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
+                'pending_extension' => $pendingExt,
                 'can_check' => $canCheckChecklist,
                 'can_add_checklist' => (!$isCompleted && ($canCheckChecklist || (int)$t['assigned_by'] === $userId)),
                 'status_label' => $statusLabel,
@@ -2358,10 +2372,10 @@ class MyWorkController extends Controller
         $hasReviewers = count($reviewerIds) > 0;
 
         if ($hasReviewers) {
-            // Task has reviewer -> Submit for review: progress 85%, status remains in_progress (or in review flag), notify reviewers
+            // Task has reviewer -> Submit for review: progress 85%, status remains in_progress, record completed_at for on-time tracking
             $newProgress = 85;
             $newStatus = 'in_progress';
-            $stmtUp = $this->db->prepare("UPDATE tasks SET progress = ?, status = ?, employee_accept = 1, updated_at = NOW() WHERE id = ?");
+            $stmtUp = $this->db->prepare("UPDATE tasks SET progress = ?, status = ?, employee_accept = 1, completed_at = COALESCE(completed_at, NOW()), updated_at = NOW() WHERE id = ?");
             $stmtUp->bind_param("isi", $newProgress, $newStatus, $id);
             $success = $stmtUp->execute();
             $stmtUp->close();
@@ -2579,8 +2593,8 @@ class MyWorkController extends Controller
             $datedNote = "[" . date('d M Y, h:i A') . "] Reviewer Note (" . $reviewerName . "): " . $note;
             $newRemarks = !empty($task['remarks']) ? $task['remarks'] . "\n\n" . $datedNote : $datedNote;
 
-            // Revert status to in_progress and progress to 60%
-            $stmt = $this->db->prepare("UPDATE tasks SET status = 'in_progress', progress = 60, remarks = ?, updated_at = NOW() WHERE id = ?");
+            // Revert status to in_progress and progress to 60%, clear completed_at since task was sent back
+            $stmt = $this->db->prepare("UPDATE tasks SET status = 'in_progress', progress = 60, remarks = ?, completed_at = NULL, updated_at = NOW() WHERE id = ?");
             $stmt->bind_param("si", $newRemarks, $id);
             if ($stmt->execute()) {
                 $stmt->close();
@@ -2711,7 +2725,8 @@ class MyWorkController extends Controller
         }
 
         $jsonChecklist = json_encode($checklist, JSON_UNESCAPED_UNICODE);
-        $stmt = $this->db->prepare("UPDATE tasks SET checklist_data = ?, progress = ?, status = ?, updated_at = NOW() WHERE id = ?");
+        $clearCompletedSql = ($task['status'] === 'completed' && !$allDone) ? ", completed_at = NULL" : "";
+        $stmt = $this->db->prepare("UPDATE tasks SET checklist_data = ?, progress = ?, status = ?{$clearCompletedSql}, updated_at = NOW() WHERE id = ?");
         $stmt->bind_param("sisi", $jsonChecklist, $progress, $newStatus, $id);
         if ($stmt->execute()) {
             $stmt->close();
@@ -3049,8 +3064,21 @@ class MyWorkController extends Controller
             exit;
         }
 
-        $formattedDate = date('d M Y', strtotime($newDeadline));
+        $extDateSql = date('Y-m-d', strtotime($newDeadline));
+        $formattedDate = date('d M Y', strtotime($extDateSql));
         $activityText = "Requested deadline extension to {$formattedDate}. Reason: \"{$reason}\"";
+
+        $stmtExt = $this->db->prepare("
+            UPDATE tasks
+            SET pending_extension_deadline = ?,
+                pending_extension_reason = ?,
+                pending_extension_by = ?,
+                pending_extension_at = NOW()
+            WHERE id = ?
+        ");
+        $stmtExt->bind_param("ssii", $extDateSql, $reason, $userId, $id);
+        $stmtExt->execute();
+        $stmtExt->close();
 
         if ($this->logTaskActivity($id, $userId, 'system', $activityText)) {
             // Notify task owner / assigned_by
@@ -3060,9 +3088,8 @@ class MyWorkController extends Controller
             $notifyRecipients = array_filter([(int)$task['assigned_by']]);
             // Also notify reviewers if defined
             if (!empty($task['mentioned_user_ids'])) {
-                $revs = explode(',', (string)$task['mentioned_user_ids']);
+                $revs = $ids($task['mentioned_user_ids']);
                 foreach ($revs as $rId) {
-                    $rId = (int)trim($rId);
                     if ($rId) $notifyRecipients[] = $rId;
                 }
             }
@@ -3079,6 +3106,133 @@ class MyWorkController extends Controller
             echo json_encode(['status' => 'error', 'message' => 'Failed to log extension request.']);
             exit;
         }
+    }
+
+    /**
+     * Approve or decline a pending deadline extension request
+     * POST /my-work/handle-extension/{id}
+     */
+    public function handleExtension($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        $id = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if (!$userId) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        $action = trim($_POST['action'] ?? '');
+        if (!in_array($action, ['approve', 'reject'], true)) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid action.']);
+            exit;
+        }
+
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, mentioned_user_ids, collaborator_user_ids, pending_extension_deadline, pending_extension_by FROM tasks WHERE id = ?");
+        $st->bind_param("i", $id);
+        $st->execute();
+        $task = $st->get_result()->fetch_assoc();
+        $st->close();
+
+        if (!$task) {
+            echo json_encode(['status' => 'error', 'message' => 'Task not found.']);
+            exit;
+        }
+
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+        $collabIds = $ids($task['collaborator_user_ids'] ?? '');
+        $canApprove = (((int)$task['assigned_by'] === $userId) || in_array($userId, $reviewerIds, true));
+
+        if (!$canApprove) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task assigner or reviewer can approve/decline deadline extensions.']);
+            exit;
+        }
+
+        if (empty($task['pending_extension_deadline'])) {
+            echo json_encode(['status' => 'error', 'message' => 'No pending deadline extension request found.']);
+            exit;
+        }
+
+        $proposedDate = $task['pending_extension_deadline'];
+        $formattedDate = date('d M Y', strtotime($proposedDate));
+        $actorName = $_SESSION['user']['full_name'] ?? 'Reviewer';
+        $notifyRecipients = array_unique(array_filter(array_merge(
+            [(int)$task['user_id'], (int)($task['pending_extension_by'] ?? 0)],
+            $collabIds
+        )));
+
+        if ($action === 'approve') {
+            $newDeadlineSql = $proposedDate . ' 00:00:00';
+            $up = $this->db->prepare("
+                UPDATE tasks
+                SET deadline = ?,
+                    pending_extension_deadline = NULL,
+                    pending_extension_reason = NULL,
+                    pending_extension_by = NULL,
+                    pending_extension_at = NULL,
+                    updated_at = NOW()
+                WHERE id = ?
+            ");
+            $up->bind_param("si", $newDeadlineSql, $id);
+            $ok = $up->execute();
+            $up->close();
+
+            if ($ok) {
+                $this->logTaskActivity($id, $userId, 'system', "Approved deadline extension to {$formattedDate}.");
+                Notification::dispatch(
+                    $this->db,
+                    $notifyRecipients,
+                    $userId,
+                    'status_changed',
+                    "{$actorName} approved deadline extension for task T-{$id} to {$formattedDate}.",
+                    $id,
+                    '/my-work-dashboard'
+                );
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => "Deadline updated to {$formattedDate}.",
+                    'new_deadline' => $formattedDate
+                ]);
+                exit;
+            }
+        } else {
+            $up = $this->db->prepare("
+                UPDATE tasks
+                SET pending_extension_deadline = NULL,
+                    pending_extension_reason = NULL,
+                    pending_extension_by = NULL,
+                    pending_extension_at = NULL
+                WHERE id = ?
+            ");
+            $up->bind_param("i", $id);
+            $ok = $up->execute();
+            $up->close();
+
+            if ($ok) {
+                $this->logTaskActivity($id, $userId, 'system', "Declined deadline extension request ({$formattedDate}).");
+                Notification::dispatch(
+                    $this->db,
+                    $notifyRecipients,
+                    $userId,
+                    'status_changed',
+                    "{$actorName} declined the deadline extension request for task T-{$id}.",
+                    $id,
+                    '/my-work-dashboard'
+                );
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Extension request declined.'
+                ]);
+                exit;
+            }
+        }
+
+        echo json_encode(['status' => 'error', 'message' => 'Failed to process extension request.']);
+        exit;
     }
 
     /**

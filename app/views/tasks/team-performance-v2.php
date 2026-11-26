@@ -929,7 +929,7 @@
 
             <div class="d-flex align-items-center gap-2">
                 <a id="teamSortScoreBtn" href="<?= $GLOBALS['base_url'] ?>/team-performance-v2?sort=<?= $sort === 'score_desc' ? 'score_asc' : 'score_desc' ?>&<?= http_build_query(array_diff_key($_GET, ['sort' => ''])) ?>" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-secondary" style="font-size: 12.5px;">
-                    <i class="bi bi-filter me-1"></i> Sort by Score
+                    <i class="bi bi-filter me-1"></i> <?= $sort === 'score_desc' ? 'Score: High → Low' : ($sort === 'score_asc' ? 'Score: Low → High' : 'Sort by KPI') ?>
                 </a>
             </div>
         </div>
@@ -948,7 +948,7 @@
                         <th>ON-TIME</th>
                         <th>COMPLETION RATE</th>
                         <th>PERFORMANCE</th>
-                        <th>TREND</th>
+                        <th title="Overall KPI % = 35% Completion + 25% On-Time + 15% Before-Deadline + 25% Feedback Quality (normalized if unrated)">OVERALL KPI</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -967,7 +967,12 @@
                         <?php foreach ($members as $rowIdx => $m): 
                             $nameParts = preg_split('/\s+/', trim($m['full_name']));
                             $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
-                            $isTrendUp = str_starts_with($m['trend'], '+');
+                            $kpiScore = (int)($m['kpi_score'] ?? $m['score'] ?? 0);
+                            $kpiClass = ((int)$m['total'] === 0) ? 'text-muted' : ($kpiScore >= 75 ? 'text-success' : ($kpiScore >= 65 ? 'text-primary' : 'text-danger'));
+                            $beforeDlPct = (int)($m['before_deadline_pct'] ?? 0);
+                            $ratedCount = (int)($m['rated_count'] ?? 0);
+                            $avgRating = (float)($m['avg_rating'] ?? 0);
+                            $kpiTitle = "Completion: {$m['completion_rate']}% | On-Time: {$m['on_time_pct']}% | Before Deadline: {$beforeDlPct}% | Feedback: " . ($ratedCount > 0 ? number_format($avgRating, 1) . "/5 ({$ratedCount})" : "Not rated yet");
                             $isTopPerformer = !empty($m['is_top_performer']);
                             $isNeedsAttention = !empty($m['needs_attention']);
                             $matchesCurrentTab = ($tab === 'all')
@@ -976,7 +981,18 @@
                             $hideRow = !$matchesCurrentTab || ($tabMatchIdx >= 25);
                             if ($matchesCurrentTab) $tabMatchIdx++;
                         ?>
-                        <tr class="team-member-row<?= $hideRow ? ' d-none' : '' ?>" data-top-performer="<?= $isTopPerformer ? '1' : '0' ?>" data-needs-attention="<?= $isNeedsAttention ? '1' : '0' ?>" data-tab-match="<?= $matchesCurrentTab ? '1' : '0' ?>" style="cursor: pointer;" onclick="openMemberTasksOffcanvas(<?= $m['employee_id'] ?>, '<?= htmlspecialchars($m['full_name'], ENT_QUOTES) ?>')">
+                        <tr class="team-member-row<?= $hideRow ? ' d-none' : '' ?>"
+                            data-top-performer="<?= $isTopPerformer ? '1' : '0' ?>"
+                            data-needs-attention="<?= $isNeedsAttention ? '1' : '0' ?>"
+                            data-tab-match="<?= $matchesCurrentTab ? '1' : '0' ?>"
+                            data-role-priority="<?= (int)($m['role_priority'] ?? 1) ?>"
+                            data-completion-rate="<?= (int)($m['completion_rate'] ?? 0) ?>"
+                            data-kpi-score="<?= $kpiScore ?>"
+                            data-overdue="<?= (int)($m['overdue'] ?? 0) ?>"
+                            data-completed="<?= (int)($m['completed'] ?? 0) ?>"
+                            data-full-name="<?= htmlspecialchars($m['full_name'], ENT_QUOTES) ?>"
+                            style="cursor: pointer;"
+                            onclick="openMemberTasksOffcanvas(<?= $m['employee_id'] ?>, '<?= htmlspecialchars($m['full_name'], ENT_QUOTES) ?>')">
                             <!-- Team Member -->
                             <td>
                                 <div class="d-flex align-items-center">
@@ -1025,9 +1041,14 @@
                                 <span class="<?= $m['badge_class'] ?>"><?= $m['badge'] ?></span>
                             </td>
 
-                            <!-- Trend -->
-                            <td class="<?= $isTrendUp ? 'trend-up' : 'trend-down' ?>">
-                                <?= $isTrendUp ? '↑' : '↓' ?> <?= ltrim($m['trend'], '+-') ?>
+                            <!-- Overall KPI % -->
+                            <td title="<?= htmlspecialchars($kpiTitle, ENT_QUOTES) ?>">
+                                <div class="fw-bold <?= $kpiClass ?>" style="font-size: 13px;"><?= $kpiScore ?>%</div>
+                                <?php if ((int)$m['total'] > 0): ?>
+                                    <div class="text-muted" style="font-size: 10.5px;">
+                                        Early: <?= $beforeDlPct ?>%<?= $ratedCount > 0 ? ' &bull; &#9733; ' . number_format($avgRating, 1) : '' ?>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -1354,7 +1375,7 @@
                             <i class="bi bi-calculator me-1 text-success"></i> Workload Summary
                         </span>
                         <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-semibold" style="font-size: 11px;">
-                            Open Tasks = In Progress + Overdue
+                            Open Tasks = In Progress + Overdue + Review / CC
                         </span>
                     </div>
 
@@ -1384,7 +1405,7 @@
 
                     <div class="mt-3 pt-2.5 border-top d-flex align-items-center justify-content-between flex-wrap gap-2 text-muted" style="font-size: 11.5px;">
                         <span><i class="bi bi-check-circle-fill me-1 text-success"></i> Completed tasks (<strong class="text-dark" id="wbModalCompleted">0</strong>) are excluded from active workload.</span>
-                        <span>Total Tasks: <strong class="text-dark" id="wbModalTotal">0</strong></span>
+                        <span>Review / CC Open: <strong class="text-dark" id="wbModalReviewCc">0</strong> &bull; Total Tasks: <strong class="text-dark" id="wbModalTotal">0</strong></span>
                     </div>
                 </div>
 
@@ -1588,7 +1609,7 @@ let currentWbTasks = [];
 let currentWbFilter = 'open';
 
 function openWorkloadFormulaInfo() {
-    alert("Workload Balance Calculation Formula:\n\n1. In Progress Tasks: Status is pending/in-progress with <100% progress and deadline has not passed.\n2. Overdue Tasks: Deadline has passed and task is <100% progress.\n\nTotal Open Tasks = In Progress + Overdue.\n\nCompleted tasks (100%) are excluded from the workload count.");
+    alert("Workload Balance Calculation Formula:\n\n1. In Progress Tasks: Assigned/collaborated tasks with <100% progress and deadline not passed.\n2. Overdue Tasks: Assigned/collaborated tasks past deadline with <100% progress.\n3. Review / CC Open Tasks: Active tasks where the member is a Reviewer or CC.\n\nTotal Open Workload = In Progress + Overdue + Review / CC.\n\nCompleted tasks (100%) are excluded from the workload count.");
 }
 
 function getMemberTasksQueryUrl(empId) {
@@ -1612,6 +1633,8 @@ function openWorkloadBreakdown(wb) {
     document.getElementById('wbModalMemberName').textContent = wb.full_name || wb.name;
     document.getElementById('wbModalDesignation').textContent = wb.designation || 'Team Member';
     document.getElementById('wbModalInProgress').textContent = wb.in_progress || 0;
+    const revCcEl = document.getElementById('wbModalReviewCc');
+    if (revCcEl) revCcEl.textContent = wb.review_cc_open || 0;
     document.getElementById('wbModalOverdue').textContent = wb.overdue || 0;
     document.getElementById('wbModalTotalOpen').textContent = wb.open_tasks || 0;
     document.getElementById('wbModalCompleted').textContent = wb.completed || 0;
@@ -1703,7 +1726,11 @@ function renderWbModalTasks() {
                          (t.priority === 2 ? '<span class="badge bg-warning-subtle text-dark py-0.5 px-2 rounded-pill" style="font-size: 10px;">High</span>' : '');
 
         html += `
-            <div class="p-3 border rounded-3 shadow-sm" style="background: ${t.isOverdue ? '#fff5f5' : '#ffffff'}; border-color: ${t.isOverdue ? '#fecaca' : '#e2e8f0'} !important;">
+            <a href="<?= $GLOBALS['base_url'] ?>/show-task/${t.id}" target="_blank" rel="noopener noreferrer"
+               class="d-block text-decoration-none p-3 border rounded-3 shadow-sm wb-task-link"
+               style="background: ${t.isOverdue ? '#fff5f5' : '#ffffff'}; border-color: ${t.isOverdue ? '#fecaca' : '#e2e8f0'} !important; transition: transform .12s ease, box-shadow .12s ease;"
+               onmouseover="this.style.boxShadow='0 4px 12px rgba(15,23,42,0.08)'; this.style.borderColor='#86efac';"
+               onmouseout="this.style.boxShadow=''; this.style.borderColor='${t.isOverdue ? '#fecaca' : '#e2e8f0'}';">
                 <div class="d-flex align-items-center justify-content-between mb-1.5 gap-2">
                     <div class="d-flex align-items-center gap-2 flex-grow-1 text-truncate">
                         ${prioBadge}
@@ -1711,6 +1738,7 @@ function renderWbModalTasks() {
                     </div>
                     <div class="d-flex align-items-center gap-1 flex-shrink-0">
                         ${statusBadge}
+                        <i class="bi bi-box-arrow-up-right text-muted ms-1" style="font-size: 11px;" title="Open task details"></i>
                     </div>
                 </div>
                 <div class="d-flex align-items-center justify-content-between text-muted mb-2" style="font-size: 11.5px;">
@@ -1728,7 +1756,7 @@ function renderWbModalTasks() {
                     </div>
                     <span class="fw-bold text-dark" style="font-size: 11px; min-width: 32px; text-align: right;">${t.progress}%</span>
                 </div>
-            </div>
+            </a>
         `;
     });
     html += '</div>';
@@ -1768,7 +1796,8 @@ function openMemberTasksOffcanvas(empId, empName) {
                             ? '<span class="badge bg-danger text-white" style="font-size: 11px;">Overdue</span>'
                             : '<span class="badge bg-warning-subtle text-dark border border-warning-subtle" style="font-size: 11px;">In Progress</span>');
                     html += `
-                        <div class="list-group-item px-0 py-3 border-bottom">
+                        <a href="<?= $GLOBALS['base_url'] ?>/show-task/${t.id}" target="_blank" rel="noopener noreferrer"
+                           class="list-group-item list-group-item-action px-2 py-3 border-bottom text-decoration-none">
                             <div class="d-flex align-items-center justify-content-between mb-1 gap-2">
                                 <span class="fw-bold text-dark" style="font-size: 14px; ${isComp ? 'text-decoration: line-through; opacity: 0.75;' : ''}">${t.title}</span>
                                 <div class="d-flex align-items-center gap-1 flex-shrink-0">
@@ -1776,6 +1805,7 @@ function openMemberTasksOffcanvas(empId, empName) {
                                     <span class="badge ${isComp ? 'bg-success text-white' : (isOverdue ? 'bg-danger-subtle text-danger border border-danger-subtle' : (t.progress > 0 ? 'bg-warning-subtle text-dark border' : 'bg-light text-secondary border'))}" style="font-size: 11px; min-width: 44px; text-align: center;">
                                         ${t.progress}%
                                     </span>
+                                    <i class="bi bi-box-arrow-up-right text-muted ms-1" style="font-size: 11px;" title="Open task details"></i>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center justify-content-between text-muted small">
@@ -1791,7 +1821,7 @@ function openMemberTasksOffcanvas(empId, empName) {
                                 </div>
                                 <span class="fw-bold text-dark" style="font-size: 11.5px; min-width: 34px; text-align: right;">${t.progress}%</span>
                             </div>
-                        </div>
+                        </a>
                     `;
                 });
                 html += '</div>';
@@ -2218,6 +2248,45 @@ window.initTeamTableInteractions = function () {
         }
     }
 
+    function sortRowsForTab(tabName) {
+        const tbody = document.querySelector('.team-table tbody');
+        if (!tbody) return;
+        const urlSort = new URLSearchParams(window.location.search).get('sort') || 'default';
+        if (urlSort !== 'default' && urlSort !== '') return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr.team-member-row'));
+        if (rows.length === 0) return;
+
+        rows.sort((a, b) => {
+            const rpA = parseInt(a.dataset.rolePriority || '1', 10);
+            const rpB = parseInt(b.dataset.rolePriority || '1', 10);
+            const crA = parseInt(a.dataset.completionRate || '0', 10);
+            const crB = parseInt(b.dataset.completionRate || '0', 10);
+            const kpiA = parseInt(a.dataset.kpiScore || '0', 10);
+            const kpiB = parseInt(b.dataset.kpiScore || '0', 10);
+            const ovdA = parseInt(a.dataset.overdue || '0', 10);
+            const ovdB = parseInt(b.dataset.overdue || '0', 10);
+            const cmpA = parseInt(a.dataset.completed || '0', 10);
+            const cmpB = parseInt(b.dataset.completed || '0', 10);
+            const nameA = a.dataset.fullName || '';
+            const nameB = b.dataset.fullName || '';
+
+            if (tabName === 'top_performers') {
+                return (kpiB - kpiA) || (crB - crA) || (cmpB - cmpA) || nameA.localeCompare(nameB);
+            }
+            if (tabName === 'needs_attention') {
+                return (kpiA - kpiB) || (ovdB - ovdA) || (crA - crB) || nameA.localeCompare(nameB);
+            }
+            return (rpB - rpA) || (crB - crA) || (kpiB - kpiA) || (cmpB - cmpA) || nameA.localeCompare(nameB);
+        });
+
+        const emptyRow = document.getElementById('teamTabEmptyRow');
+        rows.forEach(r => {
+            if (emptyRow) tbody.insertBefore(r, emptyRow);
+            else tbody.appendChild(r);
+        });
+    }
+
     function applyTeamTab(tabName, updateHistory) {
         tabLinks.forEach(link => {
             link.classList.toggle('active', link.dataset.tab === tabName);
@@ -2225,6 +2294,8 @@ window.initTeamTableInteractions = function () {
 
         const tabInput = document.querySelector('#teamFilterForm input[name="tab"]');
         if (tabInput) tabInput.value = tabName;
+
+        sortRowsForTab(tabName);
 
         const allRows = document.querySelectorAll('tr.team-member-row');
         let shownInBatch = 0;
