@@ -953,7 +953,7 @@ if (!empty($period) && $period !== 'all' && !isset($monthNames[$period]) && preg
                     <input type="date" name="start_date" class="mw-form-input">
                 </div>
                 <div class="mw-form-col">
-                    <label class="mw-form-label">Deadline <span class="req">*</span></label>
+                    <label class="mw-form-label">Deadline <span class="req" id="drawerDeadlineReq">*</span></label>
                     <input type="date" name="deadline" id="drawerDeadline" class="mw-form-input" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" required>
                 </div>
             </div>
@@ -1159,6 +1159,10 @@ if (!empty($period) && $period !== 'all' && !isset($monthNames[$period]) && preg
         if (rowRecurrenceEnd) rowRecurrenceEnd.style.display = 'none';
         const selRec = document.getElementById('taskRecurrenceType');
         if (selRec) selRec.required = false;
+        const dlInputReset = document.getElementById('drawerDeadline');
+        const dlReqReset = document.getElementById('drawerDeadlineReq');
+        if (dlInputReset) dlInputReset.required = true;
+        if (dlReqReset) dlReqReset.style.display = '';
         if (typeof window.setCustomRecurringDates === 'function') {
             window.setCustomRecurringDates([]);
         }
@@ -1252,6 +1256,10 @@ if (!empty($period) && $period !== 'all' && !isset($monthNames[$period]) && preg
             chkIsRecurring.addEventListener('change', () => {
                 rowRecurrenceEnd.style.display = chkIsRecurring.checked ? 'block' : 'none';
                 if (selRecType) selRecType.required = chkIsRecurring.checked;
+                const dlInput = document.getElementById('drawerDeadline');
+                const dlReq = document.getElementById('drawerDeadlineReq');
+                if (dlInput) dlInput.required = !chkIsRecurring.checked;
+                if (dlReq) dlReq.style.display = chkIsRecurring.checked ? 'none' : '';
                 const isCust = (chkIsRecurring.checked && selRecType && selRecType.value === 'custom');
                 if (customDatesWrap) customDatesWrap.style.display = isCust ? 'block' : 'none';
             });
