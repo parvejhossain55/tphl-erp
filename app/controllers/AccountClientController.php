@@ -2636,12 +2636,10 @@ public function addCedTransaction()
         $penaltyAmount = isset($_POST['penalty_amount']) ? (float)$_POST['penalty_amount'] : 0;
         $penaltyWaived = isset($_POST['penalty_waived']) ? (float)$_POST['penalty_waived'] : 0;
         $netPenalty    = round(max(0.0, $penaltyAmount - $penaltyWaived), 2);
-        if (isset($_POST['penalty_paid']) && $_POST['penalty_paid'] !== '' && is_numeric($_POST['penalty_paid'])) {
-            $penaltyPaid = round(min($netPenalty, max(0.0, (float)$_POST['penalty_paid'])), 2);
-        } else {
-            $penaltyPaid = $netPenalty;
-        }
-        $penaltyDue    = round(max(0.0, $netPenalty - $penaltyPaid), 2);
+        // Penalty collection is recorded strictly via separate 'penalty_settlement' vouchers;
+        // regular EMI/other vouchers carry forward netPenalty into penalty_due.
+        $penaltyPaid   = 0.0;
+        $penaltyDue    = $netPenalty;
         $waiverReason  = $_POST['waiver_reason'] ?? null;
         $waiverStatus  = (!empty($_POST['apply_waiver']) && $penaltyWaived > 0) ? 'pending' : 'none';
     }

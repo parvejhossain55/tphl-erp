@@ -458,15 +458,13 @@ $effectiveOutstandingEmiDue = ($activeEmiDueSum > 0) ? round($activeEmiDueSum, 2
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mb-1">
-                                            <div style="min-width:170px; max-width:210px;">
-                                                <label class="form-label small fw-semibold text-dark mb-1" for="penaltyPaid">Penalty Paid Now (TK)</label>
-                                                <input type="number" name="penalty_paid" id="penaltyPaid" class="form-control form-control-sm" step="0.01" min="0" value="0">
-                                            </div>
-                                            <div class="pb-1">
+                                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2 mb-1">
+                                            <input type="hidden" name="penalty_paid" id="penaltyPaid" value="0">
+                                            <div>
                                                 <span class="text-muted small">Carry-Forward Penalty Due:</span>
                                                 <strong id="remainingPenaltyDueText" class="text-warning-emphasis ms-1 small">TK. 0.00</strong>
                                             </div>
+                                            <small class="text-muted fst-italic">(Penalty is collected separately via a <strong>Penalty Settlement</strong> voucher)</small>
                                         </div>
                                         <input type="hidden" name="penalty_amount" id="penaltyAmount" value="0">
                                     </div>
@@ -1360,14 +1358,10 @@ $effectiveOutstandingEmiDue = ($activeEmiDueSum > 0) ? round($activeEmiDueSum, 2
             if (penaltyAmountInput) penaltyAmountInput.value = overduePenaltySum.toFixed(2);
 
             let netPenalty = overduePenaltySum;
-            let effectivePenaltyPaid = overduePenaltySum;
+            const effectivePenaltyPaid = 0;
+            if (penaltyPaidInput) penaltyPaidInput.value = '0';
             if (toggleNoPenalty && toggleNoPenalty.checked) {
                 netPenalty = 0;
-                effectivePenaltyPaid = 0;
-                if (penaltyPaidInput) {
-                    penaltyPaidInput.value = '0';
-                    penaltyPaidInput.readOnly = true;
-                }
                 if (penaltyWaivedInput) penaltyWaivedInput.value = '0';
                 if (toggleWaiver) {
                     toggleWaiver.checked = false;
@@ -1381,7 +1375,6 @@ $effectiveOutstandingEmiDue = ($activeEmiDueSum > 0) ? round($activeEmiDueSum, 2
                 if (waiverFile) waiverFile.removeAttribute('required');
             } else {
                 if (toggleWaiver) toggleWaiver.disabled = false;
-                if (penaltyPaidInput) penaltyPaidInput.readOnly = false;
 
                 if (toggleWaiver && toggleWaiver.checked) {
                     const waivedVal = Math.min(overduePenaltySum, Math.max(0, parseFloat(penaltyWaivedInput?.value) || 0));
@@ -1394,16 +1387,6 @@ $effectiveOutstandingEmiDue = ($activeEmiDueSum > 0) ? round($activeEmiDueSum, 2
                     netPenalty = overduePenaltySum;
                     if (penaltyWaivedInput) penaltyWaivedInput.value = '0';
                 }
-
-                if (penaltyPaidInput) {
-                    penaltyPaidInput.max = netPenalty.toFixed(2);
-                    if (penaltyPaidInput.dataset.userEdited === '1') {
-                        effectivePenaltyPaid = Math.min(netPenalty, Math.max(0, parseFloat(penaltyPaidInput.value) || 0));
-                    } else {
-                        effectivePenaltyPaid = netPenalty;
-                        penaltyPaidInput.value = effectivePenaltyPaid.toFixed(2);
-                    }
-                }
             }
 
             const carryForwardDue = Math.max(0, netPenalty - effectivePenaltyPaid);
@@ -1412,7 +1395,7 @@ $effectiveOutstandingEmiDue = ($activeEmiDueSum > 0) ? round($activeEmiDueSum, 2
                 remainingPenDueText.className = carryForwardDue > 0 ? 'text-danger fw-bold ms-1 small' : 'text-success ms-1 small';
             }
 
-            // Total Payable
+            // Total Payable (EMI base amount only; penalty is settled separately)
             const penaltyTotalBreakdown    = document.getElementById('penaltyTotalBreakdown');
             const totalPayableLabel        = document.getElementById('totalPayableLabel');
             const totalPayableText         = document.getElementById('totalPayableWithPenaltyText');
@@ -1421,13 +1404,13 @@ $effectiveOutstandingEmiDue = ($activeEmiDueSum > 0) ? round($activeEmiDueSum, 2
             let baseAmount = 0;
             if (pTypeValue === 'emi_due_settlement') {
                 baseAmount = totalEmiDueVal > 0 ? totalEmiDueVal : 0;
-                if (totalPayableLabel) totalPayableLabel.textContent = 'Suggested Total (Dues + Penalty):';
+                if (totalPayableLabel) totalPayableLabel.textContent = 'Suggested EMI Due Amount:';
             } else {
                 baseAmount = perEmiAmountVal > 0 ? perEmiAmountVal : 0;
-                if (totalPayableLabel) totalPayableLabel.textContent = 'Suggested Total (1 EMI + Penalty):';
+                if (totalPayableLabel) totalPayableLabel.textContent = 'Suggested 1 EMI Amount:';
             }
 
-            const suggestedTotalPayable = baseAmount + effectivePenaltyPaid;
+            const suggestedTotalPayable = baseAmount;
             if (penaltyTotalBreakdown) penaltyTotalBreakdown.style.display = 'block';
             if (totalPayableText) {
                 totalPayableText.textContent = 'TK. ' + suggestedTotalPayable.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
