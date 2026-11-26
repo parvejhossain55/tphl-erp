@@ -138,16 +138,15 @@ class MealTrackerController extends Controller
         if ($selectedBranchId) {
             $employees = $this->employeeModel->getActiveMealEmployeesByBranch($selectedBranchId, $selectedProjectId);
             if ($selectedProjectId && $activeProject) {
-                // Auto-sync attendance if no consumed records exist yet, or today has not been recorded
-                $hasConsumed = $this->mealRecordModel->hasConsumedRecords($selectedProjectId);
+                // Auto-sync attendance only if today (within cycle) has not been synced yet
                 $today = date('Y-m-d');
                 $shouldAutoSync = false;
-                if (!$hasConsumed) {
-                    $shouldAutoSync = true;
-                } else if ($today >= $activeProject['from_date'] && $today <= $activeProject['to_date']) {
+                if ($today >= $activeProject['from_date'] && $today <= $activeProject['to_date']) {
                     if (!$this->mealRecordModel->hasRecordsForDate($selectedProjectId, $today)) {
                         $shouldAutoSync = true;
                     }
+                } else if (!$this->mealRecordModel->hasConsumedRecords($selectedProjectId)) {
+                    $shouldAutoSync = true;
                 }
 
                 if ($shouldAutoSync) {
@@ -781,7 +780,7 @@ class MealTrackerController extends Controller
             exit;
         }
 
-        $res = $this->mealRecordModel->syncAttendanceWithMealRecords($projectId, $branchId);
+        $res = $this->mealRecordModel->syncAttendanceWithMealRecords($projectId, $branchId, true);
         if (!empty($res['success'])) {
             $this->mealRecordModel->syncLinkedPayrollPayslips($projectId);
         }
@@ -1056,6 +1055,325 @@ class MealTrackerController extends Controller
                 'latest_updated' => $latestUpdated
             ]
         ]);
+    }
+
+    /**
+     * Build office-wise active meal report payload for a project and date
+     */
+    private function buildActiveMealReportData($projectId, $date)
+    {
+        $oldTz = date_default_timezone_get();
+        date_default_timezone_set('Asia/Dhaka');
+
+        $projectId = (int)$projectId;
+        $date = trim((string)$date);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $date = date('Y-m-d');
+        }
+
+        if ($projectId <= 0) {
+            date_default_timezone_set($oldTz);
+            return ['success' => false, 'message' => 'Meal Project ID is required.'];
+        }
+
+        $project = $this->mealProjectModel->getById($projectId);
+        if (!$project) {
+            date_default_timezone_set($oldTz);
+            return ['success' => false, 'message' => 'Meal Project not found.'];
+        }
+
+        $this->employeeModel->ensureOfficeBranchSchema();
+
+        $branchesMap = [];
+        $branchRes = $this->db->query("SELECT id, name FROM office_branches WHERE status = 'active' ORDER BY id ASC");
+        if ($branchRes) {
+            while ($b = $branchRes->fetch_assoc()) {
+                $bId = (int)$b['id'];
+                $branchesMap[$bId] = [
+                    'branch_id' => $bId,
+                    'branch_name' => $b['name'],
+                    'employee_meal_count' => 0,
+                    'guest_meal_count' => 0,
+                    'total_meals' => 0,
+                    'employees' => []
+                ];
+            }
+        }
+
+        // Active employees with meal consumed (is_consumed = 1) on the selected date
+        $empSql = "
+            SELECT e.id, e.employee_id, e.full_name,
+                   COALESCE(NULLIF(mr.office_branch_id, 0), e.office_branch_id, 1) AS branch_id,
+                   COALESCE(d.name, '-') AS department_name,
+                   COALESCE(des.name, '-') AS designation_name
+            FROM meal_records mr
+            INNER JOIN employees e ON mr.employee_id = e.id
+            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN designations des ON e.designation_id = des.id
+            WHERE mr.meal_project_id = ?
+              AND mr.meal_date = ?
+              AND mr.is_consumed = 1
+              AND e.employee_status = 'active'
+              AND e.deleted_at IS NULL
+            ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC, e.full_name ASC
+        ";
+        $stmt = $this->db->prepare($empSql);
+        if ($stmt) {
+            $stmt->bind_param("is", $projectId, $date);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $bId = (int)$row['branch_id'];
+                    if (!isset($branchesMap[$bId])) {
+                        $branchesMap[$bId] = [
+                            'branch_id' => $bId,
+                            'branch_name' => 'Office #' . $bId,
+                            'employee_meal_count' => 0,
+                            'guest_meal_count' => 0,
+                            'total_meals' => 0,
+                            'employees' => []
+                        ];
+                    }
+                    $branchesMap[$bId]['employees'][] = [
+                        'id' => (int)$row['id'],
+                        'employee_id' => $row['employee_id'] ?? '',
+                        'full_name' => $row['full_name'] ?? '',
+                        'department_name' => $row['department_name'] ?? '-',
+                        'designation_name' => $row['designation_name'] ?? '-'
+                    ];
+                    $branchesMap[$bId]['employee_meal_count']++;
+                }
+            }
+            $stmt->close();
+        }
+
+        // Guest meals per branch for the selected date
+        $guestStmt = $this->db->prepare("
+            SELECT office_branch_id, guest_count
+            FROM meal_guest_records
+            WHERE meal_project_id = ? AND meal_date = ?
+        ");
+        if ($guestStmt) {
+            $guestStmt->bind_param("is", $projectId, $date);
+            $guestStmt->execute();
+            $gRes = $guestStmt->get_result();
+            if ($gRes) {
+                while ($gRow = $gRes->fetch_assoc()) {
+                    $bId = (int)$gRow['office_branch_id'];
+                    $gCnt = max(0, (int)$gRow['guest_count']);
+                    if ($gCnt > 0) {
+                        if (!isset($branchesMap[$bId])) {
+                            $branchesMap[$bId] = [
+                                'branch_id' => $bId,
+                                'branch_name' => 'Office #' . $bId,
+                                'employee_meal_count' => 0,
+                                'guest_meal_count' => 0,
+                                'total_meals' => 0,
+                                'employees' => []
+                            ];
+                        }
+                        $branchesMap[$bId]['guest_meal_count'] += $gCnt;
+                    }
+                }
+            }
+            $guestStmt->close();
+        }
+
+        $grandEmployeeMeals = 0;
+        $grandGuestMeals = 0;
+        $branchesList = [];
+        foreach ($branchesMap as $bData) {
+            $bData['total_meals'] = $bData['employee_meal_count'] + $bData['guest_meal_count'];
+            $grandEmployeeMeals += $bData['employee_meal_count'];
+            $grandGuestMeals += $bData['guest_meal_count'];
+            $branchesList[] = $bData;
+        }
+
+        $generatedAt = date('d M Y, h:i A');
+        date_default_timezone_set($oldTz);
+
+        return [
+            'success' => true,
+            'project' => [
+                'id' => (int)$project['id'],
+                'name' => $project['name'],
+                'from_date' => $project['from_date'],
+                'to_date' => $project['to_date'],
+                'standard_meal_amount' => (float)$project['standard_meal_amount']
+            ],
+            'date' => $date,
+            'generated_at' => $generatedAt,
+            'grand_total_employee_meals' => $grandEmployeeMeals,
+            'grand_total_guest_meals' => $grandGuestMeals,
+            'grand_total_meals' => $grandEmployeeMeals + $grandGuestMeals,
+            'branches' => $branchesList
+        ];
+    }
+
+    /**
+     * AJAX GET: Office-wise Active Meal Report (counts + employee name list) for a specific date
+     */
+    public function activeMealReport()
+    {
+        $this->checkAccess(true);
+        header('Content-Type: application/json');
+
+        $projectId = (int)($_GET['project_id'] ?? 0);
+        $date = $_GET['date'] ?? date('Y-m-d');
+        $payload = $this->buildActiveMealReportData($projectId, $date);
+
+        echo json_encode($payload);
+        exit;
+    }
+
+    /**
+     * Direct PDF Download: Office-wise Active Meal Report (Dompdf Attachment)
+     */
+    public function activeMealReportPdf()
+    {
+        $this->checkAccess(false);
+
+        $projectId = (int)($_GET['project_id'] ?? 0);
+        $date = $_GET['date'] ?? date('Y-m-d');
+        $data = $this->buildActiveMealReportData($projectId, $date);
+
+        if (empty($data['success'])) {
+            setError($data['message'] ?? 'Unable to generate PDF report.');
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+            exit;
+        }
+
+        if (!class_exists('\\Dompdf\\Dompdf')) {
+            $autoloadPath = dirname(__DIR__, 2) . '/vendor/autoload.php';
+            if (file_exists($autoloadPath)) {
+                require_once $autoloadPath;
+            }
+        }
+
+        $esc = static function ($val) {
+            return htmlspecialchars((string)($val ?? ''), ENT_QUOTES, 'UTF-8');
+        };
+
+        $projName = $data['project']['name'] ?? 'Meal Project';
+        $reportDate = $data['date'];
+        $branches = $data['branches'] ?? [];
+
+        $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+            @page { margin: 14mm 11mm; }
+            body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; color: #1e293b; font-size: 10px; line-height: 1.35; margin: 0; }
+            .header-table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #0f766e; margin-bottom: 10px; }
+            .header-table td { border: none; padding: 0 0 6px 0; vertical-align: bottom; }
+            .title { font-size: 16px; font-weight: bold; color: #0f766e; margin: 0; }
+            .subtitle { font-size: 10px; color: #475569; margin-top: 2px; }
+            .kpi-table { width: 100%; border-collapse: separate; border-spacing: 6px 0; margin: 0 -6px 12px -6px; }
+            .kpi-box { border: 1px solid #cbd5e1; background: #f8fafc; padding: 6px 9px; border-radius: 4px; width: 25%; }
+            .kpi-total { border: 1px solid #99f6e4; background: #f0fdfa; }
+            .kpi-lbl { font-size: 8.5px; color: #64748b; text-transform: uppercase; }
+            .kpi-val { font-size: 14px; font-weight: bold; color: #0f172a; margin-top: 2px; }
+            .sec-title { font-size: 11px; font-weight: bold; color: #0f766e; text-transform: uppercase; margin: 10px 0 5px 0; }
+            table.grid { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+            table.grid thead { display: table-header-group; }
+            table.grid th, table.grid td { border: 1px solid #cbd5e1; padding: 4px 6px; }
+            table.grid th { background: #f1f5f9; font-weight: bold; font-size: 9.5px; color: #334155; text-align: left; }
+            table.grid tbody tr:nth-child(even) td { background: #f8fafc; }
+            .num { text-align: center !important; }
+            .right { text-align: right !important; }
+            .office-hdr { width: 100%; border-collapse: collapse; background: #0f766e; color: #ffffff; margin-top: 8px; page-break-after: avoid; }
+            .office-hdr td { border: 1px solid #0f766e; padding: 5px 8px; font-weight: bold; font-size: 10.5px; color: #ffffff; }
+            .tot-row td { background: #f0fdfa !important; font-weight: bold; color: #0f766e; }
+            .empty-row { text-align: center; color: #64748b; font-style: italic; padding: 7px; }
+        </style></head><body>';
+
+        $html .= '<table class="header-table"><tr>
+            <td>
+                <div class="title">Active Meal Report (Office-Wise)</div>
+                <div class="subtitle">Project: <strong>' . $esc($projName) . '</strong> &nbsp;|&nbsp; Date: <strong>' . $esc($reportDate) . '</strong></div>
+            </td>
+            <td class="right subtitle">Generated: ' . $esc($data['generated_at']) . '</td>
+        </tr></table>';
+
+        $html .= '<table class="kpi-table"><tr>
+            <td class="kpi-box"><div class="kpi-lbl">Offices</div><div class="kpi-val">' . count($branches) . '</div></td>
+            <td class="kpi-box"><div class="kpi-lbl">Employee Meals</div><div class="kpi-val">' . (int)$data['grand_total_employee_meals'] . '</div></td>
+            <td class="kpi-box"><div class="kpi-lbl">Guest Meals</div><div class="kpi-val">' . (int)$data['grand_total_guest_meals'] . '</div></td>
+            <td class="kpi-box kpi-total"><div class="kpi-lbl">Grand Total Meals</div><div class="kpi-val" style="color:#0f766e;">' . (int)$data['grand_total_meals'] . '</div></td>
+        </tr></table>';
+
+        $html .= '<div class="sec-title">1. Office-Wise Meal Summary</div>';
+        $html .= '<table class="grid"><thead><tr>
+            <th class="num" style="width: 34px;">#</th>
+            <th>Office Branch</th>
+            <th class="num" style="width: 100px;">Employee Meals</th>
+            <th class="num" style="width: 85px;">Guest Meals</th>
+            <th class="num" style="width: 90px;">Total Meals</th>
+        </tr></thead><tbody>';
+
+        foreach ($branches as $idx => $b) {
+            $html .= '<tr>
+                <td class="num">' . ($idx + 1) . '</td>
+                <td><strong>' . $esc($b['branch_name']) . '</strong></td>
+                <td class="num">' . (int)$b['employee_meal_count'] . '</td>
+                <td class="num">' . (int)$b['guest_meal_count'] . '</td>
+                <td class="num"><strong>' . (int)$b['total_meals'] . '</strong></td>
+            </tr>';
+        }
+        $html .= '<tr class="tot-row">
+            <td colspan="2" class="right">Grand Total:</td>
+            <td class="num">' . (int)$data['grand_total_employee_meals'] . '</td>
+            <td class="num">' . (int)$data['grand_total_guest_meals'] . '</td>
+            <td class="num">' . (int)$data['grand_total_meals'] . '</td>
+        </tr></tbody></table>';
+
+        $html .= '<div class="sec-title">2. Office-Wise Employee Meal List</div>';
+        foreach ($branches as $b) {
+            $emps = $b['employees'] ?? [];
+            $html .= '<table class="office-hdr"><tr>
+                <td>' . $esc($b['branch_name']) . '</td>
+                <td class="right" style="font-size: 9.5px;">Emp: ' . (int)$b['employee_meal_count'] . ' &nbsp;|&nbsp; Guest: ' . (int)$b['guest_meal_count'] . ' &nbsp;|&nbsp; Total: ' . (int)$b['total_meals'] . '</td>
+            </tr></table>';
+
+            $html .= '<table class="grid" style="margin-top: 0;"><thead><tr>
+                <th class="num" style="width: 34px;">SL</th>
+                <th class="num" style="width: 78px;">Emp ID</th>
+                <th style="width: 32%;">Employee Name</th>
+                <th style="width: 24%;">Department</th>
+                <th>Designation</th>
+            </tr></thead><tbody>';
+
+            if (empty($emps)) {
+                $html .= '<tr><td colspan="5" class="empty-row">No active employee meals on ' . $esc($reportDate) . '</td></tr>';
+            } else {
+                foreach ($emps as $eIdx => $emp) {
+                    $html .= '<tr>
+                        <td class="num">' . ($eIdx + 1) . '</td>
+                        <td class="num">' . $esc($emp['employee_id']) . '</td>
+                        <td><strong>' . $esc($emp['full_name']) . '</strong></td>
+                        <td>' . $esc($emp['department_name']) . '</td>
+                        <td>' . $esc($emp['designation_name']) . '</td>
+                    </tr>';
+                }
+            }
+            $html .= '<tr class="tot-row">
+                <td colspan="4" class="right">' . $esc($b['branch_name']) . ' Total (Emp: ' . (int)$b['employee_meal_count'] . ' + Guest: ' . (int)$b['guest_meal_count'] . '):</td>
+                <td class="num">' . (int)$b['total_meals'] . '</td>
+            </tr></tbody></table>';
+        }
+
+        $html .= '</body></html>';
+
+        $dompdf = new \Dompdf\Dompdf([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false
+        ]);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        $cleanProj = preg_replace('/[^a-zA-Z0-9_-]/', '_', $projName);
+        $fileName = "Active_Meal_Report_{$cleanProj}_{$reportDate}.pdf";
+        $dompdf->stream($fileName, ['Attachment' => true]);
+        exit;
     }
 }
 

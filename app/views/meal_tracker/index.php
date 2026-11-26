@@ -298,6 +298,11 @@ $defaultToDate = date('Y-m-25');
 
             <!-- Right: Action Buttons -->
             <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold d-inline-flex align-items-center" id="btnActiveMealReport"
+                        style="height: 32px; font-size: 12px; padding: 0 10px; gap: 5px;"
+                        title="View office-wise active meal counts & employee list (PDF / Excel)">
+                    <i class="fa-solid fa-clipboard-list"></i><span>Active Meal Report</span>
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-success fw-semibold d-inline-flex align-items-center" id="btnSyncAttendance"
                         style="height: 32px; font-size: 12px; padding: 0 10px; gap: 5px;"
                         title="Sync Present Attendance & Opt-Outs from Tipsoi and Manual Attendance">
@@ -745,6 +750,71 @@ $defaultToDate = date('Y-m-25');
                         <p class="mb-0">No active meal project selected.</p>
                     </div>
                 <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- Modal: Active Meal Report (Office-wise Counts & Employee List)            -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="activeMealReportModal" tabindex="-1" aria-labelledby="activeMealReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #0f766e, #115e59);">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="activeMealReportModalLabel">
+                        <i class="fa-solid fa-clipboard-list me-2"></i>Active Meal Report (Office-Wise)
+                    </h5>
+                    <small class="opacity-75" id="activeMealReportSubtitle">
+                        <?= $activeProject ? htmlspecialchars($activeProject['name']) : 'Meal Project' ?>
+                    </small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4">
+                <?php
+                    $defaultReportDate = date('Y-m-d');
+                    if ($activeProject && !empty($activeProject['from_date']) && !empty($activeProject['to_date'])) {
+                        if ($defaultReportDate < $activeProject['from_date'] || $defaultReportDate > $activeProject['to_date']) {
+                            $defaultReportDate = $activeProject['from_date'];
+                        }
+                    }
+                ?>
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 pb-3 mb-3 border-bottom">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <label for="activeMealReportDate" class="fw-semibold mb-0" style="font-size: 13px;">
+                            <i class="fa-regular fa-calendar-days text-success me-1"></i>Report Date:
+                        </label>
+                        <input type="date" id="activeMealReportDate" class="form-control form-control-sm"
+                               value="<?= htmlspecialchars($defaultReportDate) ?>"
+                               min="<?= htmlspecialchars($activeProject['from_date'] ?? '') ?>"
+                               max="<?= htmlspecialchars($activeProject['to_date'] ?? '') ?>"
+                               style="width: 155px;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold" id="btnReloadActiveMealReport">
+                            <i class="fa-solid fa-rotate me-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-danger fw-semibold d-inline-flex align-items-center gap-1" id="btnExportActiveMealPdf" disabled>
+                            <i class="fa-solid fa-file-pdf"></i><span>Download PDF</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success fw-semibold d-inline-flex align-items-center gap-1" id="btnExportActiveMealExcel" disabled
+                                style="background-color: #15803d; border-color: #15803d;">
+                            <i class="fa-solid fa-file-excel"></i><span>Download Excel</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="activeMealReportContent">
+                    <div class="text-center py-5 text-muted">
+                        <div class="spinner-border text-success mb-2" role="status"></div>
+                        <div>Loading active meal report...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top">
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1339,6 +1409,421 @@ $defaultToDate = date('Y-m-25');
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 1500);
             };
+
+            // =========================================================================
+            // Active Meal Report (Office-Wise Counts + Employee Names + PDF & Excel)
+            // =========================================================================
+            let activeMealReportData = null;
+
+            function escHtml(str) {
+                return String(str ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function renderActiveMealReport(data) {
+                activeMealReportData = data;
+                const container = $('#activeMealReportContent');
+                const branches = data.branches || [];
+
+                if (!data || !branches.length) {
+                    container.html('<div class="alert alert-warning mb-0">No active office branches or meal data found for this date.</div>');
+                    $('#btnExportActiveMealPdf, #btnExportActiveMealExcel').prop('disabled', true);
+                    return;
+                }
+
+                $('#btnExportActiveMealPdf, #btnExportActiveMealExcel').prop('disabled', false);
+                $('#activeMealReportSubtitle').text(`${data.project?.name || 'Meal Project'} — Date: ${data.date}`);
+
+                let html = `
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 px-3 rounded border bg-light">
+                                <div class="text-muted" style="font-size: 11px;">Total Offices</div>
+                                <div class="fw-bold fs-5 text-dark">${branches.length}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 px-3 rounded border bg-light">
+                                <div class="text-muted" style="font-size: 11px;">Employee Meals</div>
+                                <div class="fw-bold fs-5 text-primary">${data.grand_total_employee_meals}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 px-3 rounded border bg-light">
+                                <div class="text-muted" style="font-size: 11px;">Guest Meals</div>
+                                <div class="fw-bold fs-5 text-warning">${data.grand_total_guest_meals}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="p-2 px-3 rounded border" style="background-color: #f0fdfa; border-color: #99f6e4 !important;">
+                                <div class="fw-semibold" style="font-size: 11px; color: #0f766e;">Grand Total Meals</div>
+                                <div class="fw-bold fs-5" style="color: #0f766e;">${data.grand_total_meals}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered align-middle mb-0" style="font-size: 12.5px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 45px;" class="text-center">#</th>
+                                    <th>Office Branch</th>
+                                    <th class="text-center" style="width: 130px;">Employee Meals</th>
+                                    <th class="text-center" style="width: 120px;">Guest Meals</th>
+                                    <th class="text-center" style="width: 120px;">Total Meals</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                branches.forEach((b, idx) => {
+                    html += `
+                        <tr>
+                            <td class="text-center">${idx + 1}</td>
+                            <td class="fw-semibold">${escHtml(b.branch_name)}</td>
+                            <td class="text-center">${b.employee_meal_count}</td>
+                            <td class="text-center">${b.guest_meal_count}</td>
+                            <td class="text-center fw-bold text-success">${b.total_meals}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-secondary fw-bold">
+                                    <td colspan="2" class="text-end">Grand Total:</td>
+                                    <td class="text-center">${data.grand_total_employee_meals}</td>
+                                    <td class="text-center">${data.grand_total_guest_meals}</td>
+                                    <td class="text-center text-success">${data.grand_total_meals}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `;
+
+                // Office-wise Employee Lists
+                branches.forEach((b) => {
+                    const emps = b.employees || [];
+                    html += `
+                        <div class="card border mb-3 shadow-none">
+                            <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center bg-light">
+                                <span class="fw-bold" style="font-size: 13px;">
+                                    <i class="fa-solid fa-building text-success me-1"></i>${escHtml(b.branch_name)}
+                                </span>
+                                <span class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Emp: ${b.employee_meal_count}</span>
+                                    ${b.guest_meal_count > 0 ? `<span class="badge bg-warning-subtle text-dark border border-warning-subtle">Guest: ${b.guest_meal_count}</span>` : ''}
+                                    <span class="badge bg-success">Total: ${b.total_meals}</span>
+                                </span>
+                            </div>
+                            <div class="card-body p-0">
+                    `;
+
+                    if (emps.length === 0) {
+                        html += `<div class="p-3 text-muted small fst-italic">No active employee meals for this office on ${escHtml(data.date)}.</div>`;
+                    } else {
+                        html += `
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0" style="font-size: 12px;">
+                                    <thead>
+                                        <tr class="text-muted">
+                                            <th class="text-center" style="width: 45px;">SL</th>
+                                            <th style="width: 110px;">Emp ID</th>
+                                            <th>Employee Name</th>
+                                            <th>Department</th>
+                                            <th>Designation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        emps.forEach((emp, eIdx) => {
+                            html += `
+                                <tr>
+                                    <td class="text-center text-muted">${eIdx + 1}</td>
+                                    <td class="font-monospace">${escHtml(emp.employee_id)}</td>
+                                    <td class="fw-semibold">${escHtml(emp.full_name)}</td>
+                                    <td>${escHtml(emp.department_name)}</td>
+                                    <td>${escHtml(emp.designation_name)}</td>
+                                </tr>
+                            `;
+                        });
+                        html += `</tbody></table></div>`;
+                    }
+
+                    html += `</div></div>`;
+                });
+
+                container.html(html);
+            }
+
+            function fetchActiveMealReport() {
+                if (!currentProjectId) {
+                    Swal.fire('No Project', 'Please select or create a Meal Project first.', 'warning');
+                    return;
+                }
+                const reportDate = $('#activeMealReportDate').val() || '';
+                $('#btnExportActiveMealPdf, #btnExportActiveMealExcel').prop('disabled', true);
+                $('#activeMealReportContent').html(`
+                    <div class="text-center py-5 text-muted">
+                        <div class="spinner-border text-success mb-2" role="status"></div>
+                        <div>Loading active meal report...</div>
+                    </div>
+                `);
+
+                fetch(`${baseUrl}/api/meal-tracker/active-meal-report?project_id=${encodeURIComponent(currentProjectId)}&date=${encodeURIComponent(reportDate)}`, {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (res && res.success) {
+                        renderActiveMealReport(res);
+                    } else {
+                        $('#activeMealReportContent').html(`<div class="alert alert-danger mb-0">${escHtml(res?.message || 'Failed to load active meal report.')}</div>`);
+                    }
+                })
+                .catch(err => {
+                    console.error('Active Meal Report Error:', err);
+                    $('#activeMealReportContent').html('<div class="alert alert-danger mb-0">Network or server error while loading report.</div>');
+                });
+            }
+
+            $('#btnActiveMealReport').on('click', function() {
+                if (!currentProjectId) {
+                    Swal.fire('No Project', 'Please select or create a Meal Project first.', 'warning');
+                    return;
+                }
+                const modalEl = document.getElementById('activeMealReportModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+                fetchActiveMealReport();
+            });
+
+            $('#btnReloadActiveMealReport').on('click', fetchActiveMealReport);
+            $('#activeMealReportDate').on('change', fetchActiveMealReport);
+
+            // Export Active Meal Report -> Multi-Tab Excel (SpreadsheetML .xls: Summary tab + 1 tab per Office)
+            $('#btnExportActiveMealExcel').on('click', function() {
+                if (!activeMealReportData) return;
+                const d = activeMealReportData;
+                const branches = d.branches || [];
+                const projName = d.project?.name || 'Meal Project';
+
+                function escXml(str) {
+                    return String(str ?? '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&apos;');
+                }
+
+                const usedSheetNames = new Set();
+                function makeSheetName(rawName, fallback) {
+                    let clean = String(rawName || fallback || 'Sheet')
+                        .replace(/[:\\\/\?\*\[\]]/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    if (!clean) clean = fallback || 'Sheet';
+                    if (clean.length > 31) clean = clean.substring(0, 31).trim();
+                    let candidate = clean;
+                    let counter = 2;
+                    while (usedSheetNames.has(candidate.toLowerCase())) {
+                        const suffix = ` (${counter++})`;
+                        candidate = clean.substring(0, 31 - suffix.length).trim() + suffix;
+                    }
+                    usedSheetNames.add(candidate.toLowerCase());
+                    return candidate;
+                }
+
+                let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                xml += '<?mso-application progid="Excel.Sheet"?>\n';
+                xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n';
+                xml += ' xmlns:o="urn:schemas-microsoft-com:office:office"\n';
+                xml += ' xmlns:x="urn:schemas-microsoft-com:office:excel"\n';
+                xml += ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n';
+
+                // Styles
+                xml += `<Styles>
+                    <Style ss:ID="Default" ss:Name="Normal">
+                        <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#1E293B"/>
+                    </Style>
+                    <Style ss:ID="sTitle">
+                        <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#0F766E"/>
+                    </Style>
+                    <Style ss:ID="sSub">
+                        <Font ss:FontName="Calibri" ss:Size="10" ss:Color="#475569"/>
+                    </Style>
+                    <Style ss:ID="sHeader">
+                        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+                        <Interior ss:Color="#0F766E" ss:Pattern="Solid"/>
+                        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+                        <Borders>
+                            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                        </Borders>
+                    </Style>
+                    <Style ss:ID="sCell">
+                        <Alignment ss:Vertical="Center"/>
+                        <Borders>
+                            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                        </Borders>
+                    </Style>
+                    <Style ss:ID="sCellBold">
+                        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#0F172A"/>
+                        <Alignment ss:Vertical="Center"/>
+                        <Borders>
+                            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                        </Borders>
+                    </Style>
+                    <Style ss:ID="sCellCenter">
+                        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+                        <Borders>
+                            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                        </Borders>
+                    </Style>
+                    <Style ss:ID="sCellCenterBold">
+                        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#0F766E"/>
+                        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+                        <Borders>
+                            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+                        </Borders>
+                    </Style>
+                    <Style ss:ID="sTotal">
+                        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#0F766E"/>
+                        <Interior ss:Color="#F0FDFA" ss:Pattern="Solid"/>
+                        <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
+                        <Borders>
+                            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                        </Borders>
+                    </Style>
+                    <Style ss:ID="sTotalCenter">
+                        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#0F766E"/>
+                        <Interior ss:Color="#F0FDFA" ss:Pattern="Solid"/>
+                        <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+                        <Borders>
+                            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#99F6E4"/>
+                        </Borders>
+                    </Style>
+                </Styles>\n`;
+
+                // 1. Summary Tab
+                const summarySheetName = makeSheetName('Summary', 'Summary');
+                xml += `<Worksheet ss:Name="${escXml(summarySheetName)}">\n<Table>\n`;
+                xml += `<Column ss:Width="45"/><Column ss:Width="220"/><Column ss:Width="115"/><Column ss:Width="105"/><Column ss:Width="110"/>\n`;
+                xml += `<Row ss:Height="24"><Cell ss:MergeAcross="4" ss:StyleID="sTitle"><Data ss:Type="String">Active Meal Report — Office-Wise Summary</Data></Cell></Row>\n`;
+                xml += `<Row ss:Height="18"><Cell ss:MergeAcross="4" ss:StyleID="sSub"><Data ss:Type="String">Project: ${escXml(projName)} | Date: ${escXml(d.date)} | Grand Total Meals: ${d.grand_total_meals}</Data></Cell></Row>\n`;
+                xml += `<Row/>\n`;
+                xml += `<Row ss:Height="22">
+                    <Cell ss:StyleID="sHeader"><Data ss:Type="String">#</Data></Cell>
+                    <Cell ss:StyleID="sHeader"><Data ss:Type="String">Office Branch</Data></Cell>
+                    <Cell ss:StyleID="sHeader"><Data ss:Type="String">Employee Meals</Data></Cell>
+                    <Cell ss:StyleID="sHeader"><Data ss:Type="String">Guest Meals</Data></Cell>
+                    <Cell ss:StyleID="sHeader"><Data ss:Type="String">Total Meals</Data></Cell>
+                </Row>\n`;
+
+                branches.forEach((b, idx) => {
+                    xml += `<Row ss:Height="20">
+                        <Cell ss:StyleID="sCellCenter"><Data ss:Type="Number">${idx + 1}</Data></Cell>
+                        <Cell ss:StyleID="sCellBold"><Data ss:Type="String">${escXml(b.branch_name)}</Data></Cell>
+                        <Cell ss:StyleID="sCellCenter"><Data ss:Type="Number">${b.employee_meal_count}</Data></Cell>
+                        <Cell ss:StyleID="sCellCenter"><Data ss:Type="Number">${b.guest_meal_count}</Data></Cell>
+                        <Cell ss:StyleID="sCellCenterBold"><Data ss:Type="Number">${b.total_meals}</Data></Cell>
+                    </Row>\n`;
+                });
+
+                xml += `<Row ss:Height="22">
+                    <Cell ss:MergeAcross="1" ss:StyleID="sTotal"><Data ss:Type="String">Grand Total:</Data></Cell>
+                    <Cell ss:StyleID="sTotalCenter"><Data ss:Type="Number">${d.grand_total_employee_meals}</Data></Cell>
+                    <Cell ss:StyleID="sTotalCenter"><Data ss:Type="Number">${d.grand_total_guest_meals}</Data></Cell>
+                    <Cell ss:StyleID="sTotalCenter"><Data ss:Type="Number">${d.grand_total_meals}</Data></Cell>
+                </Row>\n`;
+                xml += `</Table>\n</Worksheet>\n`;
+
+                // 2. Individual Tab for Each Office Branch
+                branches.forEach((b, idx) => {
+                    const sheetName = makeSheetName(b.branch_name, `Office_${idx + 1}`);
+                    const emps = b.employees || [];
+                    xml += `<Worksheet ss:Name="${escXml(sheetName)}">\n<Table>\n`;
+                    xml += `<Column ss:Width="45"/><Column ss:Width="105"/><Column ss:Width="210"/><Column ss:Width="150"/><Column ss:Width="160"/>\n`;
+                    xml += `<Row ss:Height="24"><Cell ss:MergeAcross="4" ss:StyleID="sTitle"><Data ss:Type="String">${escXml(b.branch_name)} — Active Meal List</Data></Cell></Row>\n`;
+                    xml += `<Row ss:Height="18"><Cell ss:MergeAcross="4" ss:StyleID="sSub"><Data ss:Type="String">Project: ${escXml(projName)} | Date: ${escXml(d.date)} | Employee Meals: ${b.employee_meal_count} | Guest Meals: ${b.guest_meal_count} | Total Meals: ${b.total_meals}</Data></Cell></Row>\n`;
+                    xml += `<Row/>\n`;
+                    xml += `<Row ss:Height="22">
+                        <Cell ss:StyleID="sHeader"><Data ss:Type="String">SL</Data></Cell>
+                        <Cell ss:StyleID="sHeader"><Data ss:Type="String">Employee ID</Data></Cell>
+                        <Cell ss:StyleID="sHeader"><Data ss:Type="String">Employee Name</Data></Cell>
+                        <Cell ss:StyleID="sHeader"><Data ss:Type="String">Department</Data></Cell>
+                        <Cell ss:StyleID="sHeader"><Data ss:Type="String">Designation</Data></Cell>
+                    </Row>\n`;
+
+                    if (emps.length === 0) {
+                        xml += `<Row ss:Height="20"><Cell ss:MergeAcross="4" ss:StyleID="sCellCenter"><Data ss:Type="String">No active employee meals on ${escXml(d.date)}</Data></Cell></Row>\n`;
+                    } else {
+                        emps.forEach((emp, eIdx) => {
+                            xml += `<Row ss:Height="19">
+                                <Cell ss:StyleID="sCellCenter"><Data ss:Type="Number">${eIdx + 1}</Data></Cell>
+                                <Cell ss:StyleID="sCellCenter"><Data ss:Type="String">${escXml(emp.employee_id)}</Data></Cell>
+                                <Cell ss:StyleID="sCellBold"><Data ss:Type="String">${escXml(emp.full_name)}</Data></Cell>
+                                <Cell ss:StyleID="sCell"><Data ss:Type="String">${escXml(emp.department_name)}</Data></Cell>
+                                <Cell ss:StyleID="sCell"><Data ss:Type="String">${escXml(emp.designation_name)}</Data></Cell>
+                            </Row>\n`;
+                        });
+                    }
+
+                    xml += `<Row ss:Height="22">
+                        <Cell ss:MergeAcross="3" ss:StyleID="sTotal"><Data ss:Type="String">Office Total (Employee: ${b.employee_meal_count} + Guest: ${b.guest_meal_count}):</Data></Cell>
+                        <Cell ss:StyleID="sTotalCenter"><Data ss:Type="Number">${b.total_meals}</Data></Cell>
+                    </Row>\n`;
+                    xml += `</Table>\n</Worksheet>\n`;
+                });
+
+                xml += '</Workbook>';
+
+                const cleanProj = String(projName).replace(/[^a-zA-Z0-9_-]/g, '_');
+                const fileName = `Active_Meal_Report_${cleanProj}_${d.date}.xls`;
+                const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1500);
+            });
+
+            // Export Active Meal Report -> Direct PDF File Download (Server-side Dompdf)
+            $('#btnExportActiveMealPdf').on('click', function() {
+                if (!currentProjectId) return;
+                const reportDate = $('#activeMealReportDate').val() || (activeMealReportData?.date || '');
+                const downloadUrl = `${baseUrl}/api/meal-tracker/active-meal-report-pdf?project_id=${encodeURIComponent(currentProjectId)}&date=${encodeURIComponent(reportDate)}`;
+                window.location.href = downloadUrl;
+            });
         });
     }
 
