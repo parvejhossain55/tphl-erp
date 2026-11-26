@@ -3,11 +3,17 @@
 class PaymentLeadBooking extends Model
 {
     public $db;
+    protected $lastError = '';
 
     public function __construct($db = null)
     {
         parent::__construct($db);
         $this->db = $db; // mysqli connection
+    }
+
+    public function getLastError(): string
+    {
+        return $this->lastError;
     }
 
     // Get all follow-ups with related lead, project, flat, and creator info
@@ -82,6 +88,7 @@ class PaymentLeadBooking extends Model
 
     public function create($data)
     {
+        $this->lastError = '';
         $this->db->begin_transaction();
 
         try {
@@ -94,12 +101,31 @@ class PaymentLeadBooking extends Model
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
-            $verificationStatus = $data['verification_status'] ?? 'pending';
-            $attachment_image = $data['attachment_image'] ?? '';
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $this->db->error);
+            }
+
+            $bookingId          = (int)($data['booking_id'] ?? 0);
+            $bankId             = !empty($data['bank_id']) ? (int)$data['bank_id'] : null;
+            $bankName           = (isset($data['bank_name']) && trim((string)$data['bank_name']) !== '') ? trim((string)$data['bank_name']) : null;
+            $bankAccountNo      = (isset($data['bank_account_no']) && trim((string)$data['bank_account_no']) !== '') ? trim((string)$data['bank_account_no']) : null;
+            $chequeNo           = (isset($data['cheque_no']) && trim((string)$data['cheque_no']) !== '') ? trim((string)$data['cheque_no']) : null;
+            $onlineType         = (isset($data['online_type']) && trim((string)$data['online_type']) !== '') ? trim((string)$data['online_type']) : null;
+            $paymentType        = !empty($data['payment_type']) ? trim((string)$data['payment_type']) : 'booking_money';
+            $amount             = (float)($data['amount'] ?? 0);
+            $paymentMethod      = !empty($data['payment_method']) ? trim((string)$data['payment_method']) : 'cash';
+            $paymentStatus      = !empty($data['payment_status']) ? trim((string)$data['payment_status']) : 'pending';
+            $verificationStatus = !empty($data['verification_status']) ? trim((string)$data['verification_status']) : 'pending';
+            $paymentDate        = !empty($data['payment_date']) ? trim((string)$data['payment_date']) : date('Y-m-d');
+            $transactionRef     = (isset($data['transaction_ref']) && trim((string)$data['transaction_ref']) !== '') ? trim((string)$data['transaction_ref']) : null;
+            $totalEmiNo         = (isset($data['total_emi_no']) && trim((string)$data['total_emi_no']) !== '') ? (int)$data['total_emi_no'] : null;
+            $createdBy          = !empty($data['created_by']) ? (int)$data['created_by'] : 1;
+
+            $attachment_image  = $data['attachment_image'] ?? '';
             $attachment_image2 = $data['attachment_image2'] ?? '';
             $attachment_image3 = $data['attachment_image3'] ?? null;
             $attachment_image4 = $data['attachment_image4'] ?? null;
-            $batch_id = $data['batch_id'] ?? null;
+            $batch_id          = !empty($data['batch_id']) ? (string)$data['batch_id'] : null;
 
             // Also build attachment_paths JSON array so modern views see all attachments seamlessly
             $allAttachments = [];
@@ -111,22 +137,22 @@ class PaymentLeadBooking extends Model
             $attachment_paths = !empty($allAttachments) ? json_encode($allAttachments) : null;
 
             $stmt->bind_param(
-                "iisssssdsssssisssssss",
-                $data['booking_id'],
-                $data['bank_id'],
-                $data['bank_name'],
-                $data['bank_account_no'],
-                $data['cheque_no'],
-                $data['online_type'],
-                $data['payment_type'],
-                $data['amount'],
-                $data['payment_method'],
-                $data['payment_status'],
+                "iisssssdsssssiissssss",
+                $bookingId,
+                $bankId,
+                $bankName,
+                $bankAccountNo,
+                $chequeNo,
+                $onlineType,
+                $paymentType,
+                $amount,
+                $paymentMethod,
+                $paymentStatus,
                 $verificationStatus,
-                $data['payment_date'],
-                $data['transaction_ref'],
-                $data['total_emi_no'],
-                $data['created_by'],
+                $paymentDate,
+                $transactionRef,
+                $totalEmiNo,
+                $createdBy,
                 $attachment_image,
                 $attachment_image2,
                 $batch_id,
@@ -142,9 +168,10 @@ class PaymentLeadBooking extends Model
             $insertId = $stmt->insert_id ?: $this->db->insert_id;
             $this->db->commit();
             return $insertId;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->db->rollback();
-            error_log($e->getMessage());
+            $this->lastError = $e->getMessage();
+            error_log("[PaymentLeadBooking::create] " . $this->lastError);
             return false;
         }
     }

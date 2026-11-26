@@ -338,32 +338,73 @@ $statusMap = [
 }
 
 /* ========================================================================= */
-/* PRINT-SPECIFIC CSS: HIDE ALL CARDS, SEARCH, BUTTONS, SHOW ONLY CLEAN REPORT */
+/* PRINT-SPECIFIC CSS: CLEAN, COMPACT LANDSCAPE REPORT (NO LOGO / NO SPACE)  */
 /* ========================================================================= */
 @media print {
     @page {
-        size: landscape;
-        margin: 6mm 8mm;
+        size: A4 landscape;
+        margin: 6mm 7mm;
     }
     html, body {
         background: #fff !important;
-        color: #000 !important;
-        font-size: 11px !important;
-        line-height: 1.3 !important;
+        color: #111 !important;
+        font-size: 9.5px !important;
+        line-height: 1.25 !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
     }
 
-    /* 1. HIDE ALL WEB UI, SIDEBARS, NAV, SYSTEM FOOTERS, BREADCRUMBS, MODALS */
+    /* 1. HIDE UNIVERSAL PRINT PAD (NO LOGO, NO BORDERS, NO WATERMARK, NO PAD FOOTER) */
+    .universal-print-pad,
+    .upp-left-border,
+    .upp-right-border,
+    .upp-watermark,
+    .upp-header,
+    .upp-footer {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+    }
+
+    /* 2. REMOVE ALL EXTRA LAYOUT MARGINS / PADDING (NO BLANK SPACE) */
+    .page__full-wrapper,
+    .page__body-wrapper,
+    .app__slide-wrapper,
+    .main-content,
+    .page-body,
+    .container-fluid {
+        position: static !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: 0 !important;
+        background: #fff !important;
+    }
+
+    /* 3. HIDE ALL WEB UI, SIDEBARS, NAV, SYSTEM FOOTERS, BREADCRUMBS, MODALS */
     #sidebar,
     .app-sidebar,
+    .app__sidebar,
+    .main-sidebar,
     .sidebar,
+    .app__header__area,
+    .app__header-inner,
+    .preloader,
+    .body__overlay,
     .main-header,
     .app-header,
     .navbar,
     .header-wrapper,
     footer,
     .main-footer,
+    .app__footer__area,
     .footer,
     .btn,
     button,
@@ -371,7 +412,12 @@ $statusMap = [
     .modal-backdrop,
     #tableLoadingOverlay,
     .page-header-breadcrumb,
-    .d-print-none {
+    .d-print-none,
+    #kpiStatsRow,
+    #projectTrackCard,
+    #filterCard,
+    .card-footer,
+    .refund-kpi-card {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
@@ -380,35 +426,46 @@ $statusMap = [
         padding: 0 !important;
     }
 
-    /* 2. HIDE CARDS, TRACKING PILLS & SEARCH FILTER FORM IN PRINT */
-    #kpiStatsRow,
-    #projectTrackCard,
-    #filterCard,
-    .card-footer,
-    .refund-kpi-card {
-        display: none !important;
-    }
-
-    /* 3. SHOW PRINT HEADER */
+    /* 4. COMPACT PRINT HEADER (NO LOGO, ZERO EXTRA GAP) */
     .print-report-header {
         display: block !important;
-        margin-bottom: 12px !important;
+        margin: 0 0 6px 0 !important;
+        padding: 0 0 5px 0 !important;
+        border-bottom: 1.5px solid #1e293b !important;
     }
-
-    /* 4. CONTAINER & TABLE FORMATTING */
-    .container-fluid {
-        padding: 0 !important;
+    .print-report-header h4 {
+        font-size: 13px !important;
+        line-height: 1.2 !important;
         margin: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
+    }
+    .print-summary-strip {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        margin-top: 4px !important;
+        padding: 4px 6px !important;
+        background: #f8fafc !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 3px !important;
+        font-size: 9px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
-    .card.custom-card {
+    /* 5. CLEAN FULL-WIDTH TABLE CONTAINER */
+    .refund-card-surface,
+    .card.custom-card,
+    .card,
+    .card-body {
         border: none !important;
+        border-radius: 0 !important;
         box-shadow: none !important;
         margin: 0 !important;
         padding: 0 !important;
         background: transparent !important;
+        overflow: visible !important;
+        width: 100% !important;
     }
 
     .card-header {
@@ -418,53 +475,146 @@ $statusMap = [
     .table-responsive {
         overflow: visible !important;
         display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
+    /* 6. FIT ALL 9 COLUMNS CLEANLY WITHOUT CLIPPING */
     .table-report {
         width: 100% !important;
+        table-layout: fixed !important;
         border-collapse: collapse !important;
-        border: 1.5px solid #000 !important;
-        font-size: 10.5px !important;
+        border: 1px solid #334155 !important;
+        font-size: 9px !important;
+        margin: 0 !important;
+    }
+
+    .table-report thead {
+        display: table-header-group !important;
+    }
+
+    .table-report tfoot {
+        display: table-row-group !important;
+        font-weight: 700 !important;
+        background-color: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .table-report tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     .table-report thead th {
-        background-color: #f1f3f5 !important;
-        color: #000 !important;
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
         font-weight: 700 !important;
-        border: 1px solid #333 !important;
-        padding: 6px 6px !important;
-        font-size: 10px !important;
+        border: 1px solid #94a3b8 !important;
+        padding: 4px 5px !important;
+        font-size: 8.5px !important;
+        letter-spacing: 0.2px !important;
+        min-width: 0 !important;
+        white-space: normal !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 
     .table-report tbody td,
     .table-report tfoot td {
-        border: 1px solid #444 !important;
-        padding: 5px 6px !important;
-        color: #000 !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 4px 5px !important;
+        color: #111827 !important;
+        font-size: 9px !important;
+        line-height: 1.25 !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        vertical-align: top !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
     }
 
-    .table-report tfoot {
-        display: table-footer-group !important;
-        font-weight: bold !important;
-        background-color: #f8f9fa !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+    /* Exact proportional column widths (sum = 100%, 10th Action col hidden) */
+    .table-report th:nth-child(1), .table-report td:nth-child(1) { width: 3.5% !important; }
+    .table-report th:nth-child(2), .table-report td:nth-child(2) { width: 12% !important; }
+    .table-report th:nth-child(3), .table-report td:nth-child(3) { width: 20.5% !important; }
+    .table-report th:nth-child(4), .table-report td:nth-child(4) { width: 15.5% !important; }
+    .table-report th:nth-child(5), .table-report td:nth-child(5) { width: 10.5% !important; }
+    .table-report th:nth-child(6), .table-report td:nth-child(6) { width: 9.5% !important; }
+    .table-report th:nth-child(7), .table-report td:nth-child(7) { width: 10.5% !important; }
+    .table-report th:nth-child(8), .table-report td:nth-child(8) { width: 7.5% !important; }
+    .table-report th:nth-child(9), .table-report td:nth-child(9) { width: 10.5% !important; }
+
+    .table-report .amount-cell {
+        white-space: nowrap !important;
+        font-size: 9px !important;
+    }
+
+    .table-report .text-nowrap {
+        white-space: normal !important;
+    }
+
+    .table-report .client-name-cell {
+        max-width: none !important;
+    }
+
+    .table-report .client-reason-text {
+        max-width: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        font-size: 8.5px !important;
+        color: #475569 !important;
+        margin-top: 2px !important;
+    }
+
+    .table-report .fs-13,
+    .table-report .fs-12 {
+        font-size: 9px !important;
+    }
+
+    .table-report .fs-11 {
+        font-size: 8px !important;
+    }
+
+    .proj-tag {
+        background: transparent !important;
+        color: #1e40af !important;
+        padding: 0 !important;
+        margin-bottom: 1px !important;
+        font-size: 8.5px !important;
+        font-weight: 700 !important;
+        border-radius: 0 !important;
     }
 
     .retention-highlight {
         background: transparent !important;
-        color: #b02a37 !important;
+        color: #b91c1c !important;
         font-weight: 700 !important;
         padding: 0 !important;
     }
 
     .refund-highlight {
         background: transparent !important;
-        color: #146c43 !important;
+        color: #15803d !important;
         font-weight: 700 !important;
         padding: 0 !important;
+        font-size: 9px !important;
+    }
+
+    .refund-badge {
+        padding: 1px 5px !important;
+        font-size: 8px !important;
+        border: 1px solid #94a3b8 !important;
+        border-radius: 3px !important;
+        gap: 3px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .refund-badge i {
+        display: none !important;
     }
 
     .badge {
@@ -472,7 +622,7 @@ $statusMap = [
         color: #000 !important;
         background: transparent !important;
         padding: 1px 4px !important;
-        font-size: 9px !important;
+        font-size: 8px !important;
     }
 
     .col-action {
@@ -482,25 +632,55 @@ $statusMap = [
 </style>
 
 <!-- ========================================================================= -->
-<!-- PRINT-ONLY CLEAN CORPORATE REPORT HEADER -->
+<!-- PRINT-ONLY COMPACT CORPORATE REPORT HEADER (NO LOGO, NO EXTRA SPACE)      -->
 <!-- ========================================================================= -->
-<div class="print-report-header d-none d-print-block mb-3 border-bottom pb-2">
-    <div class="d-flex align-items-center justify-content-between mb-1">
+<?php
+    $pDateFrom = trim((string)($filters['date_from'] ?? ''));
+    $pDateTo   = trim((string)($filters['date_to'] ?? ''));
+    if ($pDateFrom !== '' && $pDateTo !== '') {
+        $printPeriodLabel = date('d M Y', strtotime($pDateFrom)) . ' to ' . date('d M Y', strtotime($pDateTo));
+    } elseif ($pDateFrom !== '') {
+        $printPeriodLabel = 'From ' . date('d M Y', strtotime($pDateFrom)) . ' to Present';
+    } elseif ($pDateTo !== '') {
+        $printPeriodLabel = 'Up to ' . date('d M Y', strtotime($pDateTo));
+    } else {
+        $rowTimestamps = [];
+        foreach ($refunds as $rr) {
+            if (!empty($rr['created_at'])) {
+                $ts = strtotime($rr['created_at']);
+                if ($ts) $rowTimestamps[] = $ts;
+            }
+        }
+        if (!empty($rowTimestamps)) {
+            $printPeriodLabel = 'All Dates (' . date('d M Y', min($rowTimestamps)) . ' to ' . date('d M Y', max($rowTimestamps)) . ')';
+        } else {
+            $printPeriodLabel = 'All Dates';
+        }
+    }
+?>
+<div class="print-report-header d-none d-print-block">
+    <div class="d-flex align-items-end justify-content-between">
         <div>
-            <h4 class="fw-bold mb-0 text-dark" style="letter-spacing: 0.5px;">TRUST PROPERTY HOLDINGS LTD.</h4>
-            <div class="fs-12 text-muted fw-semibold">Client Refund Statement & Transaction Registry</div>
+            <h4 class="fw-bold mb-0 text-dark" style="letter-spacing: 0.3px;">
+                <?= htmlspecialchars(strtoupper($siteSettings['site_title'] ?? 'THE PREMIUM HOMES LTD.')) ?>
+            </h4>
+            <div style="font-size: 10px; color: #475569; font-weight: 600;">
+                Client Refund Statement &amp; Transaction Registry
+                &nbsp;|&nbsp;
+                <span style="color: #0f172a;"><strong>Report Period:</strong> <span id="printDateRange"><?= htmlspecialchars($printPeriodLabel) ?></span></span>
+            </div>
         </div>
-        <div class="text-end fs-11 text-muted">
+        <div class="text-end" style="font-size: 9px; color: #475569;">
             <div><strong>Print Date:</strong> <?= date('d M Y, h:i A') ?></div>
             <div><strong>Printed By:</strong> <?= htmlspecialchars($_SESSION['user']['full_name'] ?? 'Accounts Department') ?></div>
         </div>
     </div>
-    <div class="d-flex justify-content-between align-items-center fs-11 text-dark pt-1 border-top border-secondary mt-1">
-        <div><strong>Total Records:</strong> <?= $totalRecords ?> Cases</div>
-        <div><strong>Total Collection (Paid):</strong> ৳ <?= number_format($summaryStats['total_verified_paid'] ?? 0, 2) ?></div>
-        <div><strong>Total Company Retention:</strong> ৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?></div>
-        <div><strong>Total Net Refund:</strong> ৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?></div>
-        <div><strong>Disbursed Paid:</strong> ৳ <?= number_format($summaryStats['total_refunded_paid'] ?? 0, 2) ?></div>
+    <div class="print-summary-strip text-dark">
+        <div><strong>Records:</strong> <span id="printTotalRecords"><?= $totalRecords ?></span> Cases</div>
+        <div><strong>Total Paid:</strong> <span id="printTotalPaid">৳ <?= number_format($summaryStats['total_verified_paid'] ?? 0, 2) ?></span></div>
+        <div><strong>Retention:</strong> <span id="printTotalRetention">৳ <?= number_format($summaryStats['total_retention'] ?? 0, 2) ?></span></div>
+        <div><strong>Net Refund:</strong> <span id="printTotalRefund">৳ <?= number_format($summaryStats['total_refund_amount'] ?? 0, 2) ?></span></div>
+        <div><strong>Disbursed Paid:</strong> <span id="printTotalDisbursed">৳ <?= number_format($summaryStats['total_refunded_paid'] ?? 0, 2) ?></span></div>
     </div>
 </div>
 
@@ -1553,7 +1733,68 @@ function updateSummaryKpis(stats) {
     if (document.getElementById('tfootTotalRefund')) {
         document.getElementById('tfootTotalRefund').innerText = '৳ ' + formatMoney(stats.total_refund_amount);
     }
+
+    // Also update print header summary strip
+    if (document.getElementById('printTotalRecords')) {
+        document.getElementById('printTotalRecords').innerText = stats.total_requests || 0;
+    }
+    if (document.getElementById('printTotalPaid')) {
+        document.getElementById('printTotalPaid').innerText = '৳ ' + formatMoney(stats.total_verified_paid);
+    }
+    if (document.getElementById('printTotalRetention')) {
+        document.getElementById('printTotalRetention').innerText = '৳ ' + formatMoney(stats.total_retention);
+    }
+    if (document.getElementById('printTotalRefund')) {
+        document.getElementById('printTotalRefund').innerText = '৳ ' + formatMoney(stats.total_refund_amount);
+    }
+    if (document.getElementById('printTotalDisbursed')) {
+        document.getElementById('printTotalDisbursed').innerText = '৳ ' + formatMoney(stats.total_refunded_paid || 0);
+    }
+    updatePrintDateRange();
 }
+
+function formatPrintDate(isoDate) {
+    if (!isoDate) return '';
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mIdx = parseInt(parts[1], 10) - 1;
+    return `${parts[2]} ${months[mIdx] || parts[1]} ${parts[0]}`;
+}
+
+function updatePrintDateRange() {
+    const el = document.getElementById('printDateRange');
+    if (!el) return;
+    const fromVal = (document.getElementById('filterDateFrom')?.value || '').trim();
+    const toVal   = (document.getElementById('filterDateTo')?.value || '').trim();
+
+    if (fromVal && toVal) {
+        el.innerText = `${formatPrintDate(fromVal)} to ${formatPrintDate(toVal)}`;
+    } else if (fromVal) {
+        el.innerText = `From ${formatPrintDate(fromVal)} to Present`;
+    } else if (toVal) {
+        el.innerText = `Up to ${formatPrintDate(toVal)}`;
+    } else {
+        // Compute earliest & latest date from currently visible table rows
+        const dateCells = document.querySelectorAll('#refundTableBody tr td:nth-child(2) span');
+        const parsed = [];
+        dateCells.forEach(sp => {
+            const txt = (sp.innerText || '').trim();
+            const d = Date.parse(txt);
+            if (!isNaN(d)) parsed.push(d);
+        });
+        if (parsed.length > 0) {
+            const minD = new Date(Math.min(...parsed));
+            const maxD = new Date(Math.max(...parsed));
+            const fmt = dt => dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            el.innerText = `All Dates (${fmt(minD)} to ${fmt(maxD)})`;
+        } else {
+            el.innerText = 'All Dates';
+        }
+    }
+}
+
+window.addEventListener('beforeprint', updatePrintDateRange);
 
 // Quick Pay Modal Handler
 function openQuickPayModal(refund) {

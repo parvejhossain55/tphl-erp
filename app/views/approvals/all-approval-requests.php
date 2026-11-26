@@ -63,6 +63,39 @@
         background: #f0f7ff !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
     }
+    /* Smooth horizontal scroll bar at top & bottom of Approval Requests table */
+    #approvalTableTopScroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        height: 14px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+    #approvalTableTopScroll::-webkit-scrollbar,
+    #approvalTableScrollWrap::-webkit-scrollbar {
+        height: 10px;
+    }
+    #approvalTableTopScroll::-webkit-scrollbar-thumb,
+    #approvalTableScrollWrap::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 6px;
+    }
+    #approvalTableTopScroll::-webkit-scrollbar-thumb:hover,
+    #approvalTableScrollWrap::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+    }
+    #approvalTableScrollWrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        outline: none;
+    }
+    #approvalTableScrollWrap.is-dragging {
+        cursor: grabbing !important;
+        user-select: none;
+    }
+    #allApprovalRequestsTable tbody tr.clickable-approval-row {
+        cursor: default !important;
+    }
     .pulse-dot-amber {
         display: inline-block;
         width: 6px;
@@ -738,7 +771,10 @@
         
         <!-- Approval History Table -->
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div id="approvalTableTopScroll" title="Scroll left / right">
+                <div id="approvalTableTopScrollInner" style="height: 1px;"></div>
+            </div>
+            <div class="table-responsive" id="approvalTableScrollWrap" tabindex="0">
                 <table class="table table-hover align-middle mb-0" id="allApprovalRequestsTable">
                     <thead class="bg-light text-muted extra-small text-uppercase">
                         <tr>
@@ -815,7 +851,25 @@
                                 } elseif ($sourceTable === 'project_other_costs') {
                                     $targetUrl = $base_url . '/project-other-costs/review/' . $req['source_id'];
                                 } elseif ($sourceTable === 'project_extra_assets' || $sourceTable === 'purchase_requests') {
-                                    $targetUrl = $base_url . '/asset-extra-purchase/' . $req['source_id'];
+                                    static $opoPrMap = null;
+                                    if ($opoPrMap === null) {
+                                        $opoPrMap = [];
+                                        $conn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                        if ($conn) {
+                                            $opoRes = @$conn->query("SELECT id, extra_purchase_id FROM office_procurement_orders");
+                                            if ($opoRes) {
+                                                while ($or = $opoRes->fetch_assoc()) {
+                                                    $opoPrMap[(int)$or['extra_purchase_id']] = (int)$or['id'];
+                                                }
+                                            }
+                                        }
+                                    }
+                                    $linkedOpoId = $opoPrMap[(int)$req['source_id']] ?? 0;
+                                    if ($linkedOpoId > 0) {
+                                        $targetUrl = $base_url . '/office-procurement/order/' . $linkedOpoId;
+                                    } else {
+                                        $targetUrl = $base_url . '/asset-extra-purchase/' . $req['source_id'];
+                                    }
                                 } elseif ($sourceTable === 'expense_adjustments') {
                                     $targetUrl = $base_url . '/expense-adjustments/show?id=' . $req['source_id'];
                                 }
@@ -1737,6 +1791,12 @@
                                             </a>
                                         <?php endif; ?>
 
+                                        <?php if ($sourceTable === 'client_refund_requests' && !$isPaidOrSettled && !empty($req['source_id'])): ?>
+                                            <a href="<?= $base_url ?>/client-refund-receipt/<?= (int)$req['source_id'] ?>" target="_blank" class="btn btn-sm btn-outline-success rounded-2 px-2 shadow-sm fw-semibold me-1 mb-1" title="Print Refund Receipt (Client & Office Copy)">
+                                                <i class="fa-solid fa-receipt"></i>
+                                            </a>
+                                        <?php endif; ?>
+
                                         <?php if ($isPartiallyPaid): ?>
                                             <?php if (($isAccountsUser || $isManagementUser) && $isAccountsHeadApproved): ?>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-2 shadow-sm fw-semibold me-1" title="Disburse remaining amount">
@@ -2209,16 +2269,60 @@
             });
         }
 
-        // Row click navigates to requisition view page (skipping buttons, inputs, links, checkboxes)
-        $('#allApprovalRequestsTable tbody').on('click', 'tr.clickable-approval-row', function (e) {
-            if ($(e.target).closest('input, button, a, .form-check, .dropdown-menu, .modal').length) {
-                return;
+        // Synced top/bottom horizontal scrollbar + drag-to-scroll (no accidental row-click navigation)
+        (function initApprovalTableScroll() {
+            const topScroll = document.getElementById('approvalTableTopScroll');
+            const topInner  = document.getElementById('approvalTableTopScrollInner');
+            const wrap      = document.getElementById('approvalTableScrollWrap');
+            const table     = document.getElementById('allApprovalRequestsTable');
+            if (!topScroll || !topInner || !wrap || !table) return;
+
+            function syncTopWidth() {
+                const sw = table.scrollWidth;
+                topInner.style.width = sw + 'px';
+                topScroll.style.display = (sw > wrap.clientWidth + 2) ? 'block' : 'none';
             }
-            const href = $(this).attr('data-href');
-            if (href) {
-                window.location.href = href;
+            syncTopWidth();
+            window.addEventListener('resize', syncTopWidth);
+            if (typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(syncTopWidth).observe(table);
+                new ResizeObserver(syncTopWidth).observe(wrap);
             }
-        });
+
+            let syncingTop = false, syncingWrap = false;
+            topScroll.addEventListener('scroll', function () {
+                if (syncingWrap) { syncingWrap = false; return; }
+                syncingTop = true;
+                wrap.scrollLeft = topScroll.scrollLeft;
+            });
+            wrap.addEventListener('scroll', function () {
+                if (syncingTop) { syncingTop = false; return; }
+                syncingWrap = true;
+                topScroll.scrollLeft = wrap.scrollLeft;
+            });
+
+            // Click & drag left/right anywhere on non-interactive cells to scroll smoothly
+            let isDown = false, startX = 0, startScrollLeft = 0;
+            wrap.addEventListener('mousedown', function (e) {
+                if (e.button !== 0) return;
+                if (e.target.closest('a, button, input, select, textarea, .form-check, .dropdown-menu, .modal')) return;
+                isDown = true;
+                startX = e.pageX - wrap.offsetLeft;
+                startScrollLeft = wrap.scrollLeft;
+                wrap.classList.add('is-dragging');
+            });
+            window.addEventListener('mouseup', function () {
+                if (!isDown) return;
+                isDown = false;
+                wrap.classList.remove('is-dragging');
+            });
+            wrap.addEventListener('mousemove', function (e) {
+                if (!isDown) return;
+                const x = e.pageX - wrap.offsetLeft;
+                const walk = (x - startX) * 1.4;
+                wrap.scrollLeft = startScrollLeft - walk;
+            });
+        })();
     });
 
     function changeApprovalTablePageLength(val) {
