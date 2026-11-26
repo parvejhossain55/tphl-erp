@@ -88,6 +88,7 @@ return [
     'ced-collection-statement-export' => ['controller' => 'CedCollectionStatementController', 'method' => 'exportCSV'],
     'ced-project-dashboard' => ['controller' => 'CedProjectDashboardController', 'method' => 'index'],
     'ced-project-dashboard/client-drilldown' => ['controller' => 'CedProjectDashboardController', 'method' => 'clientDrilldown'],
+    'ced-project-dashboard/export' => ['controller' => 'CedProjectDashboardController', 'method' => 'exportExcel'],
     'manage-projects-for-ced' => ['controller' => 'CedProjectManageController', 'method' => 'manageProjects'],
     'manage-project-emi' => ['controller' => 'CedProjectManageController', 'method' => 'manageProjectEmi'],
     'manage-project-emi/save' => ['controller' => 'CedProjectManageController', 'method' => 'saveProjectEmiAjax'],

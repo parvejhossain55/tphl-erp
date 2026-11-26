@@ -191,9 +191,30 @@ tr.project-row.is-open .ced-pd-expand-icon {
             <h4 class="mb-0 fw-bold text-dark">
                 <i class="fa-solid fa-chart-line text-primary me-2"></i>Project-wise Dashboard
             </h4>
-            <small class="text-muted">Under Due Tracking &amp; Management — Click any project row to expand client-level financial breakdown</small>
+            <small class="text-muted">
+                Under Due Tracking &amp; Management — Click any project row to expand client-level financial breakdown
+                <?php if (($filters['period_type'] ?? 'all_time') !== 'all_time'): ?>
+                    <span class="badge bg-info-subtle text-primary border border-primary-subtle ms-2">
+                        <i class="fa-regular fa-calendar me-1"></i><?= htmlspecialchars($filters['period_label'] ?? '') ?>
+                    </span>
+                <?php endif; ?>
+            </small>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            <?php
+            $exportQuery = http_build_query(array_filter([
+                'project_id'  => !empty($filters['project_id']) ? (int)$filters['project_id'] : null,
+                'agent_id'    => !empty($filters['agent_id']) ? (int)$filters['agent_id'] : null,
+                'search'      => ($filters['search'] ?? '') !== '' ? $filters['search'] : null,
+                'period_type' => ($filters['period_type'] ?? 'all_time') !== 'all_time' ? $filters['period_type'] : null,
+                'date_from'   => (($filters['period_type'] ?? '') === 'custom' && !empty($filters['date_from'])) ? $filters['date_from'] : null,
+                'date_to'     => (($filters['period_type'] ?? '') === 'custom' && !empty($filters['date_to'])) ? $filters['date_to'] : null,
+            ], fn($v) => $v !== null));
+            $exportUrl = $base_url . '/ced-project-dashboard/export' . ($exportQuery !== '' ? '?' . $exportQuery : '');
+            ?>
+            <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-outline-success btn-sm">
+                <i class="fa-solid fa-file-excel me-1"></i>Export Excel
+            </a>
             <?php
             $pdRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $pdSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
@@ -217,9 +238,35 @@ tr.project-row.is-open .ced-pd-expand-icon {
     </div>
 
     <!-- Filter Bar -->
+    <?php
+    $activePeriod = $filters['period_type'] ?? 'all_time';
+    $isCustomPeriod = ($activePeriod === 'custom');
+    ?>
     <div class="ced-pd-card p-3 mb-3">
         <form method="GET" action="<?= $base_url ?>/ced-project-dashboard" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Period</label>
+                <select name="period_type" id="filterPeriodType" class="form-select form-select-sm">
+                    <option value="all_time" <?= $activePeriod === 'all_time' ? 'selected' : '' ?>>All Time</option>
+                    <option value="daily" <?= $activePeriod === 'daily' ? 'selected' : '' ?>>Daily (Today)</option>
+                    <option value="weekly" <?= $activePeriod === 'weekly' ? 'selected' : '' ?>>Weekly (This Week)</option>
+                    <option value="monthly" <?= $activePeriod === 'monthly' ? 'selected' : '' ?>>Monthly (This Month)</option>
+                    <option value="custom" <?= $activePeriod === 'custom' ? 'selected' : '' ?>>Custom Date</option>
+                </select>
+            </div>
+            <div class="col-md-2 <?= $isCustomPeriod ? '' : 'd-none' ?>" id="customDateFromWrap">
+                <label class="form-label small fw-semibold mb-1">From Date</label>
+                <input type="date" name="date_from" id="filterDateFrom"
+                       value="<?= htmlspecialchars($filters['date_from'] ?: date('Y-m-01')) ?>"
+                       class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2 <?= $isCustomPeriod ? '' : 'd-none' ?>" id="customDateToWrap">
+                <label class="form-label small fw-semibold mb-1">To Date</label>
+                <input type="date" name="date_to" id="filterDateTo"
+                       value="<?= htmlspecialchars($filters['date_to'] ?: date('Y-m-d')) ?>"
+                       class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">Project</label>
                 <select name="project_id" id="filterProjectSelect" class="form-select form-select-sm">
                     <option value="">All Projects</option>
@@ -231,7 +278,7 @@ tr.project-row.is-open .ced-pd-expand-icon {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">Assigned CED Agent</label>
                 <select name="agent_id" id="filterAgentSelect" class="form-select form-select-sm">
                     <option value="">All Agents</option>
@@ -243,10 +290,10 @@ tr.project-row.is-open .ced-pd-expand-icon {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-4">
-                <label class="form-label small fw-semibold mb-1">Quick Search (Project / Agent)</label>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">Quick Search</label>
                 <input type="text" name="search" value="<?= htmlspecialchars($filters['search'] ?? '') ?>"
-                       class="form-control form-control-sm" placeholder="Type project or agent name...">
+                       class="form-control form-control-sm" placeholder="Project or agent...">
             </div>
             <div class="col-md-2 d-flex gap-1">
                 <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
@@ -432,7 +479,21 @@ tr.project-row.is-open .ced-pd-expand-icon {
 (function() {
     const baseUrl = <?= json_encode($base_url) ?>;
     const projectAgentMap = <?= json_encode($projectAgentMap) ?>;
+    const activePeriodType = <?= json_encode($filters['period_type'] ?? 'all_time') ?>;
+    const activeDateFrom = <?= json_encode($filters['date_from'] ?? '') ?>;
+    const activeDateTo = <?= json_encode($filters['date_to'] ?? '') ?>;
     const loadedCache = {};
+
+    const periodSelectEl = document.getElementById('filterPeriodType');
+    const customFromWrap = document.getElementById('customDateFromWrap');
+    const customToWrap = document.getElementById('customDateToWrap');
+    if (periodSelectEl && customFromWrap && customToWrap) {
+        periodSelectEl.addEventListener('change', function() {
+            const isCustom = this.value === 'custom';
+            customFromWrap.classList.toggle('d-none', !isCustom);
+            customToWrap.classList.toggle('d-none', !isCustom);
+        });
+    }
 
     const projectSelectEl = document.getElementById('filterProjectSelect');
     const agentSelectEl = document.getElementById('filterAgentSelect');
@@ -570,7 +631,15 @@ tr.project-row.is-open .ced-pd-expand-icon {
                 return;
             }
 
-            fetch(baseUrl + '/ced-project-dashboard/client-drilldown?project_id=' + encodeURIComponent(projectId), {
+            const drillParams = new URLSearchParams({ project_id: projectId });
+            if (activePeriodType && activePeriodType !== 'all_time') {
+                drillParams.set('period_type', activePeriodType);
+                if (activePeriodType === 'custom' && activeDateFrom && activeDateTo) {
+                    drillParams.set('date_from', activeDateFrom);
+                    drillParams.set('date_to', activeDateTo);
+                }
+            }
+            fetch(baseUrl + '/ced-project-dashboard/client-drilldown?' + drillParams.toString(), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(r => r.json())

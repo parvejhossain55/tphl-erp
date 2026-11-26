@@ -62,18 +62,76 @@ class CedProjectDashboardController extends CedCollectionStatementController
     }
 
     /**
+     * Parse and resolve dashboard filter parameters including period/date range.
+     */
+    protected function parseDashboardFilters(): array
+    {
+        $scopedProjectIds = $this->resolveScopedProjectIds();
+
+        $periodType = strtolower(trim((string)($_GET['period_type'] ?? 'all_time')));
+        $allowedPeriods = ['all_time', 'daily', 'weekly', 'monthly', 'custom'];
+        if (!in_array($periodType, $allowedPeriods, true)) {
+            $periodType = 'all_time';
+        }
+
+        $today = date('Y-m-d');
+        $dateFrom = '';
+        $dateTo = '';
+        $periodLabel = 'All Time';
+
+        if ($periodType === 'daily') {
+            $dateFrom = $today;
+            $dateTo = $today;
+            $periodLabel = 'Daily (' . date('d M Y') . ')';
+        } elseif ($periodType === 'weekly') {
+            // Bangladesh business week: Saturday through today
+            $dow = (int)date('w'); // 6 = Saturday
+            $daysSinceSat = ($dow === 6) ? 0 : ($dow + 1);
+            $dateFrom = date('Y-m-d', strtotime("-{$daysSinceSat} days"));
+            $dateTo = $today;
+            $periodLabel = 'Weekly (' . date('d M', strtotime($dateFrom)) . ' – ' . date('d M Y', strtotime($dateTo)) . ')';
+        } elseif ($periodType === 'monthly') {
+            // Company monthly cycle: 26th of month to 25th of next month
+            $dayOfMonth = (int)date('j');
+            $firstOfThisMonth = date('Y-m-01');
+            if ($dayOfMonth >= 26) {
+                $dateFrom = date('Y-m-26');
+                $dateTo = date('Y-m-25', strtotime($firstOfThisMonth . ' +1 month'));
+            } else {
+                $dateFrom = date('Y-m-26', strtotime($firstOfThisMonth . ' -1 month'));
+                $dateTo = date('Y-m-25');
+            }
+            $periodLabel = 'Monthly (' . date('d M Y', strtotime($dateFrom)) . ' – ' . date('d M Y', strtotime($dateTo)) . ')';
+        } elseif ($periodType === 'custom') {
+            $rawFrom = trim((string)($_GET['date_from'] ?? ''));
+            $rawTo = trim((string)($_GET['date_to'] ?? ''));
+            $dateFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawFrom) ? $rawFrom : date('Y-m-01');
+            $dateTo = preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawTo) ? $rawTo : $today;
+            if ($dateFrom > $dateTo) {
+                [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+            }
+            $periodLabel = date('d M Y', strtotime($dateFrom)) . ' – ' . date('d M Y', strtotime($dateTo));
+        }
+
+        return [
+            'project_id'         => isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : 0,
+            'agent_id'           => isset($_GET['agent_id']) && $_GET['agent_id'] !== '' ? (int)$_GET['agent_id'] : 0,
+            'search'             => trim($_GET['search'] ?? ''),
+            'period_type'        => $periodType,
+            'date_from'          => $dateFrom,
+            'date_to'            => $dateTo,
+            'period_label'       => $periodLabel,
+            'scoped_project_ids' => $scopedProjectIds,
+        ];
+    }
+
+    /**
      * Render the Project-wise Dashboard page under Due Tracking & Management.
      */
     public function index()
     {
-        $scopedProjectIds = $this->resolveScopedProjectIds();
-
-        $filters = [
-            'project_id'         => isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : 0,
-            'agent_id'           => isset($_GET['agent_id']) && $_GET['agent_id'] !== '' ? (int)$_GET['agent_id'] : 0,
-            'search'             => trim($_GET['search'] ?? ''),
-            'scoped_project_ids' => $scopedProjectIds,
-        ];
+        $filters = $this->parseDashboardFilters();
+        $scopedProjectIds = $filters['scoped_project_ids'];
 
         $data = $this->fetchProjectSummary($filters);
 
@@ -158,13 +216,268 @@ class CedProjectDashboardController extends CedCollectionStatementController
             return;
         }
 
-        $result = $this->fetchClientLevelRows($projectId);
+        $filters = $this->parseDashboardFilters();
+        $dateRange = (!empty($filters['date_from']) && !empty($filters['date_to']))
+            ? ['date_from' => $filters['date_from'], 'date_to' => $filters['date_to']]
+            : null;
+
+        $result = $this->fetchClientLevelRows($projectId, $dateRange);
         echo json_encode([
             'status'     => 'success',
             'project_id' => $projectId,
             'rows'       => $result['rows'],
             'totals'     => $result['totals'],
         ]);
+    }
+
+    /**
+     * Export filtered Project-wise Dashboard report as a formatted Excel (.xlsx) workbook.
+     */
+    public function exportExcel()
+    {
+        $filters = $this->parseDashboardFilters();
+        $data = $this->fetchProjectSummary($filters);
+        $rows = $data['rows'];
+        $grand = $data['grand'];
+
+        $autoloadPath = __DIR__ . '/../../vendor/autoload.php';
+        if (file_exists($autoloadPath)) {
+            require_once $autoloadPath;
+        }
+
+        // Fallback to UTF-8 CSV if PhpSpreadsheet is unavailable
+        if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+            $filename = 'ced_project_dashboard_' . date('Ymd_His') . '.csv';
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, [
+                'Assigned Person', 'Project Name', 'Total Units / Flats', 'Registered', 'Remaining Share',
+                'Total Land Share', 'Land Share Paid', 'Land Share Due',
+                'Total DC Ask', 'Total DC Received', 'DC Due',
+                'EMI Demand (#)', 'Regular EMI Amount', 'Regular EMI Received',
+                'Advanced Received', 'Net Regular EMI', 'Regular EMI Due', 'Project Expenditure'
+            ]);
+            foreach ($rows as $r) {
+                fputcsv($out, [
+                    $r['assigned_person'], $r['project_name'], (int)$r['total_client'], (int)$r['registered_client'], (int)$r['remaining_share'],
+                    $r['total_land_share'], $r['land_share_paid'], $r['land_share_due'],
+                    $r['total_dc_ask'], $r['total_dc_received'], $r['dc_due'],
+                    (int)$r['regular_emi_demand_count'], $r['regular_emi_amount'], $r['regular_emi_received'],
+                    $r['advanced_received'], $r['net_regular_emi_collected'], $r['regular_emi_due'], $r['project_expenditure']
+                ]);
+            }
+            fclose($out);
+            exit;
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Project-wise Dashboard');
+
+        $fillSolid = \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID;
+        $alignLeft = \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT;
+        $alignCenter = \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER;
+        $alignRight = \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT;
+        $valignCenter = \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER;
+        $borderThin = \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN;
+        $borderMedium = \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM;
+
+        // Row 1: Report Title
+        $sheet->mergeCells('A1:R1');
+        $sheet->setCellValue('A1', 'TPHL ERP — CED Project-wise Dashboard Report');
+        $sheet->getStyle('A1:R1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => $fillSolid, 'startColor' => ['rgb' => '0F172A']],
+            'alignment' => ['horizontal' => $alignLeft, 'vertical' => $valignCenter],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
+
+        // Row 2: Filter Metadata
+        $metaParts = ['Period: ' . ($filters['period_label'] ?? 'All Time')];
+        if (!empty($filters['search'])) {
+            $metaParts[] = 'Search: ' . $filters['search'];
+        }
+        $metaParts[] = 'Projects: ' . (int)($grand['project_count'] ?? 0);
+        $metaParts[] = 'Generated: ' . date('d M Y, h:i A');
+        $sheet->mergeCells('A2:R2');
+        $sheet->setCellValue('A2', implode('   |   ', $metaParts));
+        $sheet->getStyle('A2:R2')->applyFromArray([
+            'font' => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '334155']],
+            'fill' => ['fillType' => $fillSolid, 'startColor' => ['rgb' => 'F1F5F9']],
+            'alignment' => ['horizontal' => $alignLeft, 'vertical' => $valignCenter],
+        ]);
+        $sheet->getRowDimension(2)->setRowHeight(22);
+
+        // Row 4: Grouped Section Headers
+        $groups = [
+            ['A4:E4', 'A. Client & Inventory Information', '1E293B'],
+            ['F4:H4', 'B. Land Share Financials', '0F766E'],
+            ['I4:K4', 'C. Development Charge Financials', '1D4ED8'],
+            ['L4:Q4', 'D. EMI Financials', '6D28D9'],
+            ['R4:R4', 'E. Expenditure', 'B45309'],
+        ];
+        foreach ($groups as [$range, $label, $bg]) {
+            if (strpos($range, ':') !== false && explode(':', $range)[0] !== explode(':', $range)[1]) {
+                $sheet->mergeCells($range);
+            }
+            $startCell = explode(':', $range)[0];
+            $sheet->setCellValue($startCell, $label);
+            $sheet->getStyle($range)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => $fillSolid, 'startColor' => ['rgb' => $bg]],
+                'alignment' => ['horizontal' => $alignCenter, 'vertical' => $valignCenter],
+                'borders' => ['allBorders' => ['borderStyle' => $borderThin, 'color' => ['rgb' => 'FFFFFF']]],
+            ]);
+        }
+        $sheet->getRowDimension(4)->setRowHeight(24);
+
+        // Row 5: Column Headers
+        $headers = [
+            '1. Assigned Person',
+            '2. Project Name',
+            '3. Total Units / Flats',
+            '4. Registered',
+            '5. Remaining Share',
+            '6. Total Land Share',
+            '7. Land Share Paid',
+            '8. Land Share Due',
+            '9. Total DC Ask',
+            '10. Total DC Received',
+            '11. DC Due',
+            '12. EMI Demand (#)',
+            '13. Regular EMI Amount',
+            '14. Regular EMI Received',
+            '15. Advanced Received',
+            '16. Net Regular EMI',
+            '17. Regular EMI Due',
+            '18. Project Expenditure',
+        ];
+        foreach ($headers as $idx => $hText) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($idx + 1);
+            $sheet->setCellValue($colLetter . '5', $hText);
+        }
+        $sheet->getStyle('A5:R5')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '1E293B']],
+            'fill' => ['fillType' => $fillSolid, 'startColor' => ['rgb' => 'E2E8F0']],
+            'alignment' => ['horizontal' => $alignCenter, 'vertical' => $valignCenter, 'wrapText' => true],
+            'borders' => ['allBorders' => ['borderStyle' => $borderThin, 'color' => ['rgb' => 'CBD5E1']]],
+        ]);
+        $sheet->getStyle('A5:B5')->getAlignment()->setHorizontal($alignLeft);
+        $sheet->getRowDimension(5)->setRowHeight(28);
+
+        // Data Rows
+        $rowNum = 6;
+        foreach ($rows as $i => $r) {
+            $sheet->setCellValue("A{$rowNum}", (string)$r['assigned_person']);
+            $sheet->setCellValue("B{$rowNum}", (string)$r['project_name']);
+            $sheet->setCellValue("C{$rowNum}", (int)$r['total_client']);
+            $sheet->setCellValue("D{$rowNum}", (int)$r['registered_client']);
+            $sheet->setCellValue("E{$rowNum}", (int)$r['remaining_share']);
+            $sheet->setCellValue("F{$rowNum}", round((float)$r['total_land_share'], 2));
+            $sheet->setCellValue("G{$rowNum}", round((float)$r['land_share_paid'], 2));
+            $sheet->setCellValue("H{$rowNum}", round((float)$r['land_share_due'], 2));
+            $sheet->setCellValue("I{$rowNum}", round((float)$r['total_dc_ask'], 2));
+            $sheet->setCellValue("J{$rowNum}", round((float)$r['total_dc_received'], 2));
+            $sheet->setCellValue("K{$rowNum}", round((float)$r['dc_due'], 2));
+            $sheet->setCellValue("L{$rowNum}", (int)$r['regular_emi_demand_count']);
+            $sheet->setCellValue("M{$rowNum}", round((float)$r['regular_emi_amount'], 2));
+            $sheet->setCellValue("N{$rowNum}", round((float)$r['regular_emi_received'], 2));
+            $sheet->setCellValue("O{$rowNum}", round((float)$r['advanced_received'], 2));
+            $sheet->setCellValue("P{$rowNum}", round((float)$r['net_regular_emi_collected'], 2));
+            $sheet->setCellValue("Q{$rowNum}", round((float)$r['regular_emi_due'], 2));
+            $sheet->setCellValue("R{$rowNum}", round((float)$r['project_expenditure'], 2));
+
+            $rowBg = ($i % 2 === 1) ? 'F8FAFC' : 'FFFFFF';
+            $sheet->getStyle("A{$rowNum}:R{$rowNum}")->applyFromArray([
+                'fill' => ['fillType' => $fillSolid, 'startColor' => ['rgb' => $rowBg]],
+                'alignment' => ['vertical' => $valignCenter],
+                'borders' => ['allBorders' => ['borderStyle' => $borderThin, 'color' => ['rgb' => 'E2E8F0']]],
+            ]);
+            $sheet->getStyle("B{$rowNum}")->getFont()->setBold(true);
+            $sheet->getStyle("C{$rowNum}:R{$rowNum}")->getAlignment()->setHorizontal($alignRight);
+
+            // Highlight positive dues in red & paid/collected in green
+            foreach (['H' => $r['land_share_due'], 'K' => $r['dc_due'], 'Q' => $r['regular_emi_due']] as $col => $dueVal) {
+                if ((float)$dueVal > 0) {
+                    $sheet->getStyle("{$col}{$rowNum}")->getFont()->setBold(true)->getColor()->setRGB('DC2626');
+                }
+            }
+            foreach (['G', 'J', 'P'] as $paidCol) {
+                $sheet->getStyle("{$paidCol}{$rowNum}")->getFont()->getColor()->setRGB('047857');
+            }
+
+            $sheet->getRowDimension($rowNum)->setRowHeight(20);
+            $rowNum++;
+        }
+
+        // Grand Total Row
+        $sheet->mergeCells("A{$rowNum}:B{$rowNum}");
+        $sheet->setCellValue("A{$rowNum}", 'GRAND TOTAL (' . (int)($grand['project_count'] ?? 0) . ' Projects)');
+        $sheet->setCellValue("C{$rowNum}", (int)($grand['total_client'] ?? 0));
+        $sheet->setCellValue("D{$rowNum}", (int)($grand['registered_client'] ?? 0));
+        $sheet->setCellValue("E{$rowNum}", (int)($grand['remaining_share'] ?? 0));
+        $sheet->setCellValue("F{$rowNum}", round((float)($grand['total_land_share'] ?? 0), 2));
+        $sheet->setCellValue("G{$rowNum}", round((float)($grand['land_share_paid'] ?? 0), 2));
+        $sheet->setCellValue("H{$rowNum}", round((float)($grand['land_share_due'] ?? 0), 2));
+        $sheet->setCellValue("I{$rowNum}", round((float)($grand['total_dc_ask'] ?? 0), 2));
+        $sheet->setCellValue("J{$rowNum}", round((float)($grand['total_dc_received'] ?? 0), 2));
+        $sheet->setCellValue("K{$rowNum}", round((float)($grand['dc_due'] ?? 0), 2));
+        $sheet->setCellValue("L{$rowNum}", (int)($grand['regular_emi_demand_count'] ?? 0));
+        $sheet->setCellValue("M{$rowNum}", round((float)($grand['regular_emi_amount'] ?? 0), 2));
+        $sheet->setCellValue("N{$rowNum}", round((float)($grand['regular_emi_received'] ?? 0), 2));
+        $sheet->setCellValue("O{$rowNum}", round((float)($grand['advanced_received'] ?? 0), 2));
+        $sheet->setCellValue("P{$rowNum}", round((float)($grand['net_regular_emi_collected'] ?? 0), 2));
+        $sheet->setCellValue("Q{$rowNum}", round((float)($grand['regular_emi_due'] ?? 0), 2));
+        $sheet->setCellValue("R{$rowNum}", round((float)($grand['project_expenditure'] ?? 0), 2));
+
+        $sheet->getStyle("A{$rowNum}:R{$rowNum}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => '0F172A']],
+            'fill' => ['fillType' => $fillSolid, 'startColor' => ['rgb' => 'E2E8F0']],
+            'alignment' => ['vertical' => $valignCenter],
+            'borders' => [
+                'top' => ['borderStyle' => $borderMedium, 'color' => ['rgb' => '334155']],
+                'bottom' => ['borderStyle' => $borderMedium, 'color' => ['rgb' => '334155']],
+                'left' => ['borderStyle' => $borderThin, 'color' => ['rgb' => 'CBD5E1']],
+                'right' => ['borderStyle' => $borderThin, 'color' => ['rgb' => 'CBD5E1']],
+            ],
+        ]);
+        $sheet->getStyle("C{$rowNum}:R{$rowNum}")->getAlignment()->setHorizontal($alignRight);
+        $sheet->getRowDimension($rowNum)->setRowHeight(24);
+
+        // Number formatting across data + grand total rows
+        $sheet->getStyle("C6:R{$rowNum}")->getNumberFormat()->setFormatCode('#,##0');
+
+        // Column widths & UX polish
+        $widths = [
+            'A' => 24, 'B' => 28, 'C' => 14, 'D' => 13, 'E' => 15,
+            'F' => 18, 'G' => 18, 'H' => 18, 'I' => 17, 'J' => 18,
+            'K' => 16, 'L' => 15, 'M' => 18, 'N' => 19, 'O' => 18,
+            'P' => 18, 'Q' => 18, 'R' => 19,
+        ];
+        foreach ($widths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+        $sheet->freezePane('C6');
+        $sheet->getPageSetup()
+            ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE)
+            ->setFitToWidth(1)
+            ->setFitToHeight(0);
+
+        $slugPeriod = preg_replace('/[^a-z0-9_-]+/i', '_', $filters['period_type'] ?? 'all_time');
+        $filename = 'CED_Project_Dashboard_' . $slugPeriod . '_' . date('Ymd_His') . '.xlsx';
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
     }
 
     /**
@@ -198,10 +511,16 @@ class CedProjectDashboardController extends CedCollectionStatementController
      * aligned with Due Tracking & Management (booking_money + registration + land_share),
      * ensuring project-level totals and client-level drill-down rows always reconcile.
      */
-    private function fetchActiveBookingsFinancials(string $inProjectIds, bool $includeClientMeta = false): array
+    private function fetchActiveBookingsFinancials(string $inProjectIds, bool $includeClientMeta = false, ?array $dateRange = null): array
     {
         $activeBookingCond = $this->activeBookingSql('lb');
         $validPaymentCond  = $this->validPaymentSql('lp');
+        $paymentDateCond   = '';
+        if (!empty($dateRange['date_from']) && !empty($dateRange['date_to'])) {
+            $df = $this->db->real_escape_string($dateRange['date_from']);
+            $dt = $this->db->real_escape_string($dateRange['date_to']);
+            $paymentDateCond = " AND DATE(lp.payment_date) BETWEEN '{$df}' AND '{$dt}'";
+        }
 
         $metaSelect = $includeClientMeta
             ? ",
@@ -239,6 +558,7 @@ class CedProjectDashboardController extends CedCollectionStatementController
                 WHERE lb_p.project_id IN ({$inProjectIds})
                   AND {$validPaymentCond}
                   AND lp.payment_type IN ('booking_money', 'registration', 'land_share', 'development_charge')
+                  {$paymentDateCond}
                 GROUP BY lp.booking_id
             ) pay ON pay.booking_id = lb.id
             WHERE lb.project_id IN ({$inProjectIds})
@@ -419,8 +739,12 @@ class CedProjectDashboardController extends CedCollectionStatementController
             }
         }
 
+        $dateRange = (!empty($filters['date_from']) && !empty($filters['date_to']))
+            ? ['date_from' => $filters['date_from'], 'date_to' => $filters['date_to']]
+            : null;
+
         // 3. Aggregate per-booking Land Share, Dev Charge, and Registered Client count
-        $bookingRows = $this->fetchActiveBookingsFinancials($inProjectIds, false);
+        $bookingRows = $this->fetchActiveBookingsFinancials($inProjectIds, false, $dateRange);
         foreach ($bookingRows as $b) {
             $pId = $b['project_id'];
             if (!isset($projects[$pId])) {
@@ -437,7 +761,7 @@ class CedProjectDashboardController extends CedCollectionStatementController
         }
 
         // 4. Per-booking EMI demand & payments (Module 1 Regular vs Advance split)
-        $emiByBooking = $this->computeBookingEmiMetrics($inProjectIds);
+        $emiByBooking = $this->computeBookingEmiMetrics($inProjectIds, $dateRange);
         foreach ($emiByBooking as $em) {
             $pId = $em['project_id'];
             if (!isset($projects[$pId])) {
@@ -452,6 +776,12 @@ class CedProjectDashboardController extends CedCollectionStatementController
         }
 
         // 5. Project Expenditure (paid rows in project_other_costs)
+        $expDateCond = '';
+        if ($dateRange !== null) {
+            $df = $this->db->real_escape_string($dateRange['date_from']);
+            $dt = $this->db->real_escape_string($dateRange['date_to']);
+            $expDateCond = " AND DATE(COALESCE(payment_at, created_at)) BETWEEN '{$df}' AND '{$dt}'";
+        }
         $resExp = $this->db->query("
             SELECT
                 project_id,
@@ -459,6 +789,7 @@ class CedProjectDashboardController extends CedCollectionStatementController
             FROM project_other_costs
             WHERE status = 'paid'
               AND project_id IN ({$inProjectIds})
+              {$expDateCond}
             GROUP BY project_id
         ");
         if ($resExp) {
@@ -519,10 +850,16 @@ class CedProjectDashboardController extends CedCollectionStatementController
      * @param string $inProjectIds Comma-separated list of integer project IDs
      * @return array Keyed by booking_id
      */
-    private function computeBookingEmiMetrics(string $inProjectIds): array
+    private function computeBookingEmiMetrics(string $inProjectIds, ?array $dateRange = null): array
     {
         $activeBookingCond = $this->activeBookingSql('lb');
         $validPaymentCond  = $this->validPaymentSql('lp');
+        $paymentDateCond   = '';
+        if (!empty($dateRange['date_from']) && !empty($dateRange['date_to'])) {
+            $df = $this->db->real_escape_string($dateRange['date_from']);
+            $dt = $this->db->real_escape_string($dateRange['date_to']);
+            $paymentDateCond = " AND DATE(lp.payment_date) BETWEEN '{$df}' AND '{$dt}'";
+        }
 
         $metrics = [];
 
@@ -604,6 +941,7 @@ class CedProjectDashboardController extends CedCollectionStatementController
               AND {$activeBookingCond}
               AND {$validPaymentCond}
               AND lp.payment_type IN ('emi', 'emi_due_settlement')
+              {$paymentDateCond}
             GROUP BY lp.booking_id, lb.project_id
         ");
         if ($qPaid) {
@@ -643,9 +981,9 @@ class CedProjectDashboardController extends CedCollectionStatementController
     /**
      * Build client-level rows for a single project (matching the project-level columns).
      */
-    private function fetchClientLevelRows(int $projectId): array
+    private function fetchClientLevelRows(int $projectId, ?array $dateRange = null): array
     {
-        $clients = $this->fetchActiveBookingsFinancials((string)$projectId, true);
+        $clients = $this->fetchActiveBookingsFinancials((string)$projectId, true, $dateRange);
 
         $totals = [
             'client_count'              => count($clients),
@@ -669,7 +1007,7 @@ class CedProjectDashboardController extends CedCollectionStatementController
         }
 
         // Per-booking EMI metrics (same Module 1 logic)
-        $emiByBooking = $this->computeBookingEmiMetrics((string)$projectId);
+        $emiByBooking = $this->computeBookingEmiMetrics((string)$projectId, $dateRange);
 
         $rows = [];
         foreach ($clients as $bId => $c) {
