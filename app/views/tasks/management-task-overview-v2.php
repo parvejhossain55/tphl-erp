@@ -623,7 +623,7 @@ if (!empty($period) && $period !== 'all' && !isset($monthNames[$period]) && preg
                                                     : ($d['score'] >= 50 ? 'bg-primary-subtle text-primary'
                                                     : ($d['score'] > 0 ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger')));
                                             ?>
-                                            <span class="badge <?= $deptScoreClass ?> fw-bold px-2 py-1" style="font-size: 11px;" title="60% Completion Rate + 40% On-Time %">
+                                            <span class="badge <?= $deptScoreClass ?> fw-bold px-2 py-1" style="font-size: 11px;" title="35% Completion + 25% On-Time + 15% Early + 25% Feedback (normalized if unrated)">
                                                 <?= $d['score'] ?> / 100
                                             </span>
                                         </td>
@@ -690,7 +690,7 @@ if (!empty($period) && $period !== 'all' && !isset($monthNames[$period]) && preg
                                                     : ($ind['score'] >= 50 ? 'bg-primary-subtle text-primary'
                                                     : ($ind['score'] > 0 ? 'bg-warning-subtle text-warning' : 'bg-light text-secondary border'));
                                             ?>
-                                            <span class="badge <?= $indScoreClass ?> fw-bold px-2 py-1" style="font-size: 11px;" title="70% Completion + 30% On-Time (On-Time: <?= $ind['on_time_pct'] ?>%)">
+                                            <span class="badge <?= $indScoreClass ?> fw-bold px-2 py-1" style="font-size: 11px;" title="35% Completion + 25% On-Time + 15% Early + 25% Feedback (Early: <?= $ind['before_deadline_pct'] ?? 0 ?>%, On-Time: <?= $ind['on_time_pct'] ?>%)">
                                                 <?= $ind['score'] ?> / 100
                                             </span>
                                         </td>
