@@ -467,11 +467,13 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
         }
         const pillBadge = document.getElementById('pillUnreadCount');
         if (pillBadge) pillBadge.textContent = c;
-        const sidebarBadge = document.getElementById('sidebarNotificationBadge');
-        if (sidebarBadge) {
-            sidebarBadge.textContent = c;
-            sidebarBadge.style.display = c > 0 ? '' : 'none';
-        }
+        ['topbarNotificationBadge', 'sidebarNotificationBadge'].forEach(id => {
+            const b = document.getElementById(id);
+            if (b) {
+                b.textContent = c;
+                b.style.display = c > 0 ? '' : 'none';
+            }
+        });
         const markAllBtn = document.getElementById('btnMarkAllNotificationsRead');
         if (markAllBtn) markAllBtn.disabled = c <= 0;
     }

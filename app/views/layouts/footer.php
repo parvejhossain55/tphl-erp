@@ -921,7 +921,7 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
     </script>
 <?php endif; ?>
 
-<?php if (!empty($_SESSION['user']['id']) && function_exists('hasPermission') && hasPermission('Notifications')): ?>
+<?php if (!empty($_SESSION['user']['id'])): ?>
     <style>
         #tphlNotifCenterOverlay {
             position: fixed;
@@ -1121,11 +1121,13 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
 
             function updateSidebarBadge(count) {
                 const c = Math.max(0, parseInt(count || 0, 10));
-                const badge = document.getElementById('sidebarNotificationBadge');
-                if (badge) {
-                    badge.textContent = c;
-                    badge.style.display = c > 0 ? '' : 'none';
-                }
+                ['topbarNotificationBadge', 'sidebarNotificationBadge'].forEach(id => {
+                    const badge = document.getElementById(id);
+                    if (badge) {
+                        badge.textContent = c;
+                        badge.style.display = c > 0 ? '' : 'none';
+                    }
+                });
             }
 
             function extractTaskId(item) {
