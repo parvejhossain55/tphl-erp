@@ -1635,6 +1635,7 @@ class MyWorkController extends Controller
         }
         header('Content-Type: application/json');
         $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $id = (int)$id;
         if (!$userId) {
             echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
@@ -1887,6 +1888,12 @@ class MyWorkController extends Controller
             ];
         }
 
+        $isOwner = ((int)$t['assigned_by'] === $userId);
+        $isReviewer = in_array($userId, $reviewerIds, true);
+        $isCc = in_array($userId, $ccIds, true);
+        $isAdmin = in_array($roleId, [1, 3, 33], true);
+        $canGiveFeedback = ($isCompleted && (int)$t['user_id'] !== $userId && ($isOwner || $isReviewer || $isCc || $isAdmin));
+
         echo json_encode([
             'status' => 'success',
             'task' => [
@@ -1897,10 +1904,12 @@ class MyWorkController extends Controller
                 'status' => $t['status'],
                 'is_completed' => $isCompleted,
                 'is_review_approved' => $isReviewApproved,
-                'is_owner' => ((int)$t['assigned_by'] === $userId),
+                'is_owner' => $isOwner,
                 'is_self_task' => ((int)$t['assigned_by'] === (int)$t['user_id']),
                 'satisfaction_rating' => !empty($t['satisfaction_rating']) ? (int)$t['satisfaction_rating'] : null,
-                'is_reviewer' => in_array($userId, $reviewerIds, true),
+                'is_reviewer' => $isReviewer,
+                'is_cc' => $isCc,
+                'can_give_feedback' => $canGiveFeedback,
                 'can_complete' => (!$isCompleted && $canCheckChecklist),
                 'can_request_extension' => (!$isCompleted && (int)$t['assigned_by'] !== $userId && ((int)$t['user_id'] === $userId || in_array($userId, $collabIds, true))),
                 'pending_extension' => $pendingExt,
@@ -3262,7 +3271,7 @@ class MyWorkController extends Controller
             exit;
         }
 
-        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, status FROM tasks WHERE id = ?");
+        $st = $this->db->prepare("SELECT id, title, assigned_by, user_id, status, mentioned_user_ids, cc_user_ids, satisfaction_rating FROM tasks WHERE id = ?");
         $st->bind_param("i", $id);
         $st->execute();
         $task = $st->get_result()->fetch_assoc();
@@ -3277,16 +3286,31 @@ class MyWorkController extends Controller
             exit;
         }
 
-        // Only Task Owner (assigned_by) or Admin can give feedback
-        $isOwner = ((int)$task['assigned_by'] === $userId || in_array($roleId, [1, 3, 33], true));
-        if (!$isOwner) {
-            echo json_encode(['status' => 'error', 'message' => 'Only the task owner can submit feedback and rating.']);
+        // Prevent assignee from rating their own task (self-assigned tasks can still be rated by reviewers/CC/admin)
+        if ((int)$task['user_id'] === $userId) {
+            echo json_encode(['status' => 'error', 'message' => 'You cannot submit feedback or rating on your own task.']);
             exit;
         }
 
-        // Prevent giving feedback/rating on own task or self-task
-        if ((int)$task['user_id'] === $userId || (int)$task['assigned_by'] === (int)$task['user_id']) {
-            echo json_encode(['status' => 'error', 'message' => 'You cannot submit feedback or rating on your own task.']);
+        $ids = fn($v) => array_map('intval', preg_match_all('/\d+/', (string)$v, $m) ? $m[0] : []);
+        $reviewerIds = $ids($task['mentioned_user_ids'] ?? '');
+        $ccIds = $ids($task['cc_user_ids'] ?? '');
+
+        // Task Owner (assigned_by), Reviewer, CC member, or Admin can give feedback
+        $canGiveFeedback = (
+            (int)$task['assigned_by'] === $userId ||
+            in_array($userId, $reviewerIds, true) ||
+            in_array($userId, $ccIds, true) ||
+            in_array($roleId, [1, 3, 33], true)
+        );
+        if (!$canGiveFeedback) {
+            echo json_encode(['status' => 'error', 'message' => 'Only the task owner, reviewers, or CC members can submit feedback and rating.']);
+            exit;
+        }
+
+        // Prevent duplicate rating submission
+        if (!empty($task['satisfaction_rating']) && (int)$task['satisfaction_rating'] > 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Feedback and rating have already been submitted for this task.']);
             exit;
         }
 
