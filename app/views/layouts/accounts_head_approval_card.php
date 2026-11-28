@@ -191,11 +191,16 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <?php elseif ($isOpHeadPending): ?>
                         <?php if ($isOpHeadUser): ?>
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
-                                <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold" onclick="triggerOpHeadReject(<?= (int)$ahInfo['approval_request_id'] ?>)">
-                                    <i class="fa-solid fa-xmark me-1"></i>Reject
-                                </button>
                                 <button type="button" class="btn btn-primary btn-sm px-4 fw-bold shadow-sm" id="btnOpHeadApproveDirect" onclick="triggerOpHeadApprove(<?= (int)$ahInfo['approval_request_id'] ?>)">
                                     <i class="fa-solid fa-stamp me-1"></i>Approve (Operation Head)
+                                </button>
+                                <?php if (!empty($revCanSendBack) && empty($revIsOpen) && !empty($revModalDomId)): ?>
+                                    <button type="button" class="btn btn-warning text-dark btn-sm px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#<?= $revModalDomId ?>">
+                                        <i class="fa-solid fa-rotate-left me-1"></i>Send Back for Review
+                                    </button>
+                                <?php endif; ?>
+                                <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold" onclick="triggerOpHeadReject(<?= (int)$ahInfo['approval_request_id'] ?>)">
+                                    <i class="fa-solid fa-xmark me-1"></i>Reject
                                 </button>
                             </div>
                         <?php elseif ($isManagementUser): ?>
@@ -331,11 +336,16 @@ $ahApprovalNote = $ahInfo['accounts_head_note'] ?? null;
                     <?php elseif ($isAhPending): ?>
                         <?php if ($canUserApproveAccountsHead): ?>
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
-                                <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold" onclick="triggerAhReject(<?= (int)$ahInfo['approval_request_id'] ?>)">
-                                    <i class="fa-solid fa-xmark me-1"></i>Reject
-                                </button>
                                 <button type="button" class="btn btn-primary btn-sm px-4 fw-bold shadow-sm" id="btnAhApproveDirect" onclick="triggerAhApprove(<?= (int)$ahInfo['approval_request_id'] ?>)">
                                     <i class="fa-solid fa-stamp me-1"></i>Approve as Accounts Head
+                                </button>
+                                <?php if (!empty($revCanSendBack) && empty($revIsOpen) && !empty($revModalDomId)): ?>
+                                    <button type="button" class="btn btn-warning text-dark btn-sm px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#<?= $revModalDomId ?>">
+                                        <i class="fa-solid fa-rotate-left me-1"></i>Send Back for Review
+                                    </button>
+                                <?php endif; ?>
+                                <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-semibold" onclick="triggerAhReject(<?= (int)$ahInfo['approval_request_id'] ?>)">
+                                    <i class="fa-solid fa-xmark me-1"></i>Reject
                                 </button>
                             </div>
                         <?php elseif ($isAccountsStaffUser): ?>

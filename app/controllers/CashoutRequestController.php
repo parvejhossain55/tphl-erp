@@ -508,6 +508,8 @@ class CashoutRequestController extends Controller
 
             $qcNote = trim($_POST['approval_note'] ?? '');
             if ($this->cashoutModel->updateQCStatus($requestId, $this->userId, $qcNote)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('cashout_requests', (int)$requestId);
                 setSuccess("Request QC Approved successfully.");
             } else {
                 setError("Failed to QC approve.");
@@ -578,6 +580,8 @@ class CashoutRequestController extends Controller
                     ");
                 }
                 // Trigger Email Notification ON APPROVAL
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('cashout_requests', (int)$requestId);
                 $freshRequest = $this->cashoutModel->getRequestById($requestId);
                 $this->mailService->sendOnApproval($freshRequest, 'approved', $this->userId);
                 
@@ -799,12 +803,16 @@ class CashoutRequestController extends Controller
             }
         }
 
+        require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+        $coRevSvc = new RequisitionRevisionService($this->db);
+        $openRev  = $coRevSvc->getOpenRevision('cashout_requests', $requestId);
+
         $hasAnyApproval = (($request['status'] ?? '') !== 'pending')
             || !empty($request['qc_approved_by_id'])
             || !empty($request['approved_by'])
             || $arApproved;
 
-        if ($hasAnyApproval) {
+        if ($hasAnyApproval && empty($openRev) && empty($coRevSvc->getRejectionStatus('cashout_requests', $requestId)['is_rejected'])) {
             setError("This cashout request has already been approved at one or more stages and can no longer be edited.");
             header("Location: {$GLOBALS['base_url']}/view-cashout-request?id={$requestId}");
             exit;
@@ -837,15 +845,18 @@ class CashoutRequestController extends Controller
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
-                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
-                $coRevSvc = new RequisitionRevisionService($this->db);
                 $coEditSum = RequisitionRevisionService::buildChangeSummary([
                     'Amount'         => [$request['amount'] ?? 0, $amount],
                     'Purpose'        => [$request['purpose_paid_to'] ?? '', $purposePaidTo],
                     'Payment Method' => [$request['payment_method'] ?? '', $paymentMethod],
                 ]);
                 $coRevSvc->logEdit('cashout_requests', $requestId, $coEditSum);
-                setSuccess("Cashout Request #{$requestId} updated successfully.");
+                if (!empty($openRev)) {
+                    $coRevSvc->markResubmitted('cashout_requests', $requestId, $amount, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Cashout Request #{$requestId} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Cashout Request #{$requestId} updated successfully.");
+                }
             } else {
                 $stmt->close();
                 setError("Failed to update cashout request.");

@@ -295,7 +295,7 @@ class Con_PurchaseOrderController extends Controller
         $isPoRevOpen    = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
 
         $canDeletePO = ($isCreator || $isManagement) && $isNotApproved && $po['status'] !== 'Cancelled';
-        $canEditPO   = !$isCancelled && ($isNotApproved || $isPoRevOpen) && ($isCreator || $isAdminOverride);
+        $canEditPO   = ($isNotApproved || $isPoRevOpen || $isCancelled) && ($isCreator || $isAdminOverride);
 
         // Creator can edit item quantity BEFORE anyone approves OR when sent back for review; active approvers or Admin can adjust during approval
         $canEditItemQty = !$isCancelled && !$alreadyFinalStatus && (
@@ -843,6 +843,9 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        (new \RequisitionRevisionService($this->db))->markResolved('purchase_orders', (int)$id);
+
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
         exit;
     }
@@ -1086,7 +1089,7 @@ class Con_PurchaseOrderController extends Controller
         $poRevSvc = new \RequisitionRevisionService($this->db);
         $openRev  = $poRevSvc->getOpenRevision('purchase_orders', (int)$poId);
 
-        if (!$isAdminOverride && !$isActiveApprover && !($isCreator && ($isNotApproved || !empty($openRev)))) {
+        if (!$isAdminOverride && !$isActiveApprover && !($isCreator && ($isNotApproved || !empty($openRev) || ($po['status'] ?? '') === 'Cancelled'))) {
             $errMsg = ($isCreator && !$isNotApproved)
                 ? 'This Purchase Order has already been approved by at least one approver. Creator can no longer modify quantities.'
                 : 'You do not have permission to modify quantities for this Purchase Order.';
@@ -1167,7 +1170,7 @@ class Con_PurchaseOrderController extends Controller
         $isCreator       = ($currentUserId === (int)($po['created_by'] ?? 0));
         $isAdminOverride = in_array($currentRoleId, [1, 3], true);
 
-        if (!$isNotApproved && empty($openRev)) {
+        if (!$isNotApproved && empty($openRev) && ($po['status'] ?? '') !== 'Cancelled') {
             setError('This Purchase Order has already been approved or finalized and can no longer be edited.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
             exit;

@@ -214,13 +214,16 @@ class Con_VendorController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $isAdmin = in_array($roleId, [1, 3], true);
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $vEditRevSvc  = new \RequisitionRevisionService($this->db);
+        $vEditOpenRev = $vEditRevSvc->getOpenRevision('vendors', (int)$id);
         if (($vendor['status'] ?? '') === 'pending_approval' && !$isAdmin) {
             $hasAnyApproval = ($vendor['dept_head_status'] ?? '') === 'approved'
                 || ($vendor['purchase_head_status'] ?? '') === 'approved'
                 || ($vendor['role_20_status'] ?? '') === 'approved'
                 || ($vendor['role_38_status'] ?? '') === 'approved'
                 || ($vendor['management_status'] ?? '') === 'approved';
-            if ($hasAnyApproval) {
+            if ($hasAnyApproval && empty($vEditOpenRev)) {
                 setError('This vendor enrollment request has already been approved at one or more stages and can no longer be edited.');
                 header("Location: {$GLOBALS['base_url']}/con-vendors");
                 exit;
@@ -259,13 +262,17 @@ class Con_VendorController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $isAdmin = in_array($roleId, [1, 3], true);
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $vRevSvc = new \RequisitionRevisionService($this->db);
+        $vOpenRev = $vRevSvc->getOpenRevision('vendors', (int)$id);
+
         if (($existing['status'] ?? '') === 'pending_approval' && !$isAdmin) {
             $hasAnyApproval = ($existing['dept_head_status'] ?? '') === 'approved'
                 || ($existing['purchase_head_status'] ?? '') === 'approved'
                 || ($existing['role_20_status'] ?? '') === 'approved'
                 || ($existing['role_38_status'] ?? '') === 'approved'
                 || ($existing['management_status'] ?? '') === 'approved';
-            if ($hasAnyApproval) {
+            if ($hasAnyApproval && empty($vOpenRev)) {
                 setError('This vendor enrollment request has already been approved at one or more stages and can no longer be edited.');
                 header("Location: {$GLOBALS['base_url']}/con-vendors");
                 exit;
@@ -334,7 +341,19 @@ class Con_VendorController extends Controller
         ];
 
         if ($this->vendorModel->update($id, $data)) {
-            setSuccess('Vendor updated successfully!');
+            $vEditSum = \RequisitionRevisionService::buildChangeSummary([
+                'Company' => [$existing['company_name'] ?? '', $data['company_name'] ?? ''],
+                'Name'    => [$existing['name'] ?? '', $data['name'] ?? ''],
+                'Phone'   => [$existing['phone'] ?? '', $data['phone'] ?? ''],
+                'Email'   => [$existing['email'] ?? '', $data['email'] ?? ''],
+            ]);
+            $vRevSvc->logEdit('vendors', (int)$id, $vEditSum);
+            if (!empty($vOpenRev)) {
+                $vRevSvc->markResubmitted('vendors', (int)$id, null, trim($_POST['resubmitted_note'] ?? ''));
+                setSuccess("Vendor updated & resubmitted directly to {$vOpenRev['return_stage_label']}.");
+            } else {
+                setSuccess('Vendor updated successfully!');
+            }
         } else {
             setError('Update failed.');
         }

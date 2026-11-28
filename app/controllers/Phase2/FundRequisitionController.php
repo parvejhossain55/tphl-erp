@@ -1028,6 +1028,8 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param("sissi", $newDeptStatus, $sessionUserId, $approval_note, $newMainStatus, $id);
 
         if ($stmt->execute()) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('fund_requisitions', (int)$id);
             $this->syncApprovalRequest($id);
 
             // --- Email Notification Start ---
@@ -1212,6 +1214,8 @@ class FundRequisitionController extends Controller {
         $stmt->bind_param($types, ...$values);
 
         if ($stmt->execute()) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('fund_requisitions', (int)$id);
             $this->syncApprovalRequest($id);
 
             // --- Fast Batch Email Notification ---
@@ -1467,6 +1471,8 @@ class FundRequisitionController extends Controller {
 
             $this->syncApprovalRequest($id);
             if (in_array($status, ['approved', 'partially_approved'])) {
+                require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('fund_requisitions', (int)$id);
                 $escBypassNote = $this->db->real_escape_string(($approval_note ?: 'Approved by Management') . ' (Management Override)');
                 if ($isManagement) {
                     $this->db->query("
@@ -1668,6 +1674,8 @@ class FundRequisitionController extends Controller {
         }
 
         if ($stmt->execute()) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('fund_requisitions', (int)$id);
             $this->syncApprovalRequest($id);
 
             // ====== AUTO POSTING DISBURSEMENT VOUCHER (Batch 2/3) ======
@@ -2427,7 +2435,7 @@ class FundRequisitionController extends Controller {
             || !empty($req['approved_by'])
             || !empty($req['paid_by']);
 
-        if ($hasAnyApproval && empty($openRev)) {
+        if ($hasAnyApproval && empty($openRev) && empty($revSvc->getRejectionStatus('fund_requisitions', $id)['is_rejected'])) {
             setError('This fund requisition has already been approved at one or more stages and can no longer be edited.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/{$id}");
             exit;

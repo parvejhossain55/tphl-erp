@@ -910,6 +910,8 @@ class Con_VendorPaymentRequestController extends Controller
                 $stmtAr->execute();
                 $stmtAr->close();
             }
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('vendor_payment_requests', (int)$id);
             setSuccess('Vendor Payment Request approved by Head of Purchase. Forwarded to QC & Internal Audit.');
         } else {
             setError('Failed to approve as Head of Purchase.');
@@ -1080,6 +1082,8 @@ class Con_VendorPaymentRequestController extends Controller
             }
 
             if ($this->model->approve($id, $this->userId, $approvedAmount)) {
+                require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('vendor_payment_requests', (int)$id);
                 $escMgtNote = $this->db->real_escape_string($mgtNote ?: 'Approved by Management');
 
                 // Update management note AND auto-populate any bypassed earlier stages if Management (1, 3) approved directly
@@ -1287,6 +1291,8 @@ class Con_VendorPaymentRequestController extends Controller
                 error_log("Vendor Payment QC approval email failed: " . $e->getMessage());
             }
 
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('vendor_payment_requests', (int)$id);
             setSuccess('Payment Request successfully audited and approved by QC with amount ৳ ' . number_format($qcApprovedAmount, 2) . '. Forwarded to Head of Operation (Role 20) for next approval.');
         } else {
             setError('Failed to QC approve payment request.');
@@ -2013,13 +2019,15 @@ class Con_VendorPaymentRequestController extends Controller
         $revSvc  = new \RequisitionRevisionService($this->db);
         $openRev = $revSvc->getOpenRevision('vendor_payment_requests', $id);
 
+        $tlApprovedByOther = !empty($req['purchase_team_leader_by_id'])
+            && (int)$req['purchase_team_leader_by_id'] !== (int)($req['created_by'] ?? 0);
         $hasAnyApproval = !in_array($req['status'] ?? '', ['Draft', 'Submitted'], true)
-            || !empty($req['purchase_team_leader_by_id'])
+            || $tlApprovedByOther
             || !empty($req['purchase_head_approved_by_id'])
             || !empty($req['qc_approved_by_id'])
             || !empty($req['approved_by']);
 
-        if ($hasAnyApproval && empty($openRev)) {
+        if ($hasAnyApproval && empty($openRev) && empty($revSvc->getRejectionStatus('vendor_payment_requests', $id)['is_rejected'])) {
             setError('This vendor payment request has already been approved at one or more stages and can no longer be edited.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;

@@ -149,6 +149,16 @@ $statusLabel = [
                             No labor requisitions found.
                         </td></tr>
                     <?php else: ?>
+                        <?php
+                        $lrEditMap = [];
+                        if (!empty($requisitions) && function_exists('db')) {
+                            $lrDb = db();
+                            if ($lrDb) {
+                                require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+                                $lrEditMap = (new RequisitionRevisionService($lrDb))->getLastEditMap('con_labor_requisitions');
+                            }
+                        }
+                        ?>
                         <?php foreach ($requisitions as $i => $lr): ?>
                         <tr>
                             <td class="text-muted fs-12"><?php echo $i + 1; ?></td>
@@ -166,7 +176,18 @@ $statusLabel = [
                             <td><?php echo $lr['working_days']; ?> days</td>
                             <td class="text-end fw-bold text-success">&#2547; <?php echo number_format($lr['total_amount'], 2); ?></td>
                             <td style="max-width:180px;white-space:normal;font-size:12px"><?php echo htmlspecialchars(mb_substr($lr['purpose'], 0, 60)); ?><?php echo mb_strlen($lr['purpose']) > 60 ? '…' : ''; ?></td>
-                            <td><?php echo htmlspecialchars($lr['requested_by_name'] ?? '---'); ?></td>
+                            <td>
+                                <?php echo htmlspecialchars($lr['requested_by_name'] ?? '---'); ?>
+                                <?php $lrEdit = $lrEditMap[(int)($lr['id'] ?? 0)] ?? null; ?>
+                                <?php if (!empty($lrEdit)): ?>
+                                    <div class="mt-1" style="font-size:10px; color:#b45309; line-height:1.25;" title="<?= htmlspecialchars($lrEdit['change_summary'] ?? 'Edited') ?>">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i>Edited: <strong><?= htmlspecialchars($lrEdit['edited_by_name']) ?></strong>
+                                        <?php if (!empty($lrEdit['created_at'])): ?>
+                                            <div class="text-muted" style="font-size:9.5px;"><?= date('d M Y, h:i A', strtotime($lrEdit['created_at'])) ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo date('d M Y', strtotime($lr['requisition_date'])); ?></td>
                             <td>
                                 <span class="badge <?php echo $statusBadge[$lr['status']] ?? 'bg-secondary'; ?> fs-11">

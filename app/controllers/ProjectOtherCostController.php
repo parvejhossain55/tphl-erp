@@ -250,6 +250,8 @@ class ProjectOtherCostController extends Controller
             }
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 setSuccess("Request Department Head " . ucfirst($status) . " successfully.");
             } else {
@@ -312,6 +314,8 @@ class ProjectOtherCostController extends Controller
             ];
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 setSuccess("Request QC Approved successfully.");
             } else {
@@ -485,6 +489,8 @@ class ProjectOtherCostController extends Controller
             ];
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 $escNote = $this->db->real_escape_string($note ?: 'Approved by Management');
                 $escOverrideNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
@@ -604,6 +610,8 @@ class ProjectOtherCostController extends Controller
             }
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 setSuccess("Request Paid successfully.");
             } else {
@@ -863,7 +871,7 @@ class ProjectOtherCostController extends Controller
             || !empty($request['management_apporved_by_id'])
             || !empty($request['payment_by_id']);
 
-        if ($hasAnyApproval && empty($openRev)) {
+        if ($hasAnyApproval && empty($openRev) && empty($revSvc->getRejectionStatus('project_other_costs', $id)['is_rejected'])) {
             setError("This request has already been approved at one or more stages and can no longer be edited.");
             header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/{$id}");
             exit;

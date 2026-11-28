@@ -1088,6 +1088,10 @@ class AssetManagementController extends Controller
             $selectedVendorId = !empty($_POST['vendor_id']) ? (int)$_POST['vendor_id'] : null;
 
             if ($this->model->approveStep($id, $step, $status, $userId, $note, $document, $selectedVendorId)) {
+                if ($status === 'approved') {
+                    require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                    (new \RequisitionRevisionService($this->db))->markResolved('project_extra_assets', (int)$id);
+                }
                 $isLocalDevAppr = (DIRECTORY_SEPARATOR === '\\') || (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false));
                 if ($status === 'approved' && !$isLocalDevAppr) {
                     try {
@@ -1515,7 +1519,7 @@ class AssetManagementController extends Controller
             || (($req['qc_audit_status'] ?? '') === 'approved') || !empty($req['qc_audit_by'])
             || (($req['mgmt_status'] ?? '') === 'approved') || !empty($req['mgmt_by']);
 
-        if ($hasAnyApproval && empty($openRev)) {
+        if ($hasAnyApproval && empty($openRev) && empty($revSvc->getRejectionStatus('project_extra_assets', $id)['is_rejected'])) {
             setError('This procurement request has already been approved at one or more stages and can no longer be edited.');
             header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
             exit;

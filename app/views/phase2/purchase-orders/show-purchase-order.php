@@ -1501,17 +1501,18 @@ include __DIR__ . '/../../layouts/revision_workflow_panel.php';
 
       <!-- Approve Action — Purchase Head -->
       <?php if ($canApprovePH): ?>
-        <div class="row gx-2 mb-3">
-          <div class="col-6">
-            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalPH">
-              <i class="fal fa-user-tie me-1"></i>Approve
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" class="btn flex-grow-1" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalPH">
+            <i class="fal fa-user-tie me-1"></i>Approve
+          </button>
+          <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+            <button type="button" class="btn btn-warning text-dark flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_purchase_orders">
+              <i class="fa-solid fa-rotate-left me-1"></i>Send Back
             </button>
-          </div>
-          <div class="col-6">
-            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
-              <i class="fal fa-times-circle me-1"></i>Reject
-            </button>
-          </div>
+          <?php endif; ?>
+          <button type="button" class="btn btn-danger flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+            <i class="fal fa-times-circle me-1"></i>Reject
+          </button>
         </div>
 
         <!-- Approve Modal PH -->
@@ -1541,17 +1542,18 @@ include __DIR__ . '/../../layouts/revision_workflow_panel.php';
 
       <!-- Approve Action — QC -->
       <?php if ($canApproveQC): ?>
-        <div class="row gx-2 mb-3">
-          <div class="col-6">
-            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalQC">
-              <i class="fal fa-clipboard-check me-1"></i>Approve
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" class="btn flex-grow-1" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalQC">
+            <i class="fal fa-clipboard-check me-1"></i>Approve
+          </button>
+          <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+            <button type="button" class="btn btn-warning text-dark flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_purchase_orders">
+              <i class="fa-solid fa-rotate-left me-1"></i>Send Back
             </button>
-          </div>
-          <div class="col-6">
-            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
-              <i class="fal fa-times-circle me-1"></i>Reject
-            </button>
-          </div>
+          <?php endif; ?>
+          <button type="button" class="btn btn-danger flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+            <i class="fal fa-times-circle me-1"></i>Reject
+          </button>
         </div>
 
         <!-- Approve Modal QC -->
@@ -1581,17 +1583,18 @@ include __DIR__ . '/../../layouts/revision_workflow_panel.php';
 
       <!-- Approve Action — Operation Head -->
       <?php if ($canApproveOP): ?>
-        <div class="row gx-2 mb-3">
-          <div class="col-6">
-            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalOP">
-              <i class="fal fa-user-tie me-1"></i>Approve
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" class="btn flex-grow-1" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalOP">
+            <i class="fal fa-user-tie me-1"></i>Approve
+          </button>
+          <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+            <button type="button" class="btn btn-warning text-dark flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_purchase_orders">
+              <i class="fa-solid fa-rotate-left me-1"></i>Send Back
             </button>
-          </div>
-          <div class="col-6">
-            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
-              <i class="fal fa-times-circle me-1"></i>Reject
-            </button>
-          </div>
+          <?php endif; ?>
+          <button type="button" class="btn btn-danger flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+            <i class="fal fa-times-circle me-1"></i>Reject
+          </button>
         </div>
 
         <!-- Approve Modal OP -->
@@ -1621,17 +1624,18 @@ include __DIR__ . '/../../layouts/revision_workflow_panel.php';
 
       <!-- Approve Action — Board of Director -->
       <?php if ($canApproveBOD): ?>
-        <div class="row gx-2 mb-3">
-          <div class="col-6">
-            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalBOD">
-              <i class="fal fa-crown me-1"></i>Approve
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" class="btn flex-grow-1" style="background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalBOD">
+            <i class="fal fa-crown me-1"></i>Approve
+          </button>
+          <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+            <button type="button" class="btn btn-warning text-dark flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_purchase_orders">
+              <i class="fa-solid fa-rotate-left me-1"></i>Send Back
             </button>
-          </div>
-          <div class="col-6">
-            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
-              <i class="fal fa-times-circle me-1"></i>Reject
-            </button>
-          </div>
+          <?php endif; ?>
+          <button type="button" class="btn btn-danger flex-grow-1" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+            <i class="fal fa-times-circle me-1"></i>Reject
+          </button>
         </div>
 
         <!-- Approve Modal BOD -->

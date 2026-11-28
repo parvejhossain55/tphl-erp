@@ -577,14 +577,17 @@ class Con_ContractorBillController extends Controller
         $openRev = $revSvc->getOpenRevision('contractor_bill_requests', (int)$id);
 
         $isAdmin = in_array($this->userRole, [1, 3], true);
-        $hasAnyApproval = !empty($bill['verified_by'])
-            || !empty($bill['purchase_team_leader_by_id'])
+        $cbCreatorId = (int)($bill['created_by'] ?? 0);
+        $cbVerifiedByOther = !empty($bill['verified_by']) && (int)$bill['verified_by'] !== $cbCreatorId;
+        $cbTlByOther = !empty($bill['purchase_team_leader_by_id']) && (int)$bill['purchase_team_leader_by_id'] !== $cbCreatorId;
+        $hasAnyApproval = $cbVerifiedByOther
+            || $cbTlByOther
             || !empty($bill['purchase_head_approved_by_id'])
             || !empty($bill['qc_approved_by_id'])
             || !empty($bill['approved_by'])
             || in_array($bill['status'], ['qc_approved', 'approved', 'paid', 'partially_paid', 'fully_paid', 'rejected'], true);
 
-        if ($hasAnyApproval && !$isAdmin && empty($openRev)) {
+        if ($hasAnyApproval && !$isAdmin && empty($openRev) && empty($revSvc->getRejectionStatus('contractor_bill_requests', (int)$id)['is_rejected'])) {
             setError('This contractor bill has already been approved at one or more stages and can no longer be edited.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
             exit;
@@ -642,14 +645,17 @@ class Con_ContractorBillController extends Controller
         $openRev = $revSvc->getOpenRevision('contractor_bill_requests', (int)$id);
 
         $isAdmin = in_array($this->userRole, [1, 3], true);
-        $hasAnyApproval = !empty($bill['verified_by'])
-            || !empty($bill['purchase_team_leader_by_id'])
+        $cbCreatorId = (int)($bill['created_by'] ?? 0);
+        $cbVerifiedByOther = !empty($bill['verified_by']) && (int)$bill['verified_by'] !== $cbCreatorId;
+        $cbTlByOther = !empty($bill['purchase_team_leader_by_id']) && (int)$bill['purchase_team_leader_by_id'] !== $cbCreatorId;
+        $hasAnyApproval = $cbVerifiedByOther
+            || $cbTlByOther
             || !empty($bill['purchase_head_approved_by_id'])
             || !empty($bill['qc_approved_by_id'])
             || !empty($bill['approved_by'])
             || in_array($bill['status'], ['qc_approved', 'approved', 'paid', 'partially_paid', 'fully_paid', 'rejected'], true);
 
-        if ($hasAnyApproval && !$isAdmin && empty($openRev)) {
+        if ($hasAnyApproval && !$isAdmin && empty($openRev) && empty($revSvc->getRejectionStatus('contractor_bill_requests', (int)$id)['is_rejected'])) {
             setError('This contractor bill has already been approved at one or more stages and can no longer be edited.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
             exit;
@@ -923,6 +929,8 @@ class Con_ContractorBillController extends Controller
                 $stmtAr->execute();
                 $stmtAr->close();
             }
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('contractor_bill_requests', (int)$id);
             setSuccess($attr['approval_label'] . ' & forwarded to Head of Purchase (Role 17)!');
         } else {
             setError('Verification failed.');
@@ -1037,6 +1045,8 @@ class Con_ContractorBillController extends Controller
                 $stmtAr->execute();
                 $stmtAr->close();
             }
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('contractor_bill_requests', (int)$id);
             setSuccess('Contractor Bill approved by Head of Purchase! Forwarded to QC & Internal Audit.');
         } else {
             setError('Failed to approve as Head of Purchase.');
@@ -1221,6 +1231,8 @@ class Con_ContractorBillController extends Controller
             }
 
             if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {
+                require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('contractor_bill_requests', (int)$id);
                 $escMgtNote = $this->db->real_escape_string($managementNote ?: 'Approved by Management');
 
                 if ($isMgmtUser) {

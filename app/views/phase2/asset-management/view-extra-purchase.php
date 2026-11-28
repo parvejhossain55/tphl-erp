@@ -78,7 +78,7 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                 && (($req['purchase_head_status'] ?? '') !== 'approved') && empty($req['purchase_head_by'])
                 && (($req['qc_audit_status'] ?? '') !== 'approved') && empty($req['qc_audit_by'])
                 && (($req['mgmt_status'] ?? '') !== 'approved') && empty($req['mgmt_by']);
-            $canEditExtraReq = ($isExtraReqUnapproved || $isEpRevOpen) && (((int)($req['requested_by'] ?? 0) === $userId) || in_array($roleId, [1, 3], true));
+            $canEditExtraReq = ($isExtraReqUnapproved || $isEpRevOpen || ($req['overall_status'] ?? '') === 'rejected') && (((int)($req['requested_by'] ?? 0) === $userId) || in_array($roleId, [1, 3], true));
             if ($canEditExtraReq):
             ?>
                 <button type="button" class="btn btn-outline-warning btn-sm px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#editExtraPurchaseModal">
@@ -468,12 +468,17 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                             <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add approval remarks or notes..."></textarea>
                         </div>
 
-                        <div class="d-flex justify-content-between gap-2 pt-1">
-                            <button type="submit" class="btn btn-sm btn-outline-danger px-3 flex-fill" onclick="document.getElementById('viewApprovalStatus').value='rejected'; return confirm('Are you sure you want to REJECT this purchase request?');">
-                                <i class="fa-solid fa-xmark me-1"></i> Reject
-                            </button>
+                        <div class="d-flex flex-wrap justify-content-between gap-2 pt-1">
                             <button type="button" class="btn btn-sm btn-success px-3 flex-fill fw-bold shadow-sm" onclick="handleViewPageApproval('<?= htmlspecialchars($overrideWarningStage, ENT_QUOTES, 'UTF-8') ?>')">
                                 <i class="fa-solid fa-check me-1"></i> Approve Request
+                            </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-sm btn-warning text-dark px-3 flex-fill fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_project_extra_assets">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            <?php endif; ?>
+                            <button type="submit" class="btn btn-sm btn-outline-danger px-3 flex-fill" onclick="document.getElementById('viewApprovalStatus').value='rejected'; return confirm('Are you sure you want to REJECT this purchase request?');">
+                                <i class="fa-solid fa-xmark me-1"></i> Reject
                             </button>
                         </div>
                     </form>

@@ -54,13 +54,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log("[Tipsoi Alert] Pending approvals found! Showing popup.");
                         showTipsoiApprovalAlert();
                         localStorage.setItem('tipsoi_alert_last_shown', Date.now().toString());
-                    } else if (res && res.data && res.data.length === 0) {
-                        console.log("[Tipsoi Alert] No pending approvals.");
+                    } else {
+                        // Also apply cooldown when empty or failed so every page doesn't hammer Tipsoi
                         localStorage.setItem('tipsoi_alert_last_shown', Date.now().toString());
                     }
                 })
                 .catch(err => {
                     console.error("[Tipsoi Alert] API Fetch Error:", err);
+                    // Back off for 15 minutes on error so page navigation stays fast
+                    localStorage.setItem('tipsoi_alert_last_shown', (Date.now() - (15 * 60 * 1000)).toString());
                 });
         }, 3000);
     } else {

@@ -411,6 +411,21 @@ $base_url = $GLOBALS['base_url'];
                                             <i class="bi bi-x-lg"></i>
                                         </button>
                                     <?php endif; ?>
+                                    <?php
+                                    $vCurrUid = (int)($_SESSION['user']['id'] ?? 0);
+                                    $vCurrRid = (int)($_SESSION['user']['role_id'] ?? 0);
+                                    if (($r['status'] ?? '') === 'rejected' && (((int)($r['created_by'] ?? 0) === $vCurrUid) || in_array($vCurrRid, [1, 3], true))):
+                                    ?>
+                                        <button type="button"
+                                                class="btn btn-sm btn-danger ms-1 btn-resubmit-rejected-row"
+                                                title="Resubmit Against Rejection"
+                                                data-module="vendors"
+                                                data-id="<?= (int)$r['id'] ?>"
+                                                data-reason="<?= htmlspecialchars($r['rejection_reason'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                data-redirect="/vendor-enrollment-requests">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Resubmit
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -447,6 +462,7 @@ $base_url = $GLOBALS['base_url'];
 </div>
 
 <!-- Review & Action Modal -->
+<?php include dirname(__DIR__) . '/layouts/resubmit_rejected_list_modal.php'; ?>
 <div class="modal fade" id="enrollmentModal" tabindex="-1" aria-labelledby="enrollmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">

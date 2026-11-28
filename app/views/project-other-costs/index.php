@@ -121,6 +121,25 @@
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
                                                 <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                                <?php
+                                                if (!isset($ocEditMap)) {
+                                                    $ocEditMap = [];
+                                                    $ocDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                                    if ($ocDbConn) {
+                                                        if (!class_exists('RequisitionRevisionService')) {
+                                                            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                                                        }
+                                                        $ocEditMap = (new RequisitionRevisionService($ocDbConn))->getLastEditMap('project_other_costs');
+                                                    }
+                                                }
+                                                $ocLastEdit = $ocEditMap[(int)$row['id']] ?? null;
+                                                if ($ocLastEdit):
+                                                ?>
+                                                    <div class="text-primary mt-1" style="font-size: 0.78rem; line-height: 1.25;" title="<?= htmlspecialchars($ocLastEdit['change_summary'] ?? 'Updated') ?>">
+                                                        <i class="bi bi-pencil-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($ocLastEdit['edited_by_name'] ?? 'User') ?>
+                                                        <div class="text-muted" style="font-size: 0.72rem;"><?= !empty($ocLastEdit['created_at']) ? date('d M Y h:i A', strtotime($ocLastEdit['created_at'])) : '' ?></div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="text-nowrap">
                                                 <div class="d-flex align-items-center gap-1 flex-nowrap">
@@ -239,6 +258,25 @@
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
                                                 <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                                <?php
+                                                if (!isset($ocEditMap)) {
+                                                    $ocEditMap = [];
+                                                    $ocDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                                    if ($ocDbConn) {
+                                                        if (!class_exists('RequisitionRevisionService')) {
+                                                            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                                                        }
+                                                        $ocEditMap = (new RequisitionRevisionService($ocDbConn))->getLastEditMap('project_other_costs');
+                                                    }
+                                                }
+                                                $ocLastEdit = $ocEditMap[(int)$row['id']] ?? null;
+                                                if ($ocLastEdit):
+                                                ?>
+                                                    <div class="text-primary mt-1" style="font-size: 0.78rem; line-height: 1.25;" title="<?= htmlspecialchars($ocLastEdit['change_summary'] ?? 'Updated') ?>">
+                                                        <i class="bi bi-pencil-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($ocLastEdit['edited_by_name'] ?? 'User') ?>
+                                                        <div class="text-muted" style="font-size: 0.72rem;"><?= !empty($ocLastEdit['created_at']) ? date('d M Y h:i A', strtotime($ocLastEdit['created_at'])) : '' ?></div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="d-flex gap-2">
@@ -339,6 +377,25 @@
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
                                                 <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                                <?php
+                                                if (!isset($ocEditMap)) {
+                                                    $ocEditMap = [];
+                                                    $ocDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                                    if ($ocDbConn) {
+                                                        if (!class_exists('RequisitionRevisionService')) {
+                                                            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                                                        }
+                                                        $ocEditMap = (new RequisitionRevisionService($ocDbConn))->getLastEditMap('project_other_costs');
+                                                    }
+                                                }
+                                                $ocLastEdit = $ocEditMap[(int)$row['id']] ?? null;
+                                                if ($ocLastEdit):
+                                                ?>
+                                                    <div class="text-primary mt-1" style="font-size: 0.78rem; line-height: 1.25;" title="<?= htmlspecialchars($ocLastEdit['change_summary'] ?? 'Updated') ?>">
+                                                        <i class="bi bi-pencil-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($ocLastEdit['edited_by_name'] ?? 'User') ?>
+                                                        <div class="text-muted" style="font-size: 0.72rem;"><?= !empty($ocLastEdit['created_at']) ? date('d M Y h:i A', strtotime($ocLastEdit['created_at'])) : '' ?></div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="d-flex gap-2">

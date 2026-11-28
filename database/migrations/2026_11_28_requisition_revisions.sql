@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS `requisition_revisions` (
     `new_amount` DECIMAL(15,2) NULL DEFAULT NULL,
     `resubmitted_at` DATETIME NULL DEFAULT NULL,
     `resubmitted_note` TEXT NULL DEFAULT NULL,
+    `revision_type` VARCHAR(30) NOT NULL DEFAULT 'review' COMMENT 'review = send back, rejection_appeal = creator resubmitted after rejection',
+    `attachment_path` VARCHAR(255) NULL DEFAULT NULL COMMENT 'Optional supporting proof uploaded on rejection appeal',
     `resolved_at` DATETIME NULL DEFAULT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

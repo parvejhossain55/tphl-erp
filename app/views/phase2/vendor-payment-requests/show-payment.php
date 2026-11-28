@@ -189,12 +189,14 @@ $isImg = function($file) {
         $latestRevision = $latestRevision ?? null;
         $isVprRevOpen   = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
         $vprCurrentUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $vprTlByOther = !empty($request['purchase_team_leader_by_id'])
+            && (int)$request['purchase_team_leader_by_id'] !== (int)($request['created_by'] ?? 0);
         $vprIsUnapproved = in_array($request['status'] ?? '', ['Draft', 'Submitted'], true)
-            && empty($request['purchase_team_leader_by_id'])
+            && !$vprTlByOther
             && empty($request['purchase_head_approved_by_id'])
             && empty($request['qc_approved_by_id'])
             && empty($request['approved_by']);
-        $canEditVpr = ($vprIsUnapproved || $isVprRevOpen) && (((int)($request['created_by'] ?? 0) === $vprCurrentUserId) || in_array((int)$userRole, [1, 3], true));
+        $canEditVpr = ($vprIsUnapproved || $isVprRevOpen || strtolower($request['status'] ?? '') === 'rejected') && (((int)($request['created_by'] ?? 0) === $vprCurrentUserId) || in_array((int)$userRole, [1, 3], true));
         if ($canEditVpr):
         ?>
             <button type="button" class="btn btn-outline-warning btn-sm ms-2 fw-bold" data-bs-toggle="modal" data-bs-target="#editVprModal">
@@ -1826,10 +1828,15 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <label class="form-label fw-semibold mb-1.5">Head of Purchase Note <span class="text-muted">(Optional)</span></label>
                             <textarea name="purchase_head_note" class="form-control" rows="2" placeholder="Write departmental approval note..."></textarea>
                         </div>
-                        <div class="d-flex gap-2 pt-1">
+                        <div class="d-flex flex-wrap gap-2 pt-1">
                             <button type="button" id="btnPhApprove" class="btn btn-primary flex-grow-1 fw-bold py-2">
                                 <i class="bi bi-check-circle me-1"></i> Approve as Head of Purchase
                             </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_vendor_payment_requests">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            <?php endif; ?>
                             <button type="button" id="btnPhReject" class="btn btn-danger flex-grow-1 fw-bold py-2">
                                 <i class="bi bi-x-circle me-1"></i> Reject
                             </button>
@@ -1882,10 +1889,15 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                 <label class="form-label fw-semibold mb-1.5">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
                                 <textarea name="qc_note" class="form-control" rows="2" placeholder="Write observation, material verification notes or comments..."></textarea>
                             </div>
-                            <div class="d-flex gap-2 pt-1">
+                            <div class="d-flex flex-wrap gap-2 pt-1">
                                 <button type="button" id="btnQcApprove" class="btn btn-info text-white flex-grow-1 fw-bold py-2">
                                     <i class="bi bi-shield-check me-1"></i> Approve & Verify as QC
                                 </button>
+                                <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                    <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_vendor_payment_requests">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                    </button>
+                                <?php endif; ?>
                                 <button type="button" id="btnQcReject" class="btn btn-danger flex-grow-1 fw-bold py-2">
                                     <i class="bi bi-x-circle me-1"></i> Reject
                                 </button>
@@ -1967,11 +1979,16 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <textarea name="approval_note" class="form-control" rows="2"
                                 placeholder="Leave a note..."></textarea>
                         </div>
-                        <div class="d-flex gap-2 pt-1">
+                        <div class="d-flex flex-wrap gap-2 pt-1">
                             <button type="button" id="approveVprBtn" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> flex-grow-1 fw-bold py-2">
                                 <i class="bi bi-check-circle me-1"></i>
                                 <?= $isOpHeadAction ? 'Approve as Operation Head' : (($isApproved) ? 'Approve Additional' : 'Approve Payment') ?>
                             </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_vendor_payment_requests">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            <?php endif; ?>
                             <?php if ($canReject): ?>
                                 <button type="button" id="rejectVprBtn" class="btn btn-danger flex-grow-1 fw-bold py-2">
                                     <i class="bi bi-x-circle me-1"></i> Reject
