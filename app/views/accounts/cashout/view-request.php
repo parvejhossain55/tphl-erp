@@ -65,9 +65,27 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
         <div class="card__wrapper">
             <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <h5 class="card__title">Cashout Request #<?= $request['id'] ?? '' ?></h5>
-                <a href="<?= $GLOBALS['base_url'] ?><?= isset($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' ? '/client-refunds' : '/cashout-requests' ?>" class="btn btn-secondary">
-                    <i class="fa-light fa-arrow-left me-2"></i> Back
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <?php
+                    $coUserId = (int)($_SESSION['user']['id'] ?? 0);
+                    $coRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                    $isCashoutUnapproved = (($request['status'] ?? '') === 'pending')
+                        && empty($request['qc_approved_by_id'])
+                        && empty($request['approved_by'])
+                        && !$isAlreadyApproved
+                        && empty($ahInfo['is_op_head_approved'])
+                        && empty($ahInfo['is_accounts_head_approved']);
+                    $canEditCashout = $isCashoutUnapproved && (((int)($request['requested_by'] ?? 0) === $coUserId) || in_array($coRoleId, [1, 3], true));
+                    if ($canEditCashout):
+                    ?>
+                        <button type="button" class="btn btn-outline-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editCashoutModal">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit Request
+                        </button>
+                    <?php endif; ?>
+                    <a href="<?= $GLOBALS['base_url'] ?><?= isset($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' ? '/client-refunds' : '/cashout-requests' ?>" class="btn btn-secondary">
+                        <i class="fa-light fa-arrow-left me-2"></i> Back
+                    </a>
+                </div>
             </div>
             <div class="card__body">
                 <?php if (!empty($_SESSION['success'])): ?>
@@ -86,6 +104,13 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 <?php endif; ?>
 
                 <?php 
+                $revModuleTable   = 'cashout_requests';
+                $revSourceId      = (int)($request['id'] ?? 0);
+                $revCreatorUserId = (int)($request['requested_by'] ?? 0);
+                $revCanSendBack   = false;
+                $revLatest        = null;
+                include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+
                 if (!empty($ahInfo['has_request'])) {
                     $sourceTable = 'cashout_requests';
                     $sourceId = (int)$request['id'];
@@ -940,5 +965,78 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+</script>
+<?php endif; ?>
+
+<?php if ($canEditCashout ?? false): ?>
+<!-- Edit Cashout Request Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editCashoutModal" tabindex="-1" aria-labelledby="editCashoutModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editCashoutModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Cashout Request #<?= (int)($request['id'] ?? 0) ?>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-cashout-request">
+                    <input type="hidden" name="id" value="<?= (int)($request['id'] ?? 0) ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Paid To <span class="text-danger">*</span></label>
+                        <input type="text" name="purpose_paid_to" class="form-control" value="<?= htmlspecialchars($request['purpose_paid_to'] ?? '') ?>" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Amount (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="1" name="amount" class="form-control" value="<?= htmlspecialchars($request['amount'] ?? '') ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Payment Method</label>
+                            <select name="payment_method" class="form-select">
+                                <?php $curPm = $request['payment_method'] ?? 'Cash'; ?>
+                                <option value="Cash" <?= ($curPm === 'Cash') ? 'selected' : '' ?>>Cash</option>
+                                <option value="Bank Transfer" <?= ($curPm === 'Bank Transfer') ? 'selected' : '' ?>>Bank Transfer</option>
+                                <option value="Cheque" <?= ($curPm === 'Cheque') ? 'selected' : '' ?>>Cheque</option>
+                                <option value="Mobile Banking" <?= ($curPm === 'Mobile Banking') ? 'selected' : '' ?>>Mobile Banking</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Description</label>
+                        <textarea name="description" class="form-control" rows="3"><?= htmlspecialchars($request['description'] ?? '') ?></textarea>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initCashoutEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initCashoutEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editCashoutModal').length && $('#editCashoutModal').parent().prop('tagName') !== 'BODY') {
+                $('#editCashoutModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCashoutEditModal);
+    } else {
+        initCashoutEditModal();
+    }
+})();
 </script>
 <?php endif; ?>

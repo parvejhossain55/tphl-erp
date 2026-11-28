@@ -45,6 +45,32 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
 </div>
 
 <section class="section">
+            <?php
+            $prCanSendBack = false;
+            $prReturnStage = 'pm';
+            $prReturnStageLabel = 'PM / PM Head';
+            if (!in_array($reqUserRole, [33, 34, 35], true) && !in_array($pr['status'] ?? '', ['Rejected'], true)) {
+                if (in_array($pr['status'] ?? '', ['Submitted', 'Draft'], true) && in_array($reqUserRole, [15, 22, 1, 3], true)) {
+                    $prCanSendBack = true; $prReturnStage = 'pm'; $prReturnStageLabel = 'PM / PM Head';
+                } elseif (($pr['status'] ?? '') === 'Approved' && in_array($reqUserRole, [17, 20, 24, 1, 3], true)) {
+                    $prCanSendBack = true;
+                    $prReturnStage = ($reqUserRole === 17) ? 'purchase_head' : (($reqUserRole === 24) ? 'qc' : 'op_head');
+                    $prReturnStageLabel = ($reqUserRole === 17) ? 'Purchase Head' : (($reqUserRole === 24) ? 'QC & Internal Audit' : 'Operation Head / Admin');
+                }
+            }
+            $revModuleTable      = 'purchase_requests';
+            $revSourceId         = (int)$pr['id'];
+            $revCreatorUserId    = (int)($pr['created_by'] ?? 0);
+            $revCanSendBack      = $prCanSendBack;
+            $revReturnStage      = $prReturnStage;
+            $revReturnStageLabel = $prReturnStageLabel;
+            $revRedirectUrl      = '/con-purchase-request/' . (int)$pr['id'];
+            $revEditModalTarget  = '';
+            $revEditLinkUrl      = $base_url . '/con-purchase-request-edit/' . (int)$pr['id'];
+            $revLatest           = $latestRevision ?? null;
+            include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+            ?>
+
             <!-- ══════════ NEXT ACTION TRACKER ══════════ -->
             <?php if (!empty($nextStepInfo)): ?>
             <div class="card__wrapper shadow-sm mb-4" style="border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.03); border-radius: 14px;">

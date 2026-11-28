@@ -748,6 +748,10 @@ class Con_PurchaseRequestController extends Controller
             'linkedPos'     => $linkedPos,
             'maxLeadTime'   => $maxLeadTime,
             'leadTimeBreakdown' => $leadTimeBreakdown,
+            'latestRevision' => (function() use ($id) {
+                require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                return (new \RequisitionRevisionService($this->db))->getLatestActiveOrResubmitted('purchase_requests', (int)$id);
+            })(),
         ]);
     }
 
@@ -1432,7 +1436,23 @@ class Con_PurchaseRequestController extends Controller
         $result = $this->prModel->update($id, $data, $items);
 
         if ($result['success']) {
-            if ($wasPoRejected) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            $revSvc  = new \RequisitionRevisionService($this->db);
+            $prEditSum = \RequisitionRevisionService::buildChangeSummary([
+                'Purpose'       => [$pr['purpose'] ?? '', $data['purpose'] ?? ''],
+                'Required Date' => [$pr['required_date'] ?? '', $data['required_date'] ?? ''],
+                'Notes'         => [$pr['notes'] ?? '', $data['notes'] ?? ''],
+            ]);
+            if ($prEditSum === 'Details updated') {
+                $prEditSum = 'PR items / details updated (' . count($items) . ' item(s))';
+            }
+            $revSvc->logEdit('purchase_requests', (int)$id, $prEditSum);
+            $openRev = $revSvc->getOpenRevision('purchase_requests', (int)$id);
+            if (!empty($openRev)) {
+                $revSvc->markResubmitted('purchase_requests', (int)$id, null, trim($_POST['resubmitted_note'] ?? ''));
+                setSuccess("Purchase Request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+            } elseif ($wasPoRejected) {
                 setSuccess("Purchase Request #{$id} has been revised (Revision #{$revisionCount}). You can now review CST and re-generate the Purchase Order.");
                 header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
             } else {

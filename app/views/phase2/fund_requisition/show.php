@@ -136,16 +136,27 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
         
         <div class="d-flex flex-wrap gap-2 no-print align-items-center">
             <?php 
+            $latestRevision = $latestRevision ?? null;
+            $isFrRevOpen    = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
+            $initialExpectedFrStatus = ((int)($req['is_dept_approval_required'] ?? 0) === 1) ? 'pending_dept' : 'pending_qc';
             $isRequisitionApproved = (
+                ($req['status'] ?? '') !== $initialExpectedFrStatus ||
                 ($req['dept_head_status'] ?? '') === 'approved' ||
                 !empty($req['dept_head_approved_by']) ||
-                in_array($req['status'] ?? '', ['approved', 'paid']) ||
+                !empty($req['qc_approved_by']) ||
+                in_array($req['status'] ?? '', ['approved', 'partially_approved', 'paid', 'partially_paid', 'rejected'], true) ||
                 !empty($req['approved_by']) ||
                 !empty($req['paid_by'])
             );
+            $canEditReq = (!$isRequisitionApproved || $isFrRevOpen) && ($isOwner || in_array($sessionRoleId, [1, 3], true));
             $canDeleteReq = !$isRequisitionApproved && ($isOwner || $isAdmin);
-            if ($canDeleteReq): 
+            if ($canEditReq):
             ?>
+                <button type="button" class="btn btn-outline-warning btn-sm px-3 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editFundReqModal">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> <?= $isFrRevOpen ? 'Edit &amp; Resubmit' : 'Edit Request' ?>
+                </button>
+            <?php endif; ?>
+            <?php if ($canDeleteReq): ?>
                 <form action="<?php echo $base; ?>/fund-requisitions/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this requisition request?')">
                     <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
                 <input type="hidden" name="approve_mode" id="frApproveModeInput" value="override">
@@ -185,6 +196,37 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
             </a>
         </div>
     </div>
+
+    <?php
+    $frCanSendBack = false;
+    $frReturnStage = 'approver';
+    $frReturnStageLabel = 'Approver';
+    $frIsReadOnly = in_array($sessionRoleId, [33, 34, 35], true);
+    if (!$frIsReadOnly && !in_array($req['status'] ?? '', ['paid', 'rejected'], true)) {
+        if (($req['status'] ?? '') === 'pending_dept' && ($sessionUserId === (int)($req['requester_reporting_boss_id'] ?? $req['reporting_user_id'] ?? 0) || in_array((int)($req['department_id'] ?? 0), $deptHeadDeptIds ?? [], true) || in_array($sessionRoleId, [1, 3], true))) {
+            $frCanSendBack = true; $frReturnStage = 'dept_head'; $frReturnStageLabel = 'Department Head';
+        } elseif (($req['status'] ?? '') === 'pending_qc' && in_array($sessionRoleId, [13, 24, 25, 1, 3], true)) {
+            $frCanSendBack = true; $frReturnStage = 'qc'; $frReturnStageLabel = 'QC & Internal Audit';
+        } elseif (in_array($req['status'] ?? '', ['pending', 'partially_approved'], true) && ($canOpHeadApprove || $canMgmtApprove)) {
+            $frCanSendBack = true;
+            $frReturnStage = $canOpHeadApprove ? 'op_head' : 'mgmt';
+            $frReturnStageLabel = $canOpHeadApprove ? 'Admin & Operation Head' : 'Management';
+        } elseif (($req['status'] ?? '') === 'approved' && empty($ahInfo['is_accounts_head_approved']) && in_array($sessionRoleId, [30, 1, 3], true)) {
+            $frCanSendBack = true; $frReturnStage = 'accounts_head'; $frReturnStageLabel = 'Accounts Head';
+        }
+    }
+    $revModuleTable      = 'fund_requisitions';
+    $revSourceId         = (int)$req['id'];
+    $revCreatorUserId    = (int)($req['requested_by'] ?? 0);
+    $revCanSendBack      = $frCanSendBack;
+    $revReturnStage      = $frReturnStage;
+    $revReturnStageLabel = $frReturnStageLabel;
+    $revRedirectUrl      = '/fund-requisitions/view/' . (int)$req['id'];
+    $revEditModalTarget  = '#editFundReqModal';
+    $revEditLinkUrl      = '';
+    $revLatest           = $latestRevision ?? null;
+    include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+    ?>
 
     <!-- PRINT-ONLY HEADER -->
     <div class="print-only-header d-none">
@@ -252,7 +294,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
     <?php endif; ?>
 
     <!-- TOP SUMMARY STATS -->
-    <div class="row g-3 mb-4 no-print">
+    <div class="row  mb-4 no-print">
         <div class="col-sm-6 col-xl-3">
             <div class="card border-0 shadow-sm h-100 rounded-3">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
@@ -338,7 +380,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                     </h6>
                 </div>
                 <div class="card-body p-4">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-6">
                             <div class="p-2.5 px-3 bg-light rounded border border-light-subtle">
                                 <small class="text-muted d-block fs-11 text-uppercase fw-semibold mb-1"><i class="fa-solid fa-hashtag me-1"></i>Requisition ID</small>
@@ -585,10 +627,15 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                     $canApproveDept = ($sessionUserId == ($req['requester_reporting_boss_id'] ?? 0) || (!empty($req['department_id']) && in_array((int)$req['department_id'], $deptHeadDeptIds ?? [], true)) || in_array($sessionRoleId, [1, 3, 33]));
                                     if ($req['status'] === 'pending_dept' && $canApproveDept): 
                                     ?>
-                                        <div class="d-flex gap-2 mt-2">
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
                                             <button class="btn btn-sm btn-success shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#deptApproveModal">
                                                 <i class="fa-solid fa-check me-1"></i> Approve as Dept Head
                                             </button>
+                                            <?php if (!$isFrRevOpen): ?>
+                                            <button type="button" class="btn btn-sm btn-warning text-dark shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_fund_requisitions">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                            </button>
+                                            <?php endif; ?>
                                             <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#deptRejectModal">
                                                 <i class="fa-solid fa-xmark me-1"></i> Reject
                                             </button>
@@ -610,10 +657,15 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         Awaiting approval from QC & Internal Audit Head (Role 24).
                                     </p>
                                     <?php if (in_array($sessionRoleId, [13, 24, 25, 1, 3])): ?>
-                                        <div class="d-flex gap-2 mt-2">
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
                                             <button class="btn btn-sm btn-info text-white shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
                                                 <i class="fa-solid fa-check me-1"></i> Approve as QC Head
                                             </button>
+                                            <?php if (!$isFrRevOpen): ?>
+                                            <button type="button" class="btn btn-sm btn-warning text-dark shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_fund_requisitions">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                            </button>
+                                            <?php endif; ?>
                                             <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcRejectModal">
                                                 <i class="fa-solid fa-xmark me-1"></i> Reject
                                             </button>
@@ -1027,10 +1079,15 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                                         <?php if ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [20, 32])): ?>
                                             <?php /* Op Head action button is shown in the Admin & Operation Head step above */ ?>
                                         <?php else: ?>
-                                            <div class="d-flex gap-2 mt-2">
+                                            <div class="d-flex flex-wrap gap-2 mt-2">
                                                 <button class="btn btn-sm btn-primary shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#approveModal">
                                                     <i class="fa-solid fa-stamp me-1"></i> <?php echo $isMgmtPartial ? 'Approve Remaining Balance' : 'Management Approve'; ?>
                                                 </button>
+                                                <?php if (!$isFrRevOpen && $frCanSendBack): ?>
+                                                <button type="button" class="btn btn-sm btn-warning text-dark shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_fund_requisitions">
+                                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                                </button>
+                                                <?php endif; ?>
                                                 <button class="btn btn-sm btn-danger shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
                                                     <i class="fa-solid fa-xmark me-1"></i> Reject
                                                 </button>
@@ -1852,3 +1909,89 @@ if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'
     }
 })();
 </script>
+
+<?php if ($canEditReq ?? false): ?>
+<!-- Edit Fund Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editFundReqModal" tabindex="-1" aria-labelledby="editFundReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editFundReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Fund Requisition #<?= (int)$req['id'] ?>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/fund-requisitions/update/<?= (int)$req['id'] ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" <?= (($req['requisition_type'] ?? '') === 'petty_cash') ? 'max="10000"' : '' ?> name="amount" class="form-control" value="<?= htmlspecialchars($req['amount'] ?? '') ?>" required>
+                    </div>
+                    <?php if (($req['requisition_type'] ?? 'general') !== 'petty_cash'): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Category</label>
+                        <input type="text" name="category" class="form-control" value="<?= htmlspecialchars($req['category'] ?? 'Other Expense') ?>">
+                    </div>
+                    <?php else: ?>
+                    <input type="hidden" name="category" value="Petty Cash">
+                    <?php endif; ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isFrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (($req['category'] ?? '') === 'Transport' || !empty($req['location'])): ?>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Location / Destination</label>
+                            <input type="text" name="location" class="form-control" value="<?= htmlspecialchars($req['location'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Mode of Transport</label>
+                            <input type="text" name="mode_of_transport" class="form-control" value="<?= htmlspecialchars($req['mode_of_transport'] ?? '') ?>">
+                        </div>
+                        <div class="col-12 mt-2">
+                            <label class="form-label fw-bold text-dark">Purpose to Visit</label>
+                            <input type="text" name="purpose_to_visit" class="form-control" value="<?= htmlspecialchars($req['purpose_to_visit'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initFundEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initFundEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editFundReqModal').length && $('#editFundReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editFundReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFundEditModal);
+    } else {
+        initFundEditModal();
+    }
+})();
+</script>
+<?php endif; ?>

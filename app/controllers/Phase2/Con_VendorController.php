@@ -211,6 +211,27 @@ class Con_VendorController extends Controller
             exit;
         }
 
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+        if (($vendor['status'] ?? '') === 'pending_approval' && !$isAdmin) {
+            $hasAnyApproval = ($vendor['dept_head_status'] ?? '') === 'approved'
+                || ($vendor['purchase_head_status'] ?? '') === 'approved'
+                || ($vendor['role_20_status'] ?? '') === 'approved'
+                || ($vendor['role_38_status'] ?? '') === 'approved'
+                || ($vendor['management_status'] ?? '') === 'approved';
+            if ($hasAnyApproval) {
+                setError('This vendor enrollment request has already been approved at one or more stages and can no longer be edited.');
+                header("Location: {$GLOBALS['base_url']}/con-vendors");
+                exit;
+            }
+            if ((int)($vendor['created_by'] ?? 0) > 0 && (int)$vendor['created_by'] !== $userId) {
+                setError('Only the creator or Admin can edit a pending vendor enrollment request before approval.');
+                header("Location: {$GLOBALS['base_url']}/con-vendors");
+                exit;
+            }
+        }
+
         $this->view('phase2/vendors/edit-vendor', [
             'current_route' => 'con-vendors',
             'page_title'    => 'Edit Vendor',
@@ -233,6 +254,27 @@ class Con_VendorController extends Controller
             setError('Vendor not found.');
             header("Location: {$GLOBALS['base_url']}/con-vendors");
             exit;
+        }
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+        if (($existing['status'] ?? '') === 'pending_approval' && !$isAdmin) {
+            $hasAnyApproval = ($existing['dept_head_status'] ?? '') === 'approved'
+                || ($existing['purchase_head_status'] ?? '') === 'approved'
+                || ($existing['role_20_status'] ?? '') === 'approved'
+                || ($existing['role_38_status'] ?? '') === 'approved'
+                || ($existing['management_status'] ?? '') === 'approved';
+            if ($hasAnyApproval) {
+                setError('This vendor enrollment request has already been approved at one or more stages and can no longer be edited.');
+                header("Location: {$GLOBALS['base_url']}/con-vendors");
+                exit;
+            }
+            if ((int)($existing['created_by'] ?? 0) > 0 && (int)$existing['created_by'] !== $userId) {
+                setError('Only the creator or Admin can edit a pending vendor enrollment request before approval.');
+                header("Location: {$GLOBALS['base_url']}/con-vendors");
+                exit;
+            }
         }
 
         $companyName        = trim($_POST['company_name'] ?? '');
