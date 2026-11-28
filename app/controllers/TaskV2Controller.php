@@ -1765,7 +1765,7 @@ class TaskV2Controller extends Controller
         $statusFilter = $_GET['status'] ?? '';
         $typeFilter = $_GET['type'] ?? 'assigned_self'; // assigned_self, assigned, self
         $tab = $_GET['tab'] ?? 'all'; // all, top_performers, needs_attention
-        $sort = $_GET['sort'] ?? 'score_desc'; // score_desc, score_asc, total_desc, name_asc
+        $sort = $_GET['sort'] ?? 'default'; // default (tab-aware), score_desc, score_asc, total_desc, name_asc
 
         // Collect all team user IDs for project querying and filtering
         $teamUserIds = [];
@@ -1802,6 +1802,7 @@ class TaskV2Controller extends Controller
                 SELECT DISTINCT e.id as employee_id,
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id,
+                       e.is_dept_head, e.is_team_leader, e.is_sales_co_leader,
                        e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM tasks tt
@@ -1846,6 +1847,10 @@ class TaskV2Controller extends Controller
                 continue;
             }
 
+            $isRoleDeptHead = ((int)($m['is_dept_head'] ?? 0) === 1) || ($viewingHod && (int)($viewingHod['employee_id'] ?? 0) === $empId);
+            $isRoleTeamLeader = ((int)($m['is_team_leader'] ?? 0) === 1) || ((int)($m['is_sales_co_leader'] ?? 0) === 1);
+            $rolePriority = $isRoleDeptHead ? 3 : ($isRoleTeamLeader ? 2 : 1);
+
             $stat = [
                 'employee_id' => $empId,
                 'user_id' => $uId,
@@ -1855,33 +1860,48 @@ class TaskV2Controller extends Controller
                 'department' => $m['department_name'] ?? 'General',
                 'employee_type' => $m['employee_type'] ?? '',
                 'employee_status' => $m['employee_status'] ?? '',
+                'role_priority' => $rolePriority,
+                'is_role_head' => $isRoleDeptHead,
+                'is_role_leader' => $isRoleTeamLeader,
                 'total' => 0,
                 'assigned' => 0,
                 'self' => 0,
+                'contributed' => 0,
                 'completed' => 0,
                 'in_progress' => 0,
                 'overdue' => 0,
+                'review_cc_open' => 0,
                 'on_time_pct' => 0,
+                'before_deadline_pct' => 0,
+                'avg_rating' => 0,
+                'rated_count' => 0,
+                'feedback_pct' => 0,
                 'completion_rate' => 0,
+                'kpi_score' => 0,
                 'score' => 0,
                 'badge' => 'No Tasks',
                 'badge_class' => 'badge-perf-watch',
-                'trend' => '0.0%'
+                'trend' => '0%'
             ];
 
             if ($uId > 0) {
-                $where = "t.user_id = $uId";
+                $collabMatch = "(t.collaborator_user_ids IS NOT NULL AND t.collaborator_user_ids != '' AND FIND_IN_SET($uId, REPLACE(REPLACE(REPLACE(t.collaborator_user_ids,'[',''),']',''),' ','')) > 0)";
+                $involvedCond = "(t.user_id = $uId OR $collabMatch)";
+
+                if ($typeFilter === 'assigned') {
+                    $where = "((t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id AND t.user_id = $uId) OR $collabMatch)";
+                } elseif ($typeFilter === 'self') {
+                    $where = "(t.assigned_by IS NULL OR t.assigned_by = t.user_id) AND t.user_id = $uId";
+                } else {
+                    $where = $involvedCond;
+                }
+
                 if (!empty($monthFilter) && $monthFilter !== 'all_time') {
                     $mSafe = $this->db->real_escape_string($monthFilter);
                     $where .= " AND DATE_FORMAT(t.created_at, '%Y-%m') = '$mSafe'";
                 }
                 if ($projectFilter > 0) {
                     $where .= " AND t.todo_project_id = $projectFilter";
-                }
-                if ($typeFilter === 'assigned') {
-                    $where .= " AND (t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id)";
-                } elseif ($typeFilter === 'self') {
-                    $where .= " AND (t.assigned_by IS NULL OR t.assigned_by = t.user_id)";
                 }
                 if ($statusFilter === 'completed') {
                     $where .= " AND (t.status = 'completed' OR t.progress >= 100)";
@@ -1894,14 +1914,18 @@ class TaskV2Controller extends Controller
                 $q = "
                     SELECT 
                         COUNT(*) as total,
-                        COALESCE(SUM(CASE WHEN t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id THEN 1 ELSE 0 END), 0) as assigned_count,
-                        COALESCE(SUM(CASE WHEN t.assigned_by IS NULL OR t.assigned_by = t.user_id THEN 1 ELSE 0 END), 0) as self_count,
+                        COALESCE(SUM(CASE WHEN t.user_id = $uId AND t.assigned_by IS NOT NULL AND t.assigned_by != t.user_id THEN 1 ELSE 0 END), 0) as assigned_count,
+                        COALESCE(SUM(CASE WHEN t.user_id = $uId AND (t.assigned_by IS NULL OR t.assigned_by = t.user_id) THEN 1 ELSE 0 END), 0) as self_count,
+                        COALESCE(SUM(CASE WHEN t.user_id != $uId AND $collabMatch THEN 1 ELSE 0 END), 0) as contributed_count,
                         COALESCE(SUM(CASE WHEN t.status = 'completed' OR t.progress >= 100 THEN 1 ELSE 0 END), 0) as completed,
-                        COALESCE(SUM(CASE WHEN (t.status = 'completed' OR t.progress >= 100) AND (t.deadline IS NULL OR t.updated_at <= CONCAT(DATE(t.deadline), ' 23:59:59')) THEN 1 ELSE 0 END), 0) as on_time_completed,
+                        COALESCE(SUM(CASE WHEN (t.status = 'completed' OR t.progress >= 100) AND (t.deadline IS NULL OR COALESCE(t.completed_at, t.updated_at, t.created_at) <= CONCAT(DATE(t.deadline), ' 23:59:59')) THEN 1 ELSE 0 END), 0) as on_time_completed,
+                        COALESCE(SUM(CASE WHEN (t.status = 'completed' OR t.progress >= 100) AND t.deadline IS NOT NULL AND DATE(COALESCE(t.completed_at, t.updated_at, t.created_at)) < DATE(t.deadline) THEN 1 ELSE 0 END), 0) as before_deadline_completed,
                         COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.deadline IS NULL OR CONCAT(DATE(t.deadline), ' 23:59:59') >= NOW()) THEN 1 ELSE 0 END), 0) as in_progress,
                         COALESCE(SUM(CASE WHEN (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline IS NOT NULL AND CONCAT(DATE(t.deadline), ' 23:59:59') < NOW() THEN 1 ELSE 0 END), 0) as overdue,
                         COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND t.deadline BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) as due_this_week,
-                        COALESCE(SUM(CASE WHEN t.created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01') THEN 1 ELSE 0 END), 0) as tasks_this_month
+                        COALESCE(SUM(CASE WHEN t.created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01') THEN 1 ELSE 0 END), 0) as tasks_this_month,
+                        AVG(CASE WHEN t.satisfaction_rating BETWEEN 1 AND 5 THEN t.satisfaction_rating ELSE NULL END) as avg_rating,
+                        COALESCE(SUM(CASE WHEN t.satisfaction_rating BETWEEN 1 AND 5 THEN 1 ELSE 0 END), 0) as rated_count
                     FROM tasks t
                     WHERE $where
                 ";
@@ -1910,10 +1934,13 @@ class TaskV2Controller extends Controller
                     $tot = (int)$r['total'];
                     $comp = (int)$r['completed'];
                     $onTimeComp = (int)$r['on_time_completed'];
+                    $beforeDlComp = (int)$r['before_deadline_completed'];
                     $inp = (int)$r['in_progress'];
                     $over = (int)$r['overdue'];
                     $dueWk = (int)$r['due_this_week'];
                     $thisM = (int)$r['tasks_this_month'];
+                    $ratedCount = (int)$r['rated_count'];
+                    $avgRating = $ratedCount > 0 ? round((float)$r['avg_rating'], 2) : 0;
 
                     $stat['total'] = $tot;
                     $stat['completed'] = $comp;
@@ -1921,43 +1948,48 @@ class TaskV2Controller extends Controller
                     $stat['overdue'] = $over;
                     $stat['assigned'] = (int)$r['assigned_count'];
                     $stat['self'] = (int)$r['self_count'];
+                    $stat['contributed'] = (int)$r['contributed_count'];
+                    $stat['avg_rating'] = $avgRating;
+                    $stat['rated_count'] = $ratedCount;
 
                     if ($tot > 0) {
                         $stat['completion_rate'] = round(($comp / $tot) * 100);
-                        
-                        // Actual On-Time Delivery Rate (completed on or before deadline)
+
+                        // On-Time Delivery Rate (completed on or before deadline)
                         $onTimePct = $comp > 0 ? round(($onTimeComp / $comp) * 100) : 0;
                         $stat['on_time_pct'] = $onTimePct;
 
-                        // Composite Performance Score
-                        $score = max(0, min(99, round(($stat['completion_rate'] * 0.6) + ($stat['on_time_pct'] * 0.4))));
-                        $stat['score'] = $score;
+                        // Before-Deadline (Early) Completion Rate
+                        $beforeDlPct = $comp > 0 ? round(($beforeDlComp / $comp) * 100) : 0;
+                        $stat['before_deadline_pct'] = $beforeDlPct;
 
-                        if ($score >= 90) {
-                            $stat['badge'] = "Excellent - $score";
+                        // Feedback Quality % (from 1-5 satisfaction_rating)
+                        $feedbackPct = $ratedCount > 0 ? round(($avgRating / 5) * 100) : 0;
+                        $stat['feedback_pct'] = $feedbackPct;
+
+                        // Overall KPI % (unified 4-factor formula)
+                        $kpiScore = $this->computeKpiScore($stat['completion_rate'], $onTimePct, $beforeDlPct, $avgRating, $ratedCount);
+                        $stat['kpi_score'] = $kpiScore;
+                        $stat['score'] = $kpiScore;
+
+                        if ($kpiScore >= 85) {
+                            $stat['badge'] = "Excellent - $kpiScore";
                             $stat['badge_class'] = "badge-perf-excellent";
-                        } elseif ($score >= 82) {
-                            $stat['badge'] = "Strong - $score";
+                        } elseif ($kpiScore >= 75) {
+                            $stat['badge'] = "Strong - $kpiScore";
                             $stat['badge_class'] = "badge-perf-strong";
-                        } elseif ($score >= 74) {
-                            $stat['badge'] = "On Track - $score";
+                        } elseif ($kpiScore >= 65) {
+                            $stat['badge'] = "On Track - $kpiScore";
                             $stat['badge_class'] = "badge-perf-ontrack";
-                        } elseif ($score >= 60) {
-                            $stat['badge'] = "Watch - $score";
+                        } elseif ($kpiScore >= 50) {
+                            $stat['badge'] = "Watch - $kpiScore";
                             $stat['badge_class'] = "badge-perf-watch";
                         } else {
-                            $stat['badge'] = "At Risk - $score";
+                            $stat['badge'] = "At Risk - $kpiScore";
                             $stat['badge_class'] = "badge-perf-atrisk";
                         }
 
-                        // Realistic trend
-                        $pseudoHash = abs(crc32($m['full_name'])) % 100;
-                        $trendVal = (($pseudoHash % 70) / 10) + 1.2;
-                        if ($score < 70) {
-                            $stat['trend'] = '-' . number_format($trendVal, 1) . '%';
-                        } else {
-                            $stat['trend'] = '+' . number_format($trendVal, 1) . '%';
-                        }
+                        $stat['trend'] = $kpiScore . '%';
 
                         $totalTeamTasks += $tot;
                         $totalCompleted += $comp;
@@ -1967,35 +1999,94 @@ class TaskV2Controller extends Controller
                         $totalThisMonth += $thisM;
                         $onTimeSum += $onTimePct;
                         $onTimeCount++;
-                        $scoreSum += $score;
+                        $scoreSum += $kpiScore;
                     }
+                }
+
+                // Count open tasks where this member is Reviewer (mentioned_user_ids) or CC (cc_user_ids) for Workload Balance
+                $revCcWhere = "t.user_id != $uId AND NOT $collabMatch"
+                    . " AND ((t.mentioned_user_ids IS NOT NULL AND t.mentioned_user_ids != '' AND FIND_IN_SET($uId, REPLACE(REPLACE(REPLACE(t.mentioned_user_ids,'[',''),']',''),' ','')) > 0)"
+                    . " OR (t.cc_user_ids IS NOT NULL AND t.cc_user_ids != '' AND FIND_IN_SET($uId, REPLACE(REPLACE(REPLACE(t.cc_user_ids,'[',''),']',''),' ','')) > 0))"
+                    . " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100))";
+                if (!empty($monthFilter) && $monthFilter !== 'all_time') {
+                    $mSafe = $this->db->real_escape_string($monthFilter);
+                    $revCcWhere .= " AND DATE_FORMAT(t.created_at, '%Y-%m') = '$mSafe'";
+                }
+                if ($projectFilter > 0) {
+                    $revCcWhere .= " AND t.todo_project_id = $projectFilter";
+                }
+                $revCcRes = $this->db->query("SELECT COUNT(*) as cnt FROM tasks t WHERE $revCcWhere");
+                if ($revCcRes && $rcRow = $revCcRes->fetch_assoc()) {
+                    $stat['review_cc_open'] = (int)$rcRow['cnt'];
                 }
             }
 
             $memberStats[] = $stat;
         }
 
-        // 4. Tab filtering: all, top_performers (score >= 80), needs_attention (score < 74)
+        // 4. Tab filtering:
+        //    - Needs Attention: low KPI (< 65%), high overdue (>= 2), low completion (< 60% with >= 3 tasks), or low rating (< 3.0)
+        //    - Top Performers: KPI >= 75% and not needing attention
         $topPerformersCount = 0;
         $needsAttentionCount = 0;
-        foreach ($memberStats as $ms) {
-            if ($ms['score'] >= 80) $topPerformersCount++;
-            if ($ms['score'] < 74 && $ms['total'] > 0) $needsAttentionCount++;
-        }
-
         $filteredMembers = [];
         foreach ($memberStats as $ms) {
-            $ms['is_top_performer'] = ($ms['score'] >= 80);
-            $ms['needs_attention'] = ($ms['score'] < 74 && $ms['total'] > 0);
+            $needsAttention = ($ms['total'] > 0) && (
+                $ms['kpi_score'] < 65 ||
+                $ms['overdue'] >= 2 ||
+                ($ms['total'] >= 3 && $ms['completion_rate'] < 60) ||
+                ($ms['rated_count'] > 0 && $ms['avg_rating'] < 3.0)
+            );
+            $isTopPerformer = ($ms['total'] > 0) && !$needsAttention && ($ms['kpi_score'] >= 75);
+
+            if ($isTopPerformer) $topPerformersCount++;
+            if ($needsAttention) $needsAttentionCount++;
+
+            $ms['is_top_performer'] = $isTopPerformer;
+            $ms['needs_attention'] = $needsAttention;
             $filteredMembers[] = $ms;
         }
 
         // Sorting
-        usort($filteredMembers, function($a, $b) use ($sort) {
-            if ($sort === 'score_asc') return $a['score'] <=> $b['score'];
-            if ($sort === 'total_desc') return $b['total'] <=> $a['total'];
-            if ($sort === 'name_asc') return strcmp($a['full_name'], $b['full_name']);
-            return $b['score'] <=> $a['score']; // default score_desc
+        usort($filteredMembers, function($a, $b) use ($sort, $tab) {
+            if ($sort === 'score_asc') {
+                return ($a['kpi_score'] <=> $b['kpi_score']) ?: ($b['overdue'] <=> $a['overdue']);
+            }
+            if ($sort === 'score_desc') {
+                return ($b['kpi_score'] <=> $a['kpi_score']) ?: ($b['completion_rate'] <=> $a['completion_rate']) ?: ($b['completed'] <=> $a['completed']);
+            }
+            if ($sort === 'total_desc') {
+                return ($b['total'] <=> $a['total']) ?: ($b['kpi_score'] <=> $a['kpi_score']);
+            }
+            if ($sort === 'name_asc') {
+                return strcmp($a['full_name'], $b['full_name']);
+            }
+
+            // Default tab-aware serial sorting:
+            if ($tab === 'top_performers') {
+                return ($b['kpi_score'] <=> $a['kpi_score'])
+                    ?: ($b['completion_rate'] <=> $a['completion_rate'])
+                    ?: ($b['completed'] <=> $a['completed'])
+                    ?: strcmp($a['full_name'], $b['full_name']);
+            }
+            if ($tab === 'needs_attention') {
+                return ($a['kpi_score'] <=> $b['kpi_score'])
+                    ?: ($b['overdue'] <=> $a['overdue'])
+                    ?: ($a['completion_rate'] <=> $b['completion_rate'])
+                    ?: strcmp($a['full_name'], $b['full_name']);
+            }
+
+            // Default 'all' tab: Dept Head / Team Leader first, then Completion Rate DESC, then KPI DESC
+            if ($b['role_priority'] !== $a['role_priority']) {
+                return $b['role_priority'] <=> $a['role_priority'];
+            }
+            if ($b['completion_rate'] !== $a['completion_rate']) {
+                return $b['completion_rate'] <=> $a['completion_rate'];
+            }
+            if ($b['kpi_score'] !== $a['kpi_score']) {
+                return $b['kpi_score'] <=> $a['kpi_score'];
+            }
+            return ($b['completed'] <=> $a['completed']) ?: strcmp($a['full_name'], $b['full_name']);
         });
 
         // 5. Global aggregated KPIs
@@ -2025,8 +2116,8 @@ class TaskV2Controller extends Controller
             return true;
         }));
         usort($workloadList, function($a, $b) {
-            $openA = $a['in_progress'] + $a['overdue'];
-            $openB = $b['in_progress'] + $b['overdue'];
+            $openA = $a['in_progress'] + $a['overdue'] + ($a['review_cc_open'] ?? 0);
+            $openB = $b['in_progress'] + $b['overdue'] + ($b['review_cc_open'] ?? 0);
             if ($openB !== $openA) {
                 return $openB <=> $openA;
             }
@@ -2036,13 +2127,13 @@ class TaskV2Controller extends Controller
         $topWorkload = $workloadList;
         $maxOpen = 1;
         foreach ($topWorkload as $tw) {
-            $op = $tw['in_progress'] + $tw['overdue'];
+            $op = $tw['in_progress'] + $tw['overdue'] + ($tw['review_cc_open'] ?? 0);
             if ($op > $maxOpen) $maxOpen = $op;
         }
         $workloadBars = [];
         $hasAnyOpenWorkload = false;
         foreach ($topWorkload as $tw) {
-            $op = $tw['in_progress'] + $tw['overdue'];
+            $op = $tw['in_progress'] + $tw['overdue'] + ($tw['review_cc_open'] ?? 0);
             if ($op > 0) $hasAnyOpenWorkload = true;
             $parts = preg_split('/\s+/', trim($tw['full_name']));
             $first = $parts[0] ?? $tw['full_name'];
@@ -2057,6 +2148,7 @@ class TaskV2Controller extends Controller
                 'open_tasks' => $op,
                 'in_progress' => (int)($tw['in_progress'] ?? 0),
                 'overdue' => (int)($tw['overdue'] ?? 0),
+                'review_cc_open' => (int)($tw['review_cc_open'] ?? 0),
                 'completed' => (int)($tw['completed'] ?? 0),
                 'total' => (int)($tw['total'] ?? 0),
                 'bar_pct' => $op > 0 ? round(($op / $maxOpen) * 100) : 0
@@ -2270,7 +2362,7 @@ class TaskV2Controller extends Controller
 
             $headers = [
                 'Team Member', 'Department', 'Designation', 'Total Tasks', 'Assigned', 'Self',
-                'Completed', 'Overdue', 'On-Time %', 'Completion Rate %', 'Performance Score', 'Trend',
+                'Completed', 'Overdue', 'On-Time %', 'Completion Rate %', 'Performance Score', 'Overall KPI %',
                 'Task ID', 'Task Title', 'Description / Expected Output', 'Acceptance Checklist',
                 'Task Status', 'Priority', 'Deadline'
             ];
@@ -2315,7 +2407,7 @@ class TaskV2Controller extends Controller
                     $fm['on_time_pct'] . '%',
                     $fm['completion_rate'] . '%',
                     $fm['score'],
-                    $fm['trend'],
+                    ($fm['kpi_score'] ?? 0) . '%',
                 ];
 
                 $startRow = $rowNum;
@@ -2739,15 +2831,21 @@ class TaskV2Controller extends Controller
             }
         }
 
-        // Fetch HODs (strictly is_dept_head = 1, active only)
+        // Fetch HODs (is_dept_head = 1 OR any role containing 'head', active only)
         $hods = [];
         $hRes = $this->db->query("
             SELECT DISTINCT e.id as employee_id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id, e.full_name, e.department_id, d.name as department_name, des.name as designation_name
             FROM employees e
-            LEFT JOIN users u ON u.employee_id = e.id
+            LEFT JOIN users u ON (u.employee_id = e.id OR u.id = e.user_id)
+            LEFT JOIN roles r1 ON u.role_id = r1.id
+            LEFT JOIN roles r2 ON u.secondary_role_id = r2.id
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN designations des ON e.designation_id = des.id
-            WHERE e.is_dept_head = 1
+            WHERE (
+                e.is_dept_head = 1
+                OR LOWER(TRIM(r1.name)) LIKE '%head%'
+                OR LOWER(TRIM(r2.name)) LIKE '%head%'
+            )
               AND e.deleted_at IS NULL
               AND (e.employee_status IS NULL OR LOWER(TRIM(e.employee_status)) NOT IN ('resigned', 'inactive', 'terminated'))
               AND (e.employee_type IS NULL OR LOWER(TRIM(e.employee_type)) NOT IN ('resigned', 'inactive', 'terminated'))
@@ -2932,9 +3030,12 @@ class TaskV2Controller extends Controller
                 ? $t['completed_at']
                 : (!empty($t['updated_at']) ? $t['updated_at'] : ($t['created_at'] ?? null));
             $isOnTime = $isCompleted && (!$due || ($compTime && $compTime <= $due));
+            $isBeforeDeadline = $isCompleted && $due && $compTime && substr((string)$compTime, 0, 10) < substr((string)$due, 0, 10);
             $isOverdue = !$isCompleted && $due && $due < $curDate;
+            $rawRating = (int)($t['satisfaction_rating'] ?? 0);
+            $rating = ($rawRating >= 1 && $rawRating <= 5) ? $rawRating : 0;
 
-            return [$isCompleted, $isOverdue, $isOnTime];
+            return [$isCompleted, $isOverdue, $isOnTime, $isBeforeDeadline, $rating];
         };
 
         foreach ($allTasks as $t) {
@@ -2972,6 +3073,9 @@ class TaskV2Controller extends Controller
                 'overdue' => 0,
                 'active' => 0,
                 'on_time' => 0,
+                'before_deadline' => 0,
+                'rating_sum' => 0,
+                'rated_count' => 0,
                 'employees_count' => isset($extraUsersByDept[$did]) ? count($extraUsersByDept[$did]) : 0
             ];
         }
@@ -2996,16 +3100,26 @@ class TaskV2Controller extends Controller
                     'overdue' => 0,
                     'active' => 0,
                     'on_time' => 0,
+                    'before_deadline' => 0,
+                    'rating_sum' => 0,
+                    'rated_count' => 0,
                     'employees_count' => 0
                 ];
             }
             $deptAgg[$did]['total']++;
-            [$isCompleted, $isOverdue, $isOnTime] = $classifyTask($t);
+            [$isCompleted, $isOverdue, $isOnTime, $isBeforeDl, $rating] = $classifyTask($t);
+            if ($rating > 0) {
+                $deptAgg[$did]['rating_sum'] += $rating;
+                $deptAgg[$did]['rated_count']++;
+            }
 
             if ($isCompleted) {
                 $deptAgg[$did]['completed']++;
                 if ($isOnTime) {
                     $deptAgg[$did]['on_time']++;
+                }
+                if ($isBeforeDl) {
+                    $deptAgg[$did]['before_deadline']++;
                 }
             } elseif ($isOverdue) {
                 $deptAgg[$did]['overdue']++;
@@ -3027,21 +3141,31 @@ class TaskV2Controller extends Controller
                 if ($d['total'] > 0) {
                     $d['completion_pct'] = round(($d['completed'] / $d['total']) * 100);
                     $d['on_time_pct'] = $d['completed'] > 0 ? round(($d['on_time'] / $d['completed']) * 100) : 0;
-                    $d['score'] = round(($d['completion_pct'] * 0.6) + ($d['on_time_pct'] * 0.4));
+                    $d['before_deadline_pct'] = $d['completed'] > 0 ? round(($d['before_deadline'] / $d['completed']) * 100) : 0;
+                    $d['avg_rating'] = $d['rated_count'] > 0 ? round($d['rating_sum'] / $d['rated_count'], 2) : 0;
+                    $d['score'] = $this->computeKpiScore(
+                        (int)$d['completion_pct'],
+                        (int)$d['on_time_pct'],
+                        (int)$d['before_deadline_pct'],
+                        (float)$d['avg_rating'],
+                        (int)$d['rated_count']
+                    );
                 } else {
                     $d['completion_pct'] = 0;
                     $d['on_time_pct'] = 0;
+                    $d['before_deadline_pct'] = 0;
+                    $d['avg_rating'] = 0;
                     $d['score'] = 0;
                 }
                 $deptList[] = $d;
             }
         }
         usort($deptList, function($a, $b) {
-            if ($b['total'] !== $a['total']) {
-                return $b['total'] <=> $a['total'];
-            }
             if ($b['score'] !== $a['score']) {
                 return $b['score'] <=> $a['score'];
+            }
+            if ($b['total'] !== $a['total']) {
+                return $b['total'] <=> $a['total'];
             }
             return $b['employees_count'] <=> $a['employees_count'];
         });
@@ -3102,6 +3226,9 @@ class TaskV2Controller extends Controller
             $hTeamCompleted = 0;
             $hOverdue = 0;
             $hOnTime = 0;
+            $hBeforeDl = 0;
+            $hRatingSum = 0;
+            $hRatedCount = 0;
 
             foreach ($allTasks as $t) {
                 $tUId = (int)$t['user_id'];
@@ -3115,7 +3242,11 @@ class TaskV2Controller extends Controller
 
                 if ($isHodSelf || $isTeamTask) {
                     $hTotalTasks++;
-                    [$isCompleted, $isOverdue, $isOnTime] = $classifyTask($t);
+                    [$isCompleted, $isOverdue, $isOnTime, $isBeforeDl, $rating] = $classifyTask($t);
+                    if ($rating > 0) {
+                        $hRatingSum += $rating;
+                        $hRatedCount++;
+                    }
 
                     if ($isHodSelf) {
                         $hSelfTasks++;
@@ -3137,6 +3268,9 @@ class TaskV2Controller extends Controller
                         if ($isOnTime) {
                             $hOnTime++;
                         }
+                        if ($isBeforeDl) {
+                            $hBeforeDl++;
+                        }
                     } elseif ($isOverdue) {
                         $hOverdue++;
                     }
@@ -3147,7 +3281,15 @@ class TaskV2Controller extends Controller
             if ($hTotalTasks > 0) {
                 $hCompletionRate = round(($allHCompleted / $hTotalTasks) * 100);
                 $hOnTimeRate = $allHCompleted > 0 ? round(($hOnTime / $allHCompleted) * 100) : 0;
-                $leadershipScore = round(($hCompletionRate * 0.5) + ($hOnTimeRate * 0.3) + (min(100, $hTotalTasks * 10) * 0.2));
+                $hBeforeDlRate = $allHCompleted > 0 ? round(($hBeforeDl / $allHCompleted) * 100) : 0;
+                $hAvgRating = $hRatedCount > 0 ? round($hRatingSum / $hRatedCount, 2) : 0;
+                $leadershipScore = $this->computeKpiScore(
+                    (int)$hCompletionRate,
+                    (int)$hOnTimeRate,
+                    (int)$hBeforeDlRate,
+                    (float)$hAvgRating,
+                    (int)$hRatedCount
+                );
             } else {
                 $hCompletionRate = 0;
                 $hOnTimeRate = 0;
@@ -3157,14 +3299,17 @@ class TaskV2Controller extends Controller
             if ($hTotalTasks === 0) {
                 $trendLabel = "No Tasks";
                 $trendClass = "bg-light text-secondary border";
-            } elseif ($leadershipScore >= 80) {
-                $trendLabel = "Exceptional";
+            } elseif ($leadershipScore >= 85) {
+                $trendLabel = "Excellent";
                 $trendClass = "bg-success-subtle text-success";
-            } elseif ($leadershipScore >= 60) {
+            } elseif ($leadershipScore >= 75) {
                 $trendLabel = "Strong";
                 $trendClass = "bg-primary-subtle text-primary";
-            } elseif ($leadershipScore >= 40) {
-                $trendLabel = "Average";
+            } elseif ($leadershipScore >= 65) {
+                $trendLabel = "On Track";
+                $trendClass = "bg-info-subtle text-info";
+            } elseif ($leadershipScore >= 50) {
+                $trendLabel = "Watch";
                 $trendClass = "bg-warning-subtle text-warning";
             } else {
                 $trendLabel = "Needs Attention";
@@ -3206,35 +3351,67 @@ class TaskV2Controller extends Controller
             return $b['total_tasks'] <=> $a['total_tasks'];
         });
 
-        // 6. Top Individuals Aggregation
+        // 6. Top Individuals Aggregation (unified with Team Performance: user_id + collaborator_user_ids & 4-factor KPI)
+        $empLookupByUid = [];
+        foreach ($employees as $e) {
+            $eUid = (int)($e['user_id'] ?? 0);
+            if ($eUid > 0) {
+                $empLookupByUid[$eUid] = $e;
+            }
+        }
+
         $indivMap = [];
         foreach ($allTasks as $t) {
-            $uId = (int)$t['user_id'];
-            if (!isset($indivMap[$uId])) {
-                $indivMap[$uId] = [
-                    'user_id' => $uId,
-                    'full_name' => $t['user_name'] ?: 'Employee #' . $uId,
-                    'department_name' => $t['department_name'] ?: 'General',
-                    'designation_name' => $t['designation_name'] ?: 'Staff',
-                    'total' => 0,
-                    'completed' => 0,
-                    'overdue' => 0,
-                    'active' => 0,
-                    'on_time' => 0
-                ];
-            }
-            $indivMap[$uId]['total']++;
-            [$isCompleted, $isOverdue, $isOnTime] = $classifyTask($t);
+            [$isCompleted, $isOverdue, $isOnTime, $isBeforeDl, $rating] = $classifyTask($t);
 
-            if ($isCompleted) {
-                $indivMap[$uId]['completed']++;
-                if ($isOnTime) {
-                    $indivMap[$uId]['on_time']++;
+            $involvedUids = [(int)$t['user_id']];
+            if (!empty($t['collaborator_user_ids']) && preg_match_all('/\d+/', (string)$t['collaborator_user_ids'], $cm)) {
+                foreach ($cm[0] as $cUidRaw) {
+                    $cUid = (int)$cUidRaw;
+                    if ($cUid > 0 && isset($empLookupByUid[$cUid]) && !in_array($cUid, $involvedUids, true)) {
+                        $involvedUids[] = $cUid;
+                    }
                 }
-            } elseif ($isOverdue) {
-                $indivMap[$uId]['overdue']++;
-            } else {
-                $indivMap[$uId]['active']++;
+            }
+
+            foreach ($involvedUids as $uId) {
+                if ($uId <= 0) continue;
+                if (!isset($indivMap[$uId])) {
+                    $empInfo = $empLookupByUid[$uId] ?? null;
+                    $indivMap[$uId] = [
+                        'user_id' => $uId,
+                        'full_name' => ($uId === (int)$t['user_id'] ? ($t['user_name'] ?: null) : null) ?: ($empInfo['full_name'] ?? 'Employee #' . $uId),
+                        'department_name' => ($uId === (int)$t['user_id'] ? ($t['department_name'] ?: null) : null) ?: ($empInfo['department_name'] ?? 'General'),
+                        'designation_name' => ($uId === (int)$t['user_id'] ? ($t['designation_name'] ?: null) : null) ?: 'Staff',
+                        'total' => 0,
+                        'completed' => 0,
+                        'overdue' => 0,
+                        'active' => 0,
+                        'on_time' => 0,
+                        'before_deadline' => 0,
+                        'rating_sum' => 0,
+                        'rated_count' => 0
+                    ];
+                }
+                $indivMap[$uId]['total']++;
+                if ($rating > 0) {
+                    $indivMap[$uId]['rating_sum'] += $rating;
+                    $indivMap[$uId]['rated_count']++;
+                }
+
+                if ($isCompleted) {
+                    $indivMap[$uId]['completed']++;
+                    if ($isOnTime) {
+                        $indivMap[$uId]['on_time']++;
+                    }
+                    if ($isBeforeDl) {
+                        $indivMap[$uId]['before_deadline']++;
+                    }
+                } elseif ($isOverdue) {
+                    $indivMap[$uId]['overdue']++;
+                } else {
+                    $indivMap[$uId]['active']++;
+                }
             }
         }
 
@@ -3242,12 +3419,23 @@ class TaskV2Controller extends Controller
         foreach ($indivMap as $ind) {
             $ind['completion_pct'] = $ind['total'] > 0 ? round(($ind['completed'] / $ind['total']) * 100) : 0;
             $ind['on_time_pct'] = $ind['completed'] > 0 ? round(($ind['on_time'] / $ind['completed']) * 100) : 0;
-            $ind['score'] = round(($ind['completion_pct'] * 0.7) + ($ind['on_time_pct'] * 0.3));
+            $ind['before_deadline_pct'] = $ind['completed'] > 0 ? round(($ind['before_deadline'] / $ind['completed']) * 100) : 0;
+            $ind['avg_rating'] = $ind['rated_count'] > 0 ? round($ind['rating_sum'] / $ind['rated_count'], 2) : 0;
+            $ind['score'] = $this->computeKpiScore(
+                (int)$ind['completion_pct'],
+                (int)$ind['on_time_pct'],
+                (int)$ind['before_deadline_pct'],
+                (float)$ind['avg_rating'],
+                (int)$ind['rated_count']
+            );
             $topIndividuals[] = $ind;
         }
         usort($topIndividuals, function($a, $b) {
             if ($b['score'] !== $a['score']) {
                 return $b['score'] <=> $a['score'];
+            }
+            if ($b['completion_pct'] !== $a['completion_pct']) {
+                return $b['completion_pct'] <=> $a['completion_pct'];
             }
             if ($b['completed'] !== $a['completed']) {
                 return $b['completed'] <=> $a['completed'];
@@ -3388,6 +3576,28 @@ class TaskV2Controller extends Controller
     }
 
     /**
+     * Unified 4-factor KPI score (0-100) shared by Team Performance and Management Overview:
+     * 35% Completion + 25% On-Time + 15% Before-Deadline + 25% Feedback Quality (normalized across 0.75 if unrated)
+     */
+    protected function computeKpiScore(int $completionPct, int $onTimePct, int $beforeDeadlinePct, float $avgRating, int $ratedCount): int
+    {
+        if ($ratedCount > 0) {
+            $feedbackPct = round(($avgRating / 5) * 100);
+            $score = round(
+                ($completionPct * 0.35) +
+                ($onTimePct * 0.25) +
+                ($beforeDeadlinePct * 0.15) +
+                ($feedbackPct * 0.25)
+            );
+        } else {
+            $score = round(
+                (($completionPct * 0.35) + ($onTimePct * 0.25) + ($beforeDeadlinePct * 0.15)) / 0.75
+            );
+        }
+        return max(0, min(100, (int)$score));
+    }
+
+    /**
      * Resolve the strictly authorized team employees for a given user according to their role / hierarchy.
      */
     protected function resolveTeamScope(int $userId, int $userRole, bool $isManagementRole, int $hodIdParam = 0): array
@@ -3435,6 +3645,7 @@ class TaskV2Controller extends Controller
                            e.full_name, e.photo,
                            COALESCE(NULLIF(e.department_id, 0), NULLIF(des.department_id, 0), 0) as department_id,
                            COALESCE(NULLIF(e.designation_id, 0), NULLIF(u.designation_id, 0), 0) as designation_id,
+                           e.is_dept_head, e.is_team_leader, e.is_sales_co_leader,
                            e.employee_type, e.employee_status,
                            d.name as department_name, des.name as designation_name
                     FROM employees e
@@ -3551,6 +3762,7 @@ class TaskV2Controller extends Controller
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.is_dept_head, e.is_team_leader, e.is_sales_co_leader,
                        e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e
@@ -3585,6 +3797,7 @@ class TaskV2Controller extends Controller
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.is_dept_head, e.is_team_leader, e.is_sales_co_leader,
                        e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e
@@ -3632,6 +3845,7 @@ class TaskV2Controller extends Controller
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.is_dept_head, e.is_team_leader, e.is_sales_co_leader,
                        e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e
@@ -3673,6 +3887,7 @@ class TaskV2Controller extends Controller
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.is_dept_head, e.is_team_leader, e.is_sales_co_leader,
                        e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e
@@ -3744,6 +3959,7 @@ class TaskV2Controller extends Controller
                 SELECT e.id as employee_id, 
                        COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
                        e.full_name, e.photo, e.department_id, e.designation_id, e.team_id, e.reporting_user_id,
+                       e.is_dept_head, e.is_team_leader, e.is_sales_co_leader,
                        e.employee_type, e.employee_status,
                        d.name as department_name, des.name as designation_name
                 FROM employees e

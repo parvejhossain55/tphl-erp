@@ -168,6 +168,12 @@ class AssetManagement
 
     public function ensureOfficeBranchesSchema()
     {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
         // 1. Create table office_branches if not exists
         $this->db->query("
             CREATE TABLE IF NOT EXISTS `office_branches` (
@@ -214,6 +220,12 @@ class AssetManagement
         $resRn = $this->db->query("SHOW COLUMNS FROM `project_extra_assets` LIKE 'return_note'");
         if ($resRn && $resRn->num_rows === 0) {
             $this->db->query("ALTER TABLE `project_extra_assets` ADD COLUMN `return_note` TEXT NULL DEFAULT NULL AFTER `return_amount`");
+        }
+
+        // 6. Ensure vendor_id column exists in office_assets table
+        $resVnd = $this->db->query("SHOW COLUMNS FROM `office_assets` LIKE 'vendor_id'");
+        if ($resVnd && $resVnd->num_rows === 0) {
+            $this->db->query("ALTER TABLE `office_assets` ADD COLUMN `vendor_id` INT NULL DEFAULT NULL AFTER `product_id`");
         }
     }
 
@@ -699,11 +711,14 @@ class AssetManagement
      */
     public function syncAllUnpostedAssetsToBalanceSheet($userId = 1)
     {
+        // Exclude assets auto-registered from Office Procurement PRs (already capitalized under source_module = 'asset_procurement')
         $res = $this->db->query("
             SELECT oa.id 
             FROM office_assets oa 
             LEFT JOIN journals j ON (j.source_module = 'office_assets' AND j.source_ref_id = oa.id AND j.entry_type = 'accrual')
-            WHERE oa.purchase_price > 0 AND j.id IS NULL
+            WHERE oa.purchase_price > 0
+              AND j.id IS NULL
+              AND (oa.remarks IS NULL OR oa.remarks NOT LIKE 'Auto-registered from Office Procurement PR-%')
         ");
         if ($res && $res->num_rows > 0) {
             while ($row = $res->fetch_assoc()) {
@@ -778,6 +793,12 @@ class AssetManagement
      */
     public function ensureExtraPurchasesTableSchema()
     {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
         // 1. Ensure office_procurement_categories table
         $this->db->query("
             CREATE TABLE IF NOT EXISTS `office_procurement_categories` (
@@ -916,6 +937,12 @@ class AssetManagement
                 }
             }
         }
+
+        // 4. Ensure Office Procurement CST & OPO tables/columns exist
+        if (file_exists(__DIR__ . '/OfficeProcurementOrder.php')) {
+            require_once __DIR__ . '/OfficeProcurementOrder.php';
+            new \OfficeProcurementOrder($this->db);
+        }
     }
 
     /**
@@ -942,8 +969,8 @@ class AssetManagement
                        u_purchased.full_name AS purchased_by_name,
                        u_assign.full_name AS assigned_to_name,
                        cat.name AS category_name,
-                    COALESCE(NULLIF(pea.vendor_name, ''), v.name) AS vendor_name,
-                    pea.vendor_id,
+                       COALESCE(NULLIF(TRIM(v.company_name), ''), NULLIF(TRIM(v.name), ''), NULLIF(TRIM(pea.vendor_name), '')) AS vendor_name,
+                       pea.vendor_id,
   
   
                        ar.id AS approval_request_id,
@@ -956,7 +983,14 @@ class AssetManagement
                        ar.accounts_head_by,
                        ar.accounts_head_at,
                        ar.accounts_head_note,
-                       u_ah.full_name AS accounts_head_by_name
+                       u_ah.full_name AS accounts_head_by_name,
+                       u_cst.full_name AS assigned_cst_name,
+                       u_cst_by.full_name AS assigned_cst_by_name,
+                       u_prcv.full_name AS payment_received_by_name,
+                       u_arcv.full_name AS asset_received_by_name,
+                       opo.opo_number,
+                       opo.status AS opo_status,
+                       opo.revision_count AS opo_revision_count
                 FROM project_extra_assets pea
                 LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
                 LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
@@ -975,6 +1009,11 @@ class AssetManagement
                 LEFT JOIN users u_paid ON u_paid.id = pea.paid_by
                 LEFT JOIN users u_purchased ON u_purchased.id = pea.purchase_confirmed_by
                 LEFT JOIN users u_assign ON u_assign.id = pea.assigned_to
+                LEFT JOIN users u_cst ON u_cst.id = pea.assigned_cst_user_id
+                LEFT JOIN users u_cst_by ON u_cst_by.id = pea.assigned_cst_by
+                LEFT JOIN users u_prcv ON u_prcv.id = pea.assignee_payment_received_by
+                LEFT JOIN users u_arcv ON u_arcv.id = pea.asset_received_by
+                LEFT JOIN office_procurement_orders opo ON opo.id = pea.opo_id
                 LEFT JOIN approval_requests ar ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
                 LEFT JOIN users u_ar_op ON u_ar_op.id = ar.op_head_by
                 LEFT JOIN users u_ah ON u_ah.id = ar.accounts_head_by
@@ -1036,38 +1075,49 @@ class AssetManagement
             $isAdmin = !empty($filters['is_admin']);
             $isGlobal = !empty($filters['is_global_viewer']);
 
-            if ($tab === 'pending_approval') {
+            if ($tab === 'assigned_to_me') {
+                $sql .= " AND pea.assigned_cst_user_id = {$userId}";
+            } elseif ($tab === 'pending_approval') {
                 if ($isAdmin) {
-                    $sql .= " AND (pea.overall_status IN ('pending', 'in_review') OR pea.payment_status = 'unpaid')";
+                    $sql .= " AND (pea.overall_status IN ('pending', 'in_review', 'approved', 'paid', 'process_on_purchase', 'purchased') AND pea.overall_status NOT IN ('rejected', 'received'))";
                 } else {
                     $conds = [];
-                    // Reporting Boss (Dept Head approval step)
-                    $conds[] = "(pea.reporting_user_id = {$userId} AND pea.dept_head_status = 'pending')";
+                    // 1. Reporting Boss / Dept Head approval step
+                    $conds[] = "(pea.reporting_user_id = {$userId} AND pea.dept_head_status = 'pending' AND pea.overall_status != 'rejected')";
 
-                    if ($userId === 242) {
-                        $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status = 'pending')";
-                    }
+                    // 2. Assigned CST Employee: needs CST, Rate Revision, Receive Payment, or Mark Purchased
+                    $conds[] = "(pea.assigned_cst_user_id = {$userId} AND pea.overall_status != 'rejected' AND (pea.opo_id IS NULL OR opo.status IN ('revision_requested', 'paid', 'process_on_purchase')))";
+
+                    // 3. Original Requester: needs to click Received Asset
+                    $conds[] = "(pea.requested_by = {$userId} AND (pea.overall_status = 'purchased' OR opo.status = 'purchased'))";
 
                     $roleId = (int)($filters['role_id'] ?? 0);
                     $isOpHead = in_array($roleId, [20, 32], true) || !empty($filters['is_op_head']);
 
-                    if (!empty($filters['is_operations']) || $isOpHead) {
-                        $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')";
+                    // 4. Role 32 (Admin & Operation): Approve & Assign for CST
+                    if ($roleId === 32 || !empty($filters['is_operations'])) {
+                        $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND (pea.operations_status = 'pending' OR pea.assigned_cst_user_id IS NULL) AND pea.opo_id IS NULL AND pea.overall_status != 'rejected')";
                     }
+                    // 5. Purchase Head (Role 17/31): OPO pending Purchase Head
                     if (!empty($filters['is_purchase_head'])) {
-                        $conds[] = "(pea.operations_status = 'approved' AND pea.purchase_head_status = 'pending')";
+                        $conds[] = "(opo.status = 'pending_purchase_head' OR (pea.opo_id IS NULL AND pea.operations_status = 'approved' AND pea.purchase_head_status = 'pending'))";
                     }
+                    // 6. QC & Internal Audit (Role 24/25): OPO pending QC
                     if (!empty($filters['is_qc_audit'])) {
-                        $conds[] = "(pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending')";
+                        $conds[] = "(opo.status = 'pending_qc' OR (pea.opo_id IS NULL AND pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending'))";
                     }
+                    // 7. Admin & Operation Head (Role 20): OPO pending Op Head
+                    if ($roleId === 20 || $isOpHead) {
+                        $conds[] = "(opo.status = 'pending_op_head' OR (pea.opo_id IS NULL AND pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (ar.op_head_status IS NULL OR ar.op_head_status != 'approved')))";
+                    }
+                    // 8. Management: > 10K after Accounts Head
                     if (!empty($filters['is_management'])) {
                         $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (pea.total_price <= 10000.01 OR (ar.op_head_status = 'approved' AND ar.accounts_head_status = 'approved')))";
                     }
-                    if ($isOpHead) {
-                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending' AND (ar.op_head_status IS NULL OR ar.op_head_status != 'approved'))";
-                    }
+                    // 9. Accounts Head (Role 30) & Accounts (Role 6)
                     if (!empty($filters['is_accounts'])) {
-                        $conds[] = "((pea.qc_audit_status = 'approved' AND ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved') AND pea.payment_status = 'unpaid') OR (pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid'))";
+                        $conds[] = "((opo.status = 'approved' OR pea.qc_audit_status = 'approved') AND ar.op_head_status = 'approved' AND (ar.accounts_head_status IS NULL OR ar.accounts_head_status != 'approved') AND pea.payment_status = 'unpaid')";
+                        $conds[] = "(pea.mgmt_status = 'approved' AND ar.accounts_head_status = 'approved' AND pea.payment_status = 'unpaid')";
                     }
 
                     if (!empty($conds)) {
@@ -1079,6 +1129,7 @@ class AssetManagement
             } elseif ($tab === 'all_requests' && !$isAdmin && !$isGlobal && empty($filters['restrict_user'])) {
                 $conds = [
                     "pea.requested_by = " . $userId,
+                    "pea.assigned_cst_user_id = " . $userId,
                     "pea.dept_head_by = " . $userId,
                     "pea.it_head_by = " . $userId,
                     "pea.reporting_user_id = " . $userId,
@@ -1133,7 +1184,7 @@ class AssetManagement
                     u_purchased.full_name AS purchased_by_name,
                     u_assign.full_name AS assigned_to_name,
                     cat.name AS category_name,
-                    COALESCE(NULLIF(pea.vendor_name, ''), v.name) AS vendor_name,
+                    COALESCE(NULLIF(TRIM(v.company_name), ''), NULLIF(TRIM(v.name), ''), NULLIF(TRIM(pea.vendor_name), '')) AS vendor_name,
                     pea.vendor_id,
                     ar.id AS approval_request_id,
                     ar.op_head_status,
@@ -1145,7 +1196,14 @@ class AssetManagement
                     ar.accounts_head_by,
                     ar.accounts_head_at,
                     ar.accounts_head_note,
-                    u_ah.full_name AS accounts_head_by_name
+                    u_ah.full_name AS accounts_head_by_name,
+                    u_cst.full_name AS assigned_cst_name,
+                    u_cst_by.full_name AS assigned_cst_by_name,
+                    u_prcv.full_name AS payment_received_by_name,
+                    u_arcv.full_name AS asset_received_by_name,
+                    opo.opo_number,
+                    opo.status AS opo_status,
+                    opo.revision_count AS opo_revision_count
              FROM project_extra_assets pea
              LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
              LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
@@ -1164,6 +1222,11 @@ class AssetManagement
              LEFT JOIN users u_paid ON u_paid.id = pea.paid_by
              LEFT JOIN users u_purchased ON u_purchased.id = pea.purchase_confirmed_by
              LEFT JOIN users u_assign ON u_assign.id = pea.assigned_to
+             LEFT JOIN users u_cst ON u_cst.id = pea.assigned_cst_user_id
+             LEFT JOIN users u_cst_by ON u_cst_by.id = pea.assigned_cst_by
+             LEFT JOIN users u_prcv ON u_prcv.id = pea.assignee_payment_received_by
+             LEFT JOIN users u_arcv ON u_arcv.id = pea.asset_received_by
+             LEFT JOIN office_procurement_orders opo ON opo.id = pea.opo_id
              LEFT JOIN approval_requests ar ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
              LEFT JOIN users u_ar_op ON u_ar_op.id = ar.op_head_by
              LEFT JOIN users u_ah ON u_ah.id = ar.accounts_head_by
@@ -1259,13 +1322,13 @@ class AssetManagement
         $vendorId = !empty($data['vendor_id']) ? (int)$data['vendor_id'] : null;
         $vendorName = !empty($data['vendor_name']) ? trim($data['vendor_name']) : null;
         if ($vendorId && empty($vendorName)) {
-            $vStmt = $this->db->prepare("SELECT name FROM vendors WHERE id = ?");
+            $vStmt = $this->db->prepare("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS display_name FROM vendors WHERE id = ?");
             if ($vStmt) {
                 $vStmt->bind_param('i', $vendorId);
                 $vStmt->execute();
                 $vRes = $vStmt->get_result();
                 if ($vRes && $vRow = $vRes->fetch_assoc()) {
-                    $vendorName = $vRow['name'];
+                    $vendorName = $vRow['display_name'];
                 }
                 $vStmt->close();
             }
@@ -1322,7 +1385,7 @@ class AssetManagement
      * @param int $userId Approver user ID
      * @param string $note Approval/rejection note
      */
-    public function approveStep($id, $step, $status, $userId, $note = '', $document = null)
+    public function approveStep($id, $step, $status, $userId, $note = '', $document = null, $vendorId = null)
     {
         $validSteps = ['dept_head', 'it_head', 'operations', 'purchase_head', 'qc_audit', 'mgmt'];
         if (!in_array($step, $validSteps)) return false;
@@ -1347,6 +1410,27 @@ class AssetManagement
         }
         
         $result = $stmt->execute();
+
+        if ($result && $step === 'purchase_head' && !empty($vendorId)) {
+            $vId = (int)$vendorId;
+            $vName = null;
+            $vStmt = $this->db->prepare("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS display_name FROM vendors WHERE id = ?");
+            if ($vStmt) {
+                $vStmt->bind_param('i', $vId);
+                $vStmt->execute();
+                $vRow = $vStmt->get_result()->fetch_assoc();
+                if ($vRow) {
+                    $vName = $vRow['display_name'];
+                }
+                $vStmt->close();
+            }
+            $updV = $this->db->prepare("UPDATE project_extra_assets SET vendor_id = ?, vendor_name = ? WHERE id = ?");
+            if ($updV) {
+                $updV->bind_param('isi', $vId, $vName, $id);
+                $updV->execute();
+                $updV->close();
+            }
+        }
 
         if ($result) {
             // Update overall_status based on current state
@@ -1474,6 +1558,7 @@ class AssetManagement
             $conditionStatus = 'new';
             $projectId = !empty($req['project_id']) ? (int)$req['project_id'] : null;
             $deptId = !empty($req['department_id']) ? (int)$req['department_id'] : null;
+            $assetVendorId = !empty($req['vendor_id']) ? (int)$req['vendor_id'] : null;
 
             // Check if assets have already been registered for this PR to prevent duplicate insertion
             $chkAsset = $this->db->prepare("SELECT COUNT(*) AS cnt FROM office_assets WHERE remarks LIKE ?");
@@ -1490,14 +1575,15 @@ class AssetManagement
 
                     $insertStmt = $this->db->prepare(
                         "INSERT INTO office_assets 
-                        (asset_code, product_id, item_name, project_id, office_branch_id, department_id, assigned_to, location, 
+                        (asset_code, product_id, vendor_id, item_name, project_id, office_branch_id, department_id, assigned_to, location, 
                          purchase_date, purchase_price, condition_status, asset_status, remarks, created_by, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
                     );
                     $insertStmt->bind_param(
-                        'sisiiiissdsssi',
+                        'siisiiiissdsssi',
                         $code,
                         $productId,
+                        $assetVendorId,
                         $cleanItemName,
                         $projectId,
                         $finalBranchId,
@@ -1569,6 +1655,9 @@ class AssetManagement
                 $vendorPayableAccId = $autoPosting->getAccountIdByCode('2110');
                 $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
 
+                $partyType = !empty($req['vendor_id']) ? 'vendor' : 'employee';
+                $partyId   = !empty($req['vendor_id']) ? (int)$req['vendor_id'] : ($req['assigned_to'] ?? $req['requested_by'] ?? 1);
+
                 $autoPosting->postAccrualEntry(
                     'asset_procurement',
                     $id,
@@ -1577,8 +1666,8 @@ class AssetManagement
                     $totalPrice,
                     "Office Fixed Asset Procurement (PR-{$id}): " . $req['item_name'] . " (Qty: {$req['quantity']})",
                     $req['project_id'] ?? null,
-                    'employee',
-                    $req['assigned_to'] ?? $req['requested_by'] ?? 1,
+                    $partyType,
+                    $partyId,
                     $userId,
                     $procurementOffice
                 );

@@ -163,6 +163,19 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                     <td colspan="9" class="text-center py-4 text-muted">No fund requisitions found.</td>
                                 </tr>
                             <?php else: ?>
+                                <?php
+                                $landRevMap  = [];
+                                $landEditMap = [];
+                                $landDbConn  = $GLOBALS['db'] ?? ($this->db ?? null);
+                                if ($landDbConn) {
+                                    if (!class_exists('RequisitionRevisionService')) {
+                                        require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+                                    }
+                                    $landRevSvcObj = new RequisitionRevisionService($landDbConn);
+                                    $landRevMap    = $landRevSvcObj->getOpenRevisionMap('land_fund_requisitions');
+                                    $landEditMap   = $landRevSvcObj->getLastEditMap('land_fund_requisitions');
+                                }
+                                ?>
                                 <?php foreach ($requisitions as $index => $row): ?>
                                     <?php 
                                         $fin = $row['land_financial'] ?? null;
@@ -195,6 +208,20 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                             <div class="small fw-semibold text-dark">
                                                 <i class="fa-light fa-user me-1 text-muted"></i>Owner: <?= htmlspecialchars($row['land_owner_name'] ?? 'N/A') ?>
                                             </div>
+                                            <?php
+                                            $landOpenRevRow  = $landRevMap[(int)$row['id']] ?? null;
+                                            $landLastEditRow = $landEditMap[(int)$row['id']] ?? null;
+                                            if ($landOpenRevRow):
+                                            ?>
+                                                <div class="mt-1 p-1 px-2 rounded bg-warning-subtle border border-warning text-dark" style="font-size:10.5px;">
+                                                    <i class="fa-solid fa-rotate-left text-warning me-1"></i><strong>Review Requested (<?= htmlspecialchars($landOpenRevRow['requested_by_name'] ?? 'Approver') ?>):</strong> <?= htmlspecialchars($landOpenRevRow['review_note'] ?? '') ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if ($landLastEditRow): ?>
+                                                <div class="text-primary mt-1" style="font-size:10px;" title="<?= htmlspecialchars($landLastEditRow['change_summary'] ?? 'Updated') ?>">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($landLastEditRow['edited_by_name'] ?? 'User') ?> (<?= !empty($landLastEditRow['created_at']) ? date('d M Y, h:i A', strtotime($landLastEditRow['created_at'])) : '' ?>)
+                                                </div>
+                                            <?php endif; ?>
                                             <?php if (!empty($row['land_receiver_name'])): ?>
                                                 <div class="small text-success" style="font-size:11px;">
                                                     <i class="fa-light fa-hand-holding-hand me-1"></i>Receiver: <?= htmlspecialchars($row['land_receiver_name']) ?>
@@ -248,6 +275,15 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                         <td>
                                             <div class="fw-semibold"><?= htmlspecialchars($row['requester_name'] ?? 'N/A') ?></div>
                                             <small class="text-muted" style="font-size:10px;"><?= date('M d, Y', strtotime($row['created_at'])) ?></small>
+                                            <?php $landEdit = $landEditMap[(int)($row['id'] ?? 0)] ?? null; ?>
+                                            <?php if (!empty($landEdit)): ?>
+                                                <div class="mt-1" style="font-size:10px; color:#b45309; line-height:1.25;" title="<?= htmlspecialchars($landEdit['change_summary'] ?? 'Edited') ?>">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edited: <strong><?= htmlspecialchars($landEdit['edited_by_name']) ?></strong>
+                                                    <?php if (!empty($landEdit['created_at'])): ?>
+                                                        <div class="text-muted" style="font-size:9.5px;"><?= date('d M Y, h:i A', strtotime($landEdit['created_at'])) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if ($row['mgmt_status'] === 'Approved'): ?>
@@ -459,6 +495,71 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                                     <a href="<?= $base_url ?>/print-debit-voucher?module=land_requisition&id=<?= $row['id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary" title="Print Debit Voucher">
                                                         <i class="fa-light fa-file-invoice-dollar"></i>
                                                     </a>
+                                                <?php endif; ?>
+
+                                                <?php
+                                                $currentUserIdLand = (int)($_SESSION['user']['id'] ?? 0);
+                                                $isLandUnapproved = (($row['mgmt_status'] ?? '') === 'Pending')
+                                                    && empty($row['mgmt_by'])
+                                                    && (($row['accounts_status'] ?? '') === 'Pending')
+                                                    && empty($row['accounts_by'])
+                                                    && empty($ahInfoRow['is_op_head_approved']);
+                                                $isLandRevOpenRow = !empty($landOpenRevRow);
+                                                $canEditLandRow = ($isLandUnapproved || $isLandRevOpenRow || ($row['mgmt_status'] ?? '') === 'Rejected' || ($row['accounts_status'] ?? '') === 'Rejected') && (((int)($row['requested_by'] ?? 0) === $currentUserIdLand) || in_array($roleId, [1, 3], true));
+                                                if ($canEditLandRow):
+                                                    $landEditPayload = [
+                                                        'id'               => (int)$row['id'],
+                                                        'requisition_type' => $row['requisition_type'] ?? 'Other',
+                                                        'cost_purpose'     => $row['cost_purpose'] ?? '',
+                                                        'requested_amount' => $row['requested_amount'] ?? 0,
+                                                        'purpose'          => $row['purpose'] ?? '',
+                                                    ];
+                                                ?>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-warning btn-edit-land-req"
+                                                            title="<?= $isLandRevOpenRow ? 'Edit & Resubmit' : 'Edit Requisition' ?>"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editLandReqModal"
+                                                            data-item="<?= htmlspecialchars(json_encode($landEditPayload), ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="fa-light fa-pen-to-square"></i>
+                                                    </button>
+                                                <?php endif; ?>
+
+                                                <?php
+                                                $canLandSendBack = !$isLandRevOpenRow
+                                                    && !in_array($roleId, [33, 34, 35], true)
+                                                    && ($row['accounts_status'] ?? '') !== 'Paid'
+                                                    && ($row['mgmt_status'] ?? '') !== 'Rejected'
+                                                    && in_array($roleId, [1, 3, 20, 30, 32, 38], true);
+                                                if ($canLandSendBack):
+                                                    $landRevStage = in_array($roleId, [20, 32], true) ? 'op_head' : ($roleId === 30 ? 'accounts_head' : 'mgmt');
+                                                    $landRevLabel = in_array($roleId, [20, 32], true) ? 'Admin & Operation Head' : ($roleId === 30 ? 'Accounts Head' : 'Management');
+                                                ?>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-warning text-dark btn-send-back-land"
+                                                            title="Send Back for Review"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#sendBackLandModal"
+                                                            data-id="<?= (int)$row['id'] ?>"
+                                                            data-stage="<?= $landRevStage ?>"
+                                                            data-label="<?= $landRevLabel ?>">
+                                                        <i class="fa-solid fa-rotate-left"></i>
+                                                    </button>
+                                                <?php endif; ?>
+
+                                                <?php
+                                                $isLandRowRejected = (($row['mgmt_status'] ?? '') === 'Rejected' || ($row['accounts_status'] ?? '') === 'Rejected');
+                                                if ($isLandRowRejected && (((int)($row['requested_by'] ?? 0) === $currentUserIdLand) || in_array($roleId, [1, 3], true))):
+                                                ?>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-danger btn-resubmit-rejected-row"
+                                                            title="Resubmit Against Rejection"
+                                                            data-module="land_fund_requisitions"
+                                                            data-id="<?= (int)$row['id'] ?>"
+                                                            data-reason="<?= htmlspecialchars($row['mgmt_note'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                                                            data-redirect="/con-land-requisitions">
+                                                        <i class="fa-solid fa-rotate-right me-1"></i>Resubmit
+                                                    </button>
                                                 <?php endif; ?>
 
                                                 <?php if ($roleId === 1 || $roleId === 3): ?>
@@ -1121,3 +1222,141 @@ $page_script = "(function() {
 $ahInfo = null;
 include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; 
 ?>
+
+<!-- Edit Land Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLandReqModal" tabindex="-1" aria-labelledby="editLandReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLandReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Land Requisition
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base_url ?>/con-land-requisitions/update" id="editLandReqForm">
+                    <input type="hidden" name="id" id="edit_land_req_id" value="">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Requisition Type <span class="text-danger">*</span></label>
+                        <select name="requisition_type" id="edit_land_req_type" class="form-select" required>
+                            <option value="Bayana">Bayana</option>
+                            <option value="Registration">Registration</option>
+                            <option value="Extra Cost">Extra Cost</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Cost Purpose (Optional)</label>
+                        <input type="text" name="cost_purpose" id="edit_land_cost_purpose" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Requested Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="requested_amount" id="edit_land_req_amount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" id="edit_land_req_purpose" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLandEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLandEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLandReqModal').length && $('#editLandReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLandReqModal').appendTo('body');
+            }
+            function populateLandEdit(btn) {
+                var raw = btn.attr('data-item');
+                if (!raw) return;
+                try {
+                    var d = (typeof raw === 'object') ? raw : JSON.parse(raw);
+                    $('#edit_land_req_id').val(d.id || '');
+                    $('#edit_land_req_type').val(d.requisition_type || 'Other');
+                    $('#edit_land_cost_purpose').val(d.cost_purpose || '');
+                    $('#edit_land_req_amount').val(d.requested_amount || '');
+                    $('#edit_land_req_purpose').val(d.purpose || '');
+                } catch (e) {}
+            }
+            $('#editLandReqModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateLandEdit($(e.relatedTarget));
+            });
+            $(document).on('click', '.btn-edit-land-req', function() {
+                populateLandEdit($(this));
+            });
+
+            if ($('#sendBackLandModal').length && $('#sendBackLandModal').parent().prop('tagName') !== 'BODY') {
+                $('#sendBackLandModal').appendTo('body');
+            }
+            function populateLandSendBack(btn) {
+                $('#sb_land_source_id').val(btn.attr('data-id') || '');
+                $('#sb_land_stage').val(btn.attr('data-stage') || 'mgmt');
+                $('#sb_land_label').val(btn.attr('data-label') || 'Management');
+                $('#sb_land_title_id').text('#' + (btn.attr('data-id') || ''));
+            }
+            $('#sendBackLandModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateLandSendBack($(e.relatedTarget));
+            });
+            $(document).on('click', '.btn-send-back-land', function() {
+                populateLandSendBack($(this));
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLandEditModal);
+    } else {
+        initLandEditModal();
+    }
+})();
+</script>
+
+<!-- Send Back Land Requisition for Review Modal -->
+<div class="modal custom-modal fade" id="sendBackLandModal" tabindex="-1" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark">
+                    <i class="fa-solid fa-rotate-left me-2 text-warning"></i> Send Land Requisition <span id="sb_land_title_id"></span> for Review
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base_url ?>/requisition-revision/send-back">
+                    <input type="hidden" name="module_table" value="land_fund_requisitions">
+                    <input type="hidden" name="source_id" id="sb_land_source_id" value="">
+                    <input type="hidden" name="return_stage" id="sb_land_stage" value="mgmt">
+                    <input type="hidden" name="return_stage_label" id="sb_land_label" value="Management">
+                    <input type="hidden" name="redirect_url" value="/con-land-requisitions">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Review / Correction Note <span class="text-danger">*</span></label>
+                        <textarea name="review_note" class="form-control" rows="3" placeholder="Explain what needs correction..." required></textarea>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning text-dark px-4 fw-bold">
+                            <i class="fa-solid fa-paper-plane me-1"></i> Send Back for Review
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<?php include dirname(dirname(__DIR__)) . '/layouts/resubmit_rejected_list_modal.php'; ?>

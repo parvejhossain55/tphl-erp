@@ -137,6 +137,30 @@ class Con_ContractorController extends Controller
             exit;
         }
 
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $cEditRevSvc  = new \RequisitionRevisionService($this->db);
+        $cEditOpenRev = $cEditRevSvc->getOpenRevision('contractors', (int)$id);
+        if (($contractors['status'] ?? '') === 'pending_approval' && !$isAdmin) {
+            $hasAnyApproval = ($contractors['dept_head_status'] ?? '') === 'approved'
+                || ($contractors['purchase_head_status'] ?? '') === 'approved'
+                || ($contractors['role_20_status'] ?? '') === 'approved'
+                || ($contractors['role_38_status'] ?? '') === 'approved'
+                || ($contractors['management_status'] ?? '') === 'approved';
+            if ($hasAnyApproval && empty($cEditOpenRev)) {
+                setError('This contractor enrollment request has already been approved at one or more stages and can no longer be edited.');
+                header("Location: {$GLOBALS['base_url']}/con-contractors");
+                exit;
+            }
+            if ((int)($contractors['created_by'] ?? 0) > 0 && (int)$contractors['created_by'] !== $userId) {
+                setError('Only the creator or Admin can edit a pending contractor enrollment request before approval.');
+                header("Location: {$GLOBALS['base_url']}/con-contractors");
+                exit;
+            }
+        }
+
         $this->view('phase2/contractors/edit-contractor', [
             'current_route' => 'con-contractors',
             'page_title'    => 'Edit contractors',
@@ -158,6 +182,38 @@ class Con_ContractorController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $existing = $this->contractorModel->find($id);
+        if (!$existing) {
+            setError('Contractor not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractors");
+            exit;
+        }
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $cRevSvc  = new \RequisitionRevisionService($this->db);
+        $cOpenRev = $cRevSvc->getOpenRevision('contractors', (int)$id);
+
+        if (($existing['status'] ?? '') === 'pending_approval' && !$isAdmin) {
+            $hasAnyApproval = ($existing['dept_head_status'] ?? '') === 'approved'
+                || ($existing['purchase_head_status'] ?? '') === 'approved'
+                || ($existing['role_20_status'] ?? '') === 'approved'
+                || ($existing['role_38_status'] ?? '') === 'approved'
+                || ($existing['management_status'] ?? '') === 'approved';
+            if ($hasAnyApproval && empty($cOpenRev)) {
+                setError('This contractor enrollment request has already been approved at one or more stages and can no longer be edited.');
+                header("Location: {$GLOBALS['base_url']}/con-contractors");
+                exit;
+            }
+            if ((int)($existing['created_by'] ?? 0) > 0 && (int)$existing['created_by'] !== $userId) {
+                setError('Only the creator or Admin can edit a pending contractor enrollment request before approval.');
+                header("Location: {$GLOBALS['base_url']}/con-contractors");
+                exit;
+            }
+        }
+
         $data = [
             'name'       => trim($_POST['name'] ?? ''),
             'role'       => $_POST['role'] ?? 'Contractor',
@@ -170,7 +226,18 @@ class Con_ContractorController extends Controller
         ];
 
         if ($this->contractorModel->update($id, $data)) {
-            setSuccess('contractors updated successfully!');
+            $cEditSum = \RequisitionRevisionService::buildChangeSummary([
+                'Name'  => [$existing['name'] ?? '', $data['name'] ?? ''],
+                'Trade' => [$existing['trade'] ?? '', $data['trade'] ?? ''],
+                'Phone' => [$existing['phone'] ?? '', $data['phone'] ?? ''],
+            ]);
+            $cRevSvc->logEdit('contractors', (int)$id, $cEditSum);
+            if (!empty($cOpenRev)) {
+                $cRevSvc->markResubmitted('contractors', (int)$id, null, trim($_POST['resubmitted_note'] ?? ''));
+                setSuccess("Contractor updated & resubmitted directly to {$cOpenRev['return_stage_label']}.");
+            } else {
+                setSuccess('contractors updated successfully!');
+            }
             header("Location: {$GLOBALS['base_url']}/con-contractors");
             exit;
         }

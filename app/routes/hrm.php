@@ -60,6 +60,7 @@ return [
     'my-work/add-comment/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'addComment'],
     'my-work/submit-feedback/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'submitFeedback'],
     'my-work/request-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'requestExtension'],
+    'my-work/handle-extension/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'handleExtension'],
     'my-work/send-reminder/(\d+)' => ['controller' => 'MyWorkController', 'method' => 'sendReminder'],
     'my-work/previous-task-sheet/add-note' => ['controller' => 'MyWorkController', 'method' => 'addPreviousTaskSheetNote'],
 
@@ -453,6 +454,8 @@ return [
     'api/employee/toggle-today-meal' => ['controller' => 'MealTrackerController', 'method' => 'toggleTodayMeal'],
     'api/employee/toggle-all-time-meal' => ['controller' => 'MealTrackerController', 'method' => 'toggleAllTimeMeal'],
     'api/meal-tracker/sync-attendance' => ['controller' => 'MealTrackerController', 'method' => 'syncAttendance'],
+    'api/meal-tracker/active-meal-report' => ['controller' => 'MealTrackerController', 'method' => 'activeMealReport'],
+    'api/meal-tracker/active-meal-report-pdf' => ['controller' => 'MealTrackerController', 'method' => 'activeMealReportPdf'],
     'my-meal-tracker' => ['controller' => 'MealTrackerController', 'method' => 'myMeals'],
     'meal-project-delete' => ['controller' => 'MealTrackerController', 'method' => 'deleteProject'],
     'meal-project-update-rate' => ['controller' => 'MealTrackerController', 'method' => 'updateStandardRate'],

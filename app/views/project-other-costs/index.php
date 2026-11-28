@@ -121,12 +121,56 @@
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
                                                 <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                                <?php
+                                                if (!isset($ocEditMap)) {
+                                                    $ocEditMap = [];
+                                                    $ocDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                                    if ($ocDbConn) {
+                                                        if (!class_exists('RequisitionRevisionService')) {
+                                                            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                                                        }
+                                                        $ocEditMap = (new RequisitionRevisionService($ocDbConn))->getLastEditMap('project_other_costs');
+                                                    }
+                                                }
+                                                $ocLastEdit = $ocEditMap[(int)$row['id']] ?? null;
+                                                if ($ocLastEdit):
+                                                ?>
+                                                    <div class="text-primary mt-1" style="font-size: 0.78rem; line-height: 1.25;" title="<?= htmlspecialchars($ocLastEdit['change_summary'] ?? 'Updated') ?>">
+                                                        <i class="bi bi-pencil-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($ocLastEdit['edited_by_name'] ?? 'User') ?>
+                                                        <div class="text-muted" style="font-size: 0.72rem;"><?= !empty($ocLastEdit['created_at']) ? date('d M Y h:i A', strtotime($ocLastEdit['created_at'])) : '' ?></div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
-                                            <td>
-                                                <div class="d-flex gap-2">
+                                            <td class="text-nowrap">
+                                                <div class="d-flex align-items-center gap-1 flex-nowrap">
                                                     <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info shadow-sm" title="View Status">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
+                                                    <?php
+                                                    $ocUnapproved = (($row['status'] ?? '') === 'pending')
+                                                        && (($row['dept_head_status'] ?? '') !== 'approved')
+                                                        && empty($row['dept_head_approved_by'])
+                                                        && empty($row['qc_audit_approved_id'])
+                                                        && empty($row['management_apporved_by_id'])
+                                                        && empty($row['payment_by_id']);
+                                                    $canEditOcRow = $ocUnapproved && (((int)($row['created_by_id'] ?? 0) === (int)($userId ?? 0)) || in_array((int)($roleId ?? 0), [1, 3], true));
+                                                    if ($canEditOcRow):
+                                                        $ocPayload = [
+                                                            'id'             => (int)$row['id'],
+                                                            'rcost_type'     => $row['rcost_type'] ?? 'others',
+                                                            'request_amount' => $row['request_amount'] ?? 0,
+                                                            'purpose'        => $row['purpose'] ?? '',
+                                                        ];
+                                                    ?>
+                                                        <button type="button"
+                                                                class="btn btn-sm btn-warning text-dark shadow-sm btn-edit-other-cost"
+                                                                title="Edit Request"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#editOtherCostIndexModal"
+                                                                data-item="<?= htmlspecialchars(json_encode($ocPayload), ENT_QUOTES, 'UTF-8') ?>">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    <?php endif; ?>
                                                     <?php if ($row['status'] === 'paid'): ?>
                                                         <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=other_cost&cashout_request_id=<?= $row['id'] ?>&project_id=<?= $row['project_id'] ?>" class="btn btn-sm btn-outline-warning shadow-sm" title="Settlement / Adjustment">
                                                             <i class="bi bi-sliders"></i>
@@ -214,6 +258,25 @@
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
                                                 <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                                <?php
+                                                if (!isset($ocEditMap)) {
+                                                    $ocEditMap = [];
+                                                    $ocDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                                    if ($ocDbConn) {
+                                                        if (!class_exists('RequisitionRevisionService')) {
+                                                            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                                                        }
+                                                        $ocEditMap = (new RequisitionRevisionService($ocDbConn))->getLastEditMap('project_other_costs');
+                                                    }
+                                                }
+                                                $ocLastEdit = $ocEditMap[(int)$row['id']] ?? null;
+                                                if ($ocLastEdit):
+                                                ?>
+                                                    <div class="text-primary mt-1" style="font-size: 0.78rem; line-height: 1.25;" title="<?= htmlspecialchars($ocLastEdit['change_summary'] ?? 'Updated') ?>">
+                                                        <i class="bi bi-pencil-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($ocLastEdit['edited_by_name'] ?? 'User') ?>
+                                                        <div class="text-muted" style="font-size: 0.72rem;"><?= !empty($ocLastEdit['created_at']) ? date('d M Y h:i A', strtotime($ocLastEdit['created_at'])) : '' ?></div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="d-flex gap-2">
@@ -314,6 +377,25 @@
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
                                                 <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                                <?php
+                                                if (!isset($ocEditMap)) {
+                                                    $ocEditMap = [];
+                                                    $ocDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                                                    if ($ocDbConn) {
+                                                        if (!class_exists('RequisitionRevisionService')) {
+                                                            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                                                        }
+                                                        $ocEditMap = (new RequisitionRevisionService($ocDbConn))->getLastEditMap('project_other_costs');
+                                                    }
+                                                }
+                                                $ocLastEdit = $ocEditMap[(int)$row['id']] ?? null;
+                                                if ($ocLastEdit):
+                                                ?>
+                                                    <div class="text-primary mt-1" style="font-size: 0.78rem; line-height: 1.25;" title="<?= htmlspecialchars($ocLastEdit['change_summary'] ?? 'Updated') ?>">
+                                                        <i class="bi bi-pencil-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($ocLastEdit['edited_by_name'] ?? 'User') ?>
+                                                        <div class="text-muted" style="font-size: 0.72rem;"><?= !empty($ocLastEdit['created_at']) ? date('d M Y h:i A', strtotime($ocLastEdit['created_at'])) : '' ?></div>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="d-flex gap-2">
@@ -668,4 +750,85 @@
         color: #34d399 !important;
     }
 </style>
+
+<!-- Edit Project Other Cost Modal (Before 1st Approval — List View) -->
+<div class="modal custom-modal fade" id="editOtherCostIndexModal" tabindex="-1" aria-labelledby="editOtherCostIndexModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editOtherCostIndexModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Other Cost Request <span id="edit_oc_title_id"></span>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="" id="editOtherCostIndexForm">
+                    <input type="hidden" name="redirect_to" value="index">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Cost Type <span class="text-danger">*</span></label>
+                        <select name="rcost_type" id="edit_oc_type" class="form-select" required>
+                            <?php foreach (($costTypes ?? ['others' => 'Others']) as $ctKey => $ctLabel): ?>
+                                <option value="<?= htmlspecialchars($ctKey) ?>"><?= htmlspecialchars(is_array($ctLabel) ? ($ctLabel['label'] ?? $ctKey) : $ctLabel) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Requested Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="request_amount" id="edit_oc_amount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" id="edit_oc_purpose" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initOcIndexEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initOcIndexEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editOtherCostIndexModal').length && $('#editOtherCostIndexModal').parent().prop('tagName') !== 'BODY') {
+                $('#editOtherCostIndexModal').appendTo('body');
+            }
+            function populateOc(btn) {
+                var raw = btn.attr('data-item');
+                if (!raw) return;
+                try {
+                    var d = (typeof raw === 'object') ? raw : JSON.parse(raw);
+                    $('#editOtherCostIndexForm').attr('action', '<?= $GLOBALS['base_url'] ?>/project-other-costs/update/' + (d.id || ''));
+                    $('#edit_oc_title_id').text('#' + (d.id || ''));
+                    $('#edit_oc_type').val(d.rcost_type || 'others');
+                    $('#edit_oc_amount').val(d.request_amount || '');
+                    $('#edit_oc_purpose').val(d.purpose || '');
+                } catch (e) {}
+            }
+            $('#editOtherCostIndexModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateOc($(e.relatedTarget));
+            });
+            $(document).on('click', '.btn-edit-other-cost', function() {
+                populateOc($(this));
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initOcIndexEditModal);
+    } else {
+        initOcIndexEditModal();
+    }
+})();
+</script>
 

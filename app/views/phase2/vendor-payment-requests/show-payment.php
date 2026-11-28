@@ -185,11 +185,59 @@ $isImg = function($file) {
                 <i class="bi bi-exclamation-triangle-fill me-1"></i> Material Log Not Received
             </span>
         <?php endif; ?>
+        <?php
+        $latestRevision = $latestRevision ?? null;
+        $isVprRevOpen   = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
+        $vprCurrentUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $vprTlByOther = !empty($request['purchase_team_leader_by_id'])
+            && (int)$request['purchase_team_leader_by_id'] !== (int)($request['created_by'] ?? 0);
+        $vprIsUnapproved = in_array($request['status'] ?? '', ['Draft', 'Submitted'], true)
+            && !$vprTlByOther
+            && empty($request['purchase_head_approved_by_id'])
+            && empty($request['qc_approved_by_id'])
+            && empty($request['approved_by']);
+        $canEditVpr = ($vprIsUnapproved || $isVprRevOpen || strtolower($request['status'] ?? '') === 'rejected') && (((int)($request['created_by'] ?? 0) === $vprCurrentUserId) || in_array((int)$userRole, [1, 3], true));
+        if ($canEditVpr):
+        ?>
+            <button type="button" class="btn btn-outline-warning btn-sm ms-2 fw-bold" data-bs-toggle="modal" data-bs-target="#editVprModal">
+                <i class="fa-solid fa-pen-to-square me-1"></i> <?= $isVprRevOpen ? 'Edit &amp; Resubmit' : 'Edit Request' ?>
+            </button>
+        <?php endif; ?>
         <a href="<?= $base_url ?>/con-vendor-payment-requests" class="btn btn-outline-secondary btn-sm ms-2">
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
     </div>
 </div>
+
+<?php
+$vprCanSendBack = false;
+$vprReturnStage = 'approver';
+$vprReturnStageLabel = 'Approver';
+if (!in_array((int)$userRole, [33, 34, 35], true) && !in_array($status ?? '', ['Paid', 'Fully_Paid', 'Rejected'], true)) {
+    if ($isSubmitted && !$isPurchaseHeadApproved && ($canApprovePurchaseHead || $canReviewTeamLeader)) {
+        $vprCanSendBack = true; $vprReturnStage = 'purchase_head'; $vprReturnStageLabel = 'Purchase Head / TL';
+    } elseif ($isSubmitted && $isPurchaseHeadApproved && ($canApproveQC ?? false)) {
+        $vprCanSendBack = true; $vprReturnStage = 'qc'; $vprReturnStageLabel = 'QC & Internal Audit';
+    } elseif ($isQCApproved && !$isOpHeadApproved && ($isOpHeadUser || $isMgmtUser)) {
+        $vprCanSendBack = true; $vprReturnStage = 'op_head'; $vprReturnStageLabel = 'Admin & Operation Head';
+    } elseif ($isQCApproved && $isOpHeadApproved && !$isAhApproved && in_array((int)$userRole, [30, 1, 3], true)) {
+        $vprCanSendBack = true; $vprReturnStage = 'accounts_head'; $vprReturnStageLabel = 'Accounts Head';
+    } elseif ($canApproveReq && $isMgmtUser) {
+        $vprCanSendBack = true; $vprReturnStage = 'mgmt'; $vprReturnStageLabel = 'Management';
+    }
+}
+$revModuleTable      = 'vendor_payment_requests';
+$revSourceId         = (int)$request['id'];
+$revCreatorUserId    = (int)($request['created_by'] ?? 0);
+$revCanSendBack      = $vprCanSendBack;
+$revReturnStage      = $vprReturnStage;
+$revReturnStageLabel = $vprReturnStageLabel;
+$revRedirectUrl      = '/con-vendor-payment-show/' . (int)$request['id'];
+$revEditModalTarget  = '#editVprModal';
+$revEditLinkUrl      = '';
+$revLatest           = $latestRevision ?? null;
+include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+?>
 
 <style>
     .bg-success-transparent {
@@ -333,7 +381,7 @@ if (!empty($ahInfo['has_request'])) {
         </div>
 
         <!-- 6-Step Approval Timeline -->
-        <div class="row row-cols-1 row-cols-md-3 row-cols-xl-6 g-3 text-center timeline-steps">
+        <div class="row row-cols-1 row-cols-md-3 row-cols-xl-6  text-center timeline-steps">
             <!-- Step 1: Head of Purchase Approval -->
             <div class="col position-relative">
                 <div class="p-3 border rounded h-100 <?= $phApproved ? 'border-success bg-success-transparent' : ($phRejected ? 'border-danger bg-danger-transparent' : ($phPending ? 'border-primary bg-info-transparent' : 'bg-light')) ?>">
@@ -638,7 +686,7 @@ if (!empty($ahInfo['has_request'])) {
                 <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Request Information</h6>
             </div>
             <div class="card-body p-4">
-                <div class="row g-3">
+                <div class="row ">
                     <div class="col-md-6">
                         <div class="info-label text-uppercase text-muted small fw-bold mb-1">Project</div>
                         <div class="fw-semibold text-dark"><?= htmlspecialchars($request['project_name'] ?? '—') ?></div>
@@ -1657,7 +1705,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                 <h6 class="card-title mb-0"><i class="bi bi-info-circle me-2"></i>Status Info</h6>
             </div>
             <div class="card-body p-4">
-                <div class="row g-3">
+                <div class="row ">
                     <div class="col-md-6 pb-2 border-bottom">
                         <small class="text-muted d-block mb-1">Current Status</small>
                         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6 px-2.5 py-1.5"><?= $statusInfo['label'] ?></span>
@@ -1780,10 +1828,15 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <label class="form-label fw-semibold mb-1.5">Head of Purchase Note <span class="text-muted">(Optional)</span></label>
                             <textarea name="purchase_head_note" class="form-control" rows="2" placeholder="Write departmental approval note..."></textarea>
                         </div>
-                        <div class="d-flex gap-2 pt-1">
+                        <div class="d-flex flex-wrap gap-2 pt-1">
                             <button type="button" id="btnPhApprove" class="btn btn-primary flex-grow-1 fw-bold py-2">
                                 <i class="bi bi-check-circle me-1"></i> Approve as Head of Purchase
                             </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_vendor_payment_requests">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            <?php endif; ?>
                             <button type="button" id="btnPhReject" class="btn btn-danger flex-grow-1 fw-bold py-2">
                                 <i class="bi bi-x-circle me-1"></i> Reject
                             </button>
@@ -1836,10 +1889,15 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                                 <label class="form-label fw-semibold mb-1.5">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
                                 <textarea name="qc_note" class="form-control" rows="2" placeholder="Write observation, material verification notes or comments..."></textarea>
                             </div>
-                            <div class="d-flex gap-2 pt-1">
+                            <div class="d-flex flex-wrap gap-2 pt-1">
                                 <button type="button" id="btnQcApprove" class="btn btn-info text-white flex-grow-1 fw-bold py-2">
                                     <i class="bi bi-shield-check me-1"></i> Approve & Verify as QC
                                 </button>
+                                <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                    <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_vendor_payment_requests">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                    </button>
+                                <?php endif; ?>
                                 <button type="button" id="btnQcReject" class="btn btn-danger flex-grow-1 fw-bold py-2">
                                     <i class="bi bi-x-circle me-1"></i> Reject
                                 </button>
@@ -1921,11 +1979,16 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <textarea name="approval_note" class="form-control" rows="2"
                                 placeholder="Leave a note..."></textarea>
                         </div>
-                        <div class="d-flex gap-2 pt-1">
+                        <div class="d-flex flex-wrap gap-2 pt-1">
                             <button type="button" id="approveVprBtn" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> flex-grow-1 fw-bold py-2">
                                 <i class="bi bi-check-circle me-1"></i>
                                 <?= $isOpHeadAction ? 'Approve as Operation Head' : (($isApproved) ? 'Approve Additional' : 'Approve Payment') ?>
                             </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_vendor_payment_requests">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            <?php endif; ?>
                             <?php if ($canReject): ?>
                                 <button type="button" id="rejectVprBtn" class="btn btn-danger flex-grow-1 fw-bold py-2">
                                     <i class="bi bi-x-circle me-1"></i> Reject
@@ -2555,3 +2618,73 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
         });
     };
 </script>
+
+<?php if ($canEditVpr ?? false): ?>
+<!-- Edit Vendor Payment Request Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editVprModal" tabindex="-1" aria-labelledby="editVprModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editVprModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Vendor Payment Request #<?= (int)$request['id'] ?>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base_url ?>/con-vendor-payment-update/<?= (int)$request['id'] ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Payment Type <span class="text-danger">*</span></label>
+                        <select name="payment_type" class="form-select" required>
+                            <option value="Advance" <?= (($request['payment_type'] ?? '') === 'Advance') ? 'selected' : '' ?>>Advance</option>
+                            <option value="Partial" <?= (($request['payment_type'] ?? '') === 'Partial') ? 'selected' : '' ?>>Partial</option>
+                            <option value="Final" <?= (($request['payment_type'] ?? 'Final') === 'Final') ? 'selected' : '' ?>>Final</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Invoice Number</label>
+                        <input type="text" name="invoice_number" class="form-control" value="<?= htmlspecialchars($request['invoice_number'] ?? '') ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Invoice Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="invoice_amount" class="form-control" value="<?= htmlspecialchars($request['invoice_amount'] ?? '') ?>" required>
+                    </div>
+                    <?php if ($isVprRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initVprEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initVprEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editVprModal').length && $('#editVprModal').parent().prop('tagName') !== 'BODY') {
+                $('#editVprModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVprEditModal);
+    } else {
+        initVprEditModal();
+    }
+})();
+</script>
+<?php endif; ?>

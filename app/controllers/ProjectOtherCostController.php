@@ -250,6 +250,8 @@ class ProjectOtherCostController extends Controller
             }
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 setSuccess("Request Department Head " . ucfirst($status) . " successfully.");
             } else {
@@ -312,6 +314,8 @@ class ProjectOtherCostController extends Controller
             ];
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 setSuccess("Request QC Approved successfully.");
             } else {
@@ -485,6 +489,8 @@ class ProjectOtherCostController extends Controller
             ];
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 $escNote = $this->db->real_escape_string($note ?: 'Approved by Management');
                 $escOverrideNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
@@ -604,6 +610,8 @@ class ProjectOtherCostController extends Controller
             }
 
             if ($this->otherCostModel->update($id, $data)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('project_other_costs', (int)$id);
                 $this->syncToApprovalRequests($id);
                 setSuccess("Request Paid successfully.");
             } else {
@@ -809,11 +817,104 @@ class ProjectOtherCostController extends Controller
             $adjustments = $stmtAdj->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+        $revSvc = new RequisitionRevisionService($this->db);
+        $latestRevision = $revSvc->getLatestActiveOrResubmitted('project_other_costs', (int)$id);
+
         $this->view('project-other-costs/review', [
             'request' => $request,
             'roleId' => $roleId,
             'userId' => $userId,
-            'adjustments' => $adjustments
+            'adjustments' => $adjustments,
+            'costTypes' => ProjectOtherCost::getCostTypes(),
+            'latestRevision' => $latestRevision
         ]);
+    }
+
+    /**
+     * Update Project Other Cost Request — Creator or Admin ONLY before 1st approval
+     */
+    public function update($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . (int)$id);
+            exit;
+        }
+
+        $id      = (int)$id;
+        $userId  = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId  = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+
+        $request = $this->otherCostModel->getById($id);
+        if (!$request) {
+            setError("Request not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+            exit;
+        }
+
+        $isOwner = ((int)($request['created_by_id'] ?? 0) === $userId);
+        if (!$isOwner && !$isAdmin) {
+            setError("Only the creator or Admin can edit this request.");
+            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/{$id}");
+            exit;
+        }
+
+        require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+        $revSvc  = new RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('project_other_costs', $id);
+
+        $hasAnyApproval = (($request['status'] ?? '') !== 'pending')
+            || (($request['dept_head_status'] ?? '') === 'approved')
+            || !empty($request['dept_head_approved_by'])
+            || !empty($request['qc_audit_approved_id'])
+            || !empty($request['management_apporved_by_id'])
+            || !empty($request['payment_by_id']);
+
+        if ($hasAnyApproval && empty($openRev) && empty($revSvc->getRejectionStatus('project_other_costs', $id)['is_rejected'])) {
+            setError("This request has already been approved at one or more stages and can no longer be edited.");
+            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/{$id}");
+            exit;
+        }
+
+        $rcostType     = trim($_POST['rcost_type'] ?? ($request['rcost_type'] ?? 'others'));
+        $requestAmount = (float)($_POST['request_amount'] ?? 0);
+        $purpose       = trim($_POST['purpose'] ?? '');
+
+        if ($requestAmount <= 0 || $purpose === '') {
+            setError("Please enter a valid amount greater than zero and a purpose.");
+            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/{$id}");
+            exit;
+        }
+
+        $updateData = [
+            'rcost_type'     => $rcostType,
+            'request_amount' => $requestAmount,
+            'purpose'        => $purpose,
+        ];
+
+        if ($this->otherCostModel->update($id, $updateData)) {
+            $this->syncToApprovalRequests($id);
+            $ocEditSum = RequisitionRevisionService::buildChangeSummary([
+                'Amount'    => [$request['request_amount'] ?? 0, $requestAmount],
+                'Cost Type' => [$request['rcost_type'] ?? '', $rcostType],
+                'Purpose'   => [$request['purpose'] ?? '', $purpose],
+            ]);
+            $revSvc->logEdit('project_other_costs', $id, $ocEditSum);
+            if (!empty($openRev)) {
+                $revSvc->markResubmitted('project_other_costs', $id, $requestAmount, trim($_POST['resubmitted_note'] ?? ''));
+                setSuccess("Project Other Cost request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+            } else {
+                setSuccess("Project Other Cost request #{$id} updated successfully.");
+            }
+        } else {
+            setError("Failed to update request.");
+        }
+
+        $redirectUrl = (($_POST['redirect_to'] ?? '') === 'index')
+            ? ($GLOBALS['base_url'] . "/project-other-costs")
+            : ($GLOBALS['base_url'] . "/project-other-costs/review/{$id}");
+        header("Location: " . $redirectUrl);
+        exit;
     }
 }

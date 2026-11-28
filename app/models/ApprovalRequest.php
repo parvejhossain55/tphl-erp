@@ -609,6 +609,11 @@ class ApprovalRequest extends Model
             }
         }
 
+        if ($res && !empty($req['source_table']) && !empty($req['source_id'])) {
+            require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+            (new RequisitionRevisionService($this->db))->markResolved((string)$req['source_table'], (int)$req['source_id']);
+        }
+
         return $res;
     }
 
@@ -822,6 +827,11 @@ class ApprovalRequest extends Model
 
         if ($req['source_table'] === 'lead_bookings') {
             $this->db->query("UPDATE lead_bookings SET approval_status = 'approved' WHERE id = " . (int)$req['source_id']);
+        }
+
+        if ($res && !empty($req['source_table']) && !empty($req['source_id'])) {
+            require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+            (new RequisitionRevisionService($this->db))->markResolved((string)$req['source_table'], (int)$req['source_id']);
         }
 
         return $res;
@@ -5049,13 +5059,13 @@ class ApprovalRequest extends Model
             UPDATE approval_requests ar
             INNER JOIN project_extra_assets pea ON (ar.source_table IN ('project_extra_assets', 'purchase_requests') AND ar.source_id = pea.id)
             SET ar.status = CASE 
-                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'approved'
+                    WHEN pea.payment_status = 'paid' OR pea.overall_status IN ('process_on_purchase', 'purchased', 'received') THEN 'approved'
                     WHEN pea.mgmt_status = 'approved' THEN 'approved' 
                     WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.it_head_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected' 
                     ELSE 'pending' 
                 END,
                 ar.approve_role = CASE
-                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
+                    WHEN pea.payment_status = 'paid' OR pea.overall_status IN ('process_on_purchase', 'purchased', 'received') THEN 'completed'
                     WHEN pea.mgmt_status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.it_head_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected'
                     WHEN pea.dept_head_status = 'pending' THEN IF(pea.reporting_user_id IS NOT NULL AND pea.reporting_user_id > 0, CONCAT('dept_head_', pea.reporting_user_id), 'dept_head')

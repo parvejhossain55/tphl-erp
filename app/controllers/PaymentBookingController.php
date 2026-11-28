@@ -88,20 +88,20 @@ class PaymentBookingController extends Controller
         }
 
         $data = [
-            'booking_id'          => $_POST['booking_id'] ?? 0,
-            'payment_type'        => $_POST['payment_type'] ?? 'booking_money',
+            'booking_id'          => (int)($_POST['booking_id'] ?? 0),
+            'payment_type'        => !empty($_POST['payment_type']) ? trim($_POST['payment_type']) : 'booking_money',
             'amount'              => floatval($_POST['amount'] ?? 0),
-            'payment_method'      => $_POST['payment_method'] ?? 'cash',
+            'payment_method'      => !empty($_POST['payment_method']) ? trim($_POST['payment_method']) : 'cash',
             'payment_status'      => 'pending', // always pending — verified by accounts before becoming paid
-            'payment_date'        => $_POST['payment_date'] ?? date('Y-m-d'),
-            'transaction_ref'     => $_POST['transaction_ref'] ?? null,
+            'payment_date'        => !empty($_POST['payment_date']) ? trim($_POST['payment_date']) : date('Y-m-d'),
+            'transaction_ref'     => (isset($_POST['transaction_ref']) && trim($_POST['transaction_ref']) !== '') ? trim($_POST['transaction_ref']) : null,
             'bank_id'             => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
             'bank_name'           => $bankName,
-            'bank_account_no'     => $_POST['bank_account_no'] ?? null,
-            'total_emi_no'        => $_POST['total_emi_no'] ?? null,
-            'cheque_no'           => $_POST['cheque_no'] ?? null,
-            'online_type'         => $_POST['online_type'] ?? null,
-            'created_by'          => $_SESSION['user']['id'] ?? 1,
+            'bank_account_no'     => (isset($_POST['bank_account_no']) && trim($_POST['bank_account_no']) !== '') ? trim($_POST['bank_account_no']) : null,
+            'total_emi_no'        => (isset($_POST['total_emi_no']) && trim((string)$_POST['total_emi_no']) !== '') ? (int)$_POST['total_emi_no'] : null,
+            'cheque_no'           => (isset($_POST['cheque_no']) && trim($_POST['cheque_no']) !== '') ? trim($_POST['cheque_no']) : null,
+            'online_type'         => (isset($_POST['online_type']) && trim($_POST['online_type']) !== '') ? trim($_POST['online_type']) : null,
+            'created_by'          => !empty($_SESSION['user']['id']) ? (int)$_SESSION['user']['id'] : 1,
             'verification_status' => 'pending', // always pending until accounts verifies
         ];
 
@@ -116,8 +116,8 @@ class PaymentBookingController extends Controller
         }
 
         // VALIDATION
-        if (!$data['booking_id'] || !$data['amount'] || !$data['payment_type']) {
-            setError("Required data missing!");
+        if (!$data['booking_id'] || $data['amount'] <= 0 || !$data['payment_type']) {
+            setError("Required data missing or invalid amount!");
             header("Location: {$GLOBALS['base_url']}/payments-booking/" . ($data['booking_id'] ?? 0));
             exit;
         }
@@ -315,7 +315,8 @@ class PaymentBookingController extends Controller
                 setSuccess("Payment created successfully! (SMS & Email Notification Disabled)");
             }
         } else {
-            setError("Failed to create payment!");
+            $dbErr = method_exists($this->paymentModel, 'getLastError') ? $this->paymentModel->getLastError() : '';
+            setError($dbErr ? ("Failed to create payment! (" . $dbErr . ")") : "Failed to create payment!");
         }
 
         // EMAIL SENDING LOGIC - Only send if SMS is enabled and testing mode is off

@@ -277,6 +277,28 @@ public function getPaginated($limit, $offset)
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
+    /** Get Office Procurement / Extra Purchase history for a vendor */
+    public function getOfficeProcurementHistory($vendorId)
+    {
+        $sql = "SELECT pea.id, pea.item_name, pea.quantity, pea.unit_price, pea.total_price,
+                       pea.request_type, pea.payment_status, pea.paid_amount, pea.payment_method,
+                       pea.overall_status, pea.created_at, pea.paid_at,
+                       p.name AS project_name,
+                       COALESCE(ob.name, pea.asset_location, 'Head Office') AS location_name,
+                       cat.name AS category_name
+                FROM project_extra_assets pea
+                LEFT JOIN projects p ON p.id = pea.project_id
+                LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
+                LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
+                WHERE pea.vendor_id = ?
+                ORDER BY pea.id DESC";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+        $stmt->bind_param('i', $vendorId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
     /** Get quick stats for vendor profile */
     public function getStats($vendorId)
     {
@@ -290,6 +312,23 @@ public function getPaginated($limit, $offset)
         $stmt->bind_param('i', $vendorId);
         $stmt->execute();
         $poStats = $stmt->get_result()->fetch_assoc();
+
+        // Office Procurement stats
+        $officeStats = ['office_proc_count' => 0, 'office_proc_value' => 0, 'office_proc_paid' => 0];
+        $stmtOff = $this->db->prepare(
+            "SELECT COUNT(*) AS office_proc_count,
+                    COALESCE(SUM(total_price), 0) AS office_proc_value,
+                    COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN COALESCE(paid_amount, total_price) ELSE 0 END), 0) AS office_proc_paid
+             FROM project_extra_assets
+             WHERE vendor_id = ? AND overall_status != 'rejected'"
+        );
+        if ($stmtOff) {
+            $stmtOff->bind_param('i', $vendorId);
+            $stmtOff->execute();
+            $resOff = $stmtOff->get_result()->fetch_assoc();
+            if ($resOff) $officeStats = $resOff;
+            $stmtOff->close();
+        }
 
         // Penalty count + total amount
         $stmt2 = $this->db->prepare(
@@ -313,7 +352,7 @@ public function getPaginated($limit, $offset)
         $stmt3->execute();
         $qcStats = $stmt3->get_result()->fetch_assoc();
 
-        return array_merge($poStats, $penaltyStats, $qcStats);
+        return array_merge($poStats, $officeStats, $penaltyStats, $qcStats);
     }
 
     /**
@@ -428,6 +467,55 @@ public function getPaginated($limit, $offset)
         $cftResult = $stmtCft->get_result()->fetch_assoc();
         $totalPaid = (float)($cftResult['total_paid'] ?? 0);
 
+        // 2b. Office Procurement (project_extra_assets) billed & paid for linked vendors
+        $peaWhere = ["pea.vendor_id IS NOT NULL", "pea.overall_status != 'rejected'"];
+        $peaTypes = '';
+        $peaParams = [];
+        if (!empty($filters['vendor_id'])) {
+            $peaWhere[] = "pea.vendor_id = ?";
+            $peaTypes .= 'i';
+            $peaParams[] = (int)$filters['vendor_id'];
+        }
+        if (!empty($filters['project_id'])) {
+            $peaWhere[] = "pea.project_id = ?";
+            $peaTypes .= 'i';
+            $peaParams[] = (int)$filters['project_id'];
+        }
+        if (!empty($filters['start_date'])) {
+            $peaWhere[] = "DATE(pea.created_at) >= ?";
+            $peaTypes .= 's';
+            $peaParams[] = $filters['start_date'];
+        }
+        if (!empty($filters['end_date'])) {
+            $peaWhere[] = "DATE(pea.created_at) <= ?";
+            $peaTypes .= 's';
+            $peaParams[] = $filters['end_date'];
+        }
+        if (!empty($filters['search'])) {
+            $search = '%' . trim($filters['search']) . '%';
+            $peaWhere[] = "(v.company_name LIKE ? OR v.name LIKE ? OR v.phone LIKE ? OR v.email LIKE ? OR pea.item_name LIKE ?)";
+            $peaTypes .= 'sssss';
+            $peaParams = array_merge($peaParams, [$search, $search, $search, $search, $search]);
+        }
+        $peaSql = "SELECT COUNT(*) AS cnt,
+                          COALESCE(SUM(pea.total_price), 0) AS total_amt,
+                          COALESCE(SUM(CASE WHEN pea.payment_status = 'paid' THEN COALESCE(pea.paid_amount, pea.total_price) ELSE 0 END), 0) AS total_paid
+                   FROM project_extra_assets pea
+                   LEFT JOIN vendors v ON v.id = pea.vendor_id
+                   WHERE " . implode(' AND ', $peaWhere);
+        $stmtPea = $this->db->prepare($peaSql);
+        if ($stmtPea) {
+            if (!empty($peaParams)) {
+                $stmtPea->bind_param($peaTypes, ...$peaParams);
+            }
+            $stmtPea->execute();
+            $peaRes = $stmtPea->get_result()->fetch_assoc();
+            $totalPos   += (int)($peaRes['cnt'] ?? 0);
+            $totalPoAmt += (float)($peaRes['total_amt'] ?? 0);
+            $totalPaid  += (float)($peaRes['total_paid'] ?? 0);
+            $stmtPea->close();
+        }
+
         // Active vendors count
         if (!empty($filters['vendor_id'])) {
             $totalVendors = 1;
@@ -486,6 +574,21 @@ public function getPaginated($limit, $offset)
         }
         $paidWhereSql = implode(' AND ', $paidConds);
 
+        // Subquery Office Procurement stats filter conditions
+        $peaConds = ["pea.vendor_id IS NOT NULL", "pea.overall_status != 'rejected'"];
+        if (!empty($filters['project_id'])) {
+            $peaConds[] = "pea.project_id = " . (int)$filters['project_id'];
+        }
+        if (!empty($filters['start_date'])) {
+            $sDate = $this->db->real_escape_string($filters['start_date']);
+            $peaConds[] = "DATE(pea.created_at) >= '{$sDate}'";
+        }
+        if (!empty($filters['end_date'])) {
+            $eDate = $this->db->real_escape_string($filters['end_date']);
+            $peaConds[] = "DATE(pea.created_at) <= '{$eDate}'";
+        }
+        $peaWhereSql = implode(' AND ', $peaConds);
+
         $mainWhere = ["1=1"];
         $types = '';
         $params = [];
@@ -508,8 +611,8 @@ public function getPaginated($limit, $offset)
         }
 
         if (!empty($filters['project_id'])) {
-            // Only show vendors that have POs or payments in this project
-            $mainWhere[] = "(po_stat.total_pos > 0 OR paid_stat.total_paid > 0)";
+            // Only show vendors that have POs, office procurements, or payments in this project
+            $mainWhere[] = "(po_stat.total_pos > 0 OR paid_stat.total_paid > 0 OR pea_stat.total_pea > 0)";
         }
 
         $whereClause = "WHERE " . implode(' AND ', $mainWhere);
@@ -525,12 +628,16 @@ public function getPaginated($limit, $offset)
                 v.address,
                 v.status,
                 v.rating,
-                COALESCE(po_stat.total_pos, 0) AS total_pos,
-                COALESCE(po_stat.total_po_amount, 0) AS total_po_amount,
-                COALESCE(paid_stat.total_paid, 0) AS total_paid,
-                GREATEST(0, COALESCE(po_stat.total_po_amount, 0) - COALESCE(paid_stat.total_paid, 0)) AS total_due,
-                paid_stat.last_payment_date,
-                po_stat.projects_summary
+                (COALESCE(po_stat.total_pos, 0) + COALESCE(pea_stat.total_pea, 0)) AS total_pos,
+                (COALESCE(po_stat.total_po_amount, 0) + COALESCE(pea_stat.total_pea_amount, 0)) AS total_po_amount,
+                (COALESCE(paid_stat.total_paid, 0) + COALESCE(pea_stat.total_pea_paid, 0)) AS total_paid,
+                GREATEST(0, (COALESCE(po_stat.total_po_amount, 0) + COALESCE(pea_stat.total_pea_amount, 0)) - (COALESCE(paid_stat.total_paid, 0) + COALESCE(pea_stat.total_pea_paid, 0))) AS total_due,
+                GREATEST(COALESCE(paid_stat.last_payment_date, '1970-01-01'), COALESCE(pea_stat.last_pea_paid_date, '1970-01-01')) AS last_payment_date_calc,
+                IF(paid_stat.last_payment_date IS NULL AND pea_stat.last_pea_paid_date IS NULL, NULL,
+                   IF(paid_stat.last_payment_date IS NULL, pea_stat.last_pea_paid_date,
+                      IF(pea_stat.last_pea_paid_date IS NULL, paid_stat.last_payment_date,
+                         GREATEST(paid_stat.last_payment_date, pea_stat.last_pea_paid_date)))) AS last_payment_date,
+                COALESCE(po_stat.projects_summary, pea_stat.pea_projects_summary) AS projects_summary
             FROM vendors v
             LEFT JOIN (
                 SELECT 
@@ -555,8 +662,22 @@ public function getPaginated($limit, $offset)
                 WHERE {$paidWhereSql}
                 GROUP BY vpr.vendor_id
             ) AS paid_stat ON paid_stat.vendor_id = v.id
+            LEFT JOIN (
+                SELECT 
+                    pea.vendor_id,
+                    COUNT(*) AS total_pea,
+                    COALESCE(SUM(pea.total_price), 0) AS total_pea_amount,
+                    COALESCE(SUM(CASE WHEN pea.payment_status = 'paid' THEN COALESCE(pea.paid_amount, pea.total_price) ELSE 0 END), 0) AS total_pea_paid,
+                    MAX(CASE WHEN pea.payment_status = 'paid' THEN pea.paid_at ELSE NULL END) AS last_pea_paid_date,
+                    GROUP_CONCAT(DISTINCT COALESCE(p.name, ob.name, 'Office') SEPARATOR ', ') AS pea_projects_summary
+                FROM project_extra_assets pea
+                LEFT JOIN projects p ON p.id = pea.project_id
+                LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
+                WHERE {$peaWhereSql}
+                GROUP BY pea.vendor_id
+            ) AS pea_stat ON pea_stat.vendor_id = v.id
             {$whereClause}
-            ORDER BY COALESCE(po_stat.total_po_amount, 0) DESC, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) ASC
+            ORDER BY (COALESCE(po_stat.total_po_amount, 0) + COALESCE(pea_stat.total_pea_amount, 0)) DESC, COALESCE(NULLIF(TRIM(v.company_name), ''), v.name) ASC
             LIMIT ? OFFSET ?
         ";
 
@@ -606,6 +727,20 @@ public function getPaginated($limit, $offset)
         }
         $paidWhereSql = implode(' AND ', $paidConds);
 
+        $peaConds = ["pea.vendor_id IS NOT NULL", "pea.overall_status != 'rejected'"];
+        if (!empty($filters['project_id'])) {
+            $peaConds[] = "pea.project_id = " . (int)$filters['project_id'];
+        }
+        if (!empty($filters['start_date'])) {
+            $sDate = $this->db->real_escape_string($filters['start_date']);
+            $peaConds[] = "DATE(pea.created_at) >= '{$sDate}'";
+        }
+        if (!empty($filters['end_date'])) {
+            $eDate = $this->db->real_escape_string($filters['end_date']);
+            $peaConds[] = "DATE(pea.created_at) <= '{$eDate}'";
+        }
+        $peaWhereSql = implode(' AND ', $peaConds);
+
         $mainWhere = ["1=1"];
         $types = '';
         $params = [];
@@ -628,7 +763,7 @@ public function getPaginated($limit, $offset)
         }
 
         if (!empty($filters['project_id'])) {
-            $mainWhere[] = "(po_stat.total_pos > 0 OR paid_stat.total_paid > 0)";
+            $mainWhere[] = "(po_stat.total_pos > 0 OR paid_stat.total_paid > 0 OR pea_stat.total_pea > 0)";
         }
 
         $whereClause = "WHERE " . implode(' AND ', $mainWhere);
@@ -655,6 +790,14 @@ public function getPaginated($limit, $offset)
                 WHERE {$paidWhereSql}
                 GROUP BY vpr.vendor_id
             ) AS paid_stat ON paid_stat.vendor_id = v.id
+            LEFT JOIN (
+                SELECT 
+                    pea.vendor_id,
+                    COUNT(*) AS total_pea
+                FROM project_extra_assets pea
+                WHERE {$peaWhereSql}
+                GROUP BY pea.vendor_id
+            ) AS pea_stat ON pea_stat.vendor_id = v.id
             {$whereClause}
         ";
 
@@ -742,21 +885,29 @@ public function getPaginated($limit, $offset)
 
         $poExtra = '';
         $cftExtra = '';
+        $peaExtra = '';
+        $peaPayExtra = '';
 
         if (!empty($filters['project_id'])) {
             $pId = (int)$filters['project_id'];
             $poExtra .= " AND pr.project_id = {$pId}";
             $cftExtra .= " AND (cft.project_id = {$pId} OR vpr.project_id = {$pId})";
+            $peaExtra .= " AND pea.project_id = {$pId}";
+            $peaPayExtra .= " AND pea.project_id = {$pId}";
         }
         if (!empty($filters['start_date'])) {
             $sDate = $this->db->real_escape_string($filters['start_date']);
             $poExtra .= " AND DATE(COALESCE(po.order_date, po.created_at)) >= '{$sDate}'";
             $cftExtra .= " AND DATE(cft.transaction_date) >= '{$sDate}'";
+            $peaExtra .= " AND DATE(pea.created_at) >= '{$sDate}'";
+            $peaPayExtra .= " AND DATE(COALESCE(pea.paid_at, pea.created_at)) >= '{$sDate}'";
         }
         if (!empty($filters['end_date'])) {
             $eDate = $this->db->real_escape_string($filters['end_date']);
             $poExtra .= " AND DATE(COALESCE(po.order_date, po.created_at)) <= '{$eDate}'";
             $cftExtra .= " AND DATE(cft.transaction_date) <= '{$eDate}'";
+            $peaExtra .= " AND DATE(pea.created_at) <= '{$eDate}'";
+            $peaPayExtra .= " AND DATE(COALESCE(pea.paid_at, pea.created_at)) <= '{$eDate}'";
         }
 
         $sql = "
@@ -805,6 +956,50 @@ public function getPaginated($limit, $offset)
                 WHERE cft.ref_type = 'vendor_payment'
                   AND vpr.vendor_id = {$vendorId}
                   {$cftExtra}
+            )
+            UNION ALL
+            (
+                SELECT 
+                    DATE(pea.created_at) as tx_date,
+                    pea.created_at as created_date,
+                    'OFFICE_PROCUREMENT' as entry_type,
+                    pea.id as ref_id,
+                    CONCAT('PR-', pea.id) as ref_no,
+                    COALESCE(p.name, ob.name, pea.asset_location, 'Head Office') as project_name,
+                    CONCAT('Office Procurement: ', COALESCE(pea.item_name, 'Item'), ' (Qty: ', pea.quantity, ')') as description,
+                    COALESCE(pea.total_price, 0) as debit_amount,
+                    0.00 as credit_amount,
+                    COALESCE(pea.overall_status, 'pending') as status_badge,
+                    CONCAT('/asset-extra-purchase/', pea.id) as action_url
+                FROM project_extra_assets pea
+                LEFT JOIN projects p ON p.id = pea.project_id
+                LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
+                WHERE pea.vendor_id = {$vendorId}
+                  AND pea.overall_status != 'rejected'
+                  {$peaExtra}
+            )
+            UNION ALL
+            (
+                SELECT 
+                    DATE(COALESCE(pea.paid_at, pea.created_at)) as tx_date,
+                    COALESCE(pea.paid_at, pea.created_at) as created_date,
+                    'OFFICE_PAYMENT' as entry_type,
+                    pea.id as ref_id,
+                    CONCAT('PR-PAY-', pea.id) as ref_no,
+                    COALESCE(p.name, ob.name, pea.asset_location, 'Head Office') as project_name,
+                    CONCAT('Office Procurement Payment (', COALESCE(pea.payment_method, 'Cash'), ') - ', COALESCE(pea.item_name, 'Item')) as description,
+                    0.00 as debit_amount,
+                    COALESCE(pea.paid_amount, pea.total_price, 0) as credit_amount,
+                    'Paid' as status_badge,
+                    CONCAT('/asset-extra-purchase/', pea.id) as action_url
+                FROM project_extra_assets pea
+                LEFT JOIN projects p ON p.id = pea.project_id
+                LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
+                WHERE pea.vendor_id = {$vendorId}
+                  AND pea.overall_status != 'rejected'
+                  AND pea.payment_status = 'paid'
+                  AND COALESCE(pea.paid_amount, pea.total_price, 0) > 0
+                  {$peaPayExtra}
             )
             ORDER BY tx_date ASC, created_date ASC
         ";

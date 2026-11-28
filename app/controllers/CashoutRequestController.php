@@ -508,6 +508,8 @@ class CashoutRequestController extends Controller
 
             $qcNote = trim($_POST['approval_note'] ?? '');
             if ($this->cashoutModel->updateQCStatus($requestId, $this->userId, $qcNote)) {
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('cashout_requests', (int)$requestId);
                 setSuccess("Request QC Approved successfully.");
             } else {
                 setError("Failed to QC approve.");
@@ -578,6 +580,8 @@ class CashoutRequestController extends Controller
                     ");
                 }
                 // Trigger Email Notification ON APPROVAL
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                (new \RequisitionRevisionService($this->db))->markResolved('cashout_requests', (int)$requestId);
                 $freshRequest = $this->cashoutModel->getRequestById($requestId);
                 $this->mailService->sendOnApproval($freshRequest, 'approved', $this->userId);
                 
@@ -752,6 +756,119 @@ class CashoutRequestController extends Controller
         }
 
         header("Location: {$GLOBALS['base_url']}" . $redirectUrl);
+        exit;
+    }
+
+    /**
+     * Update Cashout Request — Creator or Admin ONLY before 1st approval (QC approval)
+     */
+    public function update()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/cashout-requests");
+            exit;
+        }
+
+        $requestId = (int)($_POST['id'] ?? 0);
+        if ($requestId <= 0) {
+            setError("Invalid cashout request ID.");
+            header("Location: {$GLOBALS['base_url']}/cashout-requests");
+            exit;
+        }
+
+        $request = $this->cashoutModel->getRequestById($requestId);
+        if (!$request) {
+            setError("Cashout request not found.");
+            header("Location: {$GLOBALS['base_url']}/cashout-requests");
+            exit;
+        }
+
+        $isAdmin = in_array((int)$this->userRole, [1, 3], true);
+        $isOwner = ((int)($request['requested_by'] ?? 0) === (int)$this->userId);
+        if (!$isOwner && !$isAdmin) {
+            setError("Only the creator or Admin can edit this cashout request.");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id={$requestId}");
+            exit;
+        }
+
+        $arApproved = false;
+        $arRes = $this->db->query("SELECT status, op_head_status, accounts_head_status FROM approval_requests WHERE source_table = 'cashout_requests' AND source_id = {$requestId} LIMIT 1");
+        if ($arRes && $arRow = $arRes->fetch_assoc()) {
+            if (
+                strtolower($arRow['status'] ?? '') !== 'pending'
+                || strtolower($arRow['op_head_status'] ?? '') === 'approved'
+                || strtolower($arRow['accounts_head_status'] ?? '') === 'approved'
+            ) {
+                $arApproved = true;
+            }
+        }
+
+        require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+        $coRevSvc = new RequisitionRevisionService($this->db);
+        $openRev  = $coRevSvc->getOpenRevision('cashout_requests', $requestId);
+
+        $hasAnyApproval = (($request['status'] ?? '') !== 'pending')
+            || !empty($request['qc_approved_by_id'])
+            || !empty($request['approved_by'])
+            || $arApproved;
+
+        if ($hasAnyApproval && empty($openRev) && empty($coRevSvc->getRejectionStatus('cashout_requests', $requestId)['is_rejected'])) {
+            setError("This cashout request has already been approved at one or more stages and can no longer be edited.");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id={$requestId}");
+            exit;
+        }
+
+        $purposePaidTo = trim($_POST['purpose_paid_to'] ?? '');
+        $amount        = (float)($_POST['amount'] ?? 0);
+        $description   = trim($_POST['description'] ?? '');
+        $paymentMethod = trim($_POST['payment_method'] ?? ($request['payment_method'] ?? 'Cash'));
+
+        if ($purposePaidTo === '' || $amount <= 0) {
+            setError("Please provide a valid purpose/recipient and amount greater than 0.");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id={$requestId}");
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE cashout_requests
+            SET purpose_paid_to = ?, amount = ?, due_amount = ?, description = ?, payment_method = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param('sddssi', $purposePaidTo, $amount, $amount, $description, $paymentMethod, $requestId);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $title = "Cashout: {$purposePaidTo}";
+                $stmtAr = $this->db->prepare("UPDATE approval_requests SET title = ?, request_amount = ?, updated_at = NOW() WHERE source_table = 'cashout_requests' AND source_id = ?");
+                if ($stmtAr) {
+                    $stmtAr->bind_param('sdi', $title, $amount, $requestId);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
+                $coEditSum = RequisitionRevisionService::buildChangeSummary([
+                    'Amount'         => [$request['amount'] ?? 0, $amount],
+                    'Purpose'        => [$request['purpose_paid_to'] ?? '', $purposePaidTo],
+                    'Payment Method' => [$request['payment_method'] ?? '', $paymentMethod],
+                ]);
+                $coRevSvc->logEdit('cashout_requests', $requestId, $coEditSum);
+                if (!empty($openRev)) {
+                    $coRevSvc->markResubmitted('cashout_requests', $requestId, $amount, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Cashout Request #{$requestId} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Cashout Request #{$requestId} updated successfully.");
+                }
+            } else {
+                $stmt->close();
+                setError("Failed to update cashout request.");
+            }
+        } else {
+            setError("Database error while updating cashout request.");
+        }
+
+        $redirectTo = (($_POST['redirect_to'] ?? '') === 'index')
+            ? "{$GLOBALS['base_url']}/cashout-requests"
+            : "{$GLOBALS['base_url']}/view-cashout-request?id={$requestId}";
+        header("Location: {$redirectTo}");
         exit;
     }
 

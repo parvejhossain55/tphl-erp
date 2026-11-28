@@ -2423,8 +2423,30 @@ class EmployeeDashboardController extends Controller
                 }
             }
 
+            // Release PHP session file lock BEFORE slow external Tipsoi HTTP calls
+            // so other ERP page navigations are NEVER blocked!
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+
+            // Fast-fail in 0ms if Tipsoi is currently down (circuit breaker open)
+            if ($this->externalApiService->isTipsoiCircuitOpen()) {
+                echo json_encode([
+                    'success' => true,
+                    'data' => [],
+                    'total' => 0,
+                    'tipsoi_id' => $tipsoiId,
+                    'tipsoi_unavailable' => true
+                ]);
+                exit;
+            }
+
             // Helper to make curl request using ONLY the user's token
-            $callTipsoiWithUserToken = function($endpoint) use ($token) {
+            $externalApi = $this->externalApiService;
+            $callTipsoiWithUserToken = function($endpoint) use ($token, $externalApi) {
+                if ($externalApi->isTipsoiCircuitOpen()) {
+                    return [];
+                }
                 $url = "https://app.tipsoi.ai/inovace-client/api/v1" . $endpoint;
                 $ch = curl_init($url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -2433,9 +2455,16 @@ class EmployeeDashboardController extends Controller
                     'Accept: application/json'
                 ]);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
                 $res = curl_exec($ch);
+                $curlErr = curl_error($ch);
                 curl_close($ch);
+                if ($curlErr) {
+                    $externalApi->tripTipsoiCircuit();
+                    error_log("Tipsoi Pending Approvals cURL Error ({$endpoint}): " . $curlErr);
+                    return [];
+                }
                 return json_decode($res, true) ?: [];
             };
 

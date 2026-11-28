@@ -345,10 +345,11 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
                     <!-- Left Column: Add Follow Up Form -->
                     <div class="col-lg-5 border-end pe-lg-4">
                         <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                            <h6 class="text-primary mb-0 fw-bold"><i class="fa-light fa-plus-circle me-1"></i>Add New Follow Up Note</h6>
-                            <span class="badge bg-primary-subtle text-primary extra-small">Follow-up Log</span>
+                            <h6 class="text-primary mb-0 fw-bold" id="modalFollowupFormHeading"><i class="fa-light fa-plus-circle me-1"></i>Add New Follow Up Note</h6>
+                            <span class="badge bg-primary-subtle text-primary extra-small" id="modalFollowupFormBadge">Follow-up Log</span>
                         </div>
                         <input type="hidden" id="modalFollowupBookingId">
+                        <input type="hidden" id="modalFollowupEditId" value="">
                         
                         <div class="mb-3" id="modalFollowupProjectContainer">
                             <label class="form-label fs-12 fw-semibold text-muted mb-1">Project & Flat</label>
@@ -421,7 +422,7 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
                             </div>
                             <div class="mb-2">
                                 <label class="form-label fs-12 fw-medium text-dark mb-1">Next Follow Up Date</label>
-                                <input type="date" id="modalFollowupNextDate" class="form-control form-control-sm" min="<?= date('Y-m-d') ?>">
+                                <input type="date" id="modalFollowupNextDate" class="form-control form-control-sm">
                                 <small class="text-muted extra-small">If scheduled, client appears in Today / Upcoming follow-up lists</small>
                             </div>
                             <div>
@@ -430,9 +431,14 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
                             </div>
                         </div>
 
-                        <button type="button" class="btn btn-primary w-100 shadow-sm py-2" id="saveFollowupBtn" onclick="saveClientEmiFollowup()">
-                            <i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary w-100 shadow-sm py-2" id="saveFollowupBtn" onclick="saveClientEmiFollowup()">
+                                <i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary py-2 px-3 d-none text-nowrap" id="cancelEditFollowupBtn" onclick="cancelEditFollowup()">
+                                Cancel
+                            </button>
+                        </div>
                         
                     </div>
                     
@@ -465,6 +471,8 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
     let followupCurrentPage = <?= (int)$currentPage ?>;
     let followupSearchTimer = null;
     let clientEmiFollowupModalInstance = null;
+    let loadedFollowupsById = {};
+    const defaultFollowupActivityDate = '<?= date('Y-m-d') ?>';
 
     function escapeHtml(text) {
         if (!text) return '';
@@ -540,12 +548,10 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
     }
 
     // Modal logic
-    function openClientEmiFollowupModal(bookingId, clientName, totalEmi = 36, leadId = null) {
+    function openClientEmiFollowupModal(bookingId, clientName, totalEmi = 36, leadId = null, editFollowupId = null) {
         document.getElementById('followup_modal_client_name').textContent = clientName || 'Client';
         document.getElementById('modalFollowupBookingId').value = bookingId;
-        document.getElementById('modalFollowupNoteInput').value = '';
-        if (document.getElementById('modalFollowupNextDate')) document.getElementById('modalFollowupNextDate').value = '';
-        if (document.getElementById('modalFollowupNextNote')) document.getElementById('modalFollowupNextNote').value = '';
+        cancelEditFollowup();
         
         const bookingSelect = document.getElementById('modalFollowupBookingSelect');
         if (bookingSelect) {
@@ -596,7 +602,92 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
             }
         }
 
-        loadClientEmiFollowups(bookingId);
+        loadClientEmiFollowups(bookingId, editFollowupId);
+    }
+
+    function startEditFollowup(followupId) {
+        const note = loadedFollowupsById[String(followupId)];
+        if (!note) return;
+
+        document.getElementById('modalFollowupEditId').value = note.id;
+
+        const emiSelect = document.getElementById('modalFollowupEmiSelect');
+        if (emiSelect) {
+            const emiVal = String(note.emi_no ?? 0);
+            if (!Array.from(emiSelect.options).some(opt => opt.value === emiVal)) {
+                const extraOpt = document.createElement('option');
+                extraOpt.value = emiVal;
+                extraOpt.textContent = (emiVal === '999') ? 'Development Charge' : (emiVal === '0' ? 'General / Overall Follow Up' : 'EMI #' + emiVal);
+                emiSelect.appendChild(extraOpt);
+            }
+            emiSelect.value = emiVal;
+        }
+
+        document.getElementById('modalFollowupActivityDate').value = (note.activity_date || '').substring(0, 10);
+        document.getElementById('modalFollowupActivityMode').value = note.activity_mode || 'Phone Call';
+        document.getElementById('modalFollowupCallStatus').value = note.call_status || '';
+        document.getElementById('modalFollowupActivityReason').value = note.activity_reason || 'EMI Payment Follow-up';
+        document.getElementById('modalFollowupNoteInput').value = note.note || '';
+        document.getElementById('modalFollowupNextDate').value = (note.next_follow_up_date || '').substring(0, 10);
+        document.getElementById('modalFollowupNextNote').value = note.next_follow_up_note || '';
+
+        const heading = document.getElementById('modalFollowupFormHeading');
+        if (heading) heading.innerHTML = '<i class="fa-solid fa-pen-to-square me-1 text-warning"></i>Edit Follow Up Note';
+        const badge = document.getElementById('modalFollowupFormBadge');
+        if (badge) {
+            badge.className = 'badge bg-warning-subtle text-dark extra-small';
+            badge.textContent = 'Editing #' + note.id;
+        }
+        const saveBtn = document.getElementById('saveFollowupBtn');
+        if (saveBtn) {
+            saveBtn.className = 'btn btn-warning text-dark fw-semibold w-100 shadow-sm py-2';
+            saveBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i>Update Follow Up Note';
+        }
+        const cancelBtn = document.getElementById('cancelEditFollowupBtn');
+        if (cancelBtn) cancelBtn.classList.remove('d-none');
+
+        document.querySelectorAll('#modalFollowupHistoryContainer .followup-history-card').forEach(card => {
+            card.classList.toggle('border', card.dataset.followupId === String(followupId));
+            card.classList.toggle('border-warning', card.dataset.followupId === String(followupId));
+        });
+    }
+
+    function cancelEditFollowup() {
+        const editIdEl = document.getElementById('modalFollowupEditId');
+        if (editIdEl) editIdEl.value = '';
+        const noteEl = document.getElementById('modalFollowupNoteInput');
+        if (noteEl) noteEl.value = '';
+        const actDateEl = document.getElementById('modalFollowupActivityDate');
+        if (actDateEl) actDateEl.value = defaultFollowupActivityDate;
+        const actModeEl = document.getElementById('modalFollowupActivityMode');
+        if (actModeEl) actModeEl.value = 'Phone Call';
+        const callStatusEl = document.getElementById('modalFollowupCallStatus');
+        if (callStatusEl) callStatusEl.value = 'Outgoing';
+        const reasonEl = document.getElementById('modalFollowupActivityReason');
+        if (reasonEl) reasonEl.value = 'EMI Payment Follow-up';
+        const nextDateEl = document.getElementById('modalFollowupNextDate');
+        if (nextDateEl) nextDateEl.value = '';
+        const nextNoteEl = document.getElementById('modalFollowupNextNote');
+        if (nextNoteEl) nextNoteEl.value = '';
+
+        const heading = document.getElementById('modalFollowupFormHeading');
+        if (heading) heading.innerHTML = '<i class="fa-light fa-plus-circle me-1"></i>Add New Follow Up Note';
+        const badge = document.getElementById('modalFollowupFormBadge');
+        if (badge) {
+            badge.className = 'badge bg-primary-subtle text-primary extra-small';
+            badge.textContent = 'Follow-up Log';
+        }
+        const saveBtn = document.getElementById('saveFollowupBtn');
+        if (saveBtn) {
+            saveBtn.className = 'btn btn-primary w-100 shadow-sm py-2';
+            saveBtn.innerHTML = '<i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note';
+        }
+        const cancelBtn = document.getElementById('cancelEditFollowupBtn');
+        if (cancelBtn) cancelBtn.classList.add('d-none');
+
+        document.querySelectorAll('#modalFollowupHistoryContainer .followup-history-card').forEach(card => {
+            card.classList.remove('border', 'border-warning');
+        });
     }
 
     function onFollowupBookingChange() {
@@ -608,6 +699,7 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
         const totalEmi = selectedOption.getAttribute('data-emi') || 36;
         
         document.getElementById('modalFollowupBookingId').value = bookingId;
+        cancelEditFollowup();
         populateEmiSelect(totalEmi);
         loadClientEmiFollowups(bookingId);
     }
@@ -625,7 +717,7 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
         }
     }
 
-    function loadClientEmiFollowups(bookingId) {
+    function loadClientEmiFollowups(bookingId, editFollowupId = null) {
         if (!bookingId) return;
         $.ajax({
             url: `${followupBaseUrl}/account-client/getEmiFollowups`,
@@ -634,6 +726,7 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
+                    loadedFollowupsById = {};
                     let html = '';
                     const countBadge = document.getElementById('modalFollowupHistoryCountBadge');
                     if (countBadge) {
@@ -643,6 +736,7 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
                         html = '<div class="text-center text-muted py-5"><i class="fa-light fa-comment-slash d-block fs-2 mb-2 opacity-50"></i>No follow up notes added yet. Use the form on the left to add the first follow up note.</div>';
                     } else {
                         response.data.forEach(function(note) {
+                            loadedFollowupsById[String(note.id)] = note;
                             const label = note.purpose_label || (note.emi_no == 999 ? 'Development Charge' : (note.emi_no == 0 ? 'General Follow Up' : 'EMI #' + note.emi_no));
                             const badgeClass = note.purpose_badge_class || (note.emi_no == 999 ? 'bg-warning text-dark' : (note.emi_no == 0 ? 'bg-secondary text-white' : 'bg-primary text-white'));
                             const borderClr = note.emi_no == 999 ? '#f59e0b' : (note.emi_no == 0 ? '#64748b' : '#2563eb');
@@ -660,13 +754,18 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
                             }
 
                             html += `
-                            <div class="card mb-2 shadow-sm border-0" style="background:#f8fafc; border-left: 4px solid ${borderClr} !important;">
+                            <div class="card mb-2 shadow-sm border-0 followup-history-card" data-followup-id="${note.id}" style="background:#f8fafc; border-left: 4px solid ${borderClr} !important;">
                                 <div class="card-body p-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
                                         <span class="badge ${badgeClass} fs-11 px-2 py-1">
                                             <i class="fa-light fa-tag me-1"></i>Follow Up for: <strong>${escapeHtml(label)}</strong>
                                         </span>
-                                        <span class="text-muted fs-11"><i class="fa-light fa-clock me-1"></i>${note.created_at_formatted || note.created_at || ''}</span>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-muted fs-11"><i class="fa-light fa-clock me-1"></i>${note.created_at_formatted || note.created_at || ''}</span>
+                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:11px;" onclick="startEditFollowup(${note.id})" title="Edit this follow-up">
+                                                <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="mb-2" style="font-size:12px; color:#475569;">
                                         ${note.activity_date ? `<span><i class="fa-light fa-calendar me-1 text-primary"></i>${escapeHtml(note.activity_date)}</span>` : ''}
@@ -684,6 +783,9 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
                         });
                     }
                     $('#modalFollowupHistoryContainer').html(html);
+                    if (editFollowupId) {
+                        startEditFollowup(editFollowupId);
+                    }
                 } else {
                     $('#modalFollowupHistoryContainer').html('<div class="text-danger p-3 text-center">Failed to load history.</div>');
                 }
@@ -695,6 +797,8 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
     }
 
     function saveClientEmiFollowup() {
+        const editId = ($('#modalFollowupEditId').val() || '').trim();
+        const isEditing = editId !== '';
         const bookingId = $('#modalFollowupBookingId').val();
         const emiNo = $('#modalFollowupEmiSelect').val() ?? 0;
         const note = $('#modalFollowupNoteInput').val().trim();
@@ -721,71 +825,82 @@ $totalScheduled = (int)($stats['total_scheduled_count'] ?? 0);
         const saveBtn = document.getElementById('saveFollowupBtn');
         if (saveBtn) {
             saveBtn.disabled = true;
-            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+            saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>${isEditing ? 'Updating...' : 'Saving...'}`;
+        }
+
+        const payload = {
+            booking_id: bookingId,
+            emi_no: emiNo,
+            note: note,
+            activity_date: activityDate,
+            activity_mode: activityMode,
+            call_status: callStatus,
+            activity_reason: activityReason,
+            next_follow_up_date: nextDate,
+            next_follow_up_note: nextNote
+        };
+        if (isEditing) {
+            payload.followup_id = editId;
         }
         
         $.ajax({
-            url: `${followupBaseUrl}/account-client/saveEmiFollowup`,
+            url: isEditing
+                ? `${followupBaseUrl}/account-client/updateEmiFollowup`
+                : `${followupBaseUrl}/account-client/saveEmiFollowup`,
             type: 'POST',
-            data: { 
-                booking_id: bookingId, 
-                emi_no: emiNo, 
-                note: note,
-                activity_date: activityDate,
-                activity_mode: activityMode,
-                call_status: callStatus,
-                activity_reason: activityReason,
-                next_follow_up_date: nextDate,
-                next_follow_up_note: nextNote
-            },
+            data: payload,
             dataType: 'json',
             success: function(response) {
                 if (saveBtn) {
                     saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note';
                 }
                 if (response.success) {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
                             icon: 'success',
-                            title: 'Saved!',
-                            text: 'Follow up note recorded successfully.',
+                            title: isEditing ? 'Updated!' : 'Saved!',
+                            text: isEditing ? 'Follow up note updated successfully.' : 'Follow up note recorded successfully.',
                             timer: 1500,
                             showConfirmButton: false
                         });
                     }
-                    $('#modalFollowupNoteInput').val('');
-                    $('#modalFollowupNextDate').val('');
-                    $('#modalFollowupNextNote').val('');
+                    cancelEditFollowup();
                     loadClientEmiFollowups(bookingId);
                     
                     // Reload current list page so updated next follow up notes/dates reflect
                     loadFollowupsPage(followupCurrentPage);
                 } else {
+                    if (saveBtn) {
+                        saveBtn.innerHTML = isEditing
+                            ? '<i class="fa-solid fa-check me-1"></i>Update Follow Up Note'
+                            : '<i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note';
+                    }
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
                             icon: 'error',
                             title: 'Failed',
-                            text: response.message || "Failed to save note."
+                            text: response.message || (isEditing ? "Failed to update note." : "Failed to save note.")
                         });
                     } else {
-                        alert(response.message || "Failed to save note.");
+                        alert(response.message || (isEditing ? "Failed to update note." : "Failed to save note."));
                     }
                 }
             },
             error: function() {
                 if (saveBtn) {
                     saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note';
+                    saveBtn.innerHTML = isEditing
+                        ? '<i class="fa-solid fa-check me-1"></i>Update Follow Up Note'
+                        : '<i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note';
                 }
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'An error occurred while saving the note.'
+                        text: isEditing ? 'An error occurred while updating the note.' : 'An error occurred while saving the note.'
                     });
                 } else {
-                    alert('An error occurred while saving the note.');
+                    alert(isEditing ? 'An error occurred while updating the note.' : 'An error occurred while saving the note.');
                 }
             }
         });

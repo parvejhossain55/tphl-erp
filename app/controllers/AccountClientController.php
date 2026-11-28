@@ -2636,12 +2636,10 @@ public function addCedTransaction()
         $penaltyAmount = isset($_POST['penalty_amount']) ? (float)$_POST['penalty_amount'] : 0;
         $penaltyWaived = isset($_POST['penalty_waived']) ? (float)$_POST['penalty_waived'] : 0;
         $netPenalty    = round(max(0.0, $penaltyAmount - $penaltyWaived), 2);
-        if (isset($_POST['penalty_paid']) && $_POST['penalty_paid'] !== '' && is_numeric($_POST['penalty_paid'])) {
-            $penaltyPaid = round(min($netPenalty, max(0.0, (float)$_POST['penalty_paid'])), 2);
-        } else {
-            $penaltyPaid = $netPenalty;
-        }
-        $penaltyDue    = round(max(0.0, $netPenalty - $penaltyPaid), 2);
+        // Penalty collection is recorded strictly via separate 'penalty_settlement' vouchers;
+        // regular EMI/other vouchers carry forward netPenalty into penalty_due.
+        $penaltyPaid   = 0.0;
+        $penaltyDue    = $netPenalty;
         $waiverReason  = $_POST['waiver_reason'] ?? null;
         $waiverStatus  = (!empty($_POST['apply_waiver']) && $penaltyWaived > 0) ? 'pending' : 'none';
     }
@@ -6062,6 +6060,47 @@ public function discountStatement($bookingId = null)
         $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, activity_date, activity_mode, call_status, activity_reason, next_follow_up_date, next_follow_up_note, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("iisssssssi", $bookingId, $emiNo, $note, $activityDate, $activityMode, $callStatus, $activityReason, $nextFollowUpDate, $nextFollowUpNote, $userId);
         
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $stmt->error]);
+        }
+        exit;
+    }
+
+    public function updateEmiFollowup()
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request']);
+            exit;
+        }
+
+        if (!$this->isFollowupUserAuthorized()) {
+            echo json_encode(['success' => false, 'message' => 'Permission denied.']);
+            exit;
+        }
+
+        $followupId = (int)($_POST['followup_id'] ?? 0);
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $emiNo = isset($_POST['emi_no']) ? (int)$_POST['emi_no'] : 0;
+        $note = trim($_POST['note'] ?? '');
+        $activityDate = trim($_POST['activity_date'] ?? '');
+        $activityMode = trim($_POST['activity_mode'] ?? '');
+        $callStatus = trim($_POST['call_status'] ?? '');
+        $activityReason = trim($_POST['activity_reason'] ?? '');
+        $nextFollowUpDate = !empty($_POST['next_follow_up_date']) ? trim($_POST['next_follow_up_date']) : null;
+        $nextFollowUpNote = !empty($_POST['next_follow_up_note']) ? trim($_POST['next_follow_up_note']) : null;
+
+        if (!$followupId || !$bookingId || empty($note) || empty($activityDate) || empty($activityMode) || empty($activityReason)) {
+            echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("UPDATE emi_followups SET emi_no = ?, note = ?, activity_date = ?, activity_mode = ?, call_status = ?, activity_reason = ?, next_follow_up_date = ?, next_follow_up_note = ? WHERE id = ? AND booking_id = ?");
+        $stmt->bind_param("isssssssii", $emiNo, $note, $activityDate, $activityMode, $callStatus, $activityReason, $nextFollowUpDate, $nextFollowUpNote, $followupId, $bookingId);
+
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {

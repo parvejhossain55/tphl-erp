@@ -315,6 +315,10 @@ return [
     'notifications/unread-count' => ['controller' => 'NotificationController', 'method' => 'unreadCount'],
     'notifications/mark-read' => ['controller' => 'NotificationController', 'method' => 'markRead'],
     'notifications/mark-all-read' => ['controller' => 'NotificationController', 'method' => 'markAllRead'],
+
+    // Central Requisition Revision (Send Back for Review)
+    'requisition-revision/send-back' => ['controller' => 'RequisitionRevisionController', 'method' => 'sendBack'],
+    'requisition-revision/resubmit-rejected' => ['controller' => 'RequisitionRevisionController', 'method' => 'resubmitRejected'],
 ];
 
 

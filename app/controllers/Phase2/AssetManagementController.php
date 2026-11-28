@@ -439,13 +439,22 @@ class AssetManagementController extends Controller
         $requests = $this->model->getExtraPurchases($filters);
 
         $pendingCount = 0;
-        if ($isApprover) {
-            $pendingFilters = $filters;
-            $pendingFilters['tab'] = 'pending_approval';
-            unset($pendingFilters['created_by']);
-            $pendingList = $this->model->getExtraPurchases($pendingFilters);
-            $pendingCount = count($pendingList);
-        }
+        $pendingFilters = $filters;
+        $pendingFilters['tab'] = 'pending_approval';
+        unset($pendingFilters['created_by']);
+        $pendingList = $this->model->getExtraPurchases($pendingFilters);
+        $pendingCount = count($pendingList);
+
+        // Count PRs assigned to current logged-in user for CST
+        $assignedFilters = $filters;
+        $assignedFilters['tab'] = 'assigned_to_me';
+        unset($assignedFilters['created_by'], $assignedFilters['restrict_user']);
+        $assignedToMeList = $this->model->getExtraPurchases($assignedFilters);
+        $assignedToMeCount = count($assignedToMeList);
+
+        require_once dirname(dirname(__DIR__)) . '/models/OfficeProcurementOrder.php';
+        $opoModelList = new \OfficeProcurementOrder($this->db);
+        $assignableCstEmployees = $opoModelList->getAssignableCstEmployees();
 
         $categories = $this->model->getProcurementCategories();
 
@@ -474,7 +483,7 @@ class AssetManagementController extends Controller
         }
 
         $bankAccounts = [];
-        $bRes = $this->db->query("SELECT id, account_code, account_name FROM chart_of_accounts WHERE account_code LIKE '1110%' AND account_code != '1110' AND status = 'active' ORDER BY account_code ASC");
+        $bRes = $this->db->query("SELECT id, account_code, account_name FROM chart_of_accounts WHERE status = 'active' AND (account_code LIKE '1141%' OR account_code LIKE '1144%' OR (account_type = 'Asset' AND (account_name LIKE '%Cash%' OR account_name LIKE '%Bank%') AND account_code != '114')) ORDER BY account_code ASC");
         if ($bRes) {
             $bankAccounts = $bRes->fetch_all(MYSQLI_ASSOC);
         }
@@ -550,11 +559,13 @@ class AssetManagementController extends Controller
             'users'            => $users,
             'bankAccounts'     => $bankAccounts,
             'isApprover'       => $isApprover,
-            'activeTab'        => $activeTab,
-            'pendingCount'     => $pendingCount,
-            'autoOpenRequest'  => $autoOpenRequest,
-            'coaList'          => getCOAExpenseList($this->db),
-            'vendors'          => $vendors
+            'activeTab'              => $activeTab,
+            'pendingCount'           => $pendingCount,
+            'assignedToMeCount'      => $assignedToMeCount,
+            'assignableCstEmployees' => $assignableCstEmployees,
+            'autoOpenRequest'        => $autoOpenRequest,
+            'coaList'                => getCOAExpenseList($this->db),
+            'vendors'                => $vendors
         ];
         $this->view('phase2/asset-management/extra-purchases', $data);
     }
@@ -586,6 +597,8 @@ class AssetManagementController extends Controller
                     error_log('Sync office procurement to approval_requests failed: ' . $e->getMessage());
                 }
 
+                $isLocalDev = (DIRECTORY_SEPARATOR === '\\') || (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false));
+                if (!$isLocalDev) {
                 try {
                     $request = $this->model->findExtraPurchase($requestId);
                     if ($request) {
@@ -611,6 +624,7 @@ class AssetManagementController extends Controller
                     }
                 } catch (\Throwable $e) {
                     error_log('Office Procurement email (submission) failed: ' . $e->getMessage());
+                }
                 }
                 setSuccess("Extra purchase request submitted.");
             } else {
@@ -714,14 +728,40 @@ class AssetManagementController extends Controller
         $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
 
         $bankAccounts = [];
-        $bRes = $this->db->query("SELECT id, bank_name, account_number, account_name FROM bank_accounts WHERE is_active = 1 ORDER BY bank_name ASC");
+        $bRes = $this->db->query("SELECT id, account_code, account_name FROM chart_of_accounts WHERE status = 'active' AND (account_code LIKE '1141%' OR account_code LIKE '1144%' OR (account_type = 'Asset' AND (account_name LIKE '%Cash%' OR account_name LIKE '%Bank%') AND account_code != '114')) ORDER BY account_code ASC");
         if ($bRes) {
             $bankAccounts = $bRes->fetch_all(MYSQLI_ASSOC);
         }
 
+        $vendors = [];
+        $vRes = $this->db->query("SELECT id, COALESCE(NULLIF(TRIM(company_name), ''), name) AS name, company_name FROM vendors WHERE LOWER(status) = 'active' ORDER BY name ASC");
+        if ($vRes) {
+            $vendors = $vRes->fetch_all(MYSQLI_ASSOC);
+        }
+
+        require_once dirname(dirname(__DIR__)) . '/models/OfficeProcurementOrder.php';
+        $opoModel = new \OfficeProcurementOrder($this->db);
+        $assignableCstEmployees = $opoModel->getAssignableCstEmployees();
+        $opoData                = !empty($req['opo_id']) ? $opoModel->findOrder((int)$req['opo_id']) : $opoModel->findOrderByPr($id);
+        $cstQuotations          = $opoModel->getQuotationsByPr($id);
+        $activityLogs           = $opoModel->getActivityLogs($id);
+
+        // STRICTLY Admin & Operation (Role 32) can approve & assign CST (Dept Head & Management are view-only for CST assignment)
+        $isRole32AdminOps = ($roleId === 32 || $roleNameLower === 'admin & operation');
+        $canAssignCst = !$isChiefOfficer
+            && $isRole32AdminOps
+            && ($req['overall_status'] ?? '') !== 'rejected'
+            && in_array($rowDhStatus, ['approved', 'not_required'], true)
+            && empty($opoData);
+
+        require_once dirname(dirname(__DIR__)) . '/services/RequisitionRevisionService.php';
+        $epRevSvc       = new \RequisitionRevisionService($this->db);
+        $latestRevision = $epRevSvc->getLatestActiveOrResubmitted('project_extra_assets', (int)$id);
+
         $data = [
             'page_title'             => 'Office Procurement Request #' . $id,
             'req'                    => $req,
+            'latestRevision'         => $latestRevision,
             'canApprove'             => $canApprove,
             'approvalStep'           => $step,
             'overrideWarningStage'   => $overrideWarningStage,
@@ -731,17 +771,77 @@ class AssetManagementController extends Controller
             'canConfirmPurchase'     => $canConfirmPurchase,
             'canDelete'              => $canDelete,
             'bankAccounts'           => $bankAccounts,
-            'coaList'                => getCOAExpenseList($this->db)
+            'vendors'                => $vendors,
+            'coaList'                => getCOAExpenseList($this->db),
+            'assignableCstEmployees' => $assignableCstEmployees,
+            'canAssignCst'           => $canAssignCst,
+            'opoData'                => $opoData,
+            'cstQuotations'          => $cstQuotations,
+            'activityLogs'           => $activityLogs,
         ];
 
         $this->view('phase2/asset-management/view-extra-purchase', $data);
     }
 
+    /**
+     * Role 32 (Admin & Operation) approves PR & assigns an employee (Admin & Ops, Purchase, or IT Dept) for CST
+     * POST /asset-extra-purchases/assign-cst/{id}
+     */
+    public function assignCstEmployee($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        $id     = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleNameLower = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $isAllowed = ($roleId === 32 || $roleNameLower === 'admin & operation');
+
+        if (!$isAllowed) {
+            setError("Only Admin & Operation can assign an employee for CST.");
+            header("Location: {$GLOBALS['base_url']}/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        $assigneeId = (int)($_POST['assigned_cst_user_id'] ?? 0);
+        $note       = trim($_POST['assign_note'] ?? '');
+
+        if ($assigneeId <= 0) {
+            setError("Please select an employee from Admin & Operation, Purchase, or IT Department.");
+            header("Location: {$GLOBALS['base_url']}/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        require_once dirname(dirname(__DIR__)) . '/models/OfficeProcurementOrder.php';
+        $opoModel = new \OfficeProcurementOrder($this->db);
+
+        if ($opoModel->assignCstEmployee($id, $assigneeId, $userId, $note)) {
+            setSuccess("Request approved by Admin & Operation and assigned for Multi-Vendor CST!");
+        } else {
+            setError("Failed to assign CST employee.");
+        }
+
+        $redirectTarget = (!empty($_POST['redirect']) && $_POST['redirect'] === 'list')
+            ? "{$GLOBALS['base_url']}/asset-extra-purchases"
+            : "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}";
+        header("Location: {$redirectTarget}");
+        exit;
+    }
+
     public function approveExtraPurchase($id)
     {
-        $redirectTarget = (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'view')
-            ? "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}"
-            : "{$GLOBALS['base_url']}/asset-extra-purchases";
+        $reqForRedirect = $this->model->findExtraPurchase($id);
+        if (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'opo' && !empty($reqForRedirect['opo_id'])) {
+            $redirectTarget = "{$GLOBALS['base_url']}/office-procurement/order/" . (int)$reqForRedirect['opo_id'];
+        } elseif (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'view') {
+            $redirectTarget = "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}";
+        } else {
+            $redirectTarget = "{$GLOBALS['base_url']}/asset-extra-purchases";
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
@@ -910,8 +1010,8 @@ class AssetManagementController extends Controller
                 }
             }
 
-            // When Management (DCEO / CEO / Director / Super Admin) approves at any stage, auto-fill all bypassed stages with Management's identity and perform final approval
-            if ($isMgmtUser && $status === 'approved') {
+            // When Management approves via explicit 'mgmt' step (NOT when approving strictly as 'dept_head'), allow Management Override
+            if ($isMgmtUser && $status === 'approved' && $step !== 'dept_head') {
                 $step = 'mgmt';
                 $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
                 $this->db->query("
@@ -985,8 +1085,15 @@ class AssetManagementController extends Controller
                 }
             }
 
-            if ($this->model->approveStep($id, $step, $status, $userId, $note, $document)) {
+            $selectedVendorId = !empty($_POST['vendor_id']) ? (int)$_POST['vendor_id'] : null;
+
+            if ($this->model->approveStep($id, $step, $status, $userId, $note, $document, $selectedVendorId)) {
                 if ($status === 'approved') {
+                    require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                    (new \RequisitionRevisionService($this->db))->markResolved('project_extra_assets', (int)$id);
+                }
+                $isLocalDevAppr = (DIRECTORY_SEPARATOR === '\\') || (isset($_SERVER['HTTP_HOST']) && (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false));
+                if ($status === 'approved' && !$isLocalDevAppr) {
                     try {
                         $updatedRequest = $this->model->findExtraPurchase($id);
                         $nextStage = [
@@ -1041,6 +1148,8 @@ class AssetManagementController extends Controller
                             }
 
                             $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
+                            $partyType = !empty($req['vendor_id']) ? 'vendor' : 'employee';
+                            $partyId   = !empty($req['vendor_id']) ? (int)$req['vendor_id'] : ($req['assigned_to'] ?? $req['requested_by']);
                             $autoPosting->postAccrualEntry(
                                 'asset_procurement',
                                 $id,
@@ -1049,8 +1158,8 @@ class AssetManagementController extends Controller
                                 $req['total_price'],
                                 $narrationDesc,
                                 $req['project_id'],
-                                'employee',
-                                $req['assigned_to'] ?? $req['requested_by'],
+                                $partyType,
+                                $partyId,
                                 $userId,
                                 $procurementOffice
                             );
@@ -1122,9 +1231,14 @@ class AssetManagementController extends Controller
 
     public function markPurchased($id)
     {
-        $redirectTarget = (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'view')
-            ? "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}"
-            : "{$GLOBALS['base_url']}/asset-extra-purchases";
+        $reqForRedirect = $this->model->findExtraPurchase($id);
+        if (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'opo' && !empty($reqForRedirect['opo_id'])) {
+            $redirectTarget = "{$GLOBALS['base_url']}/office-procurement/order/" . (int)$reqForRedirect['opo_id'];
+        } elseif (!empty($_REQUEST['redirect']) && $_REQUEST['redirect'] === 'view') {
+            $redirectTarget = "{$GLOBALS['base_url']}/asset-extra-purchase/{$id}";
+        } else {
+            $redirectTarget = "{$GLOBALS['base_url']}/asset-extra-purchases";
+        }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($_SESSION['user']['id'] ?? 1);
@@ -1201,6 +1315,8 @@ class AssetManagementController extends Controller
                     $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
 
                     if ($req && $amountToPay > 0) {
+                        $partyType = !empty($req['vendor_id']) ? 'vendor' : 'employee';
+                        $partyId   = !empty($req['vendor_id']) ? (int)$req['vendor_id'] : ($req['assigned_to'] ?? $req['requested_by'] ?? 1);
                         $autoPosting->postDisbursementEntry(
                             'asset_procurement',
                             $id,
@@ -1209,8 +1325,8 @@ class AssetManagementController extends Controller
                             $amountToPay,
                             "Payment Disbursement for Office Asset Procurement (PR-{$id}): " . ($req['item_name'] ?? ''),
                             $req['project_id'] ?? null,
-                            'employee',
-                            $req['assigned_to'] ?? $req['requested_by'] ?? 1,
+                            $partyType,
+                            $partyId,
                             $userId,
                             $procurementOffice
                         );
@@ -1219,6 +1335,24 @@ class AssetManagementController extends Controller
                     error_log("AutoPosting Exception (Procurement Payment): " . $e->getMessage());
                 }
                 // =====================================================
+
+                // Sync OPO status to 'paid' & log disbursement activity if linked to an OPO
+                try {
+                    if (!empty($req['opo_id'])) {
+                        require_once dirname(dirname(__DIR__)) . '/models/OfficeProcurementOrder.php';
+                        $opoModel = new \OfficeProcurementOrder($this->db);
+                        $opoIdInt = (int)$req['opo_id'];
+                        $uOpo = $this->db->prepare("UPDATE office_procurement_orders SET status = 'paid' WHERE id = ?");
+                        if ($uOpo) {
+                            $uOpo->bind_param('i', $opoIdInt);
+                            $uOpo->execute();
+                            $uOpo->close();
+                        }
+                        $opoModel->logActivity($id, $opoIdInt, 'payment_disbursed', 'Accounts Department — Payment Disbursed', $userId, "Disbursed ৳" . number_format($paidAmount, 2) . " via {$paymentMethod}.");
+                    }
+                } catch (\Throwable $e) {
+                    error_log("Failed syncing OPO paid status: " . $e->getMessage());
+                }
 
                 // Sync with central approval_requests
                 try {
@@ -1332,7 +1466,7 @@ class AssetManagementController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($_SESSION['user']['id'] ?? 0);
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-            $isAdmin = in_array($roleId, [1, 2, 3, 33]);
+            $isAdmin = in_array($roleId, [1, 2, 3, 38], true);
 
             if ($this->model->deleteExtraPurchase($id, $userId, $isAdmin)) {
                 setSuccess("Purchase request #{$id} deleted successfully.");
@@ -1341,6 +1475,109 @@ class AssetManagementController extends Controller
             }
         }
         header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+        exit;
+    }
+
+    /**
+     * Update Office Procurement / Extra Asset Purchase Requisition — Creator or Admin ONLY before 1st approval
+     */
+    public function updateExtraPurchase($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/" . (int)$id);
+            exit;
+        }
+
+        $id      = (int)$id;
+        $userId  = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId  = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+
+        $req = $this->model->findExtraPurchase($id);
+        if (!$req) {
+            setError("Office procurement request #{$id} not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+            exit;
+        }
+
+        $isOwner = ((int)($req['requested_by'] ?? 0) === $userId);
+        if (!$isOwner && !$isAdmin) {
+            setError('Only the creator or Admin can edit this procurement request.');
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        require_once dirname(dirname(__DIR__)) . '/services/RequisitionRevisionService.php';
+        $revSvc  = new \RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('project_extra_assets', $id);
+
+        $hasAnyApproval = (($req['overall_status'] ?? 'pending') !== 'pending')
+            || (($req['dept_head_status'] ?? '') === 'approved') || !empty($req['dept_head_by'])
+            || (($req['it_head_status'] ?? '') === 'approved') || !empty($req['it_head_by'])
+            || (($req['operations_status'] ?? '') === 'approved') || !empty($req['operations_by'])
+            || (($req['purchase_head_status'] ?? '') === 'approved') || !empty($req['purchase_head_by'])
+            || (($req['qc_audit_status'] ?? '') === 'approved') || !empty($req['qc_audit_by'])
+            || (($req['mgmt_status'] ?? '') === 'approved') || !empty($req['mgmt_by']);
+
+        if ($hasAnyApproval && empty($openRev) && empty($revSvc->getRejectionStatus('project_extra_assets', $id)['is_rejected'])) {
+            setError('This procurement request has already been approved at one or more stages and can no longer be edited.');
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        $itemName      = trim($_POST['item_name'] ?? '');
+        $quantity      = (int)($_POST['quantity'] ?? 0);
+        $unitPrice     = (float)($_POST['unit_price'] ?? 0);
+        $justification = trim($_POST['justification'] ?? '');
+
+        if ($itemName === '' || $quantity <= 0 || $unitPrice < 0) {
+            setError('Please provide a valid item name, quantity, and unit price.');
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        $totalPrice = round($quantity * $unitPrice, 2);
+
+        $stmt = $this->db->prepare("
+            UPDATE project_extra_assets
+            SET item_name = ?, quantity = ?, unit_price = ?, total_price = ?, justification = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param('siddsi', $itemName, $quantity, $unitPrice, $totalPrice, $justification, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $title = "Office Procurement: {$itemName} (Qty: {$quantity})";
+                $stmtAr = $this->db->prepare("UPDATE approval_requests SET title = ?, request_amount = ?, updated_at = NOW() WHERE source_table = 'project_extra_assets' AND source_id = ?");
+                if ($stmtAr) {
+                    $stmtAr->bind_param('sdi', $title, $totalPrice, $id);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
+                $epEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Total Price' => [$req['total_price'] ?? 0, $totalPrice],
+                    'Quantity'    => [$req['quantity'] ?? 0, $quantity],
+                    'Item Name'   => [$req['item_name'] ?? '', $itemName],
+                ]);
+                $revSvc->logEdit('project_extra_assets', $id, $epEditSum);
+                if (!empty($openRev)) {
+                    $revSvc->markResubmitted('project_extra_assets', $id, $totalPrice, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Procurement Request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Procurement Request #{$id} updated successfully.");
+                }
+            } else {
+                $stmt->close();
+                setError('Failed to update procurement request.');
+            }
+        } else {
+            setError('Database error while updating procurement request.');
+        }
+
+        $redirectTo = (($_POST['redirect_to'] ?? '') === 'index')
+            ? ($GLOBALS['base_url'] . "/asset-extra-purchases")
+            : ($GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+        header("Location: " . $redirectTo);
         exit;
     }
 }

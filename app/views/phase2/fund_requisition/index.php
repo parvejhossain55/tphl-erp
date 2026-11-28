@@ -1850,6 +1850,116 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
+<!-- Edit Fund Requisition Modal (Before 1st Approval — List View) -->
+<div class="modal custom-modal fade" id="editFundReqIndexModal" tabindex="-1" aria-labelledby="editFundReqIndexModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editFundReqIndexModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Fund Requisition <span id="edit_fr_title_id"></span>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="" id="editFundReqIndexForm">
+                    <input type="hidden" name="redirect_to" value="index">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="amount" id="edit_fr_amount" class="form-control" required>
+                    </div>
+                    <div class="mb-3" id="edit_fr_category_wrap">
+                        <label class="form-label fw-bold text-dark">Category</label>
+                        <input type="text" name="category" id="edit_fr_category" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" id="edit_fr_purpose" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="row g-2 mb-3 d-none" id="edit_fr_transport_wrap">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Location / Destination</label>
+                            <input type="text" name="location" id="edit_fr_location" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Mode of Transport</label>
+                            <input type="text" name="mode_of_transport" id="edit_fr_transport" class="form-control">
+                        </div>
+                        <div class="col-12 mt-2">
+                            <label class="form-label fw-bold text-dark">Purpose to Visit</label>
+                            <input type="text" name="purpose_to_visit" id="edit_fr_visit" class="form-control">
+                        </div>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initFundIndexEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initFundIndexEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editFundReqIndexModal').length && $('#editFundReqIndexModal').parent().prop('tagName') !== 'BODY') {
+                $('#editFundReqIndexModal').appendTo('body');
+            }
+            function populateFundEdit(btn) {
+                var raw = btn.attr('data-item');
+                if (!raw) return;
+                try {
+                    var d = (typeof raw === 'object') ? raw : JSON.parse(raw);
+                    $('#editFundReqIndexForm').attr('action', '<?= $GLOBALS['base_url'] ?>/fund-requisitions/update/' + (d.id || ''));
+                    $('#edit_fr_title_id').text('#' + (d.id || ''));
+                    $('#edit_fr_amount').val(d.amount || '');
+                    if (d.requisition_type === 'petty_cash') {
+                        $('#edit_fr_amount').attr('max', '10000');
+                        $('#edit_fr_category').val('Petty Cash');
+                        $('#edit_fr_category_wrap').addClass('d-none');
+                    } else {
+                        $('#edit_fr_amount').removeAttr('max');
+                        $('#edit_fr_category').val(d.category || 'Other Expense');
+                        $('#edit_fr_category_wrap').removeClass('d-none');
+                    }
+                    $('#edit_fr_purpose').val(d.purpose || '');
+                    if (d.category === 'Transport' || (d.location && d.location.length > 0)) {
+                        $('#edit_fr_transport_wrap').removeClass('d-none');
+                        $('#edit_fr_location').val(d.location || '');
+                        $('#edit_fr_transport').val(d.mode_of_transport || '');
+                        $('#edit_fr_visit').val(d.purpose_to_visit || '');
+                    } else {
+                        $('#edit_fr_transport_wrap').addClass('d-none');
+                        $('#edit_fr_location').val('');
+                        $('#edit_fr_transport').val('');
+                        $('#edit_fr_visit').val('');
+                    }
+                } catch (e) {}
+            }
+            $('#editFundReqIndexModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateFundEdit($(e.relatedTarget));
+            });
+            $(document).on('click', '.btn-edit-fund-req', function() {
+                populateFundEdit($(this));
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFundIndexEditModal);
+    } else {
+        initFundIndexEditModal();
+    }
+})();
+</script>
+
 
 <!-- ========================================================================= -->
 <!-- PRINT STYLING & HELPERS -->
@@ -1953,6 +2063,28 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 <div class="fs-11 text-secondary"><?= htmlspecialchars($req['requester_designation_name']) ?></div>
             <?php endif; ?>
             <span class="fs-10 text-muted"><?= htmlspecialchars($req['department_name'] ?? 'N/A') ?></span>
+            <?php
+            static $frEditMap = null;
+            if ($frEditMap === null) {
+                $frEditMap = [];
+                if (function_exists('db')) {
+                    $frDb = db();
+                    if ($frDb) {
+                        require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+                        $frEditMap = (new RequisitionRevisionService($frDb))->getLastEditMap('fund_requisitions');
+                    }
+                }
+            }
+            $frEdit = $frEditMap[(int)($req['id'] ?? 0)] ?? null;
+            if (!empty($frEdit)):
+            ?>
+                <div class="mt-1" style="font-size:10px; color:#b45309; line-height:1.25;" title="<?= htmlspecialchars($frEdit['change_summary'] ?? 'Edited') ?>">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>Edited: <strong><?= htmlspecialchars($frEdit['edited_by_name']) ?></strong>
+                    <?php if (!empty($frEdit['created_at'])): ?>
+                        <div class="text-muted" style="font-size:9.5px;"><?= date('d M Y, h:i A', strtotime($frEdit['created_at'])) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </td>
         <td>
             <?= !empty($req['project_name']) ? htmlspecialchars($req['project_name']) : '<span class="text-muted fs-11">Office General</span>' ?>
@@ -2068,8 +2200,16 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 </div>
             <?php elseif ($req['status'] === 'pending_qc'): ?>
                 <div class="fs-9 text-muted mt-1">
-                    Pending: QC & Internal Audit Head
+                    Pending: QC &amp; Internal Audit Head
                 </div>
+                <?php if (($req['dept_head_status'] ?? '') === 'approved' && !empty($req['dept_head_approved_by_name'])): ?>
+                    <div class="fs-9 text-success mt-1">
+                        <i class="fa-solid fa-check-circle me-1"></i>Dept Approved: <?= htmlspecialchars($req['dept_head_approved_by_name'] . (!empty($req['dept_head_approved_by_designation_name']) ? ' (' . $req['dept_head_approved_by_designation_name'] . ')' : '')) ?>
+                        <?php if (!empty($req['dept_head_approved_at'])): ?>
+                            <div class="text-muted"><?= date('d M Y, h:i A', strtotime($req['dept_head_approved_at'])) ?></div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
             <?php elseif (in_array($req['status'], ['partially_approved', 'partially_paid'])): ?>
                 <div class="fs-9 text-muted mt-1">
                     <?php if (!empty($req['approved_by_name'])): ?>
@@ -2111,8 +2251,8 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 <?php endif; ?>
             <?php endif; ?>
         </td>
-        <td class="no-print text-center">
-            <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+        <td class="no-print text-center text-nowrap">
+            <div class="d-flex align-items-center justify-content-center gap-1 flex-nowrap">
                 <!-- View Details button -->
                 <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>"
                    class="btn btn-icon btn-sm btn-info border" title="View Details & Log Expenses">
@@ -2169,17 +2309,38 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 <?php endif; ?>
                 
                 <?php 
-                // Can delete ONLY IF no approval (Dept Head or Management or Paid) has been granted yet
+                // Can edit/delete ONLY IF no approval (Dept Head, QC, Management, or Paid) has been granted yet
+                $initialExpectedFrStatus = ((int)($req['is_dept_approval_required'] ?? 0) === 1) ? 'pending_dept' : 'pending_qc';
                 $isApproved = (
+                    ($req['status'] ?? '') !== $initialExpectedFrStatus ||
                     ($req['dept_head_status'] ?? '') === 'approved' ||
                     !empty($req['dept_head_approved_by']) ||
-                    in_array($req['status'] ?? '', ['approved', 'paid']) ||
+                    !empty($req['qc_approved_by']) ||
+                    in_array($req['status'] ?? '', ['approved', 'partially_approved', 'paid', 'partially_paid', 'rejected'], true) ||
                     !empty($req['approved_by']) ||
                     !empty($req['paid_by'])
                 );
-                $canDelete = !$isApproved && (($req['requested_by'] ?? 0) == $userId || in_array($roleId, [1, 3]));
-                if ($canDelete): 
+                $canEditOrDelete = !$isApproved && ((int)($req['requested_by'] ?? 0) === (int)$userId || in_array((int)$roleId, [1, 3], true));
+                if ($canEditOrDelete):
+                    $fundEditPayload = [
+                        'id'                => (int)$req['id'],
+                        'requisition_type'  => $req['requisition_type'] ?? 'general',
+                        'category'          => $req['category'] ?? 'Other Expense',
+                        'amount'            => $req['amount'] ?? 0,
+                        'purpose'           => $req['purpose'] ?? '',
+                        'location'          => $req['location'] ?? '',
+                        'purpose_to_visit'  => $req['purpose_to_visit'] ?? '',
+                        'mode_of_transport' => $req['mode_of_transport'] ?? '',
+                    ];
                 ?>
+                    <button type="button"
+                            class="btn btn-icon btn-sm btn-warning border text-dark btn-edit-fund-req"
+                            title="Edit Request"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editFundReqIndexModal"
+                            data-item="<?= htmlspecialchars(json_encode($fundEditPayload), ENT_QUOTES, 'UTF-8') ?>">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
                     <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions/delete" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this requisition request?')">
                         <input type="hidden" name="id" value="<?= $req['id'] ?>">
                         <button type="submit" class="btn btn-icon btn-sm btn-danger border" title="Delete">

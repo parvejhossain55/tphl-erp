@@ -57,7 +57,7 @@ $items     = $items     ?? [];
                                     The approver has rejected the Purchase Order and returned this requisition for revision.
                                     Please adjust unit quantities, delete items that are not needed, or update notes below.
                                 </p>
-                                <div class="p-3 rounded bg-white border border-danger-subtle mt-2 shadow-xs">
+                                <div class="p-3 rounded bg-white text-dark border border-danger-subtle mt-2 shadow-xs">
                                     <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size:11px;">
                                             <i class="bi bi-chat-quote-fill me-1"></i> Rejection Reason / Note

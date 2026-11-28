@@ -4400,6 +4400,66 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         };
 
+        const pendingExtHtml = t.pending_extension ? `
+            <div class="mw-td-sec" style="background:#FFF9DB; border:1px solid #FFE066; border-radius:10px; padding:12px 14px; margin-top:12px;">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:200px;">
+                        <div style="font-size:12px; font-weight:700; color:#8D5B00; text-transform:uppercase; letter-spacing:0.4px;">
+                            <i class="fa-regular fa-calendar-plus me-1"></i> Deadline Extension Requested
+                        </div>
+                        <div style="font-size:13px; color:#142D26; margin-top:4px;">
+                            <strong>${tdEsc(t.pending_extension.requested_by)}</strong> requested to extend deadline to
+                            <strong style="color:#087F5B;">${tdEsc(t.pending_extension.deadline_formatted)}</strong>
+                        </div>
+                        ${t.pending_extension.reason ? `<div style="font-size:12px; color:#5A6B63; margin-top:3px;">Reason: "${tdEsc(t.pending_extension.reason)}"</div>` : ''}
+                    </div>
+                    ${t.pending_extension.can_approve ? `
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button type="button" class="mw-td-btn green js-ext-action" data-action="approve" style="padding:6px 12px; font-size:12px;">
+                            <i class="fa-solid fa-check me-1"></i> Approve
+                        </button>
+                        <button type="button" class="mw-td-btn js-ext-action" data-action="reject" style="padding:6px 10px; font-size:12px;">
+                            Decline
+                        </button>
+                    </div>` : `<span style="font-size:11.5px; font-weight:600; color:#8D5B00;">Awaiting approval</span>`}
+                </div>
+            </div>` : '';
+
+        const bindExtensionActions = () => {
+            tdBody.querySelectorAll('.js-ext-action').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const act = this.dataset.action;
+                    this.disabled = true;
+                    const origHtml = this.innerHTML;
+                    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                    const fd = new FormData();
+                    fd.append('action', act);
+                    fetch(`${baseUrl}/my-work/handle-extension/${t.id}`, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showMwToast(data.message || 'Updated.', 'success');
+                            openTaskDetail(t.id);
+                            if (typeof fetchWorkspaceData === 'function') fetchWorkspaceData();
+                        } else {
+                            showMwToast(data.message || 'Failed to process request.', 'error');
+                            this.disabled = false;
+                            this.innerHTML = origHtml;
+                        }
+                    })
+                    .catch(() => {
+                        showMwToast('Network error occurred.', 'error');
+                        this.disabled = false;
+                        this.innerHTML = origHtml;
+                    });
+                });
+            });
+        };
+
         if (isReviewerView) {
             // =========================================================================
             // Reviewer Submission Drawer Layout (Figma Spec)
@@ -4510,6 +4570,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 <!-- Evidence -->
                 ${evidenceHtml}
 
+                ${pendingExtHtml}
+
                 <!-- Review note input -->
                 ${!t.is_review_approved ? `
                 <div class="mw-td-sec" style="border-bottom:none;">
@@ -4528,6 +4590,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
             bindRemindBtn();
+            bindExtensionActions();
 
             // Configure footer for Reviewer
             const footActions = document.querySelector('.mw-td-foot-actions');
@@ -4805,13 +4868,13 @@ document.addEventListener('DOMContentLoaded', function () {
                </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
 
-        // Owner Feedback & Satisfaction Rating section (Only when task is completed and not a self-task)
+        // Task Feedback & Satisfaction Rating section (Completed tasks; Owner, Reviewers, CC, Admin — including self-assigned tasks, excluding assignee)
         let ownerFeedbackHtml = '';
-        if (t.is_completed && !t.is_self_task) {
+        if (t.is_completed) {
             const currentRating = parseInt(t.satisfaction_rating, 10) || 0;
-            if (t.is_owner) {
+            if (t.can_give_feedback) {
                 if (currentRating > 0) {
-                    // Already rated by owner
+                    // Already rated
                     let starsHtml = '';
                     for (let s = 1; s <= 5; s++) {
                         starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
@@ -4819,7 +4882,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ownerFeedbackHtml = `
                         <div class="mw-feedback-readonly">
                             <div>
-                                <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Your Rating & Feedback</div>
+                                <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Rating & Feedback</div>
                                 <div class="mw-feedback-readonly-stars">
                                     ${starsHtml}
                                     <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
@@ -4828,7 +4891,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <span class="mw-feedback-readonly-badge"><i class="fa-solid fa-check me-1"></i> Feedback Submitted</span>
                         </div>`;
                 } else {
-                    // Owner can rate and give feedback
+                    // Eligible user (Owner / Reviewer / CC / Admin) can rate and give feedback
                     ownerFeedbackHtml = `
                         <div class="mw-feedback-card" id="mwOwnerFeedbackBox">
                             <div class="mw-feedback-head">
@@ -4853,7 +4916,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>`;
                 }
             } else if (currentRating > 0) {
-                // Assignee or collaborator viewing the owner's rating
+                // Assignee or collaborator viewing the rating
                 let starsHtml = '';
                 for (let s = 1; s <= 5; s++) {
                     starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
@@ -4861,7 +4924,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ownerFeedbackHtml = `
                     <div class="mw-feedback-readonly">
                         <div>
-                            <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Owner Rating</div>
+                            <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Rating & Feedback</div>
                             <div class="mw-feedback-readonly-stars">
                                 ${starsHtml}
                                 <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
@@ -4895,6 +4958,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div><div class="mw-td-label">Assigned to</div><div class="mw-td-val">${tdAvatarHtml(t.assigned_to, t.assigned_user ? t.assigned_user.photo : null)}${tdEsc(t.assigned_to)}</div></div>
                     <div><div class="mw-td-label">CC</div><div>${tdPeople(t.cc)}</div></div>
                 </div>
+                ${pendingExtHtml}
                 ${t.expected_output && t.expected_output.trim() ? `<div class="mw-td-sec"><h4>Expected output</h4>${expectedOut}</div>` : ''}
                 <div class="mw-td-sec">${checklistHtml}</div>
                 <div class="mw-td-sec"><h4>Attachments</h4>${file}</div>
@@ -4921,6 +4985,7 @@ document.addEventListener('DOMContentLoaded', function () {
         tdNote.innerText = t.blocked ? 'Resolve the blocker before submitting for review.' : '';
         tdBody.querySelector('#mwTdClose').addEventListener('click', closeTaskDetail);
         bindRemindBtn();
+        bindExtensionActions();
         tdBody.querySelectorAll('.mw-td-tab').forEach(b => b.addEventListener('click', () => {
             tdBody.querySelectorAll('.mw-td-tab').forEach(x => x.classList.toggle('active', x === b));
             tdBody.querySelectorAll('[data-td-pane]').forEach(p => p.style.display = p.dataset.tdPane === b.dataset.pane ? '' : 'none');
@@ -5423,9 +5488,9 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Wire up Owner Feedback & Star Rating submission
+        // Wire up Feedback & Star Rating submission (Owner / Reviewer / CC / Admin)
         const feedbackBox = tdBody.querySelector('#mwOwnerFeedbackBox');
-        if (feedbackBox && t.is_completed && t.is_owner) {
+        if (feedbackBox && t.is_completed && t.can_give_feedback) {
             const starWrap = feedbackBox.querySelector('#mwStarRatingPicker');
             const commentInput = feedbackBox.querySelector('#mwFeedbackComment');
             const btnSubmitFeedback = feedbackBox.querySelector('#btnSubmitOwnerFeedback');

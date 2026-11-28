@@ -29,22 +29,6 @@ class NotificationController extends Controller
             exit;
         }
 
-        if (!function_exists('hasPermission') || !hasPermission('Notifications')) {
-            if ($json) {
-                header('Content-Type: application/json');
-                http_response_code(403);
-                echo json_encode(['status' => 'error', 'message' => 'Access denied']);
-                exit;
-            }
-            http_response_code(403);
-            echo '<div style="max-width:520px;margin:80px auto;padding:28px;border:1px solid #e5e7eb;border-radius:12px;font-family:sans-serif;text-align:center;">
-                    <h3 style="margin:0 0 10px;color:#b91c1c;">Access Denied</h3>
-                    <p style="color:#4b5563;margin:0 0 18px;">You do not have permission to access the Notifications page.</p>
-                    <a href="' . htmlspecialchars($GLOBALS['base_url'] ?? '') . '/dashboard" style="display:inline-block;padding:8px 18px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px;">Back to Dashboard</a>
-                  </div>';
-            exit;
-        }
-
         return $userId;
     }
 

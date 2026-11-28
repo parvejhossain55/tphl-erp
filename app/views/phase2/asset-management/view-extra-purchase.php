@@ -68,6 +68,23 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
             </h4>
         </div>
         <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+            <?php
+            $latestRevision = $latestRevision ?? null;
+            $isEpRevOpen    = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
+            $isExtraReqUnapproved = (($req['overall_status'] ?? 'pending') === 'pending')
+                && (($req['dept_head_status'] ?? '') !== 'approved') && empty($req['dept_head_by'])
+                && (($req['it_head_status'] ?? '') !== 'approved') && empty($req['it_head_by'])
+                && (($req['operations_status'] ?? '') !== 'approved') && empty($req['operations_by'])
+                && (($req['purchase_head_status'] ?? '') !== 'approved') && empty($req['purchase_head_by'])
+                && (($req['qc_audit_status'] ?? '') !== 'approved') && empty($req['qc_audit_by'])
+                && (($req['mgmt_status'] ?? '') !== 'approved') && empty($req['mgmt_by']);
+            $canEditExtraReq = ($isExtraReqUnapproved || $isEpRevOpen || ($req['overall_status'] ?? '') === 'rejected') && (((int)($req['requested_by'] ?? 0) === $userId) || in_array($roleId, [1, 3], true));
+            if ($canEditExtraReq):
+            ?>
+                <button type="button" class="btn btn-outline-warning btn-sm px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#editExtraPurchaseModal">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> <?= $isEpRevOpen ? 'Edit &amp; Resubmit' : 'Edit Request' ?>
+                </button>
+            <?php endif; ?>
             <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="btn btn-outline-secondary btn-sm px-3">
                 <i class="fa-solid fa-arrow-left me-1"></i> Back to List
             </a>
@@ -97,6 +114,20 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
     <?php endif; ?>
 
     <!-- Main Content Grid -->
+    <?php
+    $epCanSendBack = !empty($canApprove) && !in_array($roleId, [33, 34, 35], true) && !in_array($req['overall_status'] ?? '', ['paid', 'purchased', 'rejected'], true);
+    $revModuleTable      = 'project_extra_assets';
+    $revSourceId         = (int)$req['id'];
+    $revCreatorUserId    = (int)($req['requested_by'] ?? 0);
+    $revCanSendBack      = $epCanSendBack;
+    $revReturnStage      = !empty($approvalStep) ? (string)$approvalStep : 'approver';
+    $revReturnStageLabel = !empty($curStepTitle) ? (string)$curStepTitle : 'Approver';
+    $revRedirectUrl      = '/asset-extra-purchase/' . (int)$req['id'];
+    $revEditModalTarget  = '#editExtraPurchaseModal';
+    $revEditLinkUrl      = '';
+    $revLatest           = $latestRevision ?? null;
+    include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+    ?>
     <div class="row ">
         <!-- LEFT COLUMN: Requisition Info & Audit Trail -->
         <div class="col-lg-7 col-xl-8">
@@ -105,7 +136,7 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                 <div class="col-sm-6 col-md-3">
                     <div class="card custom-card border-0 shadow-sm mb-0 p-3 bg-white" style="border-left: 4px solid #2563eb !important;">
                         <span class="text-muted fs-11 fw-semibold text-uppercase">Total Amount</span>
-                        <h5 class="fw-bold text-primary mb-0 mt-1">৳ <?= number_format($reqTotal, 2) ?></h5>
+                        <h5 class="fw-bold text-primary mb-0 mt-1">TK <?= number_format($reqTotal, 2) ?></h5>
                     </div>
                 </div>
                 <div class="col-sm-6 col-md-3">
@@ -123,7 +154,7 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                 <div class="col-sm-6 col-md-3">
                     <div class="card custom-card border-0 shadow-sm mb-0 p-3 bg-white" style="border-left: 4px solid #0d9488 !important;">
                         <span class="text-muted fs-11 fw-semibold text-uppercase">Disbursed Paid</span>
-                        <h6 class="fw-bold text-teal mb-0 mt-1">৳ <?= number_format((float)($req['paid_amount'] ?? 0), 2) ?></h6>
+                        <h6 class="fw-bold text-teal mb-0 mt-1">TK <?= number_format((float)($req['paid_amount'] ?? 0), 2) ?></h6>
                     </div>
                 </div>
             </div>
@@ -170,7 +201,7 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                         <div class="col-md-6">
                             <span class="text-muted fs-11 d-block">Payment Method & Estimated Price</span>
                             <span class="badge bg-light text-dark border me-2"><?= htmlspecialchars($req['payment_method'] ?? 'Cash') ?></span>
-                            <span class="text-muted fs-11">Unit: ৳ <?= number_format((float)($req['unit_price'] ?? 0), 2) ?> &times; <?= (int)$req['quantity'] ?> pcs</span>
+                            <span class="text-muted fs-11">Unit: TK <?= number_format((float)($req['unit_price'] ?? 0), 2) ?> &times; <?= (int)$req['quantity'] ?> pcs</span>
                         </div>
 
                         <div class="col-12">
@@ -295,8 +326,96 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
 
         <!-- RIGHT COLUMN: Sequential Approval Timeline & Live Action Cards -->
         <div class="col-lg-5 col-xl-4">
-            <!-- 1. Approval Action Card (For currently authorized approver) -->
-            <?php if ($canApprove): ?>
+            <!-- 0A. Linked OPO Banner (If OPO Generated) -->
+            <?php if (!empty($opoData)): ?>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #2563eb !important; background: #eff6ff;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h6 class="mb-0 fw-bold fs-13 text-primary">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> <?= htmlspecialchars($opoData['opo_number']) ?>
+                        </h6>
+                        <span class="badge bg-primary text-white fs-10 text-uppercase"><?= htmlspecialchars(str_replace('_', ' ', $opoData['status'])) ?></span>
+                    </div>
+                    <p class="fs-12 text-secondary mb-2">
+                        Multi-Vendor CST completed &amp; Office Procurement Order generated. View full CST matrix, OPO approvals, and handover actions.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <a href="<?= $GLOBALS['base_url'] ?>/office-procurement/order/<?= (int)$opoData['id'] ?>" class="btn btn-primary btn-sm flex-fill fw-bold shadow-sm">
+                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open OPO Page
+                        </a>
+                        <?php if (($opoData['status'] ?? '') === 'revision_requested'): ?>
+                            <a href="<?= $GLOBALS['base_url'] ?>/office-procurement/cst/<?= (int)$req['id'] ?>" class="btn btn-warning btn-sm fw-bold text-dark">
+                                <i class="fa-solid fa-pen me-1"></i> Edit CST
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- 0B. Role 32 (Admin & Operation): Approve & Assign Employee for Multi-Vendor CST -->
+            <?php if (!empty($canAssignCst)): ?>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #0284c7 !important; background: #f0f9ff;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="mb-0 fw-bold fs-13 text-primary">
+                            <i class="fa-solid fa-user-tag me-1"></i> Admin &amp; Operation — Assign CST
+                        </h6>
+                        <span class="badge bg-info text-white fs-10">Admin &amp; Operation</span>
+                    </div>
+                    <p class="fs-12 text-secondary mb-2">
+                        Approve requisition &amp; assign an employee from <strong>Admin &amp; Operation</strong>, <strong>Purchase</strong>, or <strong>IT</strong> department to collect multi-vendor quotations &amp; prepare CST.
+                    </p>
+                    <?php if (!empty($req['assigned_cst_name'])): ?>
+                        <div class="alert alert-light border py-1.5 px-2 fs-11 mb-2">
+                            Currently Assigned: <strong><?= htmlspecialchars($req['assigned_cst_name']) ?></strong>
+                            <?php if (!empty($req['assigned_cst_at'])): ?>
+                                <span class="text-muted"> &bull; <?= date('d M Y, h:i A', strtotime($req['assigned_cst_at'])) ?></span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                    <form action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/assign-cst/<?= (int)$req['id'] ?>" method="POST">
+                        <div class="mb-2">
+                            <label class="form-label fs-11 fw-semibold text-dark mb-1">Select Employee (Admin &amp; Ops / Purchase / IT) <span class="text-danger">*</span></label>
+                            <select name="assigned_cst_user_id" id="viewAssignCstSelect" class="form-select form-select-sm select2" style="width:100%;" required>
+                                <option value="">-- Search by Employee ID, Name or Dept --</option>
+                                <?php foreach ($assignableCstEmployees ?? [] as $emp): ?>
+                                    <option value="<?= $emp['id'] ?>" <?= ((int)($req['assigned_cst_user_id'] ?? 0) === (int)$emp['id']) ? 'selected' : '' ?>>
+                                        [<?= htmlspecialchars($emp['emp_code'] ?? ('UID-' . $emp['id'])) ?>] <?= htmlspecialchars($emp['full_name']) ?> — (<?= htmlspecialchars($emp['dept_name']) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <textarea name="assign_note" class="form-control form-control-sm" rows="2" placeholder="Optional instructions for CST assignee..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm">
+                            <i class="fa-solid fa-paper-plane me-1"></i> Approve &amp; Assign for CST
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- 0C. CST Assignee Action Card: Prepare Multi-Vendor CST & Generate OPO -->
+            <?php if (!empty($req['assigned_cst_user_id']) && empty($opoData) && ((int)$req['assigned_cst_user_id'] === $userId || in_array($roleId, [1, 3, 17, 20, 31, 32, 38], true))): ?>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #16a34a !important; background: #f0fdf4;">
+                <div class="card-body p-3">
+                    <h6 class="mb-1 fw-bold fs-13 text-success">
+                        <i class="fa-solid fa-scale-balanced me-1"></i> Ready for Multi-Vendor CST
+                    </h6>
+                    <p class="fs-12 text-secondary mb-2">
+                        Assigned to <strong><?= htmlspecialchars($req['assigned_cst_name'] ?? 'Employee') ?></strong>. Add multiple vendor quotations &amp; rates to generate the Office Procurement Order (OPO).
+                    </p>
+                    <a href="<?= $GLOBALS['base_url'] ?>/office-procurement/cst/<?= (int)$req['id'] ?>" class="btn btn-success btn-sm w-100 fw-bold shadow-sm">
+                        <i class="fa-solid fa-plus-circle me-1"></i> Prepare Multi-Vendor CST &amp; Generate OPO
+                    </a>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- 1. Approval Action Card (Only for Dept Head step, or legacy non-OPO flow) -->
+            <?php if ($canApprove && ($approvalStep === 'dept_head' || (empty($canAssignCst) && empty($opoData) && empty($req['assigned_cst_user_id'])))): ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #16a34a !important; background: #f0fdf4;">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -321,6 +440,24 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
 
                         <?php if ($approvalStep === 'purchase_head'): ?>
                             <div class="mb-2.5">
+                                <label class="form-label fs-11 fw-semibold text-dark mb-1"><i class="fa-solid fa-store me-1 text-primary"></i>Select / Finalize Vendor (Optional)</label>
+                                <select name="vendor_id" class="form-select form-select-sm">
+                                    <option value="">-- Keep Existing / No Vendor --</option>
+                                    <?php foreach ($vendors ?? [] as $vnd): ?>
+                                        <?php
+                                        $vComp = trim($vnd['company_name'] ?? '');
+                                        $vName = trim($vnd['name'] ?? '');
+                                        $vLabel = (!empty($vComp) && !empty($vName) && strcasecmp($vComp, $vName) !== 0)
+                                            ? ($vComp . ' (' . $vName . ')')
+                                            : (!empty($vComp) ? $vComp : $vName);
+                                        ?>
+                                        <option value="<?= $vnd['id'] ?>" <?= ((int)($req['vendor_id'] ?? 0) === (int)$vnd['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($vLabel) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="mb-2.5">
                                 <label class="form-label fs-11 fw-semibold text-dark mb-1">Upload Quotation / Comparative Statement (Optional)</label>
                                 <input type="file" name="purchase_head_document" class="form-control form-control-sm">
                             </div>
@@ -331,12 +468,17 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                             <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add approval remarks or notes..."></textarea>
                         </div>
 
-                        <div class="d-flex justify-content-between gap-2 pt-1">
-                            <button type="submit" class="btn btn-sm btn-outline-danger px-3 flex-fill" onclick="document.getElementById('viewApprovalStatus').value='rejected'; return confirm('Are you sure you want to REJECT this purchase request?');">
-                                <i class="fa-solid fa-xmark me-1"></i> Reject
-                            </button>
+                        <div class="d-flex flex-wrap justify-content-between gap-2 pt-1">
                             <button type="button" class="btn btn-sm btn-success px-3 flex-fill fw-bold shadow-sm" onclick="handleViewPageApproval('<?= htmlspecialchars($overrideWarningStage, ENT_QUOTES, 'UTF-8') ?>')">
                                 <i class="fa-solid fa-check me-1"></i> Approve Request
+                            </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-sm btn-warning text-dark px-3 flex-fill fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_project_extra_assets">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            <?php endif; ?>
+                            <button type="submit" class="btn btn-sm btn-outline-danger px-3 flex-fill" onclick="document.getElementById('viewApprovalStatus').value='rejected'; return confirm('Are you sure you want to REJECT this purchase request?');">
+                                <i class="fa-solid fa-xmark me-1"></i> Reject
                             </button>
                         </div>
                     </form>
@@ -375,7 +517,7 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                         <span class="badge bg-success text-white fs-10">Accounts Action</span>
                     </div>
                     <p class="fs-12 text-secondary mb-3">
-                        All multi-stage approvals are completed. Accounts can now process and disburse the fund (৳ <?= number_format($reqTotal, 2) ?>).
+                        All multi-stage approvals are completed. Accounts can now process and disburse the fund (TK <?= number_format($reqTotal, 2) ?>).
                     </p>
                     <button type="button" class="btn btn-success btn-sm w-100 fw-bold shadow-sm py-2" data-bs-toggle="modal" data-bs-target="#paymentModal">
                         <i class="fa-solid fa-money-bill-wave me-1"></i> Disburse / Process Payment
@@ -413,227 +555,149 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
             </div>
             <?php endif; ?>
 
-            <!-- 5. Sequential Timeline Card -->
+            <!-- 5. Sequential Timeline Card (New Office Procurement & OPO Flow) -->
+            <?php
+            $hasCstAssigned = !empty($req['assigned_cst_user_id']);
+            $hasOpo = !empty($opoData);
+            $opoPhSt = $hasOpo ? ($opoData['purchase_head_status'] ?? 'pending') : ($req['purchase_head_status'] ?? 'pending');
+            $opoQcSt = $hasOpo ? ($opoData['qc_status'] ?? 'pending') : ($req['qc_audit_status'] ?? 'pending');
+            $opoOpSt = $hasOpo ? ($opoData['op_head_status'] ?? 'pending') : ($isOpHeadPostQcApproved ? 'approved' : ($isOpHeadPostQcRejected ? 'rejected' : 'pending'));
+            $isPayReceivedStep = !empty($req['assignee_payment_received_at']) || in_array($req['overall_status'] ?? '', ['process_on_purchase', 'purchased', 'received'], true);
+            $isPurchasedStep   = !empty($req['purchase_confirmed_at']) || in_array($req['overall_status'] ?? '', ['purchased', 'received'], true);
+            $isAssetRcvStep    = !empty($req['asset_received_at']) || ($req['overall_status'] ?? '') === 'received';
+
+            $flowSteps = [
+                [
+                    'title'  => '1. Requisition Submitted',
+                    'state'  => 'done',
+                    'badge'  => 'Done',
+                    'detail' => 'By <strong>' . htmlspecialchars($req['requested_by_name'] ?? '—') . '</strong>' . (!empty($req['created_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['created_at'])) : ''),
+                ],
+            ];
+            if ($dhStatus !== 'not_required') {
+                $flowSteps[] = [
+                    'title'  => '2. Department Head Approval',
+                    'state'  => $dhStatus === 'approved' ? 'done' : ($dhStatus === 'rejected' ? 'rejected' : 'pending'),
+                    'badge'  => ucfirst($dhStatus),
+                    'detail' => (!empty($req['dept_head_by_name']) ? 'By <strong>' . htmlspecialchars($req['dept_head_by_name']) . '</strong>' : (!empty($req['reporting_boss_name']) ? 'Designated: <strong>' . htmlspecialchars($req['reporting_boss_name']) . '</strong>' : 'Awaiting Department Head'))
+                        . (!empty($req['dept_head_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['dept_head_at'])) : ''),
+                ];
+            }
+            $flowSteps[] = [
+                'title'  => '3. Admin & Operation — Approve & Assign CST',
+                'state'  => $hasCstAssigned ? 'done' : ($opStatus === 'rejected' ? 'rejected' : 'pending'),
+                'badge'  => $hasCstAssigned ? 'Assigned' : ($opStatus === 'rejected' ? 'Rejected' : 'Pending'),
+                'detail' => $hasCstAssigned
+                    ? ('Assigned to <strong>' . htmlspecialchars($req['assigned_cst_name'] ?? 'Employee') . '</strong>' . (!empty($req['assigned_cst_by_name']) ? ' by ' . htmlspecialchars($req['assigned_cst_by_name']) : '') . (!empty($req['assigned_cst_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['assigned_cst_at'])) : ''))
+                    : 'Awaiting Admin & Operation review & CST assignment',
+            ];
+            $flowSteps[] = [
+                'title'  => '4. Multi-Vendor CST & OPO Generated',
+                'state'  => $hasOpo ? (($opoData['status'] ?? '') === 'revision_requested' ? 'revision' : 'done') : 'pending',
+                'badge'  => $hasOpo ? (($opoData['status'] ?? '') === 'revision_requested' ? 'Revision Needed' : htmlspecialchars($opoData['opo_number'])) : 'Pending CST',
+                'detail' => $hasOpo
+                    ? ('<a href="' . $GLOBALS['base_url'] . '/office-procurement/order/' . (int)$opoData['id'] . '" class="fw-bold text-primary text-decoration-none">' . htmlspecialchars($opoData['opo_number']) . '</a> &bull; ' . htmlspecialchars($opoData['vendor_name'] ?? $req['vendor_name'] ?? '') . (!empty($opoData['created_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($opoData['created_at'])) : ''))
+                    : ($hasCstAssigned ? 'Awaiting CST submission by <strong>' . htmlspecialchars($req['assigned_cst_name'] ?? '') . '</strong>' : 'Waiting for CST assignment'),
+            ];
+            $flowSteps[] = [
+                'title'  => '5. OPO — Purchase Department Head',
+                'state'  => $opoPhSt === 'approved' ? 'done' : ($opoPhSt === 'rejected' ? 'rejected' : ($opoPhSt === 'revision_requested' ? 'revision' : 'pending')),
+                'badge'  => ucfirst(str_replace('_', ' ', $opoPhSt)),
+                'detail' => (!empty($opoData['purchase_head_by_name']) ? 'By <strong>' . htmlspecialchars($opoData['purchase_head_by_name']) . '</strong>' . (!empty($opoData['purchase_head_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($opoData['purchase_head_at'])) : '') : 'Awaiting Purchase Department Head'),
+            ];
+            $flowSteps[] = [
+                'title'  => '6. OPO — QC & Internal Audit Head',
+                'state'  => $opoQcSt === 'approved' ? 'done' : ($opoQcSt === 'rejected' ? 'rejected' : ($opoQcSt === 'revision_requested' ? 'revision' : 'pending')),
+                'badge'  => ucfirst(str_replace('_', ' ', $opoQcSt)),
+                'detail' => (!empty($opoData['qc_by_name']) ? 'By <strong>' . htmlspecialchars($opoData['qc_by_name']) . '</strong>' . (!empty($opoData['qc_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($opoData['qc_at'])) : '') : 'Awaiting QC & Internal Audit Head'),
+            ];
+            $flowSteps[] = [
+                'title'  => '7. OPO — Admin & Operation Head',
+                'state'  => $opoOpSt === 'approved' ? 'done' : ($opoOpSt === 'rejected' ? 'rejected' : ($opoOpSt === 'revision_requested' ? 'revision' : 'pending')),
+                'badge'  => ucfirst(str_replace('_', ' ', $opoOpSt)),
+                'detail' => (!empty($opoData['op_head_by_name']) ? 'By <strong>' . htmlspecialchars($opoData['op_head_by_name']) . '</strong>' . (!empty($opoData['op_head_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($opoData['op_head_at'])) : '') : 'Awaiting Admin & Operation Head'),
+            ];
+            $flowSteps[] = [
+                'title'  => '8. Accounts Head Approval',
+                'state'  => $isAhApproved ? 'done' : ($isAhRejected ? 'rejected' : 'pending'),
+                'badge'  => $isAhApproved ? 'Approved' : ($isAhRejected ? 'Rejected' : 'Pending'),
+                'detail' => $isAhApproved ? ('By <strong>' . htmlspecialchars($ahName ?: 'Accounts Head') . '</strong>' . (!empty($ahAt) ? ' &bull; ' . date('d M Y, h:i A', strtotime($ahAt)) : '')) : 'Auto Payment Request after OPO approval',
+            ];
+            if ($showMgmtStep) {
+                $flowSteps[] = [
+                    'title'  => '9. Management Final Approval (> TK10,000)',
+                    'state'  => $isMgmtApproved ? 'done' : ($isMgmtRejected ? 'rejected' : 'pending'),
+                    'badge'  => $isMgmtApproved ? 'Approved' : ($isMgmtRejected ? 'Rejected' : 'Pending'),
+                    'detail' => $isMgmtApproved ? ('By <strong>' . htmlspecialchars($req['mgmt_by_name'] ?? 'Management') . '</strong>' . (!empty($req['mgmt_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['mgmt_at'])) : '')) : 'Required after Accounts Head for > TK10,000',
+                ];
+            }
+            $flowSteps[] = [
+                'title'  => 'Accounts Payment Disbursement',
+                'state'  => $isPaidOrDone ? 'done' : 'pending',
+                'badge'  => $isPaidOrDone ? 'Disbursed' : 'Unpaid',
+                'detail' => $isPaidOrDone ? ('By <strong>' . htmlspecialchars($req['paid_by_name'] ?? 'Accounts') . '</strong>' . (!empty($req['paid_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['paid_at'])) : '')) : 'Awaiting Accounts disbursement',
+            ];
+            $flowSteps[] = [
+                'title'  => 'Assignee Received Payment (Process on Purchase)',
+                'state'  => $isPayReceivedStep ? 'done' : 'pending',
+                'badge'  => $isPayReceivedStep ? 'Process on Purchase' : 'Pending',
+                'detail' => $isPayReceivedStep ? ('Confirmed by <strong>' . htmlspecialchars($req['payment_received_by_name'] ?? $req['assigned_cst_name'] ?? '') . '</strong>' . (!empty($req['assignee_payment_received_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['assignee_payment_received_at'])) : '')) : 'Awaiting CST assignee payment confirmation',
+            ];
+            $flowSteps[] = [
+                'title'  => 'Purchased & Sent to Requester',
+                'state'  => $isPurchasedStep ? 'done' : 'pending',
+                'badge'  => $isPurchasedStep ? 'Sent to Requester' : 'Pending',
+                'detail' => $isPurchasedStep ? ('By <strong>' . htmlspecialchars($req['purchased_by_name'] ?? $req['assigned_cst_name'] ?? '') . '</strong>' . (!empty($req['purchase_confirmed_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['purchase_confirmed_at'])) : '')) : 'Awaiting purchase completion & handover',
+            ];
+            $flowSteps[] = [
+                'title'  => 'Requester Received Asset (Asset Tracker & Accounts)',
+                'state'  => $isAssetRcvStep ? 'done' : 'pending',
+                'badge'  => $isAssetRcvStep ? 'Received' : 'Pending',
+                'detail' => $isAssetRcvStep ? ('Received by <strong>' . htmlspecialchars($req['asset_received_by_name'] ?? $req['requested_by_name'] ?? '') . '</strong>' . (!empty($req['asset_received_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['asset_received_at'])) : '')) : 'Awaiting requester confirmation → Auto Asset Code & Accounts Sync',
+            ];
+            ?>
             <div class="card custom-card border-0 shadow-sm mb-3">
                 <div class="card-header bg-light py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
                     <h6 class="card-title mb-0 fw-bold fs-13 text-dark">
-                        <i class="fa-solid fa-timeline text-primary me-1.5"></i> Approval & Payment Flow
+                        <i class="fa-solid fa-timeline text-primary me-1.5"></i> Approval &amp; Procurement Flow
                     </h6>
-                    <span class="badge bg-light text-secondary border fs-10">11 Steps</span>
+                    <span class="badge bg-light text-secondary border fs-10"><?= count($flowSteps) ?> Stages</span>
                 </div>
                 <div class="card-body p-3">
                     <div class="timeline-workflow d-flex flex-column gap-3 fs-12">
-                        <!-- Step 1: Submission -->
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 bg-success text-white" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid fa-check"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Requisition Submitted</strong>
-                                    <span class="badge bg-success-subtle text-success fs-10">Done</span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    By <strong><?= htmlspecialchars($req['requested_by_name'] ?? '—') ?></strong>
-                                    <?= !empty($req['created_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['created_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 2: Department Head -->
-                        <?php if ($dhStatus !== 'not_required'): 
-                            $isDhDone = ($dhStatus === 'approved');
-                            $isDhRej = ($dhStatus === 'rejected');
+                        <?php foreach ($flowSteps as $fs):
+                            $dotCls = match($fs['state']) {
+                                'done'     => 'bg-success text-white',
+                                'rejected' => 'bg-danger text-white',
+                                'revision' => 'bg-warning text-dark',
+                                default    => 'bg-light text-muted border',
+                            };
+                            $iconCls = match($fs['state']) {
+                                'done'     => 'fa-check',
+                                'rejected' => 'fa-xmark',
+                                'revision' => 'fa-rotate-left',
+                                default    => 'fa-hourglass-half',
+                            };
+                            $badgeCls = match($fs['state']) {
+                                'done'     => 'bg-success-subtle text-success',
+                                'rejected' => 'bg-danger-subtle text-danger',
+                                'revision' => 'bg-warning-subtle text-dark',
+                                default    => 'bg-light text-secondary border',
+                            };
                         ?>
                         <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isDhDone ? 'bg-success text-white' : ($isDhRej ? 'bg-danger text-white' : ($dhStatus === 'pending' ? 'bg-warning text-dark' : 'bg-light text-muted border')) ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isDhDone ? 'fa-check' : ($isDhRej ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $dotCls ?>" style="width: 24px; height: 24px; font-size: 11px;">
+                                <i class="fa-solid <?= $iconCls ?>"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Department Head</strong>
-                                    <span class="badge bg-<?= $isDhDone ? 'success-subtle text-success' : ($isDhRej ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= ucfirst($dhStatus) ?></span>
+                                <div class="d-flex align-items-center justify-content-between gap-1">
+                                    <strong class="text-dark"><?= $fs['title'] ?></strong>
+                                    <span class="badge <?= $badgeCls ?> fs-10"><?= $fs['badge'] ?></span>
                                 </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= !empty($req['dept_head_by_name']) ? 'By <strong>' . htmlspecialchars($req['dept_head_by_name']) . '</strong>' : (!empty($req['reporting_boss_name']) ? 'Designated: <strong>' . htmlspecialchars($req['reporting_boss_name']) . '</strong>' : 'Awaiting Dept Head') ?>
-                                    <?= !empty($req['dept_head_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['dept_head_at'])) : '' ?>
-                                </div>
+                                <div class="text-muted fs-11 mt-0.5"><?= $fs['detail'] ?></div>
                             </div>
                         </div>
-                        <?php endif; ?>
-
-                        <!-- Step 3: IT Head -->
-                        <?php if ($itStatus !== 'not_required'): 
-                            $isItDone = ($itStatus === 'approved');
-                            $isItRej = ($itStatus === 'rejected');
-                        ?>
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isItDone ? 'bg-success text-white' : ($isItRej ? 'bg-danger text-white' : ($itStatus === 'pending' ? 'bg-warning text-dark' : 'bg-light text-muted border')) ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isItDone ? 'fa-check' : ($isItRej ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">IT Head Review</strong>
-                                    <span class="badge bg-<?= $isItDone ? 'success-subtle text-success' : ($isItRej ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= ucfirst($itStatus) ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= !empty($req['it_head_by_name']) ? 'By <strong>' . htmlspecialchars($req['it_head_by_name']) . '</strong>' : 'Awaiting IT Head' ?>
-                                    <?= !empty($req['it_head_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['it_head_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <!-- Step 4: Admin & Operation Initial Review -->
-                        <?php 
-                        $isOpDone = ($opStatus === 'approved');
-                        $isOpRej = ($opStatus === 'rejected');
-                        ?>
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isOpDone ? 'bg-success text-white' : ($isOpRej ? 'bg-danger text-white' : ($opStatus === 'pending' ? 'bg-warning text-dark' : 'bg-light text-muted border')) ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isOpDone ? 'fa-check' : ($isOpRej ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Admin & Operation (Initial)</strong>
-                                    <span class="badge bg-<?= $isOpDone ? 'success-subtle text-success' : ($isOpRej ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= ucfirst($opStatus) ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= !empty($req['operations_by_name']) ? 'By <strong>' . htmlspecialchars($req['operations_by_name']) . '</strong>' : 'Awaiting Operations' ?>
-                                    <?= !empty($req['operations_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['operations_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 5: Purchase Head Quotation -->
-                        <?php 
-                        $isPhDone = ($phStatus === 'approved');
-                        $isPhRej = ($phStatus === 'rejected');
-                        ?>
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isPhDone ? 'bg-success text-white' : ($isPhRej ? 'bg-danger text-white' : ($phStatus === 'pending' ? 'bg-warning text-dark' : 'bg-light text-muted border')) ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isPhDone ? 'fa-check' : ($isPhRej ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Purchase Head</strong>
-                                    <span class="badge bg-<?= $isPhDone ? 'success-subtle text-success' : ($isPhRej ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= ucfirst($phStatus) ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= !empty($req['purchase_head_by_name']) ? 'By <strong>' . htmlspecialchars($req['purchase_head_by_name']) . '</strong>' : 'Awaiting Purchase Head' ?>
-                                    <?= !empty($req['purchase_head_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['purchase_head_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 6: QC & Internal Audit -->
-                        <?php 
-                        $isQcDone = ($qcStatus === 'approved');
-                        $isQcRej = ($qcStatus === 'rejected');
-                        ?>
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isQcDone ? 'bg-success text-white' : ($isQcRej ? 'bg-danger text-white' : ($qcStatus === 'pending' ? 'bg-warning text-dark' : 'bg-light text-muted border')) ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isQcDone ? 'fa-check' : ($isQcRej ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">QC & Internal Audit</strong>
-                                    <span class="badge bg-<?= $isQcDone ? 'success-subtle text-success' : ($isQcRej ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= ucfirst($qcStatus) ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= !empty($req['qc_audit_by_name']) ? 'By <strong>' . htmlspecialchars($req['qc_audit_by_name']) . '</strong>' : 'Awaiting QC' ?>
-                                    <?= !empty($req['qc_audit_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['qc_audit_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 7: Head of Operation Post-QC -->
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isOpHeadPostQcApproved ? 'bg-success text-white' : ($isOpHeadPostQcRejected ? 'bg-danger text-white' : 'bg-warning text-dark') ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isOpHeadPostQcApproved ? 'fa-check' : ($isOpHeadPostQcRejected ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Head of Operation</strong>
-                                    <span class="badge bg-<?= $isOpHeadPostQcApproved ? 'success-subtle text-success' : ($isOpHeadPostQcRejected ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= $isOpHeadPostQcApproved ? 'Approved' : ($isOpHeadPostQcRejected ? 'Rejected' : 'Pending') ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= $isOpHeadPostQcApproved ? 'By <strong>' . htmlspecialchars($opPostQcName) . '</strong>' : 'Awaiting Operation Head' ?>
-                                    <?= !empty($opPostQcAt) ? ' &bull; ' . date('d M Y, h:i A', strtotime($opPostQcAt)) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 8: Accounts Head Approval -->
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isAhApproved ? 'bg-success text-white' : ($isAhRejected ? 'bg-danger text-white' : 'bg-warning text-dark') ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isAhApproved ? 'fa-check' : ($isAhRejected ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Accounts Head (Role 30)</strong>
-                                    <span class="badge bg-<?= $isAhApproved ? 'success-subtle text-success' : ($isAhRejected ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= $isAhApproved ? 'Approved' : ($isAhRejected ? 'Rejected' : 'Pending') ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= $isAhApproved ? 'By <strong>' . htmlspecialchars($ahName) . '</strong>' : 'Awaiting Accounts Head' ?>
-                                    <?= !empty($ahAt) ? ' &bull; ' . date('d M Y, h:i A', strtotime($ahAt)) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 9: Management Final Approval (if applicable) -->
-                        <?php if ($showMgmtStep): ?>
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isMgmtApproved ? 'bg-success text-white' : ($isMgmtRejected ? 'bg-danger text-white' : 'bg-warning text-dark') ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isMgmtApproved ? 'fa-check' : ($isMgmtRejected ? 'fa-xmark' : 'fa-hourglass-half') ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">DCEO / Management</strong>
-                                    <span class="badge bg-<?= $isMgmtApproved ? 'success-subtle text-success' : ($isMgmtRejected ? 'danger-subtle text-danger' : 'warning-subtle text-warning') ?> fs-10"><?= $isMgmtApproved ? 'Approved' : ($isMgmtRejected ? 'Rejected' : 'Pending') ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= $isMgmtApproved ? 'By <strong>' . htmlspecialchars($req['mgmt_by_name'] ?? 'Management') . '</strong>' : 'Awaiting Management' ?>
-                                    <?= !empty($req['mgmt_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['mgmt_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <!-- Step 10: Accounts Payment Disbursement -->
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isPaidOrDone ? 'bg-success text-white' : 'bg-light text-muted border' ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isPaidOrDone ? 'fa-check' : 'fa-money-bill-wave' ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Accounts Disbursement</strong>
-                                    <span class="badge bg-<?= $isPaidOrDone ? 'success-subtle text-success' : 'warning-subtle text-warning' ?> fs-10"><?= $isPaidOrDone ? 'Paid' : 'Unpaid' ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= $isPaidOrDone ? 'Disbursed by <strong>' . htmlspecialchars($req['paid_by_name'] ?? 'Accounts') . '</strong>' : 'Awaiting Accounts Disbursement' ?>
-                                    <?= !empty($req['paid_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['paid_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Step 11: Asset Purchased & Tracker Registration -->
-                        <?php $isPurchased = ($req['overall_status'] === 'purchased'); ?>
-                        <div class="d-flex align-items-start gap-2.5">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 <?= $isPurchased ? 'bg-success text-white' : 'bg-light text-muted border' ?>" style="width: 24px; height: 24px; font-size: 11px;">
-                                <i class="fa-solid <?= $isPurchased ? 'fa-check' : 'fa-boxes-stacked' ?>"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <strong class="text-dark">Asset Tracker Registered</strong>
-                                    <span class="badge bg-<?= $isPurchased ? 'success-subtle text-success' : 'secondary-subtle text-secondary' ?> fs-10"><?= $isPurchased ? 'Registered' : 'Pending' ?></span>
-                                </div>
-                                <div class="text-muted fs-11 mt-0.5">
-                                    <?= $isPurchased ? 'Confirmed by <strong>' . htmlspecialchars($req['purchased_by_name'] ?? 'Operations') . '</strong>' : 'Awaiting purchase confirmation' ?>
-                                    <?= !empty($req['purchase_confirmed_at']) ? ' &bull; ' . date('d M Y, h:i A', strtotime($req['purchase_confirmed_at'])) : '' ?>
-                                </div>
-                            </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
@@ -655,26 +719,30 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
                 </div>
                 <div class="modal-body p-3 fs-13">
                     <div class="mb-3">
-                        <label class="form-label fs-12 fw-semibold">Payment Amount (৳) <span class="text-danger">*</span></label>
+                        <label class="form-label fs-12 fw-semibold">Payment Amount (TK) <span class="text-danger">*</span></label>
                         <input type="number" step="0.01" name="paid_amount" class="form-control form-control-sm" required value="<?= number_format($reqTotal, 2, '.', '') ?>" max="<?= number_format($reqTotal, 2, '.', '') ?>">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fs-12 fw-semibold">Payment Method <span class="text-danger">*</span></label>
-                        <select name="payment_method" class="form-select form-select-sm" required onchange="toggleBankSection(this.value)">
-                            <option value="Cash" selected>Cash</option>
-                            <option value="Bank">Bank Transfer</option>
-                            <option value="Cheque">Cheque</option>
+                        <label class="form-label fs-12 fw-semibold">Payment Account (Chart of Accounts) <span class="text-danger">*</span></label>
+                        <select name="payment_account_id" class="form-select form-select-sm" required>
+                            <option value="">-- Select Cash or Bank Account --</option>
+                            <?php foreach ($bankAccounts ?? [] as $bAcc): ?>
+                                <option value="<?= $bAcc['id'] ?>">
+                                    <?= htmlspecialchars(($bAcc['account_code'] ?? '') . ' - ' . ($bAcc['account_name'] ?? '')) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
-                    <div id="bankSection" class="mb-3" style="display: none;">
-                        <label class="form-label fs-12 fw-semibold">Company Bank Account</label>
-                        <select name="bank_account_id" class="form-select form-select-sm">
-                            <option value="">Select Bank Account</option>
-                            <?php foreach ($bankAccounts as $acc): ?>
-                                <option value="<?= $acc['id'] ?>"><?= htmlspecialchars($acc['bank_name'] . ' (' . $acc['account_number'] . ')') ?></option>
-                            <?php endforeach; ?>
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold">Payment Method <span class="text-danger">*</span></label>
+                        <select name="payment_method" class="form-select form-select-sm" required>
+                            <option value="Cash" selected>Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="bKash">bKash</option>
+                            <option value="Nagad">Nagad</option>
                         </select>
                     </div>
 
@@ -786,3 +854,75 @@ function handleViewPageApproval(overrideStage) {
 </script>
 
 <?php include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; ?>
+
+<?php if ($canEditExtraReq ?? false): ?>
+<!-- Edit Office Procurement Request Modal (Before 1st Approval or Review Requested) -->
+<div class="modal custom-modal fade" id="editExtraPurchaseModal" tabindex="-1" aria-labelledby="editExtraPurchaseModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editExtraPurchaseModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Procurement Request #<?= (int)$req['id'] ?>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/update/<?= (int)$req['id'] ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Item / Service Name <span class="text-danger">*</span></label>
+                        <input type="text" name="item_name" class="form-control" value="<?= htmlspecialchars($req['item_name'] ?? '') ?>" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="quantity" class="form-control" value="<?= (int)($req['quantity'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Estimated Unit Price (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="unit_price" class="form-control" value="<?= htmlspecialchars($req['unit_price'] ?? 0) ?>" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Justification / Remarks</label>
+                        <textarea name="justification" class="form-control" rows="3"><?= htmlspecialchars($req['justification'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isEpRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> <?= ($isEpRevOpen ?? false) ? 'Save & Resubmit' : 'Save Changes' ?>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initExtraPurchaseEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initExtraPurchaseEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editExtraPurchaseModal').length && $('#editExtraPurchaseModal').parent().prop('tagName') !== 'BODY') {
+                $('#editExtraPurchaseModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initExtraPurchaseEditModal);
+    } else {
+        initExtraPurchaseEditModal();
+    }
+})();
+</script>
+<?php endif; ?>

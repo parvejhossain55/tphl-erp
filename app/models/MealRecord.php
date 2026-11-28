@@ -593,12 +593,18 @@ class MealRecord extends Model
      * - If Opted out before 12 PM -> is_consumed = 0
      * - If Absent/no record -> is_consumed = 0
      */
-    public function syncAttendanceWithMealRecords($projectId, $branchId = null)
+    public function syncAttendanceWithMealRecords($projectId, $branchId = null, $forceSync = false)
     {
+        $oldTz = date_default_timezone_get();
+        date_default_timezone_set('Asia/Dhaka');
+
         $projectId = (int)$projectId;
         $projSql = "SELECT from_date, to_date FROM meal_projects WHERE id = ? LIMIT 1";
         $pStmt = $this->db->prepare($projSql);
-        if (!$pStmt) return ['success' => false, 'message' => 'Project not found'];
+        if (!$pStmt) {
+            date_default_timezone_set($oldTz);
+            return ['success' => false, 'message' => 'Project not found'];
+        }
 
         $pStmt->bind_param("i", $projectId);
         $pStmt->execute();
@@ -607,14 +613,22 @@ class MealRecord extends Model
         $pStmt->close();
 
         if (!$project) {
+            date_default_timezone_set($oldTz);
             return ['success' => false, 'message' => 'Project date range not defined.'];
         }
 
         $fromDate = $project['from_date'];
         $toDate = $project['to_date'];
+        $todayStr = date('Y-m-d');
+        $effectiveToDate = ($toDate > $todayStr) ? $todayStr : $toDate;
 
-        // 1. Fetch all opt-outs in range
-        $optOutsMap = $this->getOptOutsByDateRange($fromDate, $toDate);
+        if ($effectiveToDate < $fromDate) {
+            date_default_timezone_set($oldTz);
+            return ['success' => true, 'synced' => 0, 'message' => 'Project cycle has not started yet.'];
+        }
+
+        // 1. Fetch all opt-outs in range (up to today)
+        $optOutsMap = $this->getOptOutsByDateRange($fromDate, $effectiveToDate);
 
         // 2. Fetch all active employees with is_meal_deduction = 1
         $empSql = "
@@ -634,10 +648,28 @@ class MealRecord extends Model
         }
 
         if (empty($employees)) {
+            date_default_timezone_set($oldTz);
             return ['success' => true, 'synced' => 0, 'message' => 'No active meal employees found.'];
         }
 
-        // 3. Fetch all attendance records (Present / Late / Half-Day) from local database (including manual entries)
+        // 3. Ensure Tipsoi attendance is synced into local `attendances` table up to today
+        $tipsoiSyncError = null;
+        try {
+            $apiServicePath = dirname(__DIR__) . '/services/ExternalApiService.php';
+            if (file_exists($apiServicePath)) {
+                require_once $apiServicePath;
+                $apiService = new ExternalApiService($this->db);
+                $syncRes = $apiService->syncAndGetAttendanceFromDb($fromDate, $effectiveToDate, (bool)$forceSync);
+                if (empty($syncRes['success'])) {
+                    $tipsoiSyncError = $syncRes['message'] ?? 'Tipsoi sync failed.';
+                }
+            }
+        } catch (\Throwable $te) {
+            $tipsoiSyncError = $te->getMessage();
+            error_log("MealRecord sync Tipsoi syncAndGetAttendanceFromDb error: " . $te->getMessage());
+        }
+
+        // 3a. Fetch all attendance records (Present / Late / Half-Day) from local `emp_attendances` (including manual entries)
         $attSql = "
             SELECT employee_id, attendance_date, today_status
             FROM emp_attendances
@@ -648,7 +680,7 @@ class MealRecord extends Model
         $attStmt = $this->db->prepare($attSql);
         $attendanceMap = [];
         if ($attStmt) {
-            $attStmt->bind_param("ss", $fromDate, $toDate);
+            $attStmt->bind_param("ss", $fromDate, $effectiveToDate);
             $attStmt->execute();
             $attRes = $attStmt->get_result();
             if ($attRes) {
@@ -661,7 +693,7 @@ class MealRecord extends Model
             $attStmt->close();
         }
 
-        // 3a. Also fetch from local ERP `attendances` table (synced Tipsoi daily logs)
+        // 3b. Fetch from local ERP `attendances` table (synced Tipsoi daily logs)
         $empLookup = [];
         foreach ($employees as $emp) {
             $eIdNorm = strtolower(trim($emp['employee_id'] ?? ''));
@@ -677,8 +709,6 @@ class MealRecord extends Model
             }
         }
 
-        $localAttendancesFound = 0;
-        $todayStr = date('Y-m-d');
         $localAttCheck = $this->db->query("SHOW TABLES LIKE 'attendances'");
         if ($localAttCheck && $localAttCheck->num_rows > 0) {
             $localAttStmt = $this->db->prepare("
@@ -687,12 +717,11 @@ class MealRecord extends Model
                 WHERE attendance_date BETWEEN ? AND ?
             ");
             if ($localAttStmt) {
-                $localAttStmt->bind_param("ss", $fromDate, $toDate);
+                $localAttStmt->bind_param("ss", $fromDate, $effectiveToDate);
                 $localAttStmt->execute();
                 $localAttRes = $localAttStmt->get_result();
                 if ($localAttRes) {
                     while ($lar = $localAttRes->fetch_assoc()) {
-                        $localAttendancesFound++;
                         $d = $lar['attendance_date'] ?? '';
                         if (!$d || $d > $todayStr) {
                             continue;
@@ -719,62 +748,15 @@ class MealRecord extends Model
             }
         }
 
-        // 3b. Fetch from Tipsoi API if local `attendances` table had no records for this range
-        if ($localAttendancesFound === 0) {
-            try {
-                $apiServicePath = dirname(__DIR__) . '/services/ExternalApiService.php';
-                if (file_exists($apiServicePath)) {
-                    require_once $apiServicePath;
-                    $apiService = new ExternalApiService($this->db);
-                    $fromTime = strtotime($fromDate . ' 00:00:00') * 1000;
-                    $toTime   = strtotime($toDate . ' 23:59:59') * 1000;
-                    $tipsoiAttendance = $apiService->getAttendanceLogs($fromTime, $toTime);
-
-                    if (!empty($tipsoiAttendance) && is_array($tipsoiAttendance)) {
-                        foreach ($tipsoiAttendance as $tEmp) {
-                            $tOfficeId = strtolower(trim($tEmp['employeeOfficeId'] ?? $tEmp['employeeId'] ?? ''));
-                            $tName = strtolower(trim($tEmp['employeeName'] ?? ''));
-                            $matchedEmpDbId = $empLookup['id_' . $tOfficeId] ?? ($empLookup['name_' . $tName] ?? null);
-
-                            if ($matchedEmpDbId && !empty($tEmp['attendance']) && is_array($tEmp['attendance'])) {
-                                foreach ($tEmp['attendance'] as $ts => $dayAtt) {
-                                    $rawDate = $dayAtt['date'] ?? '';
-                                    $dateStr = null;
-                                    if (preg_match('/^(\d{2})\.(\d{2})\.(\d{4})/', $rawDate, $m)) {
-                                        $dateStr = "{$m[3]}-{$m[2]}-{$m[1]}";
-                                    } else if (is_numeric($ts)) {
-                                        $sec = $ts > 9999999999 ? (int)($ts / 1000) : (int)$ts;
-                                        $dtObj = new DateTime("@$sec");
-                                        $dtObj->setTimezone(new DateTimeZone('Asia/Dhaka'));
-                                        $dateStr = $dtObj->format('Y-m-d');
-                                    }
-
-                                    $isPres = !empty($dayAtt['isPresent']) 
-                                        || (!empty($dayAtt['firstLoggedTime']) && trim($dayAtt['firstLoggedTime']) !== '-');
-
-                                    // Only mark present up to today (future dates cannot be present)
-                                    if ($dateStr && $dateStr >= $fromDate && $dateStr <= $toDate && $dateStr <= $todayStr && $isPres) {
-                                        $attendanceMap[$matchedEmpDbId][$dateStr] = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (\Throwable $te) {
-                error_log("MealRecord sync Tipsoi attendance fetch skipped: " . $te->getMessage());
-            }
-        }
-
-        // 4. Generate all dates in period
+        // 4. Generate dates in period up to today (do not pre-create future dates)
         $start = new DateTime($fromDate);
-        $end = new DateTime($toDate);
+        $end = new DateTime($effectiveToDate);
         $end->modify('+1 day');
         $interval = new DateInterval('P1D');
         $period = new DatePeriod($start, $interval, $end);
 
         $syncedCount = 0;
-        $todayStr = date('Y-m-d');
+        $presentTickedCount = 0;
         $upsertSql = "
             INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, is_manual, updated_at)
             VALUES (?, ?, ?, ?, ?, 0, NOW())
@@ -785,41 +767,61 @@ class MealRecord extends Model
         ";
         $uStmt = $this->db->prepare($upsertSql);
         if (!$uStmt) {
+            date_default_timezone_set($oldTz);
             return ['success' => false, 'message' => 'Failed to prepare upsert query.'];
         }
 
-        foreach ($employees as $emp) {
-            $eId = (int)$emp['id'];
-            $bId = (int)($emp['office_branch_id'] ?? 1);
+        $this->db->begin_transaction();
+        try {
+            foreach ($employees as $emp) {
+                $eId = (int)$emp['id'];
+                $bId = (int)($emp['office_branch_id'] ?? 1);
 
-            foreach ($period as $dt) {
-                $d = $dt->format('Y-m-d');
-                $optStatus = $optOutsMap[$eId][$d] ?? null;
-                $isPresent = isset($attendanceMap[$eId][$d]);
+                foreach ($period as $dt) {
+                    $d = $dt->format('Y-m-d');
+                    $optStatus = $optOutsMap[$eId][$d] ?? null;
+                    $isPresent = isset($attendanceMap[$eId][$d]);
 
-                // Future dates cannot be consumed automatically from attendance logs
-                if ($d > $todayStr) {
-                    $isConsumed = 0;
-                } else if ($optStatus === 'opt_out') {
-                    $isConsumed = 0;
-                } else if ($optStatus === 'opt_in') {
-                    $isConsumed = 1;
-                } else {
-                    // Attendance logic: Present AND NOT opted-out => 1; otherwise => 0
-                    $isConsumed = $isPresent ? 1 : 0;
+                    if ($d > $todayStr) {
+                        $isConsumed = 0;
+                    } else if ($optStatus === 'opt_out') {
+                        $isConsumed = 0;
+                    } else if ($optStatus === 'opt_in') {
+                        $isConsumed = 1;
+                    } else {
+                        // Attendance logic: Present AND NOT opted-out => 1; otherwise => 0
+                        $isConsumed = $isPresent ? 1 : 0;
+                    }
+
+                    if ($isConsumed === 1) {
+                        $presentTickedCount++;
+                    }
+
+                    $uStmt->bind_param("iiisi", $projectId, $eId, $bId, $d, $isConsumed);
+                    $uStmt->execute();
+                    $syncedCount++;
                 }
-
-                $uStmt->bind_param("iiisi", $projectId, $eId, $bId, $d, $isConsumed);
-                $uStmt->execute();
-                $syncedCount++;
             }
+            $this->db->commit();
+        } catch (\Throwable $txErr) {
+            $this->db->rollback();
+            $uStmt->close();
+            date_default_timezone_set($oldTz);
+            return ['success' => false, 'message' => 'Database error during meal sync: ' . $txErr->getMessage()];
         }
         $uStmt->close();
+        date_default_timezone_set($oldTz);
+
+        $msg = "Successfully synced {$syncedCount} meal records ({$presentTickedCount} meals ticked from attendance).";
+        if ($presentTickedCount === 0 && !empty($tipsoiSyncError)) {
+            $msg .= " Note: Tipsoi sync reported: {$tipsoiSyncError}";
+        }
 
         return [
             'success' => true,
             'synced' => $syncedCount,
-            'message' => "Successfully synced {$syncedCount} meal records from attendance."
+            'ticked' => $presentTickedCount,
+            'message' => $msg
         ];
     }
 

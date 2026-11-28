@@ -169,6 +169,20 @@ $steps[] = [
             </ol></nav>
         </div>
         <div class="d-flex gap-2 align-items-center">
+            <?php
+            $latestRevision = $latestRevision ?? null;
+            $isLrRevOpen    = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
+            $isLrUnapproved = ($st === 'pending')
+                && empty($req['pm_approved_by'])
+                && empty($req['qc_approved_by'])
+                && empty($req['management_approved_by']);
+            $canEditLaborReq = ($isLrUnapproved || $isLrRevOpen || ($req['status'] ?? '') === 'rejected') && ($isOwner || in_array((int)$userRole, [1, 3], true));
+            if ($canEditLaborReq):
+            ?>
+                <button type="button" class="btn btn-outline-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editLaborReqModal">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> <?= $isLrRevOpen ? 'Edit &amp; Resubmit' : 'Edit Requisition' ?>
+                </button>
+            <?php endif; ?>
             <?php if (in_array($st, ['management_approved','partially_paid','paid','labor_disbursed'])): ?>
             <a href="<?php echo $base; ?>/print-debit-voucher?module=labor_requisition&id=<?php echo $req['id']; ?>" target="_blank" class="btn btn-primary btn-sm">
                 <i class="fa-solid fa-print me-1"></i> Debit Voucher
@@ -197,6 +211,35 @@ $steps[] = [
     <?php 
     require_once __DIR__ . '/../../../models/ApprovalRequest.php';
     $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'con_labor_requisitions', (int)$req['id']);
+
+    $lrCanSendBack = false;
+    $lrReturnStage = 'approver';
+    $lrReturnStageLabel = 'Approver';
+    if (!in_array((int)$userRole, [33, 34, 35], true) && !in_array($st, ['paid', 'labor_disbursed', 'rejected'], true)) {
+        if ($st === 'pending' && ($isPM ?? false)) {
+            $lrCanSendBack = true; $lrReturnStage = 'pm'; $lrReturnStageLabel = 'PM / PM Head';
+        } elseif ($st === 'payment_requested' && ($isQC ?? false)) {
+            $lrCanSendBack = true; $lrReturnStage = 'qc'; $lrReturnStageLabel = 'QC & Internal Audit';
+        } elseif (in_array($st, ['qc_approved', 'pm_payment_approved'], true) && ($canApproveManagement ?? false)) {
+            $lrCanSendBack = true;
+            $lrReturnStage = in_array((int)$userRole, [20, 32], true) ? 'op_head' : 'mgmt';
+            $lrReturnStageLabel = in_array((int)$userRole, [20, 32], true) ? 'Admin & Operation Head' : 'Management';
+        } elseif ($st === 'management_approved' && empty($ahInfo['is_accounts_head_approved']) && in_array((int)$userRole, [30, 1, 3], true)) {
+            $lrCanSendBack = true; $lrReturnStage = 'accounts_head'; $lrReturnStageLabel = 'Accounts Head';
+        }
+    }
+    $revModuleTable      = 'con_labor_requisitions';
+    $revSourceId         = (int)$req['id'];
+    $revCreatorUserId    = (int)($req['requested_by'] ?? 0);
+    $revCanSendBack      = $lrCanSendBack;
+    $revReturnStage      = $lrReturnStage;
+    $revReturnStageLabel = $lrReturnStageLabel;
+    $revRedirectUrl      = '/con-labor-requisition/' . (int)$req['id'];
+    $revEditModalTarget  = '#editLaborReqModal';
+    $revEditLinkUrl      = '';
+    $revLatest           = $latestRevision ?? null;
+    include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+
     if (!empty($ahInfo['has_request'])) {
         $sourceTable = 'con_labor_requisitions';
         $sourceId = (int)$req['id'];
@@ -213,7 +256,7 @@ $steps[] = [
             <div class="card custom-card mb-3">
                 <div class="card-header py-3 px-4"><div class="card-title fs-13"><i class="fa-solid fa-hard-hat me-2 text-warning"></i> Requisition Info</div></div>
                 <div class="card-body p-4">
-                    <div class="row g-3 fs-13">
+                    <div class="row  fs-13">
                         <div class="col-6">
                             <div class="text-muted fs-11 fw-semibold text-uppercase mb-1">Req. No</div>
                             <div class="fw-bold"><?php echo $req['requisition_no']; ?></div>
@@ -441,10 +484,15 @@ $steps[] = [
                 </div>
                 <div class="card-body">
                     <p class="fs-13 text-muted mb-3">Review and approve or reject this labor requisition.</p>
-                    <div class="action-btn-group">
+                    <div class="action-btn-group d-flex flex-wrap gap-2">
                         <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#pmApproveModal">
                             <i class="fa-solid fa-thumbs-up me-1"></i> Approve Requisition
                         </button>
+                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                            <button type="button" class="btn btn-warning text-dark btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_con_labor_requisitions">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                            </button>
+                        <?php endif; ?>
                         <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#pmRejectModal">
                             <i class="fa-solid fa-thumbs-down me-1"></i> Reject
                         </button>
@@ -499,10 +547,15 @@ $steps[] = [
                         <span class="text-muted fs-12 fw-semibold">Requested Amount:</span>
                         <span class="fs-16 fw-bold text-dark">৳ <?= number_format($req['total_amount'], 2) ?></span>
                     </div>
-                    <div class="action-btn-group">
+                    <div class="action-btn-group d-flex flex-wrap gap-2">
                         <button class="btn btn-sm fw-semibold text-white" style="background:#20c997" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
                             <i class="fa-solid fa-check me-1"></i> QC Approve & Forward
                         </button>
+                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                            <button type="button" class="btn btn-warning text-dark btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_con_labor_requisitions">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                            </button>
+                        <?php endif; ?>
                         <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#qcRejectModal">
                             <i class="fa-solid fa-xmark me-1"></i> Reject
                         </button>
@@ -597,8 +650,8 @@ $steps[] = [
                         <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
                     <?php endif; ?>
 
-                    <div class="row gx-2">
-                        <div class="col-6">
+                    <div class="d-flex flex-wrap gap-2">
+                        <div class="flex-grow-1">
                             <?php if ($isMgmtLockedLabor): ?>
                                 <button type="button" class="btn btn-secondary w-100 fw-bold py-2 disabled" title="Awaiting Admin & Operation Head approval">
                                     <i class="fa-solid fa-lock me-1"></i> Locked (> ৳10,000)
@@ -613,7 +666,14 @@ $steps[] = [
                                 </button>
                             <?php endif; ?>
                         </div>
-                        <div class="col-6">
+                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                            <div class="flex-grow-1">
+                                <button type="button" class="btn btn-warning text-dark w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_con_labor_requisitions">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            </div>
+                        <?php endif; ?>
+                        <div class="flex-grow-1">
                             <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
                                 <i class="fa-solid fa-ban me-1"></i> Reject
                             </button>
@@ -763,7 +823,7 @@ $steps[] = [
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3 mb-3 text-center">
+                    <div class="row  mb-3 text-center">
                         <div class="col-4">
                             <div class="fs-11 text-muted fw-semibold">Total Approved</div>
                             <div class="fw-bold fs-16 text-success">৳ <?= number_format($approvedAmt, 2) ?></div>
@@ -964,7 +1024,7 @@ $steps[] = [
 <div class="modal fade" id="pmRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger"><i class="fa-solid fa-thumbs-down me-2"></i>Reject Requisition (PM / PM Head)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger text-white"><h5 class="modal-title text-white fw-bold" style="color:#fff !important;"><i class="fa-solid fa-thumbs-down me-2"></i>Reject Requisition (PM / PM Head)</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Rejection Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>
@@ -972,6 +1032,94 @@ $steps[] = [
         </div>
     </form></div>
 </div>
+<?php endif; ?>
+
+<?php if ($canEditLaborReq ?? false): ?>
+<!-- Edit Labor Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLaborReqModal" tabindex="-1" aria-labelledby="editLaborReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLaborReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Labor Requisition (<?= htmlspecialchars($req['requisition_no'] ?? ('#' . $req['id'])) ?>)
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/con-labor-requisition-update/<?= (int)$req['id'] ?>">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Type</label>
+                            <input type="text" name="labor_type" class="form-control" value="<?= htmlspecialchars($req['labor_type'] ?? 'General') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Count <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="labor_count" class="form-control" value="<?= (int)($req['labor_count'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Per Labor Rate (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="per_labor_rate" class="form-control" value="<?= htmlspecialchars($req['per_labor_rate'] ?? 0) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Working Days <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" min="0.5" name="working_days" class="form-control" value="<?= htmlspecialchars($req['working_days'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date From</label>
+                            <input type="date" name="work_date_from" class="form-control" value="<?= htmlspecialchars($req['work_date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date To</label>
+                            <input type="date" name="work_date_to" class="form-control" value="<?= htmlspecialchars($req['work_date_to'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Work Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"><?= htmlspecialchars($req['remarks'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isLrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLaborEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLaborEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLaborReqModal').length && $('#editLaborReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLaborReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLaborEditModal);
+    } else {
+        initLaborEditModal();
+    }
+})();
+</script>
 <?php endif; ?>
 
 <!-- QC Approve Modal (Strictly Role 24 & Super Admin) -->
@@ -998,7 +1146,7 @@ $steps[] = [
 <div class="modal fade" id="qcRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-qc-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">QC & Internal Audit Rejection</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger text-white"><h5 class="modal-title text-white fw-bold" style="color:#fff !important;">QC & Internal Audit Rejection</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>
@@ -1006,6 +1154,94 @@ $steps[] = [
         </div>
     </form></div>
 </div>
+<?php endif; ?>
+
+<?php if ($canEditLaborReq ?? false): ?>
+<!-- Edit Labor Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLaborReqModal" tabindex="-1" aria-labelledby="editLaborReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLaborReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Labor Requisition (<?= htmlspecialchars($req['requisition_no'] ?? ('#' . $req['id'])) ?>)
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/con-labor-requisition-update/<?= (int)$req['id'] ?>">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Type</label>
+                            <input type="text" name="labor_type" class="form-control" value="<?= htmlspecialchars($req['labor_type'] ?? 'General') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Count <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="labor_count" class="form-control" value="<?= (int)($req['labor_count'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Per Labor Rate (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="per_labor_rate" class="form-control" value="<?= htmlspecialchars($req['per_labor_rate'] ?? 0) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Working Days <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" min="0.5" name="working_days" class="form-control" value="<?= htmlspecialchars($req['working_days'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date From</label>
+                            <input type="date" name="work_date_from" class="form-control" value="<?= htmlspecialchars($req['work_date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date To</label>
+                            <input type="date" name="work_date_to" class="form-control" value="<?= htmlspecialchars($req['work_date_to'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Work Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"><?= htmlspecialchars($req['remarks'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isLrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLaborEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLaborEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLaborReqModal').length && $('#editLaborReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLaborReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLaborEditModal);
+    } else {
+        initLaborEditModal();
+    }
+})();
+</script>
 <?php endif; ?>
 
 <!-- Management Approve Modal (After QC Approval or Management Direct Override) -->
@@ -1104,6 +1340,94 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 <?php endif; ?>
 
+<?php if ($canEditLaborReq ?? false): ?>
+<!-- Edit Labor Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLaborReqModal" tabindex="-1" aria-labelledby="editLaborReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLaborReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Labor Requisition (<?= htmlspecialchars($req['requisition_no'] ?? ('#' . $req['id'])) ?>)
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/con-labor-requisition-update/<?= (int)$req['id'] ?>">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Type</label>
+                            <input type="text" name="labor_type" class="form-control" value="<?= htmlspecialchars($req['labor_type'] ?? 'General') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Count <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="labor_count" class="form-control" value="<?= (int)($req['labor_count'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Per Labor Rate (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="per_labor_rate" class="form-control" value="<?= htmlspecialchars($req['per_labor_rate'] ?? 0) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Working Days <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" min="0.5" name="working_days" class="form-control" value="<?= htmlspecialchars($req['working_days'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date From</label>
+                            <input type="date" name="work_date_from" class="form-control" value="<?= htmlspecialchars($req['work_date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date To</label>
+                            <input type="date" name="work_date_to" class="form-control" value="<?= htmlspecialchars($req['work_date_to'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Work Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"><?= htmlspecialchars($req['remarks'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isLrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLaborEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLaborEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLaborReqModal').length && $('#editLaborReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLaborReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLaborEditModal);
+    } else {
+        initLaborEditModal();
+    }
+})();
+</script>
+<?php endif; ?>
+
 <!-- Accounts Pay Modal -->
 <?php
 $approvedAmt  = (float)($req['approved_amount'] ?? $req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
@@ -1170,6 +1494,94 @@ $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
 </div>
 <?php endif; ?>
 
+<?php if ($canEditLaborReq ?? false): ?>
+<!-- Edit Labor Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLaborReqModal" tabindex="-1" aria-labelledby="editLaborReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLaborReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Labor Requisition (<?= htmlspecialchars($req['requisition_no'] ?? ('#' . $req['id'])) ?>)
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/con-labor-requisition-update/<?= (int)$req['id'] ?>">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Type</label>
+                            <input type="text" name="labor_type" class="form-control" value="<?= htmlspecialchars($req['labor_type'] ?? 'General') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Count <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="labor_count" class="form-control" value="<?= (int)($req['labor_count'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Per Labor Rate (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="per_labor_rate" class="form-control" value="<?= htmlspecialchars($req['per_labor_rate'] ?? 0) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Working Days <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" min="0.5" name="working_days" class="form-control" value="<?= htmlspecialchars($req['working_days'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date From</label>
+                            <input type="date" name="work_date_from" class="form-control" value="<?= htmlspecialchars($req['work_date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date To</label>
+                            <input type="date" name="work_date_to" class="form-control" value="<?= htmlspecialchars($req['work_date_to'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Work Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"><?= htmlspecialchars($req['remarks'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isLrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLaborEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLaborEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLaborReqModal').length && $('#editLaborReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLaborReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLaborEditModal);
+    } else {
+        initLaborEditModal();
+    }
+})();
+</script>
+<?php endif; ?>
+
 <!-- Management: Approve Remaining (partially_paid) -->
 <?php if ($st === 'partially_paid' && $isManagement): ?>
 <?php
@@ -1207,6 +1619,94 @@ $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
 </div>
 <?php endif; ?>
 
+<?php if ($canEditLaborReq ?? false): ?>
+<!-- Edit Labor Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLaborReqModal" tabindex="-1" aria-labelledby="editLaborReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLaborReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Labor Requisition (<?= htmlspecialchars($req['requisition_no'] ?? ('#' . $req['id'])) ?>)
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/con-labor-requisition-update/<?= (int)$req['id'] ?>">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Type</label>
+                            <input type="text" name="labor_type" class="form-control" value="<?= htmlspecialchars($req['labor_type'] ?? 'General') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Count <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="labor_count" class="form-control" value="<?= (int)($req['labor_count'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Per Labor Rate (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="per_labor_rate" class="form-control" value="<?= htmlspecialchars($req['per_labor_rate'] ?? 0) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Working Days <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" min="0.5" name="working_days" class="form-control" value="<?= htmlspecialchars($req['working_days'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date From</label>
+                            <input type="date" name="work_date_from" class="form-control" value="<?= htmlspecialchars($req['work_date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date To</label>
+                            <input type="date" name="work_date_to" class="form-control" value="<?= htmlspecialchars($req['work_date_to'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Work Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"><?= htmlspecialchars($req['remarks'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isLrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLaborEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLaborEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLaborReqModal').length && $('#editLaborReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLaborReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLaborEditModal);
+    } else {
+        initLaborEditModal();
+    }
+})();
+</script>
+<?php endif; ?>
+
 <!-- SE: Labour Disbursement Confirmation Modal -->
 <?php if ($st === 'paid' && $isSE): ?>
 <div class="modal fade" id="disbursementModal" tabindex="-1">
@@ -1241,4 +1741,180 @@ $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
         </div>
     </form></div>
 </div>
+<?php endif; ?>
+
+
+<?php if ($canEditLaborReq ?? false): ?>
+<!-- Edit Labor Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLaborReqModal" tabindex="-1" aria-labelledby="editLaborReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLaborReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Labor Requisition (<?= htmlspecialchars($req['requisition_no'] ?? ('#' . $req['id'])) ?>)
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/con-labor-requisition-update/<?= (int)$req['id'] ?>">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Type</label>
+                            <input type="text" name="labor_type" class="form-control" value="<?= htmlspecialchars($req['labor_type'] ?? 'General') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Count <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="labor_count" class="form-control" value="<?= (int)($req['labor_count'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Per Labor Rate (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="per_labor_rate" class="form-control" value="<?= htmlspecialchars($req['per_labor_rate'] ?? 0) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Working Days <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" min="0.5" name="working_days" class="form-control" value="<?= htmlspecialchars($req['working_days'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date From</label>
+                            <input type="date" name="work_date_from" class="form-control" value="<?= htmlspecialchars($req['work_date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date To</label>
+                            <input type="date" name="work_date_to" class="form-control" value="<?= htmlspecialchars($req['work_date_to'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Work Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"><?= htmlspecialchars($req['remarks'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isLrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLaborEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLaborEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLaborReqModal').length && $('#editLaborReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLaborReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLaborEditModal);
+    } else {
+        initLaborEditModal();
+    }
+})();
+</script>
+<?php endif; ?>
+<?php if ($canEditLaborReq ?? false): ?>
+<!-- Edit Labor Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLaborReqModal" tabindex="-1" aria-labelledby="editLaborReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLaborReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Labor Requisition (<?= htmlspecialchars($req['requisition_no'] ?? ('#' . $req['id'])) ?>)
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base ?>/con-labor-requisition-update/<?= (int)$req['id'] ?>">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Type</label>
+                            <input type="text" name="labor_type" class="form-control" value="<?= htmlspecialchars($req['labor_type'] ?? 'General') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Labor Count <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="labor_count" class="form-control" value="<?= (int)($req['labor_count'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Per Labor Rate (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="per_labor_rate" class="form-control" value="<?= htmlspecialchars($req['per_labor_rate'] ?? 0) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Working Days <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" min="0.5" name="working_days" class="form-control" value="<?= htmlspecialchars($req['working_days'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date From</label>
+                            <input type="date" name="work_date_from" class="form-control" value="<?= htmlspecialchars($req['work_date_from'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Work Date To</label>
+                            <input type="date" name="work_date_to" class="form-control" value="<?= htmlspecialchars($req['work_date_to'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Work Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($req['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Remarks</label>
+                        <textarea name="remarks" class="form-control" rows="2"><?= htmlspecialchars($req['remarks'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isLrRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLaborEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLaborEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLaborReqModal').length && $('#editLaborReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLaborReqModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLaborEditModal);
+    } else {
+        initLaborEditModal();
+    }
+})();
+</script>
 <?php endif; ?>

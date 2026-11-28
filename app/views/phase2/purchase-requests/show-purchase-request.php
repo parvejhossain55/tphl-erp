@@ -45,6 +45,32 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
 </div>
 
 <section class="section">
+            <?php
+            $prCanSendBack = false;
+            $prReturnStage = 'pm';
+            $prReturnStageLabel = 'PM / PM Head';
+            if (!in_array($reqUserRole, [33, 34, 35], true) && !in_array($pr['status'] ?? '', ['Rejected'], true)) {
+                if (in_array($pr['status'] ?? '', ['Submitted', 'Draft'], true) && in_array($reqUserRole, [15, 22, 1, 3], true)) {
+                    $prCanSendBack = true; $prReturnStage = 'pm'; $prReturnStageLabel = 'PM / PM Head';
+                } elseif (($pr['status'] ?? '') === 'Approved' && in_array($reqUserRole, [17, 20, 24, 1, 3], true)) {
+                    $prCanSendBack = true;
+                    $prReturnStage = ($reqUserRole === 17) ? 'purchase_head' : (($reqUserRole === 24) ? 'qc' : 'op_head');
+                    $prReturnStageLabel = ($reqUserRole === 17) ? 'Purchase Head' : (($reqUserRole === 24) ? 'QC & Internal Audit' : 'Operation Head / Admin');
+                }
+            }
+            $revModuleTable      = 'purchase_requests';
+            $revSourceId         = (int)$pr['id'];
+            $revCreatorUserId    = (int)($pr['created_by'] ?? 0);
+            $revCanSendBack      = $prCanSendBack;
+            $revReturnStage      = $prReturnStage;
+            $revReturnStageLabel = $prReturnStageLabel;
+            $revRedirectUrl      = '/con-purchase-request/' . (int)$pr['id'];
+            $revEditModalTarget  = '';
+            $revEditLinkUrl      = $base_url . '/con-purchase-request-edit/' . (int)$pr['id'];
+            $revLatest           = $latestRevision ?? null;
+            include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+            ?>
+
             <!-- ══════════ NEXT ACTION TRACKER ══════════ -->
             <?php if (!empty($nextStepInfo)): ?>
             <div class="card__wrapper shadow-sm mb-4" style="border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.03); border-radius: 14px;">
@@ -141,7 +167,7 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                     <p class="text-muted mb-2" style="font-size:13px;">
                                         This requisition's Purchase Order was rejected. Please review the note below, edit quantities or delete unneeded items, and re-run CST & PO generation.
                                     </p>
-                                    <div class="p-3 rounded bg-white border border-danger-subtle mt-2" style="max-width:720px;">
+                                    <div class="p-3 rounded bg-white text-dark border border-danger-subtle mt-2" style="max-width:720px;">
                                         <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size:11px;">
                                                 <i class="bi bi-chat-quote-fill me-1"></i> Approver Note / Instructions
@@ -490,10 +516,15 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                 <div class="mb-2 w-100">
                                     <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval / Rejection Note"></textarea>
                                 </div>
-                                <div class="d-flex gap-2">
+                                <div class="d-flex flex-wrap gap-2">
                                     <button type="button" onclick="document.getElementById('pr_status_input').value='Approved'; confirmAction(this, 'Approve Purchase Request?')" class="btn btn-success btn-sm">
                                         <i class="bi bi-check-circle me-1"></i> Approve PR
                                     </button>
+                                    <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                        <button type="button" class="btn btn-warning text-dark btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_purchase_requests">
+                                            <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                        </button>
+                                    <?php endif; ?>
                                     <button type="button" onclick="document.getElementById('pr_status_input').value='Rejected'; confirmAction(this, 'Reject this PR?')" class="btn btn-danger btn-sm">
                                         <i class="bi bi-x-circle me-1"></i> Reject PR
                                     </button>

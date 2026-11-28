@@ -399,3 +399,84 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
+
+<!-- Edit Vendor Payment Request Modal (Before 1st Approval — List View) -->
+<div class="modal custom-modal fade" id="editVprIndexModal" tabindex="-1" aria-labelledby="editVprIndexModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editVprIndexModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Vendor Payment Request <span id="edit_vpr_title_id"></span>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="" id="editVprIndexForm">
+                    <input type="hidden" name="redirect_to" value="index">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Payment Type <span class="text-danger">*</span></label>
+                        <select name="payment_type" id="edit_vpr_type" class="form-select" required>
+                            <option value="Advance">Advance</option>
+                            <option value="Partial">Partial</option>
+                            <option value="Final">Final</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Invoice Number</label>
+                        <input type="text" name="invoice_number" id="edit_vpr_inv" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Invoice Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="invoice_amount" id="edit_vpr_amt" class="form-control" required>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initVprIndexEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initVprIndexEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editVprIndexModal').length && $('#editVprIndexModal').parent().prop('tagName') !== 'BODY') {
+                $('#editVprIndexModal').appendTo('body');
+            }
+            function populateVpr(btn) {
+                var raw = btn.attr('data-item');
+                if (!raw) return;
+                try {
+                    var d = (typeof raw === 'object') ? raw : JSON.parse(raw);
+                    $('#editVprIndexForm').attr('action', '<?= $GLOBALS['base_url'] ?>/con-vendor-payment-update/' + (d.id || ''));
+                    $('#edit_vpr_title_id').text('#' + (d.id || ''));
+                    $('#edit_vpr_type').val(d.payment_type || 'Final');
+                    $('#edit_vpr_inv').val(d.invoice_number || '');
+                    $('#edit_vpr_amt').val(d.invoice_amount || '');
+                } catch (e) {}
+            }
+            $('#editVprIndexModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateVpr($(e.relatedTarget));
+            });
+            $(document).on('click', '.btn-edit-vpr-row', function() {
+                populateVpr($(this));
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initVprIndexEditModal);
+    } else {
+        initVprIndexEditModal();
+    }
+})();
+</script>

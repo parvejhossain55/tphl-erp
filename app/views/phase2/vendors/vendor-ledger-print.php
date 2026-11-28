@@ -393,11 +393,17 @@ $vendorDisplayName = $vendor ? (!empty(trim($vendor['company_name'] ?? '')) ? tr
                             <?php 
                             $totalBilled += (float)$le['debit_amount'];
                             $totalPaid += (float)$le['credit_amount'];
-                            $isPo = ($le['entry_type'] === 'PURCHASE_ORDER');
+                            $entryType = $le['entry_type'] ?? '';
+                            $entryLabel = match($entryType) {
+                                'PURCHASE_ORDER'     => 'Purchase Order',
+                                'OFFICE_PROCUREMENT' => 'Office Procurement',
+                                'OFFICE_PAYMENT'     => 'Office Payment',
+                                default              => 'Payment Disbursed',
+                            };
                             ?>
                             <tr>
                                 <td><?= $le['tx_date'] ? date('d-m-Y', strtotime($le['tx_date'])) : '—' ?></td>
-                                <td><?= $isPo ? 'Purchase Order' : 'Payment Disbursed' ?></td>
+                                <td><?= $entryLabel ?></td>
                                 <td class="fw-bold"><?= htmlspecialchars($le['ref_no']) ?></td>
                                 <td><?= htmlspecialchars($le['project_name']) ?></td>
                                 <td><?= htmlspecialchars($le['description']) ?></td>

@@ -444,6 +444,8 @@ class LandRequisitionController extends Controller {
         $stmt->bind_param("sisi", $status, $mgmt_by, $note, $id);
 
         if ($stmt->execute()) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('land_fund_requisitions', (int)$id);
             $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
             if ($isMgmt && $status === 'Approved') {
                 $this->db->query("
@@ -599,6 +601,113 @@ class LandRequisitionController extends Controller {
         } else {
             setError("Invalid record ID.");
         }
+        header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+        exit;
+    }
+
+    /**
+     * Update Land Fund Requisition — Creator or Admin ONLY before 1st approval
+     */
+    public function update() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+            exit;
+        }
+
+        $id     = (int)($_POST['id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+
+        $res = $this->db->query("SELECT * FROM land_fund_requisitions WHERE id = {$id} LIMIT 1");
+        $req = ($res && $res->num_rows > 0) ? $res->fetch_assoc() : null;
+        if (!$req) {
+            setError('Land requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+            exit;
+        }
+
+        $isOwner = ((int)($req['requested_by'] ?? 0) === $userId);
+        if (!$isOwner && !$isAdmin) {
+            setError('Only the creator or Admin can edit this land requisition.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+            exit;
+        }
+
+        // Check central approval_requests for Op Head / Accounts Head approval
+        $arApproved = false;
+        $arRes = $this->db->query("SELECT op_head_status, accounts_head_status FROM approval_requests WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = {$id} LIMIT 1");
+        if ($arRes && $arRow = $arRes->fetch_assoc()) {
+            if (strtolower($arRow['op_head_status'] ?? '') === 'approved' || strtolower($arRow['accounts_head_status'] ?? '') === 'approved') {
+                $arApproved = true;
+            }
+        }
+
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $landRevSvc = new \RequisitionRevisionService($this->db);
+        $openRev    = $landRevSvc->getOpenRevision('land_fund_requisitions', $id);
+
+        $hasAnyApproval = ($req['mgmt_status'] ?? '') !== 'Pending'
+            || !empty($req['mgmt_by'])
+            || ($req['accounts_status'] ?? '') !== 'Pending'
+            || !empty($req['accounts_by'])
+            || $arApproved;
+
+        if ($hasAnyApproval && empty($openRev) && empty($landRevSvc->getRejectionStatus('land_fund_requisitions', $id)['is_rejected'])) {
+            setError('This land requisition has already been approved or processed and can no longer be edited.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+            exit;
+        }
+
+        $requisitionType = trim($_POST['requisition_type'] ?? ($req['requisition_type'] ?? 'Other'));
+        $costPurpose     = trim($_POST['cost_purpose'] ?? '');
+        $requestedAmount = (float)($_POST['requested_amount'] ?? 0);
+        $purpose         = trim($_POST['purpose'] ?? '');
+
+        if ($requestedAmount <= 0 || $purpose === '') {
+            setError('Please enter a valid requested amount and purpose.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+            exit;
+        }
+
+        $costPurposeVal = ($costPurpose !== '') ? $costPurpose : null;
+        $stmt = $this->db->prepare("
+            UPDATE land_fund_requisitions
+            SET requisition_type = ?, cost_purpose = ?, requested_amount = ?, purpose = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param("ssdsi", $requisitionType, $costPurposeVal, $requestedAmount, $purpose, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                // Sync updated amount & title to approval_requests
+                $title = "Land Fund ({$requisitionType}): " . mb_substr($purpose, 0, 120);
+                $stmtAr = $this->db->prepare("UPDATE approval_requests SET title = ?, request_amount = ?, updated_at = NOW() WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = ?");
+                if ($stmtAr) {
+                    $stmtAr->bind_param("sdi", $title, $requestedAmount, $id);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
+                $landEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Amount'  => [$req['requested_amount'] ?? 0, $requestedAmount],
+                    'Type'    => [$req['requisition_type'] ?? '', $requisitionType],
+                    'Purpose' => [$req['purpose'] ?? '', $purpose],
+                ]);
+                $landRevSvc->logEdit('land_fund_requisitions', $id, $landEditSum);
+                if (!empty($openRev)) {
+                    $landRevSvc->markResubmitted('land_fund_requisitions', $id, $requestedAmount, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Land Requisition #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Land Requisition #{$id} updated successfully.");
+                }
+            } else {
+                $stmt->close();
+                setError('Failed to update land requisition.');
+            }
+        } else {
+            setError('Database error while updating land requisition.');
+        }
+
         header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
         exit;
     }

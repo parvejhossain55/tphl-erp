@@ -373,6 +373,9 @@ class EnrollmentApproval extends Model
         // Log action in con_approval_logs
         $this->logAction($table, $id, $stepTitle, $userId, 'approved', $noteSql);
 
+        require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+        (new \RequisitionRevisionService($this->db))->markResolved($table, (int)$id);
+
         $successMsg = $isFinal
             ? ucfirst($type) . ' has been fully approved and is now active in the system!'
             : ucfirst($type) . " enrollment successfully approved at {$stepTitle}! Advanced to next stage: " . $this->getStepLabel($nextStep);

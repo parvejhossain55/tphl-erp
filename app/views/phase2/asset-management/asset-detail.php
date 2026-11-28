@@ -86,7 +86,7 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                         </div>
                         <div class="col-md-4">
                             <label class="text-muted fs-11 fw-semibold d-block">Purchase Price</label>
-                            <span class="fw-bold text-success fs-14">৳ <?= number_format($asset['purchase_price'], 2) ?></span>
+                            <span class="fw-bold text-success fs-14">TK <?= number_format($asset['purchase_price'], 2) ?></span>
                         </div>
                         <div class="col-md-4">
                             <label class="text-muted fs-11 fw-semibold d-block">Purchase Date</label>
@@ -219,7 +219,7 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                                         <tr>
                                             <td class="fs-12"><?= date('d M Y, h:i A', strtotime($req['created_at'])) ?></td>
                                             <td class="fs-12"><?= htmlspecialchars($req['requested_by_name'] ?? '—') ?></td>
-                                            <td class="fs-12 fw-semibold">৳<?= number_format($req['amount'], 2) ?></td>
+                                            <td class="fs-12 fw-semibold">TK<?= number_format($req['amount'], 2) ?></td>
                                             <td class="fs-12 text-wrap" style="max-width: 250px"><?= htmlspecialchars($req['purpose'] ?? '—') ?></td>
                                             <td class="fs-12">
                                                 <?php

@@ -19,6 +19,34 @@ class ExternalApiService
     }
 
     /**
+     * Circuit breaker helpers: avoid hanging every request when Tipsoi API is unreachable.
+     * Only tripped on network/connect/timeout errors (never on 4xx auth/validation responses).
+     */
+    public function isTipsoiCircuitOpen(): bool
+    {
+        $lockFile = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'tphl_tipsoi_down.flag';
+        if (!@is_file($lockFile)) {
+            return false;
+        }
+        $ts = (int)@file_get_contents($lockFile);
+        return ($ts > 0 && (time() - $ts) < 120); // 2-minute cooldown when Tipsoi is down
+    }
+
+    public function tripTipsoiCircuit(): void
+    {
+        $lockFile = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'tphl_tipsoi_down.flag';
+        @file_put_contents($lockFile, (string)time());
+    }
+
+    public function resetTipsoiCircuit(): void
+    {
+        $lockFile = rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'tphl_tipsoi_down.flag';
+        if (@is_file($lockFile)) {
+            @unlink($lockFile);
+        }
+    }
+
+    /**
      * Authenticate and get Bearer Token from Tipsoi API
      * Stores token and expiration in PHP Session to prevent redundant login calls
      */
@@ -37,6 +65,11 @@ class ExternalApiService
             return $_SESSION['tipsoi_api_token'];
         }
 
+        // Fast-fail immediately if Tipsoi was unreachable in the last 2 minutes
+        if ($this->isTipsoiCircuitOpen()) {
+            return null;
+        }
+
         $loginUrl = $this->baseUrl . 'auth/external-sync/sign-in';
         $payload = json_encode([
             'email' => $this->email,
@@ -51,7 +84,8 @@ class ExternalApiService
             'Content-Type: application/json',
             'Content-Length: ' . strlen($payload)
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Allow local/dev environments without SSL issues
 
         $response = curl_exec($ch);
@@ -60,9 +94,12 @@ class ExternalApiService
         curl_close($ch);
 
         if ($curlError) {
+            $this->tripTipsoiCircuit();
             error_log("Tipsoi Login cURL Error: " . $curlError);
             return null;
         }
+
+        $this->resetTipsoiCircuit();
 
         if ($httpCode !== 200 && $httpCode !== 201) {
             error_log("Tipsoi Login HTTP Failure. Code: $httpCode, Response: " . $response);
@@ -265,6 +302,11 @@ class ExternalApiService
      */
     public function authenticateUser($email, $password)
     {
+        // Fast-fail immediately if Tipsoi was unreachable in the last 2 minutes
+        if ($this->isTipsoiCircuitOpen()) {
+            return ['success' => false, 'message' => 'Tipsoi API temporarily unreachable (circuit breaker active).'];
+        }
+
         $loginUrl = $this->baseUrl . 'auth/external-sync/sign-in';
 
         $ch = curl_init($loginUrl);
@@ -278,7 +320,8 @@ class ExternalApiService
             'Content-Type: application/json',
             'Accept: application/json'
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
         $response = curl_exec($ch);
@@ -287,8 +330,12 @@ class ExternalApiService
         curl_close($ch);
 
         if ($curlError) {
+            $this->tripTipsoiCircuit();
+            error_log("Tipsoi User Auth cURL Error: " . $curlError);
             return ['success' => false, 'message' => 'Tipsoi Connection Error: ' . $curlError];
         }
+
+        $this->resetTipsoiCircuit();
 
         if ($httpCode !== 200 && $httpCode !== 201) {
             return ['success' => false, 'message' => 'Tipsoi credentials mismatch (HTTP ' . $httpCode . ')'];
