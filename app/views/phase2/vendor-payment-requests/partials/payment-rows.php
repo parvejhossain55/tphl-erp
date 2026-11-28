@@ -184,6 +184,31 @@ $startOffset = (int)($pagination['offset'] ?? 0);
                        class="btn btn-sm btn-outline-primary" title="View Details">
                         <i class="bi bi-eye"></i>
                     </a>
+                    <?php
+                    $vprRowUid = (int)($_SESSION['user']['id'] ?? 0);
+                    $vprRowRid = (int)($_SESSION['user']['role_id'] ?? 0);
+                    $vprRowUnapproved = in_array($req['status'] ?? '', ['Draft', 'Submitted'], true)
+                        && empty($req['purchase_team_leader_by_id'])
+                        && empty($req['purchase_head_approved_by_id'])
+                        && empty($req['qc_approved_by_id'])
+                        && empty($req['approved_by']);
+                    if ($vprRowUnapproved && (((int)($req['created_by'] ?? 0) === $vprRowUid) || in_array($vprRowRid, [1, 3], true))):
+                        $vprRowPayload = [
+                            'id'             => (int)$req['id'],
+                            'payment_type'   => $req['payment_type'] ?? 'Final',
+                            'invoice_number' => $req['invoice_number'] ?? '',
+                            'invoice_amount' => $req['invoice_amount'] ?? 0,
+                        ];
+                    ?>
+                        <button type="button"
+                                class="btn btn-sm btn-warning text-dark btn-edit-vpr-row"
+                                title="Edit Request"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editVprIndexModal"
+                                data-item="<?= htmlspecialchars(json_encode($vprRowPayload), ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </td>
         </tr>

@@ -270,6 +270,7 @@ return [
     'cashout-requests' => ['controller' => 'CashoutRequestController', 'method' => 'index'],
     'create-cashout-request' => ['controller' => 'CashoutRequestController', 'method' => 'create'],
     'store-cashout-request' => ['controller' => 'CashoutRequestController', 'method' => 'store'],
+    'update-cashout-request' => ['controller' => 'CashoutRequestController', 'method' => 'update'],
     'view-cashout-request' => ['controller' => 'CashoutRequestController', 'method' => 'show'],
     'delete-cashout-request' => ['controller' => 'CashoutRequestController', 'method' => 'delete'],
     'admin-cashout-requests' => ['controller' => 'CashoutRequestController', 'method' => 'adminIndex'],

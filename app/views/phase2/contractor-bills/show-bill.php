@@ -90,6 +90,39 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 </div>
 
 <div class="container-fluid">
+    <?php
+    $cbCanSendBack = false;
+    $cbReturnStage = 'approver';
+    $cbReturnStageLabel = 'Approver';
+    $cbRoleId = (int)($userRole ?? 0);
+    if (!in_array($cbRoleId, [33, 34, 35], true) && !in_array($status ?? '', ['paid', 'fully_paid', 'rejected'], true)) {
+        if ($status === 'submitted' && ($canApprovePM ?? false)) {
+            $cbCanSendBack = true; $cbReturnStage = 'pm'; $cbReturnStageLabel = 'PM / PM Head';
+        } elseif ($status === 'verified' && empty($bill['purchase_head_approved_by_id']) && (($canApprovePurchaseHead ?? false) || ($canReviewTeamLeader ?? false))) {
+            $cbCanSendBack = true; $cbReturnStage = 'purchase_head'; $cbReturnStageLabel = 'Purchase Head / TL';
+        } elseif ($status === 'verified' && !empty($bill['purchase_head_approved_by_id']) && ($canApproveQC ?? false)) {
+            $cbCanSendBack = true; $cbReturnStage = 'qc'; $cbReturnStageLabel = 'QC & Internal Audit';
+        } elseif ($status === 'qc_approved' && ($canApproveManagement ?? false)) {
+            $cbCanSendBack = true;
+            $cbReturnStage = in_array($cbRoleId, [20, 32], true) ? 'op_head' : 'mgmt';
+            $cbReturnStageLabel = in_array($cbRoleId, [20, 32], true) ? 'Admin & Operation Head' : 'Management';
+        } elseif ($status === 'approved' && empty($ahInfo['is_accounts_head_approved']) && in_array($cbRoleId, [30, 1, 3], true)) {
+            $cbCanSendBack = true; $cbReturnStage = 'accounts_head'; $cbReturnStageLabel = 'Accounts Head';
+        }
+    }
+    $revModuleTable      = 'contractor_bill_requests';
+    $revSourceId         = (int)$bill['id'];
+    $revCreatorUserId    = (int)($bill['created_by'] ?? 0);
+    $revCanSendBack      = $cbCanSendBack;
+    $revReturnStage      = $cbReturnStage;
+    $revReturnStageLabel = $cbReturnStageLabel;
+    $revRedirectUrl      = '/con-contractor-bill/' . (int)$bill['id'];
+    $revEditModalTarget  = '';
+    $revEditLinkUrl      = $base_url . '/con-contractor-bill-edit/' . (int)$bill['id'];
+    $revLatest           = $latestRevision ?? null;
+    include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+    ?>
+
     <!-- ACCOUNTS HEAD APPROVAL STATUS & ACTION CARD -->
     <?php 
     if (!empty($ahInfo['has_request'])) {

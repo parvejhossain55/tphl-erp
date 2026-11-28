@@ -764,6 +764,10 @@ class Con_VendorPaymentRequestController extends Controller
             'prAttachment'      => $prAttachment,
             'poDetails'         => $poDetails,
             'prDetails'         => $prDetails,
+            'latestRevision'    => (function() use ($id) {
+                require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                return (new \RequisitionRevisionService($this->db))->getLatestActiveOrResubmitted('vendor_payment_requests', (int)$id);
+            })(),
         ]);
     }
 
@@ -1975,6 +1979,102 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         echo json_encode($result);
+        exit;
+    }
+
+    /**
+     * Update Vendor Payment Request — Creator or Admin ONLY before 1st approval
+     */
+    public function update($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/" . (int)$id);
+            exit;
+        }
+
+        $id      = (int)$id;
+        $isAdmin = in_array($this->userRole, [1, 3], true);
+
+        $req = $this->model->find($id);
+        if (!$req) {
+            setError('Vendor payment request not found.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-requests");
+            exit;
+        }
+
+        $isOwner = ((int)($req['created_by'] ?? 0) === (int)$this->userId);
+        if (!$isOwner && !$isAdmin) {
+            setError('Only the creator or Admin can edit this vendor payment request.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $revSvc  = new \RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('vendor_payment_requests', $id);
+
+        $hasAnyApproval = !in_array($req['status'] ?? '', ['Draft', 'Submitted'], true)
+            || !empty($req['purchase_team_leader_by_id'])
+            || !empty($req['purchase_head_approved_by_id'])
+            || !empty($req['qc_approved_by_id'])
+            || !empty($req['approved_by']);
+
+        if ($hasAnyApproval && empty($openRev)) {
+            setError('This vendor payment request has already been approved at one or more stages and can no longer be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $paymentType   = trim($_POST['payment_type'] ?? ($req['payment_type'] ?? 'Final'));
+        if (!in_array($paymentType, ['Advance', 'Partial', 'Final'], true)) {
+            $paymentType = $req['payment_type'] ?? 'Final';
+        }
+        $invoiceNumber = trim($_POST['invoice_number'] ?? '');
+        $invoiceAmount = (float)($_POST['invoice_amount'] ?? 0);
+
+        if ($invoiceAmount <= 0) {
+            setError('Please enter a valid invoice amount greater than 0.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $penaltyAmt = ($paymentType === 'Advance') ? 0.00 : (float)($req['penalty_amount'] ?? 0);
+        $netPayable = ($paymentType === 'Advance') ? $invoiceAmount : max(0, $invoiceAmount - $penaltyAmt);
+        $invNumVal  = ($invoiceNumber !== '') ? $invoiceNumber : null;
+
+        $stmt = $this->db->prepare("
+            UPDATE vendor_payment_requests
+            SET payment_type = ?, invoice_number = ?, invoice_amount = ?, penalty_amount = ?, net_payable_amount = ?, net_payable = ?, due_amount = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param('ssdddddi', $paymentType, $invNumVal, $invoiceAmount, $penaltyAmt, $netPayable, $netPayable, $netPayable, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $stmtAr = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, updated_at = NOW() WHERE source_table = 'vendor_payment_requests' AND source_id = ?");
+                if ($stmtAr) {
+                    $stmtAr->bind_param('di', $netPayable, $id);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
+                if (!empty($openRev)) {
+                    $revSvc->markResubmitted('vendor_payment_requests', $id, $invoiceAmount, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Vendor Payment Request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Vendor Payment Request #{$id} updated successfully.");
+                }
+            } else {
+                $stmt->close();
+                setError('Failed to update vendor payment request.');
+            }
+        } else {
+            setError('Database error while updating vendor payment request.');
+        }
+
+        $redirectTo = (($_POST['redirect_to'] ?? '') === 'index')
+            ? "{$GLOBALS['base_url']}/con-vendor-payment-requests"
+            : "{$GLOBALS['base_url']}/con-vendor-payment-show/{$id}";
+        header("Location: {$redirectTo}");
         exit;
     }
 }

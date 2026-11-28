@@ -572,7 +572,30 @@ class Con_ContractorBillController extends Controller
             exit;
         }
 
-        if (in_array($bill['status'], ['approved', 'paid', 'partially_paid', 'fully_paid'])) {
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $revSvc  = new \RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('contractor_bill_requests', (int)$id);
+
+        $isAdmin = in_array($this->userRole, [1, 3], true);
+        $hasAnyApproval = !empty($bill['verified_by'])
+            || !empty($bill['purchase_team_leader_by_id'])
+            || !empty($bill['purchase_head_approved_by_id'])
+            || !empty($bill['qc_approved_by_id'])
+            || !empty($bill['approved_by'])
+            || in_array($bill['status'], ['qc_approved', 'approved', 'paid', 'partially_paid', 'fully_paid', 'rejected'], true);
+
+        if ($hasAnyApproval && !$isAdmin && empty($openRev)) {
+            setError('This contractor bill has already been approved at one or more stages and can no longer be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+        if (!$isAdmin && (int)($bill['created_by'] ?? 0) !== (int)$this->userId) {
+            setError('Only the creator or Admin can edit this contractor bill before approval.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        if (in_array($bill['status'], ['paid', 'partially_paid', 'fully_paid']) || ($bill['status'] === 'approved' && empty($openRev))) {
             setError('Approved or paid bills cannot be edited.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -614,7 +637,30 @@ class Con_ContractorBillController extends Controller
             exit;
         }
 
-        if (in_array($bill['status'], ['approved', 'paid', 'partially_paid', 'fully_paid'])) {
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $revSvc  = new \RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('contractor_bill_requests', (int)$id);
+
+        $isAdmin = in_array($this->userRole, [1, 3], true);
+        $hasAnyApproval = !empty($bill['verified_by'])
+            || !empty($bill['purchase_team_leader_by_id'])
+            || !empty($bill['purchase_head_approved_by_id'])
+            || !empty($bill['qc_approved_by_id'])
+            || !empty($bill['approved_by'])
+            || in_array($bill['status'], ['qc_approved', 'approved', 'paid', 'partially_paid', 'fully_paid', 'rejected'], true);
+
+        if ($hasAnyApproval && !$isAdmin && empty($openRev)) {
+            setError('This contractor bill has already been approved at one or more stages and can no longer be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+        if (!$isAdmin && (int)($bill['created_by'] ?? 0) !== (int)$this->userId) {
+            setError('Only the creator or Admin can edit this contractor bill before approval.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        if (in_array($bill['status'], ['paid', 'partially_paid', 'fully_paid']) || ($bill['status'] === 'approved' && empty($openRev))) {
             setError('Approved or paid bills cannot be edited.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -649,6 +695,21 @@ class Con_ContractorBillController extends Controller
         }
 
         $this->billModel->update($id, $data);
+
+        if (!empty($openRev)) {
+            $revSvc->markResubmitted('contractor_bill_requests', (int)$id, (float)$data['bill_amount'], trim($_POST['resubmitted_note'] ?? ''));
+            $stmtArRev = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, updated_at = NOW() WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = ?");
+            if ($stmtArRev) {
+                $amtF = (float)$data['bill_amount'];
+                $bidI = (int)$id;
+                $stmtArRev->bind_param('di', $amtF, $bidI);
+                $stmtArRev->execute();
+                $stmtArRev->close();
+            }
+            setSuccess("Contractor Bill #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
         
         // Also update the approval_request amount if it exists and hasn't been finally approved yet
         $this->db->query("UPDATE approval_requests SET request_amount = " . (float)$data['bill_amount'] . " WHERE source_table = 'contractor_bill_requests' AND source_id = " . (int)$id . " AND status IN ('pending', 'in_review')");
@@ -772,10 +833,15 @@ class Con_ContractorBillController extends Controller
             $expenseAdjustments = $stmtAdj->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $cbRevSvc = new \RequisitionRevisionService($this->db);
+        $latestRevision = $cbRevSvc->getLatestActiveOrResubmitted('contractor_bill_requests', (int)$id);
+
         $this->view('phase2/contractor-bills/show-bill', [
             'current_route'           => 'con-contractor-bills',
             'page_title'              => 'Contractor Bill Detail',
             'bill'                    => $bill,
+            'latestRevision'          => $latestRevision,
             'payments'                => $payments,
             'total_paid'              => $totalPaid,
             'due_amount'              => $dueAmount,

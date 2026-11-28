@@ -432,7 +432,7 @@ class FundRequisitionController extends Controller {
             {$assetJoin}
             WHERE $where
             ORDER BY 
-                CASE WHEN fr.requested_by = $userId THEN 1 ELSE 0 END DESC, 
+                CASE WHEN {$pendingActionSql} THEN 1 ELSE 0 END DESC,
                 fr.id DESC
             $limitClause
         ";
@@ -731,8 +731,13 @@ class FundRequisitionController extends Controller {
             error_log("FR approval log read error: " . $t->getMessage());
         }
 
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $revSvc = new \RequisitionRevisionService($this->db);
+        $latestRevision = $revSvc->getLatestActiveOrResubmitted('fund_requisitions', $id);
+
         $this->view('phase2/fund_requisition/show', [
             'mgmtApprovals'           => $mgmtApprovals,
+            'latestRevision'          => $latestRevision,
             'current_route'           => 'fund-requisitions',
             'page_title'              => 'Requisition Details — REQ-' . $id,
             'req'                     => $req,
@@ -2379,5 +2384,106 @@ class FundRequisitionController extends Controller {
                 $stmt->close();
             }
         }
+    }
+
+    /**
+     * Update Fund Requisition — Creator or Admin ONLY before 1st approval
+     */
+    public function update($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . (int)$id);
+            exit;
+        }
+
+        $id     = (int)$id;
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+
+        $res = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id} LIMIT 1");
+        $req = ($res && $res->num_rows > 0) ? $res->fetch_assoc() : null;
+        if (!$req) {
+            setError('Fund requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $isOwner = ((int)($req['requested_by'] ?? 0) === $userId);
+        if (!$isOwner && !$isAdmin) {
+            setError('Only the creator or Admin can edit this fund requisition.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/{$id}");
+            exit;
+        }
+
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $revSvc  = new \RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('fund_requisitions', $id);
+
+        $initialExpectedStatus = ((int)($req['is_dept_approval_required'] ?? 0) === 1) ? 'pending_dept' : 'pending_qc';
+        $hasAnyApproval = ($req['status'] !== $initialExpectedStatus)
+            || ($req['dept_head_status'] ?? '') === 'approved'
+            || !empty($req['dept_head_approved_by'])
+            || !empty($req['qc_approved_by'])
+            || !empty($req['approved_by'])
+            || !empty($req['paid_by']);
+
+        if ($hasAnyApproval && empty($openRev)) {
+            setError('This fund requisition has already been approved at one or more stages and can no longer be edited.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/{$id}");
+            exit;
+        }
+
+        $rawAmount = trim(str_replace([',', ' '], '', $_POST['amount'] ?? ''));
+        $amount    = is_numeric($rawAmount) ? (float)$rawAmount : 0;
+        $category  = trim($_POST['category'] ?? ($req['category'] ?? 'Other Expense'));
+        $purpose   = trim($_POST['purpose'] ?? '');
+        $location  = trim($_POST['location'] ?? '');
+        $purposeToVisit  = trim($_POST['purpose_to_visit'] ?? '');
+        $modeOfTransport = trim($_POST['mode_of_transport'] ?? '');
+
+        if ($amount <= 0 || $purpose === '') {
+            setError('Please enter a valid amount greater than 0 and a purpose.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/{$id}");
+            exit;
+        }
+        if (($req['requisition_type'] ?? 'general') === 'petty_cash' && $amount > 10000) {
+            setError('Maximum Petty Cash request limit is BDT 10,000.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/{$id}");
+            exit;
+        }
+
+        $locationVal  = ($location !== '') ? $location : null;
+        $visitVal     = ($purposeToVisit !== '') ? $purposeToVisit : null;
+        $transportVal = ($modeOfTransport !== '') ? $modeOfTransport : null;
+
+        $stmt = $this->db->prepare("
+            UPDATE fund_requisitions
+            SET category = ?, amount = ?, purpose = ?, location = ?, purpose_to_visit = ?, mode_of_transport = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param("sdssssi", $category, $amount, $purpose, $locationVal, $visitVal, $transportVal, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $this->syncApprovalRequest($id);
+                if (!empty($openRev)) {
+                    $revSvc->markResubmitted('fund_requisitions', $id, $amount, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Fund Requisition #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Fund Requisition #{$id} updated successfully.");
+                }
+            } else {
+                $stmt->close();
+                setError('Failed to update fund requisition.');
+            }
+        } else {
+            setError('Database error while updating fund requisition.');
+        }
+
+        $redirectTo = (($_POST['redirect_to'] ?? '') === 'index')
+            ? ($GLOBALS['base_url'] . "/fund-requisitions")
+            : ($GLOBALS['base_url'] . "/fund-requisitions/view/{$id}");
+        header("Location: " . $redirectTo);
+        exit;
     }
 }

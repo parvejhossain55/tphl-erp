@@ -247,11 +247,16 @@ class Con_LaborRequisitionController extends Controller
 
         $paymentLogs = $this->model->getPaymentLogs((int)$id);
 
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $revSvc = new \RequisitionRevisionService($this->db);
+        $latestRevision = $revSvc->getLatestActiveOrResubmitted('con_labor_requisitions', (int)$id);
+
         $this->view('phase2/labor_requisitions/show', [
             'current_route' => 'con-labor-requisitions',
             'page_title'    => $req['requisition_no'] . ' — Labor Requisition',
             'req'           => $req,
             'paymentLogs'   => $paymentLogs,
+            'latestRevision'=> $latestRevision,
             'userRole'      => $this->userRole,
             'userId'        => $this->userId,
             'isPM'          => $this->isPM(),
@@ -795,5 +800,96 @@ class Con_LaborRequisitionController extends Controller
             $_SESSION['error'] = 'Failed to delete requisition.';
             $this->back($id);
         }
+    }
+
+    /**
+     * Update Labor Requisition — Creator or Admin ONLY before 1st approval (PM approval)
+     */
+    public function update($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->back((int)$id);
+        }
+
+        $id      = (int)$id;
+        $isAdmin = in_array($this->userRole, [1, 3], true);
+
+        $req = $this->model->find($id);
+        if (!$req) {
+            setError('Labor requisition not found.');
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        }
+
+        $isOwner = ((int)($req['requested_by'] ?? 0) === $this->userId);
+        if (!$isOwner && !$isAdmin) {
+            setError('Only the creator or Admin can edit this labor requisition.');
+            $this->back($id);
+        }
+
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $revSvc  = new \RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('con_labor_requisitions', $id);
+
+        $hasAnyApproval = (($req['status'] ?? '') !== 'pending')
+            || !empty($req['pm_approved_by'])
+            || !empty($req['qc_approved_by'])
+            || !empty($req['management_approved_by']);
+
+        if ($hasAnyApproval && empty($openRev)) {
+            setError('This labor requisition has already been approved at one or more stages and can no longer be edited.');
+            $this->back($id);
+        }
+
+        $laborType  = trim($_POST['labor_type'] ?? ($req['labor_type'] ?? 'General'));
+        $laborCount = (int)($_POST['labor_count'] ?? 0);
+        $rate       = (float)($_POST['per_labor_rate'] ?? 0);
+        $days       = (float)($_POST['working_days'] ?? 0);
+        $workFrom   = !empty($_POST['work_date_from']) ? trim($_POST['work_date_from']) : null;
+        $workTo     = !empty($_POST['work_date_to']) ? trim($_POST['work_date_to']) : null;
+        $purpose    = trim($_POST['purpose'] ?? '');
+        $remarks    = trim($_POST['remarks'] ?? '');
+
+        if ($laborCount <= 0 || $rate < 0 || $days <= 0 || $purpose === '') {
+            setError('Please provide valid labor count, rate, working days, and purpose.');
+            $this->back($id);
+        }
+
+        $totalAmount = round($laborCount * $rate * $days, 2);
+
+        $stmt = $this->db->prepare("
+            UPDATE con_labor_requisitions
+            SET labor_type = ?, labor_count = ?, per_labor_rate = ?, working_days = ?, total_amount = ?, work_date_from = ?, work_date_to = ?, purpose = ?, remarks = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param('sidddssssi', $laborType, $laborCount, $rate, $days, $totalAmount, $workFrom, $workTo, $purpose, $remarks, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $stmtAr = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, updated_at = NOW() WHERE source_table = 'con_labor_requisitions' AND source_id = ?");
+                if ($stmtAr) {
+                    $stmtAr->bind_param('di', $totalAmount, $id);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
+                if (!empty($openRev)) {
+                    $revSvc->markResubmitted('con_labor_requisitions', $id, $totalAmount, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Labor Requisition updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess('Labor Requisition updated successfully.');
+                }
+            } else {
+                $stmt->close();
+                setError('Failed to update labor requisition.');
+            }
+        } else {
+            setError('Database error while updating labor requisition.');
+        }
+
+        if (($_POST['redirect_to'] ?? '') === 'index') {
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        }
+        $this->back($id);
     }
 }

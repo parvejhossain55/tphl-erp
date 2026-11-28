@@ -194,6 +194,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               <i class="fal fa-box-seam"></i> Material Receiving Note (MRN)
             </a>
           <?php endif; ?>
+          <?php if ($canEditPO ?? false): ?>
+            <button type="button" class="po-btn-w" style="background:rgba(245,158,11,0.28);border-color:rgba(245,158,11,0.6);color:#fff" data-bs-toggle="modal" data-bs-target="#editPoDetailsModal">
+              <i class="fal fa-edit text-warning"></i> Edit PO Details
+            </button>
+          <?php endif; ?>
           <?php if ($canDeletePO ?? false): ?>
             <button type="button" class="po-btn-w" style="background:rgba(239,68,68,0.25);border-color:rgba(239,68,68,0.55);color:#fff" data-bs-toggle="modal" data-bs-target="#deletePoModal">
               <i class="fal fa-trash-alt text-danger"></i> Delete PO
@@ -309,6 +314,34 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   <?php endforeach; ?>
 </div>
 <?php endif; ?>
+
+<?php
+$poCanSendBack = false;
+$poReturnStage = 'approver';
+$poReturnStageLabel = 'Approver';
+if (!in_array((int)($currentRoleId ?? 0), [33, 34, 35], true) && !in_array($po['status'] ?? '', ['Cancelled', 'Fully Received'], true)) {
+    if ($canApprovePH ?? false) {
+        $poCanSendBack = true; $poReturnStage = 'purchase_head'; $poReturnStageLabel = 'Purchase Head';
+    } elseif ($canApproveQC ?? false) {
+        $poCanSendBack = true; $poReturnStage = 'qc'; $poReturnStageLabel = 'QC & Internal Audit';
+    } elseif ($canApproveOP ?? false) {
+        $poCanSendBack = true; $poReturnStage = 'op_head'; $poReturnStageLabel = 'Admin & Operation Head';
+    } elseif ($canApproveBOD ?? false) {
+        $poCanSendBack = true; $poReturnStage = 'bod'; $poReturnStageLabel = 'Board of Director';
+    }
+}
+$revModuleTable      = 'purchase_orders';
+$revSourceId         = (int)$po['id'];
+$revCreatorUserId    = (int)($po['created_by'] ?? 0);
+$revCanSendBack      = $poCanSendBack;
+$revReturnStage      = $poReturnStage;
+$revReturnStageLabel = $poReturnStageLabel;
+$revRedirectUrl      = '/con-purchase-order/' . (int)$po['id'];
+$revEditModalTarget  = '#editPoDetailsModal';
+$revEditLinkUrl      = '';
+$revLatest           = $latestRevision ?? null;
+include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+?>
 
 <div class="row">
   <!-- Left: Items + Delivery Tracker -->
@@ -820,7 +853,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         </div>
 
         <!-- 6 Required Fields: [id], [company_name], [name], [phone], [email], [address] -->
-        <div class="row g-3">
+        <div class="row ">
           <div class="col-md-2 col-6">
             <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Vendor ID [id]</div>
             <div style="font-weight:700; font-size:13px; color:#1e293b; font-family:monospace; margin-top:3px">
@@ -993,7 +1026,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <div style="font-weight:700; font-size:13px; color:var(--text-color); margin-bottom:12px">
             <i class="fal fa-images me-1 text-primary"></i> Price Quotations, Drive Links & PR Attachments
           </div>
-          <div class="row g-3">
+          <div class="row ">
             <?php if (!empty($poPrAttUrl)): ?>
               <?php $prIsImg = $isPoImg($prAttachment); ?>
               <div class="col-md-3 col-sm-6">
@@ -2231,4 +2264,66 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 </div>
+<?php endif; ?>
+
+<?php if ($canEditPO ?? false): ?>
+<!-- Edit PO Details Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editPoDetailsModal" tabindex="-1" aria-labelledby="editPoDetailsModalLabel" aria-hidden="true" role="dialog">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header pb-3 mb-2 border-bottom">
+        <h5 class="modal-title fw-bold text-dark" id="editPoDetailsModalLabel">
+          <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Purchase Order #<?= (int)$po['id'] ?>
+        </h5>
+        <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+          <i class="fa-solid fa-xmark-large"></i>
+        </button>
+      </div>
+      <div class="modal-body p-0">
+        <form method="POST" action="<?= $base_url ?>/con-purchase-order-update/<?= (int)$po['id'] ?>">
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark">Order Date <span class="text-danger">*</span></label>
+            <input type="date" name="order_date" class="form-control" value="<?= htmlspecialchars(!empty($po['order_date']) ? date('Y-m-d', strtotime($po['order_date'])) : date('Y-m-d')) ?>" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark">PO Remarks / Terms &amp; Notes</label>
+            <textarea name="remarks" class="form-control" rows="4" placeholder="Enter PO terms, delivery instructions, or remarks..."><?= htmlspecialchars($po['remarks'] ?? '') ?></textarea>
+          </div>
+          <?php if (($latestRevision['status'] ?? '') === 'open'): ?>
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+            <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+          </div>
+          <?php endif; ?>
+          <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold">
+              <i class="fa-solid fa-save me-1"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  function initPoEditModal() {
+    if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+      setTimeout(initPoEditModal, 50);
+      return;
+    }
+    jQuery(function($) {
+      if ($('#editPoDetailsModal').length && $('#editPoDetailsModal').parent().prop('tagName') !== 'BODY') {
+        $('#editPoDetailsModal').appendTo('body');
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPoEditModal);
+  } else {
+    initPoEditModal();
+  }
+})();
+</script>
 <?php endif; ?>
