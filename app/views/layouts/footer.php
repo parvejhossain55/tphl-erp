@@ -1098,8 +1098,11 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
                 task_completed:     { label: 'Task Completed',        icon: 'fa-circle-check',  color: '#006837', bg: '#dcfce7' },
                 task_rated:         { label: 'Task Rated',            icon: 'fa-star',          color: '#006837', bg: '#ecfdf5' },
                 task_comment:       { label: 'New Comment',           icon: 'fa-comment-dots',  color: '#087F5B', bg: '#ecfdf5' },
-                task_edited:        { label: 'Task Updated',          icon: 'fa-pen-to-square', color: '#006837', bg: '#ecfdf5' },
-                task_deleted:       { label: 'Task Deleted',          icon: 'fa-trash-can',     color: '#dc2626', bg: '#fef2f2' }
+                task_edited:          { label: 'Task Updated',               icon: 'fa-pen-to-square', color: '#006837', bg: '#ecfdf5' },
+                task_deleted:         { label: 'Task Deleted',               icon: 'fa-trash-can',     color: '#dc2626', bg: '#fef2f2' },
+                lead_team_assigned:   { label: 'Leads Assigned to Team',     icon: 'fa-users-between-lines', color: '#006837', bg: '#ecfdf5' },
+                lead_member_assigned: { label: 'New Lead Assigned',          icon: 'fa-user-check',    color: '#006837', bg: '#ecfdf5' },
+                lead_reassigned:      { label: 'Lead Reassigned',            icon: 'fa-people-arrows', color: '#087F5B', bg: '#ecfdf5' }
             };
 
             function escHtml(s) {
@@ -1159,14 +1162,26 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
                 if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeAllToasts();
             });
 
+            function resolveNotifUrl(rawUrl) {
+                const u = String(rawUrl || '').trim();
+                if (!u) return '';
+                if (/^https?:\/\//i.test(u) || (baseUrl && u.startsWith(baseUrl))) return u;
+                return baseUrl + '/' + u.replace(/^\/+/, '');
+            }
+
             function showToast(item) {
                 const actKey = String(item.action_type || '').toLowerCase();
-                const isDeleted = (actKey === 'task_deleted') || (item.task_exists !== undefined && parseInt(item.task_exists, 10) === 0);
-                const meta = actionLabels[actKey] || { label: 'New Notification', icon: 'fa-bell', color: '#006837', bg: '#ecfdf5' };
-                const taskId = isDeleted ? 0 : extractTaskId(item);
+                const isLead = (String(item.module || '').toLowerCase() === 'lead') || actKey.startsWith('lead_');
+                const isDeleted = !isLead && ((actKey === 'task_deleted') || (item.task_exists !== undefined && parseInt(item.task_exists, 10) === 0));
+                const meta = actionLabels[actKey] || { label: isLead ? 'Lead Notification' : 'New Notification', icon: 'fa-bell', color: '#006837', bg: '#ecfdf5' };
+                const taskId = (isDeleted || isLead) ? 0 : extractTaskId(item);
+                const resolvedCustomUrl = resolveNotifUrl(item.target_url);
                 const targetHref = taskId > 0
                     ? (baseUrl + '/my-work-dashboard?task_id=' + encodeURIComponent(taskId))
-                    : (baseUrl + '/notifications');
+                    : (resolvedCustomUrl || (baseUrl + (isLead ? '/lead-lists' : '/notifications')));
+                const openBtnLabel = isLead
+                    ? 'View Lead Details'
+                    : (taskId > 0 ? 'View Task Details' : 'Open Notifications');
 
                 const toast = document.createElement('div');
                 toast.className = 'tphl-notif-toast';
@@ -1180,7 +1195,7 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
                         '<div style="min-width:0;padding-right:26px;">' +
                             '<div style="font-size:17px;font-weight:700;color:#0f172a;line-height:1.25;">' + escHtml(meta.label) + '</div>' +
                             '<div style="font-size:12.5px;color:#64748b;margin-top:2px;">' +
-                                (item.actor_name ? 'From <strong style="color:#334155;">' + escHtml(item.actor_name) + '</strong>' : 'Task Notification') +
+                                (item.actor_name ? 'From <strong style="color:#334155;">' + escHtml(item.actor_name) + '</strong>' : (isLead ? 'Lead Notification' : 'Task Notification')) +
                             '</div>' +
                         '</div>' +
                     '</div>' +
@@ -1193,7 +1208,7 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
                         (isDeleted ? '' : (
                             '<button type="button" class="tphl-notif-btn-primary tphl-notif-open" style="background:' + meta.color + ';">' +
                                 '<i class="fa-solid fa-arrow-up-right-from-square"></i> ' +
-                                (taskId > 0 ? 'View Task Details' : 'Open Notifications') +
+                                openBtnLabel +
                             '</button>'
                         )) +
                     '</div>';

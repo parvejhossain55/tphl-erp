@@ -690,6 +690,18 @@ class LeadAutomationController extends Controller
 
             // Direct All-Pending or Team-Wise All-Pending
             if ($approveAll) {
+                // Capture affected teams + sample lead before approving for summary notifications
+                $teamGroups = [];
+                try {
+                    if ($teamId) {
+                        $gStmt = $pdo->prepare("SELECT `team_id`, COUNT(*) AS cnt, MIN(`id`) AS sample_id FROM `leads` WHERE `distribute` = 0 AND `deleted_at` IS NULL AND `is_automated` = 1 AND `team_id` = ? GROUP BY `team_id`");
+                        $gStmt->execute([$teamId]);
+                    } else {
+                        $gStmt = $pdo->query("SELECT `team_id`, COUNT(*) AS cnt, MIN(`id`) AS sample_id FROM `leads` WHERE `distribute` = 0 AND `deleted_at` IS NULL AND `is_automated` = 1 AND `team_id` IS NOT NULL AND `team_id` > 0 GROUP BY `team_id`");
+                    }
+                    $teamGroups = $gStmt ? $gStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+                } catch (Throwable $t) {}
+
                 if ($teamId) {
                     $updateSql = "UPDATE `leads` SET `distribute` = 1, `approved_by` = ?, `approved_at` = NOW(), `updated_at` = NOW() WHERE `distribute` = 0 AND `deleted_at` IS NULL AND `is_automated` = 1 AND `team_id` = ?";
                     $stmt = $pdo->prepare($updateSql);
@@ -700,6 +712,26 @@ class LeadAutomationController extends Controller
                     $stmt->execute([$approverId]);
                 }
                 $affected = $stmt->rowCount();
+
+                if ($affected > 0 && !empty($teamGroups)) {
+                    $mysqli = $GLOBALS['db'] ?? null;
+                    foreach ($teamGroups as $tg) {
+                        $tid = (int)($tg['team_id'] ?? 0);
+                        $cnt = (int)($tg['cnt'] ?? 0);
+                        $sampleId = (int)($tg['sample_id'] ?? 0);
+                        if ($tid > 0 && $cnt > 0) {
+                            $leaderIds = Notification::getTeamLeaderUserIds($mysqli, $tid);
+                            if (!empty($leaderIds)) {
+                                Notification::notifyLeadAssignment($mysqli, 'lead_team_assigned', $leaderIds, (int)$approverId, $sampleId > 0 ? [$sampleId] : [], [
+                                    'count'         => $cnt,
+                                    'team_id'       => $tid,
+                                    'assigned_date' => date('Y-m-d'),
+                                ]);
+                            }
+                        }
+                    }
+                }
+
                 echo json_encode([
                     'status'  => 'success',
                     'message' => "Successfully approved {$affected} pending lead(s) for team distribution!",
@@ -754,6 +786,43 @@ class LeadAutomationController extends Controller
                     $tStmt->execute([$targetTeamId]);
                     $teamName = $tStmt->fetchColumn() ?: "Team #{$targetTeamId}";
                 } catch (Throwable $t) {}
+            }
+
+            // Send 1 summary popup + email to each affected Team Leader
+            try {
+                $mysqli = $GLOBALS['db'] ?? null;
+                if ($targetTeamId !== null && $targetTeamId > 0) {
+                    $leaderIds = Notification::getTeamLeaderUserIds($mysqli, $targetTeamId);
+                    if (!empty($leaderIds)) {
+                        Notification::notifyLeadAssignment($mysqli, 'lead_team_assigned', $leaderIds, (int)$approverId, $leadIds, [
+                            'count'         => $totalSelected,
+                            'team_id'       => $targetTeamId,
+                            'team_name'     => $teamName,
+                            'assigned_date' => date('Y-m-d'),
+                        ]);
+                    }
+                } else {
+                    $grpStmt = $pdo->prepare("SELECT `team_id`, COUNT(*) AS cnt, MIN(`id`) AS sample_id FROM `leads` WHERE `id` IN ({$placeholders}) AND `team_id` IS NOT NULL AND `team_id` > 0 GROUP BY `team_id`");
+                    $grpStmt->execute($leadIds);
+                    $grpRows = $grpStmt->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($grpRows as $gr) {
+                        $tid = (int)($gr['team_id'] ?? 0);
+                        $cnt = (int)($gr['cnt'] ?? 0);
+                        $sampleId = (int)($gr['sample_id'] ?? 0);
+                        if ($tid > 0 && $cnt > 0) {
+                            $leaderIds = Notification::getTeamLeaderUserIds($mysqli, $tid);
+                            if (!empty($leaderIds)) {
+                                Notification::notifyLeadAssignment($mysqli, 'lead_team_assigned', $leaderIds, (int)$approverId, $sampleId > 0 ? [$sampleId] : [], [
+                                    'count'         => $cnt,
+                                    'team_id'       => $tid,
+                                    'assigned_date' => date('Y-m-d'),
+                                ]);
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable $t) {
+                error_log("LeadAutomationController notify error: " . $t->getMessage());
             }
 
             $successMsg = $teamName

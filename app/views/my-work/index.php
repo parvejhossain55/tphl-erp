@@ -4868,13 +4868,13 @@ document.addEventListener('DOMContentLoaded', function () {
                </a>`
             : '<div class="mw-td-empty">No attachments.</div>';
 
-        // Owner Feedback & Satisfaction Rating section (Only when task is completed and not a self-task)
+        // Task Feedback & Satisfaction Rating section (Completed tasks; Owner, Reviewers, CC, Admin — including self-assigned tasks, excluding assignee)
         let ownerFeedbackHtml = '';
-        if (t.is_completed && !t.is_self_task) {
+        if (t.is_completed) {
             const currentRating = parseInt(t.satisfaction_rating, 10) || 0;
-            if (t.is_owner) {
+            if (t.can_give_feedback) {
                 if (currentRating > 0) {
-                    // Already rated by owner
+                    // Already rated
                     let starsHtml = '';
                     for (let s = 1; s <= 5; s++) {
                         starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
@@ -4882,7 +4882,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ownerFeedbackHtml = `
                         <div class="mw-feedback-readonly">
                             <div>
-                                <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Your Rating & Feedback</div>
+                                <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Rating & Feedback</div>
                                 <div class="mw-feedback-readonly-stars">
                                     ${starsHtml}
                                     <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
@@ -4891,7 +4891,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <span class="mw-feedback-readonly-badge"><i class="fa-solid fa-check me-1"></i> Feedback Submitted</span>
                         </div>`;
                 } else {
-                    // Owner can rate and give feedback
+                    // Eligible user (Owner / Reviewer / CC / Admin) can rate and give feedback
                     ownerFeedbackHtml = `
                         <div class="mw-feedback-card" id="mwOwnerFeedbackBox">
                             <div class="mw-feedback-head">
@@ -4916,7 +4916,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>`;
                 }
             } else if (currentRating > 0) {
-                // Assignee or collaborator viewing the owner's rating
+                // Assignee or collaborator viewing the rating
                 let starsHtml = '';
                 for (let s = 1; s <= 5; s++) {
                     starsHtml += `<i class="fa-${s <= currentRating ? 'solid' : 'regular'} fa-star"></i>`;
@@ -4924,7 +4924,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ownerFeedbackHtml = `
                     <div class="mw-feedback-readonly">
                         <div>
-                            <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Owner Rating</div>
+                            <div style="font-size:11.5px; font-weight:700; color:#65776F; text-transform:uppercase; margin-bottom:4px;">Task Rating & Feedback</div>
                             <div class="mw-feedback-readonly-stars">
                                 ${starsHtml}
                                 <span style="font-weight:700; color:#142D26; font-size:13px; margin-left:6px;">${currentRating} of 5 Stars</span>
@@ -5488,9 +5488,9 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Wire up Owner Feedback & Star Rating submission
+        // Wire up Feedback & Star Rating submission (Owner / Reviewer / CC / Admin)
         const feedbackBox = tdBody.querySelector('#mwOwnerFeedbackBox');
-        if (feedbackBox && t.is_completed && t.is_owner) {
+        if (feedbackBox && t.is_completed && t.can_give_feedback) {
             const starWrap = feedbackBox.querySelector('#mwStarRatingPicker');
             const commentInput = feedbackBox.querySelector('#mwFeedbackComment');
             const btnSubmitFeedback = feedbackBox.querySelector('#btnSubmitOwnerFeedback');

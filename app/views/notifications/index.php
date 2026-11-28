@@ -1,7 +1,7 @@
 <?php
 $baseUrl       = $GLOBALS['base_url'] ?? '';
 $notifications = $notifications ?? [];
-$counts        = $counts ?? ['all' => 0, 'unread' => 0, 'assigned' => 0, 'progress' => 0, 'completed' => 0, 'rated' => 0, 'comment' => 0, 'edited' => 0];
+$counts        = $counts ?? ['all' => 0, 'unread' => 0, 'leads' => 0, 'assigned' => 0, 'progress' => 0, 'completed' => 0, 'rated' => 0, 'comment' => 0, 'edited' => 0];
 $filters       = $filters ?? ['status' => 'all', 'category' => 'all', 'search' => '', 'date_from' => '', 'date_to' => ''];
 $page          = (int)($page ?? 1);
 $totalPages    = (int)($total_pages ?? 1);
@@ -25,8 +25,11 @@ $actionMeta = [
     'task_completed'     => ['label' => 'Completed',          'icon' => 'fa-circle-check',    'bg' => '#dcfce7', 'color' => '#006837'],
     'task_rated'         => ['label' => 'Rated',              'icon' => 'fa-star',            'bg' => '#ecfdf5', 'color' => '#006837'],
     'task_comment'       => ['label' => 'Comment',            'icon' => 'fa-comment-dots',    'bg' => '#f0fdf4', 'color' => '#087F5B'],
-    'task_edited'        => ['label' => 'Task Edited',        'icon' => 'fa-pen-to-square',   'bg' => '#ecfdf5', 'color' => '#006837'],
-    'task_deleted'       => ['label' => 'Task Deleted',       'icon' => 'fa-trash-can',       'bg' => '#fef2f2', 'color' => '#dc2626'],
+    'task_edited'          => ['label' => 'Task Edited',        'icon' => 'fa-pen-to-square',        'bg' => '#ecfdf5', 'color' => '#006837'],
+    'task_deleted'         => ['label' => 'Task Deleted',       'icon' => 'fa-trash-can',            'bg' => '#fef2f2', 'color' => '#dc2626'],
+    'lead_team_assigned'   => ['label' => 'Lead Team Assigned', 'icon' => 'fa-users-between-lines',  'bg' => '#ecfdf5', 'color' => '#006837'],
+    'lead_member_assigned' => ['label' => 'Lead Assigned',      'icon' => 'fa-user-check',           'bg' => '#ecfdf5', 'color' => '#006837'],
+    'lead_reassigned'      => ['label' => 'Lead Reassigned',    'icon' => 'fa-people-arrows',        'bg' => '#f0fdf4', 'color' => '#087F5B'],
 ];
 
 $formatTimeAgo = function (?string $datetime): string {
@@ -201,7 +204,7 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
                     </span>
                 </h4>
                 <p class="text-muted mb-0" style="font-size: 13px;">
-                    Track all task assignments, status updates, progress changes, comments, and ratings in one place.
+                    Track all task &amp; lead assignments, status updates, progress changes, comments, and ratings in one place.
                 </p>
             </div>
             <div class="d-flex align-items-center gap-2">
@@ -222,6 +225,11 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
                data-status="unread" data-category="all"
                class="notif-pill <?= ($currentStatus === 'unread' && $currentCategory === 'all') ? 'active' : '' ?>">
                 Unread <span class="pill-cnt" id="pillUnreadCount" data-count-key="unread"><?= (int)$counts['unread'] ?></span>
+            </a>
+            <a href="<?= htmlspecialchars($buildQueryUrl(['status' => 'all', 'category' => 'leads', 'page' => null])) ?>"
+               data-status="all" data-category="leads"
+               class="notif-pill <?= $currentCategory === 'leads' ? 'active' : '' ?>">
+                <i class="fa-solid fa-bullhorn"></i> Leads <span class="pill-cnt" data-count-key="leads"><?= (int)($counts['leads'] ?? 0) ?></span>
             </a>
             <a href="<?= htmlspecialchars($buildQueryUrl(['status' => 'all', 'category' => 'assigned', 'page' => null])) ?>"
                data-status="all" data-category="assigned"
@@ -293,16 +301,17 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
                 <?php
                 $id         = (int)($item['id'] ?? 0);
                 $actKey     = strtolower((string)($item['action_type'] ?? ''));
-                $isDeleted  = ($actKey === 'task_deleted') || (isset($item['task_exists']) && (int)$item['task_exists'] === 0);
+                $isLead     = (strtolower((string)($item['module'] ?? '')) === 'lead') || str_starts_with($actKey, 'lead_');
+                $isDeleted  = !$isLead && (($actKey === 'task_deleted') || (isset($item['task_exists']) && (int)$item['task_exists'] === 0));
                 $taskId     = 0;
-                if (!$isDeleted) {
+                if (!$isDeleted && !$isLead) {
                     $taskId = (int)($item['task_id'] ?? 0);
                     if ($taskId <= 0 && preg_match('/\bT-(\d+)\b/i', (string)($item['message'] ?? ''), $tm)) {
                         $taskId = (int)$tm[1];
                     }
                 }
                 $isUnread   = empty($item['is_read']);
-                $meta       = $actionMeta[$actKey] ?? ['label' => 'Task Update', 'icon' => 'fa-bell', 'bg' => '#f1f5f9', 'color' => '#475569'];
+                $meta       = $actionMeta[$actKey] ?? ['label' => ($isLead ? 'Lead Update' : 'Task Update'), 'icon' => 'fa-bell', 'bg' => '#f1f5f9', 'color' => '#475569'];
                 $actorName  = !empty($item['actor_name']) ? $item['actor_name'] : 'System';
                 $rawUrl     = $isDeleted ? '' : trim((string)($item['target_url'] ?? ''));
                 $targetHref = '';
@@ -316,10 +325,12 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
                 $createdAt  = (string)($item['created_at'] ?? '');
                 $timeAgo    = $formatTimeAgo($createdAt);
                 $exactTime  = $createdAt ? date('d M, Y h:i A', strtotime($createdAt)) : '';
+                $isClickable = !$isDeleted && ($taskId > 0 || $targetHref !== '');
                 ?>
-                <div class="notif-item <?= $isUnread ? 'is-unread' : '' ?> <?= (!$isDeleted && $taskId > 0) ? 'is-clickable' : '' ?>"
+                <div class="notif-item <?= $isUnread ? 'is-unread' : '' ?> <?= $isClickable ? 'is-clickable' : '' ?>"
                      data-notif-id="<?= $id ?>"
-                     data-task-id="<?= $isDeleted ? 0 : $taskId ?>">
+                     data-task-id="<?= ($isDeleted || $isLead) ? 0 : $taskId ?>"
+                     data-target-href="<?= htmlspecialchars($targetHref) ?>">
                     <div class="notif-icon-box" style="background: <?= $meta['bg'] ?>; color: <?= $meta['color'] ?>;">
                         <i class="fa-solid <?= $meta['icon'] ?>"></i>
                     </div>
@@ -357,7 +368,7 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
                                    class="btn btn-sm btn-link p-0 text-decoration-none fw-semibold notif-open-link"
                                    data-notif-id="<?= $id ?>"
                                    style="font-size: 12.5px;">
-                                    Open <i class="fa-solid fa-arrow-right ms-1"></i>
+                                    <?= $isLead ? 'View Lead Details' : 'Open' ?> <i class="fa-solid fa-arrow-right ms-1"></i>
                                 </a>
                             <?php endif; ?>
                             <?php if ($isUnread): ?>
@@ -510,9 +521,10 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
         listEl.innerHTML = items.map(item => {
             const id = parseInt(item.id || 0, 10);
             const actKey = String(item.action_type || '').toLowerCase();
-            const isDeleted = (actKey === 'task_deleted') || (item.task_exists !== undefined && parseInt(item.task_exists, 10) === 0);
+            const isLead = (String(item.module || '').toLowerCase() === 'lead') || actKey.startsWith('lead_');
+            const isDeleted = !isLead && ((actKey === 'task_deleted') || (item.task_exists !== undefined && parseInt(item.task_exists, 10) === 0));
             let taskId = 0;
-            if (!isDeleted) {
+            if (!isDeleted && !isLead) {
                 taskId = parseInt(item.task_id || 0, 10);
                 if (!taskId) {
                     const m = String(item.message || '').match(/\bT-(\d+)\b/i);
@@ -520,13 +532,14 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
                 }
             }
             const isUnread = !parseInt(item.is_read || 0, 10);
-            const meta = actionMeta[actKey] || { label: 'Task Update', icon: 'fa-bell', bg: '#f1f5f9', color: '#475569' };
+            const meta = actionMeta[actKey] || { label: isLead ? 'Lead Update' : 'Task Update', icon: 'fa-bell', bg: '#f1f5f9', color: '#475569' };
             const actorName = item.actor_name || 'System';
             const href = isDeleted ? '' : resolveTargetUrl(item.target_url);
             const timeAgo = formatTimeAgo(item.created_at || '');
+            const isClickable = !isDeleted && (taskId > 0 || !!href);
 
             return (
-                '<div class="notif-item' + (isUnread ? ' is-unread' : '') + (!isDeleted && taskId > 0 ? ' is-clickable' : '') + '" data-notif-id="' + id + '" data-task-id="' + (isDeleted ? 0 : taskId) + '">' +
+                '<div class="notif-item' + (isUnread ? ' is-unread' : '') + (isClickable ? ' is-clickable' : '') + '" data-notif-id="' + id + '" data-task-id="' + ((isDeleted || isLead) ? 0 : taskId) + '" data-target-href="' + esc(href) + '">' +
                     '<div class="notif-icon-box" style="background:' + meta.bg + ';color:' + meta.color + ';">' +
                         '<i class="fa-solid ' + meta.icon + '"></i>' +
                     '</div>' +
@@ -543,7 +556,7 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
                         '<div class="d-flex flex-wrap align-items-center gap-3 mt-2">' +
                             (taskId > 0
                                 ? '<a href="' + esc(baseUrl + '/my-work-dashboard?task_id=' + taskId) + '" class="btn btn-sm btn-link p-0 text-decoration-none fw-semibold notif-open-link" data-notif-id="' + id + '" style="font-size:12.5px;">View Task Details <i class="fa-solid fa-arrow-right ms-1"></i></a>'
-                                : (href ? '<a href="' + esc(href) + '" class="btn btn-sm btn-link p-0 text-decoration-none fw-semibold notif-open-link" data-notif-id="' + id + '" style="font-size:12.5px;">Open <i class="fa-solid fa-arrow-right ms-1"></i></a>' : '')) +
+                                : (href ? '<a href="' + esc(href) + '" class="btn btn-sm btn-link p-0 text-decoration-none fw-semibold notif-open-link" data-notif-id="' + id + '" style="font-size:12.5px;">' + (isLead ? 'View Lead Details' : 'Open') + ' <i class="fa-solid fa-arrow-right ms-1"></i></a>' : '')) +
                             (isUnread
                                 ? '<button type="button" class="btn btn-sm btn-link p-0 text-muted text-decoration-none notif-mark-read-btn" data-notif-id="' + id + '" style="font-size:12px;"><i class="fa-solid fa-check me-1"></i>Mark as read</button>'
                                 : '<span class="text-muted" style="font-size:11.5px;"><i class="fa-solid fa-check-double text-success me-1"></i>Read</span>') +
@@ -748,13 +761,16 @@ $buildQueryUrl = function (array $overrides = []) use ($baseUrl, $filters): stri
             const row = e.target.closest('.notif-item');
             if (!row) return;
             const taskId = parseInt(row.dataset.taskId || '0', 10);
-            if (taskId > 0) {
+            const targetHref = (row.dataset.targetHref || '').trim();
+            if (taskId > 0 || targetHref) {
                 const notifId = parseInt(row.dataset.notifId || '0', 10);
                 if (row.classList.contains('is-unread') && notifId > 0) {
                     sendMarkRead(notifId, true).catch(() => {});
                     markRowReadUI(row);
                 }
-                window.location.href = baseUrl + '/my-work-dashboard?task_id=' + encodeURIComponent(taskId);
+                window.location.href = taskId > 0
+                    ? (baseUrl + '/my-work-dashboard?task_id=' + encodeURIComponent(taskId))
+                    : targetHref;
             }
         });
     }
