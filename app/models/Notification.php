@@ -77,39 +77,44 @@ class Notification
         $stmt->close();
 
         if ($sendEmail && $inserted > 0) {
-            $this->sendEmailNotifications(array_values($cleanRecipients), $actorId, $act, $msg, $tid, $url);
+            $this->sendEmailNotifications(array_values($cleanRecipients), $actorId, $act, $msg, $tid, $url, $mod);
         }
 
         return $inserted;
     }
 
     /**
-     * Send branded HTML email notifications for task actions to recipients.
+     * Send branded HTML email notifications for task/lead actions to recipients.
      * Failures are logged and never interrupt the main request.
      */
-    private function sendEmailNotifications(array $recipientIds, int $actorId, string $actionType, string $message, ?int $taskId, ?string $targetUrl): void
+    private function sendEmailNotifications(array $recipientIds, int $actorId, string $actionType, string $message, ?int $taskId, ?string $targetUrl, string $module = 'task'): void
     {
         if (empty($recipientIds) || !function_exists('sendGenericMail')) {
             return;
         }
 
         $actionLabels = [
-            'task_assigned'      => 'New Task Assigned',
-            'task_reassigned'    => 'Task Reassigned',
-            'collaborator_added' => 'Added as Task Collaborator',
-            'task_mentioned'     => 'You Were Mentioned in a Task',
-            'task_accepted'      => 'Task Accepted',
-            'status_changed'     => 'Task Status Updated',
-            'progress_updated'   => 'Task Progress Updated',
-            'subtask_updated'    => 'Task Checklist Updated',
-            'task_completed'     => 'Task Completed',
-            'task_rated'         => 'Task Rated & Reviewed',
-            'task_comment'       => 'New Comment on Task',
-            'task_edited'        => 'Task Updated',
-            'task_deleted'       => 'Task Deleted',
+            'task_assigned'        => 'New Task Assigned',
+            'task_reassigned'      => 'Task Reassigned',
+            'collaborator_added'   => 'Added as Task Collaborator',
+            'task_mentioned'       => 'You Were Mentioned in a Task',
+            'task_accepted'        => 'Task Accepted',
+            'status_changed'       => 'Task Status Updated',
+            'progress_updated'     => 'Task Progress Updated',
+            'subtask_updated'      => 'Task Checklist Updated',
+            'task_completed'       => 'Task Completed',
+            'task_rated'           => 'Task Rated & Reviewed',
+            'task_comment'         => 'New Comment on Task',
+            'task_edited'          => 'Task Updated',
+            'task_deleted'         => 'Task Deleted',
+            'lead_team_assigned'   => 'New Leads Assigned to Your Team',
+            'lead_member_assigned' => 'New Lead Assigned to You',
+            'lead_reassigned'      => 'Lead Reassigned to You',
         ];
-        $actionLabel = $actionLabels[strtolower($actionType)] ?? 'Task Notification';
-        $accentColor = (strtolower($actionType) === 'task_deleted') ? '#dc2626' : '#006837';
+        $actLower = strtolower($actionType);
+        $isLead = (strtolower($module) === 'lead' || strpos($actLower, 'lead_') === 0);
+        $actionLabel = $actionLabels[$actLower] ?? ($isLead ? 'Lead Notification' : 'Task Notification');
+        $accentColor = ($actLower === 'task_deleted') ? '#dc2626' : '#006837';
 
         $actorName = !empty($_SESSION['user']['full_name']) ? trim((string)$_SESSION['user']['full_name']) : '';
         if ($actorName === '' && $actorId > 0) {
@@ -128,19 +133,19 @@ class Notification
 
         // Build absolute link (omitted for deleted tasks)
         $actionLink = '';
-        if (strtolower($actionType) !== 'task_deleted') {
+        if ($actLower !== 'task_deleted') {
             $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? 0) == 443);
             $protocol = $isHttps ? 'https://' : 'http://';
             $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
             $base = $GLOBALS['base_url'] ?? '';
-            if ($taskId !== null && $taskId > 0) {
+            if (!$isLead && $taskId !== null && $taskId > 0) {
                 $actionLink = $protocol . $host . $base . '/my-work-dashboard?task_id=' . $taskId;
             } elseif (!empty($targetUrl)) {
                 $actionLink = preg_match('#^https?://#i', $targetUrl)
                     ? $targetUrl
                     : ($protocol . $host . $base . '/' . ltrim($targetUrl, '/'));
             } else {
-                $actionLink = $protocol . $host . $base . '/notifications';
+                $actionLink = $protocol . $host . $base . ($isLead ? '/lead-lists' : '/notifications');
             }
         }
 
@@ -160,15 +165,19 @@ class Notification
             return;
         }
 
-        $subject = '[TPHL ERP] ' . $actionLabel . ($taskId ? " (T-{$taskId})" : '');
+        $subject = '[TPHL ERP] ' . $actionLabel . ((!$isLead && $taskId) ? " (T-{$taskId})" : '');
         $safeAction = htmlspecialchars($actionLabel, ENT_QUOTES, 'UTF-8');
         $safeActor  = htmlspecialchars($actorName, ENT_QUOTES, 'UTF-8');
         $safeMsg    = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
         $timestamp  = date('d M Y, h:i A');
+        $btnLabel   = $isLead ? 'View Lead Details &rarr;' : 'View Task Details &rarr;';
+        $footerText = $isLead
+            ? 'This is an automated lead notification from TPHL ERP.'
+            : 'This is an automated task notification from TPHL ERP.';
 
         $buttonHtml = $actionLink !== ''
             ? "<div style='text-align:center;margin:24px 0 8px;'>
-                    <a href='" . htmlspecialchars($actionLink, ENT_QUOTES, 'UTF-8') . "' style='background-color:{$accentColor};color:#ffffff;padding:11px 24px;text-decoration:none;border-radius:7px;font-weight:600;font-size:14px;display:inline-block;'>View Task Details &rarr;</a>
+                    <a href='" . htmlspecialchars($actionLink, ENT_QUOTES, 'UTF-8') . "' style='background-color:{$accentColor};color:#ffffff;padding:11px 24px;text-decoration:none;border-radius:7px;font-weight:600;font-size:14px;display:inline-block;'>{$btnLabel}</a>
                </div>"
             : '';
 
@@ -197,7 +206,7 @@ class Notification
                         {$buttonHtml}
                     </div>
                     <div style='background:#f8faf9;padding:12px 24px;text-align:center;border-top:1px solid #e2eae5;font-size:11.5px;color:#64748b;'>
-                        This is an automated task notification from TPHL ERP.
+                        {$footerText}
                     </div>
                 </div>
             </div>";
@@ -236,7 +245,8 @@ class Notification
 
         $category = strtolower(trim((string)($filters['category'] ?? 'all')));
         $categoryMap = [
-            'assigned'  => ['task_assigned', 'task_reassigned', 'collaborator_added', 'task_mentioned'],
+            'assigned'  => ['task_assigned', 'task_reassigned', 'collaborator_added', 'task_mentioned', 'lead_team_assigned', 'lead_member_assigned', 'lead_reassigned'],
+            'leads'     => ['lead_team_assigned', 'lead_member_assigned', 'lead_reassigned'],
             'progress'  => ['progress_updated', 'status_changed', 'task_accepted', 'subtask_updated'],
             'completed' => ['task_completed'],
             'rated'     => ['task_rated'],
@@ -362,6 +372,7 @@ class Notification
         $defaults = [
             'all'       => 0,
             'unread'    => 0,
+            'leads'     => 0,
             'assigned'  => 0,
             'progress'  => 0,
             'completed' => 0,
@@ -376,7 +387,8 @@ class Notification
         $sql = "SELECT
                     COUNT(*) AS cnt_all,
                     SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) AS cnt_unread,
-                    SUM(CASE WHEN action_type IN ('task_assigned','task_reassigned','collaborator_added','task_mentioned') THEN 1 ELSE 0 END) AS cnt_assigned,
+                    SUM(CASE WHEN module = 'lead' OR action_type IN ('lead_team_assigned','lead_member_assigned','lead_reassigned') THEN 1 ELSE 0 END) AS cnt_leads,
+                    SUM(CASE WHEN action_type IN ('task_assigned','task_reassigned','collaborator_added','task_mentioned','lead_team_assigned','lead_member_assigned','lead_reassigned') THEN 1 ELSE 0 END) AS cnt_assigned,
                     SUM(CASE WHEN action_type IN ('progress_updated','status_changed','task_accepted','subtask_updated') THEN 1 ELSE 0 END) AS cnt_progress,
                     SUM(CASE WHEN action_type = 'task_completed' THEN 1 ELSE 0 END) AS cnt_completed,
                     SUM(CASE WHEN action_type = 'task_rated' THEN 1 ELSE 0 END) AS cnt_rated,
@@ -400,6 +412,7 @@ class Notification
         return [
             'all'       => (int)($row['cnt_all'] ?? 0),
             'unread'    => (int)($row['cnt_unread'] ?? 0),
+            'leads'     => (int)($row['cnt_leads'] ?? 0),
             'assigned'  => (int)($row['cnt_assigned'] ?? 0),
             'progress'  => (int)($row['cnt_progress'] ?? 0),
             'completed' => (int)($row['cnt_completed'] ?? 0),
@@ -484,5 +497,194 @@ class Notification
         $affected = $stmt->affected_rows;
         $stmt->close();
         return max(0, (int)$affected);
+    }
+
+    /**
+     * Resolve Team Leader user IDs (users.id) for a given team_id using the existing ERP setup:
+     * 1) employees.is_team_leader = 1 AND employees.team_id = ?
+     * 2) Fallback: users.role_id IN (5, 9) AND users.team_id = ?
+     */
+    public static function getTeamLeaderUserIds($db, int $teamId): array
+    {
+        $mysqli = ($db instanceof \mysqli) ? $db : ($GLOBALS['db'] ?? null);
+        if (!$mysqli || $teamId <= 0) {
+            return [];
+        }
+
+        $ids = [];
+        try {
+            $stmt = $mysqli->prepare(
+                "SELECT DISTINCT u.id
+                 FROM employees e
+                 JOIN users u ON (u.id = e.user_id OR u.employee_id = e.id)
+                 WHERE e.team_id = ?
+                   AND e.is_team_leader = 1
+                   AND (e.deleted_at IS NULL)"
+            );
+            if ($stmt) {
+                $stmt->bind_param("i", $teamId);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                while ($row = $res->fetch_assoc()) {
+                    $uid = (int)($row['id'] ?? 0);
+                    if ($uid > 0) {
+                        $ids[$uid] = $uid;
+                    }
+                }
+                $stmt->close();
+            }
+
+            if (empty($ids)) {
+                $stmtFallback = $mysqli->prepare(
+                    "SELECT id FROM users WHERE team_id = ? AND role_id IN (5, 9) ORDER BY role_id ASC"
+                );
+                if ($stmtFallback) {
+                    $stmtFallback->bind_param("i", $teamId);
+                    $stmtFallback->execute();
+                    $resFb = $stmtFallback->get_result();
+                    while ($row = $resFb->fetch_assoc()) {
+                        $uid = (int)($row['id'] ?? 0);
+                        if ($uid > 0) {
+                            $ids[$uid] = $uid;
+                        }
+                    }
+                    $stmtFallback->close();
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("Notification::getTeamLeaderUserIds error: " . $e->getMessage());
+        }
+
+        return array_values($ids);
+    }
+
+    /**
+     * Dispatch a single summary popup + notification page entry + summary email for lead assignments.
+     * Supports: 'lead_team_assigned', 'lead_member_assigned', 'lead_reassigned'.
+     * Never throws — failures are logged so lead workflows are never interrupted.
+     */
+    public static function notifyLeadAssignment($db, string $actionType, array $recipientUserIds, int $actorUserId, array $leadIds = [], array $meta = []): int
+    {
+        try {
+            $mysqli = ($db instanceof \mysqli) ? $db : ($GLOBALS['db'] ?? null);
+            if (!$mysqli || empty($recipientUserIds)) {
+                return 0;
+            }
+
+            $cleanLeadIds = array_values(array_unique(array_filter(array_map('intval', $leadIds), static fn($id) => $id > 0)));
+            $count = (int)($meta['count'] ?? count($cleanLeadIds));
+            if ($count <= 0) {
+                return 0;
+            }
+
+            $teamId = (int)($meta['team_id'] ?? 0);
+            $teamName = trim((string)($meta['team_name'] ?? ''));
+            $firstLeadName = trim((string)($meta['lead_name'] ?? ''));
+            $firstLeadPhone = trim((string)($meta['lead_phone'] ?? ''));
+            $firstProjectName = trim((string)($meta['project_name'] ?? ''));
+
+            // Fetch sample lead details in one lightweight query when lead IDs are available
+            if (!empty($cleanLeadIds) && ($firstLeadName === '' || ($teamId > 0 && $teamName === ''))) {
+                $sampleId = $cleanLeadIds[0];
+                $stLead = $mysqli->prepare(
+                    "SELECT l.full_name, COALESCE(NULLIF(l.phone_number, ''), l.phone) AS phone_val,
+                            l.team_id, t.name AS team_name, p.name AS project_name
+                     FROM leads l
+                     LEFT JOIN teams t ON l.team_id = t.id
+                     LEFT JOIN projects p ON l.project_id = p.id
+                     WHERE l.id = ? LIMIT 1"
+                );
+                if ($stLead) {
+                    $stLead->bind_param("i", $sampleId);
+                    $stLead->execute();
+                    $lRow = $stLead->get_result()->fetch_assoc();
+                    $stLead->close();
+                    if ($lRow) {
+                        if ($firstLeadName === '') {
+                            $firstLeadName = trim((string)($lRow['full_name'] ?? ''));
+                        }
+                        if ($firstLeadPhone === '') {
+                            $firstLeadPhone = trim((string)($lRow['phone_val'] ?? ''));
+                        }
+                        if ($firstProjectName === '') {
+                            $firstProjectName = trim((string)($lRow['project_name'] ?? ''));
+                        }
+                        if ($teamId <= 0 && !empty($lRow['team_id'])) {
+                            $teamId = (int)$lRow['team_id'];
+                        }
+                        if ($teamName === '' && !empty($lRow['team_name'])) {
+                            $teamName = trim((string)$lRow['team_name']);
+                        }
+                    }
+                }
+            }
+
+            if ($teamName === '' && $teamId > 0) {
+                $stTeam = $mysqli->prepare("SELECT name FROM teams WHERE id = ? LIMIT 1");
+                if ($stTeam) {
+                    $stTeam->bind_param("i", $teamId);
+                    $stTeam->execute();
+                    $tRow = $stTeam->get_result()->fetch_assoc();
+                    $stTeam->close();
+                    $teamName = trim((string)($tRow['name'] ?? ''));
+                }
+            }
+
+            $rawDate = trim((string)($meta['assigned_date'] ?? ''));
+            $ts = $rawDate !== '' ? strtotime($rawDate) : time();
+            $dateLabel = date('d M Y', $ts ?: time());
+
+            // Build concise details snippet
+            $detailParts = [];
+            if ($firstLeadName !== '') {
+                $detailParts[] = $firstLeadName;
+            } elseif (!empty($cleanLeadIds)) {
+                $detailParts[] = 'Lead #' . $cleanLeadIds[0];
+            }
+            if ($firstProjectName !== '') {
+                $detailParts[] = $firstProjectName;
+            } elseif ($firstLeadPhone !== '') {
+                $detailParts[] = $firstLeadPhone;
+            }
+            $sampleDetail = implode(' - ', $detailParts);
+
+            $actLower = strtolower($actionType);
+            if ($actLower === 'lead_team_assigned') {
+                $teamLabel = $teamName !== '' ? $teamName : 'your team';
+                if ($count === 1) {
+                    $msg = "1 lead assigned to {$teamLabel}" . ($sampleDetail !== '' ? " ({$sampleDetail})" : '') . " on {$dateLabel}.";
+                } else {
+                    $msg = "{$count} leads assigned to {$teamLabel} on {$dateLabel}" . ($sampleDetail !== '' ? " (e.g. {$sampleDetail})" : '') . ".";
+                }
+            } elseif ($actLower === 'lead_reassigned') {
+                if ($count === 1) {
+                    $msg = "1 lead reassigned to you" . ($sampleDetail !== '' ? " ({$sampleDetail})" : '') . " on {$dateLabel}.";
+                } else {
+                    $msg = "{$count} leads reassigned to you on {$dateLabel}" . ($sampleDetail !== '' ? " (e.g. {$sampleDetail})" : '') . ".";
+                }
+            } else {
+                if ($count === 1) {
+                    $msg = "1 new lead assigned to you" . ($sampleDetail !== '' ? " ({$sampleDetail})" : '') . " on {$dateLabel}.";
+                } else {
+                    $msg = "{$count} new leads assigned to you on {$dateLabel}" . ($sampleDetail !== '' ? " (e.g. {$sampleDetail})" : '') . ".";
+                }
+            }
+
+            $targetUrl = trim((string)($meta['target_url'] ?? ''));
+            if ($targetUrl === '') {
+                if ($count === 1 && !empty($cleanLeadIds)) {
+                    $targetUrl = '/view-lead/' . $cleanLeadIds[0];
+                } elseif ($actLower === 'lead_team_assigned' && $teamId > 0) {
+                    $targetUrl = '/lead-lists?team_id=' . $teamId;
+                } else {
+                    $targetUrl = '/my-all-assigned-leads';
+                }
+            }
+
+            return self::dispatch($mysqli, $recipientUserIds, $actorUserId, $actLower, $msg, null, $targetUrl, 'lead', true);
+        } catch (\Throwable $e) {
+            error_log("Notification::notifyLeadAssignment error: " . $e->getMessage());
+            return 0;
+        }
     }
 }

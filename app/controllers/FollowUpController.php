@@ -212,6 +212,18 @@ public function store()
             $histStmt->execute();
             $histStmt->close();
         }
+
+        Notification::notifyLeadAssignment(
+            $this->db,
+            'lead_reassigned',
+            [$transfer_to_user_id],
+            (int)$currentUserId,
+            [(int)$lead_id],
+            [
+                'team_id'       => (int)($newTeamId ?: $oldTeamId),
+                'assigned_date' => date('Y-m-d'),
+            ]
+        );
     }
     // Handle Team Re-assignment (team-level, when no specific user selected)
     elseif ($followUpData['lead_status'] === 'Lead Transferred' && !empty($_POST['team_id'])) {
@@ -242,6 +254,21 @@ public function store()
             $histStmt->bind_param("iiiii", $lead_id, $oldAssignedId, $oldTeamId, $team_id, $currentUserId);
             $histStmt->execute();
             $histStmt->close();
+        }
+
+        $leaderIds = Notification::getTeamLeaderUserIds($this->db, $team_id);
+        if (!empty($leaderIds)) {
+            Notification::notifyLeadAssignment(
+                $this->db,
+                'lead_team_assigned',
+                $leaderIds,
+                (int)$currentUserId,
+                [(int)$lead_id],
+                [
+                    'team_id'       => $team_id,
+                    'assigned_date' => date('Y-m-d'),
+                ]
+            );
         }
     }
 
@@ -436,6 +463,20 @@ public function store()
             if ($updateTeam) {
                 $updateTeam->bind_param("iii", $team_id, $team_id, $leadId);
                 $updateTeam->execute();
+                $leaderIds = Notification::getTeamLeaderUserIds($this->db, $team_id);
+                if (!empty($leaderIds)) {
+                    Notification::notifyLeadAssignment(
+                        $this->db,
+                        'lead_team_assigned',
+                        $leaderIds,
+                        (int)($_SESSION['user']['id'] ?? 0),
+                        [(int)$leadId],
+                        [
+                            'team_id'       => $team_id,
+                            'assigned_date' => date('Y-m-d'),
+                        ]
+                    );
+                }
             }
         }
 

@@ -1682,6 +1682,27 @@ class LeadController extends Controller
         $result = $this->db->query("SELECT full_name FROM users WHERE id=$userId");
         $userName = $result ? ($result->fetch_assoc()['full_name'] ?? '') : '';
 
+        // Send 1 summary popup + notification record + summary email to designated member
+        $hasReassigned = false;
+        foreach ($ids as $leadId) {
+            $pUid = !empty($prevMap[$leadId]['assigned_id']) ? (int)$prevMap[$leadId]['assigned_id'] : 0;
+            if ($pUid > 0 && $pUid !== $userId) {
+                $hasReassigned = true;
+                break;
+            }
+        }
+        Notification::notifyLeadAssignment(
+            $this->db,
+            $hasReassigned ? 'lead_reassigned' : 'lead_member_assigned',
+            [$userId],
+            (int)$assignedBy,
+            $ids,
+            [
+                'team_id'       => (int)($userTeamId ?? 0),
+                'assigned_date' => $assignedAt,
+            ]
+        );
+
         setSuccess("Leads assigned successfully!");
         header("Location: " . $redirectUrl);
         exit;
@@ -1924,6 +1945,28 @@ class LeadController extends Controller
         $loggedInRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
 
         if ($this->leadModel->create($leadData)) {
+            $newLeadId = (int)$this->db->insert_id;
+            $actorId = (int)($_SESSION['user']['id'] ?? 0);
+            if (!empty($leadData['assigned_id'])) {
+                Notification::notifyLeadAssignment($this->db, 'lead_member_assigned', [(int)$leadData['assigned_id']], $actorId, $newLeadId > 0 ? [$newLeadId] : [], [
+                    'count'         => 1,
+                    'lead_name'     => (string)($leadData['full_name'] ?? ''),
+                    'lead_phone'    => (string)($leadData['phone_number'] ?? ''),
+                    'team_id'       => (int)($leadData['team_id'] ?? 0),
+                    'assigned_date' => date('Y-m-d'),
+                ]);
+            } elseif (!empty($leadData['team_id'])) {
+                $leaderIds = Notification::getTeamLeaderUserIds($this->db, (int)$leadData['team_id']);
+                if (!empty($leaderIds)) {
+                    Notification::notifyLeadAssignment($this->db, 'lead_team_assigned', $leaderIds, $actorId, $newLeadId > 0 ? [$newLeadId] : [], [
+                        'count'         => 1,
+                        'lead_name'     => (string)($leadData['full_name'] ?? ''),
+                        'lead_phone'    => (string)($leadData['phone_number'] ?? ''),
+                        'team_id'       => (int)$leadData['team_id'],
+                        'assigned_date' => date('Y-m-d'),
+                    ]);
+                }
+            }
 
             setSuccess("Lead created successfully!");
 
@@ -1999,9 +2042,58 @@ class LeadController extends Controller
 
         $redirect = $_POST['redirect'] ?? '';
 
+        // Capture previous assignment state before update to detect assignment changes
+        $oldAssignedId = 0;
+        $oldTeamId = 0;
+        $stPrev = $this->db->prepare("SELECT assigned_id, team_id FROM leads WHERE id = ? LIMIT 1");
+        if ($stPrev) {
+            $lid = (int)$id;
+            $stPrev->bind_param("i", $lid);
+            $stPrev->execute();
+            $pRow = $stPrev->get_result()->fetch_assoc();
+            $stPrev->close();
+            if ($pRow) {
+                $oldAssignedId = (int)($pRow['assigned_id'] ?? 0);
+                $oldTeamId = (int)($pRow['team_id'] ?? 0);
+            }
+        }
+
         // Update lead
         try {
             $this->leadModel->update($id, $leadData);
+
+            $actorId = (int)($_SESSION['user']['id'] ?? 0);
+            $newAssignedId = !empty($leadData['assigned_id']) ? (int)$leadData['assigned_id'] : 0;
+            $newTeamId = !empty($leadData['team_id']) ? (int)$leadData['team_id'] : 0;
+            if ($newAssignedId > 0 && $newAssignedId !== $oldAssignedId) {
+                Notification::notifyLeadAssignment(
+                    $this->db,
+                    $oldAssignedId > 0 ? 'lead_reassigned' : 'lead_member_assigned',
+                    [$newAssignedId],
+                    $actorId,
+                    [(int)$id],
+                    [
+                        'team_id'       => $newTeamId ?: $oldTeamId,
+                        'assigned_date' => date('Y-m-d'),
+                    ]
+                );
+            } elseif ($newTeamId > 0 && $newTeamId !== $oldTeamId) {
+                $leaderIds = Notification::getTeamLeaderUserIds($this->db, $newTeamId);
+                if (!empty($leaderIds)) {
+                    Notification::notifyLeadAssignment(
+                        $this->db,
+                        'lead_team_assigned',
+                        $leaderIds,
+                        $actorId,
+                        [(int)$id],
+                        [
+                            'team_id'       => $newTeamId,
+                            'assigned_date' => date('Y-m-d'),
+                        ]
+                    );
+                }
+            }
+
             setSuccess("Lead updated successfully!");
             
             $loggedInRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
@@ -2294,6 +2386,17 @@ class LeadController extends Controller
         $result = $this->executeImport($tempPath, $team_id, $project_category_id, $project_id, $source_type_id);
         unlink($tempPath);
 
+        if (!empty($team_id) && (int)($result['imported'] ?? 0) > 0) {
+            $leaderIds = Notification::getTeamLeaderUserIds($this->db, (int)$team_id);
+            if (!empty($leaderIds)) {
+                Notification::notifyLeadAssignment($this->db, 'lead_team_assigned', $leaderIds, (int)($_SESSION['user']['id'] ?? 0), [], [
+                    'count'         => (int)$result['imported'],
+                    'team_id'       => (int)$team_id,
+                    'assigned_date' => date('Y-m-d'),
+                ]);
+            }
+        }
+
         $this->setImportResultFlash($result);
         header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
         exit;
@@ -2532,6 +2635,17 @@ class LeadController extends Controller
         }
 
         $result = $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id'], $meta['project_id'] ?? null, $meta['source_type_id'] ?? null);
+
+        if (!empty($meta['team_id']) && (int)($result['imported'] ?? 0) > 0) {
+            $leaderIds = Notification::getTeamLeaderUserIds($this->db, (int)$meta['team_id']);
+            if (!empty($leaderIds)) {
+                Notification::notifyLeadAssignment($this->db, 'lead_team_assigned', $leaderIds, (int)($_SESSION['user']['id'] ?? 0), [], [
+                    'count'         => (int)$result['imported'],
+                    'team_id'       => (int)$meta['team_id'],
+                    'assigned_date' => date('Y-m-d'),
+                ]);
+            }
+        }
 
         // Cleanup
         unlink($tempFile);
@@ -3234,6 +3348,18 @@ class LeadController extends Controller
                     }
                     $histStmt->close();
                 }
+                $matchedLeadIds = array_map(static fn($r) => (int)$r['id'], $matchedLeads);
+                Notification::notifyLeadAssignment(
+                    $this->db,
+                    'lead_reassigned',
+                    [$targetUserId],
+                    (int)$assignedBy,
+                    $matchedLeadIds,
+                    [
+                        'team_id'       => (int)$teamId,
+                        'assigned_date' => $assignedAt,
+                    ]
+                );
             }
             setSuccess("All duplicate leads reassigned successfully!");
         } else {
