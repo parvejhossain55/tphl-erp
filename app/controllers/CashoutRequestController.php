@@ -837,6 +837,14 @@ class CashoutRequestController extends Controller
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
+                require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+                $coRevSvc = new RequisitionRevisionService($this->db);
+                $coEditSum = RequisitionRevisionService::buildChangeSummary([
+                    'Amount'         => [$request['amount'] ?? 0, $amount],
+                    'Purpose'        => [$request['purpose_paid_to'] ?? '', $purposePaidTo],
+                    'Payment Method' => [$request['payment_method'] ?? '', $paymentMethod],
+                ]);
+                $coRevSvc->logEdit('cashout_requests', $requestId, $coEditSum);
                 setSuccess("Cashout Request #{$requestId} updated successfully.");
             } else {
                 $stmt->close();

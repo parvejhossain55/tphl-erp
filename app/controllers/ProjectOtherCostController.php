@@ -887,6 +887,12 @@ class ProjectOtherCostController extends Controller
 
         if ($this->otherCostModel->update($id, $updateData)) {
             $this->syncToApprovalRequests($id);
+            $ocEditSum = RequisitionRevisionService::buildChangeSummary([
+                'Amount'    => [$request['request_amount'] ?? 0, $requestAmount],
+                'Cost Type' => [$request['rcost_type'] ?? '', $rcostType],
+                'Purpose'   => [$request['purpose'] ?? '', $purpose],
+            ]);
+            $revSvc->logEdit('project_other_costs', $id, $ocEditSum);
             if (!empty($openRev)) {
                 $revSvc->markResubmitted('project_other_costs', $id, $requestAmount, trim($_POST['resubmitted_note'] ?? ''));
                 setSuccess("Project Other Cost request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");

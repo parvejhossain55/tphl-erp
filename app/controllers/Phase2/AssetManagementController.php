@@ -1550,6 +1550,12 @@ class AssetManagementController extends Controller
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
+                $epEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Total Price' => [$req['total_price'] ?? 0, $totalPrice],
+                    'Quantity'    => [$req['quantity'] ?? 0, $quantity],
+                    'Item Name'   => [$req['item_name'] ?? '', $itemName],
+                ]);
+                $revSvc->logEdit('project_extra_assets', $id, $epEditSum);
                 if (!empty($openRev)) {
                     $revSvc->markResubmitted('project_extra_assets', $id, $totalPrice, trim($_POST['resubmitted_note'] ?? ''));
                     setSuccess("Procurement Request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");

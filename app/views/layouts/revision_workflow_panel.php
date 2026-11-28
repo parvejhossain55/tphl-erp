@@ -23,7 +23,38 @@ $revIsCreatorOrAdmin = ($revCurrentUserId === (int)($revCreatorUserId ?? 0)) || 
 $revIsOpen           = ($revLatest && ($revLatest['status'] ?? '') === 'open');
 $revIsResubmitted    = ($revLatest && ($revLatest['status'] ?? '') === 'resubmitted');
 $revModalDomId       = 'sendBackReviewModal_' . preg_replace('/[^a-zA-Z0-9_]/', '', (string)($revModuleTable ?? 'req'));
+
+// Fetch permanent Last Edited By audit log (stays visible even after approval)
+$revLastEdit = $revLastEdit ?? null;
+if ($revLastEdit === null && !empty($revModuleTable) && !empty($revSourceId)) {
+    $revDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+    if ($revDbConn) {
+        if (!class_exists('RequisitionRevisionService')) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        }
+        $revLastEdit = (new RequisitionRevisionService($revDbConn))->getLastEdit((string)$revModuleTable, (int)$revSourceId);
+    }
+}
 ?>
+
+<?php if (!empty($revLastEdit)): ?>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 py-2 mb-3 rounded-3 border bg-light-subtle text-dark small no-print" style="border-left: 4px solid #6366f1 !important;">
+        <div>
+            <i class="fa-solid fa-user-pen text-primary me-1"></i>
+            <strong>Last Edited By:</strong>
+            <span class="fw-semibold"><?= htmlspecialchars($revLastEdit['edited_by_name'] ?? 'User') ?></span>
+            <?php if (!empty($revLastEdit['edited_by_role'])): ?>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1"><?= htmlspecialchars($revLastEdit['edited_by_role']) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($revLastEdit['change_summary'])): ?>
+                <span class="text-muted ms-2">• <?= htmlspecialchars($revLastEdit['change_summary']) ?></span>
+            <?php endif; ?>
+        </div>
+        <div class="text-muted" style="font-size:11.5px;">
+            <i class="fa-regular fa-clock me-1"></i><?= !empty($revLastEdit['created_at']) ? date('d M Y, h:i A', strtotime($revLastEdit['created_at'])) : '—' ?>
+        </div>
+    </div>
+<?php endif; ?>
 
 <?php if ($revIsOpen): ?>
     <div class="alert alert-warning border border-warning shadow-sm d-flex flex-wrap align-items-start justify-content-between gap-3 p-3 mb-3 rounded-3 no-print" style="border-left: 5px solid #f59e0b !important;">

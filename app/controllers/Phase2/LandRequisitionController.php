@@ -682,6 +682,14 @@ class LandRequisitionController extends Controller {
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
+                require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+                $landRevSvc = new \RequisitionRevisionService($this->db);
+                $landEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Amount'  => [$req['requested_amount'] ?? 0, $requestedAmount],
+                    'Type'    => [$req['requisition_type'] ?? '', $requisitionType],
+                    'Purpose' => [$req['purpose'] ?? '', $purpose],
+                ]);
+                $landRevSvc->logEdit('land_fund_requisitions', $id, $landEditSum);
                 setSuccess("Land Requisition #{$id} updated successfully.");
             } else {
                 $stmt->close();

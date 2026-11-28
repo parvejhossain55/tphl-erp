@@ -2466,6 +2466,12 @@ class FundRequisitionController extends Controller {
             if ($stmt->execute()) {
                 $stmt->close();
                 $this->syncApprovalRequest($id);
+                $editSummary = \RequisitionRevisionService::buildChangeSummary([
+                    'Amount'   => [$req['amount'] ?? 0, $amount],
+                    'Category' => [$req['category'] ?? '', $category],
+                    'Purpose'  => [$req['purpose'] ?? '', $purpose],
+                ]);
+                $revSvc->logEdit('fund_requisitions', $id, $editSummary);
                 if (!empty($openRev)) {
                     $revSvc->markResubmitted('fund_requisitions', $id, $amount, trim($_POST['resubmitted_note'] ?? ''));
                     setSuccess("Fund Requisition #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");

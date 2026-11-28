@@ -2057,6 +2057,12 @@ class Con_VendorPaymentRequestController extends Controller
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
+                $vprEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Invoice Amount' => [$req['invoice_amount'] ?? 0, $invoiceAmount],
+                    'Payment Type'   => [$req['payment_type'] ?? '', $paymentType],
+                    'Invoice No'     => [$req['invoice_number'] ?? '', $invoiceNumber],
+                ]);
+                $revSvc->logEdit('vendor_payment_requests', $id, $vprEditSum);
                 if (!empty($openRev)) {
                     $revSvc->markResubmitted('vendor_payment_requests', $id, $invoiceAmount, trim($_POST['resubmitted_note'] ?? ''));
                     setSuccess("Vendor Payment Request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");

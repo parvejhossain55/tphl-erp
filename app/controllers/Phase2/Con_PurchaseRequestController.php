@@ -1438,6 +1438,15 @@ class Con_PurchaseRequestController extends Controller
         if ($result['success']) {
             require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
             $revSvc  = new \RequisitionRevisionService($this->db);
+            $prEditSum = \RequisitionRevisionService::buildChangeSummary([
+                'Purpose'       => [$pr['purpose'] ?? '', $data['purpose'] ?? ''],
+                'Required Date' => [$pr['required_date'] ?? '', $data['required_date'] ?? ''],
+                'Notes'         => [$pr['notes'] ?? '', $data['notes'] ?? ''],
+            ]);
+            if ($prEditSum === 'Details updated') {
+                $prEditSum = 'PR items / details updated (' . count($items) . ' item(s))';
+            }
+            $revSvc->logEdit('purchase_requests', (int)$id, $prEditSum);
             $openRev = $revSvc->getOpenRevision('purchase_requests', (int)$id);
             if (!empty($openRev)) {
                 $revSvc->markResubmitted('purchase_requests', (int)$id, null, trim($_POST['resubmitted_note'] ?? ''));

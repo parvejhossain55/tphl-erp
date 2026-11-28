@@ -43,6 +43,21 @@ class RequisitionRevisionService
                 KEY `idx_rev_creator_status` (`creator_user_id`, `status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+
+        @$this->db->query("
+            CREATE TABLE IF NOT EXISTS `requisition_edit_logs` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `module_table` VARCHAR(64) NOT NULL,
+                `source_id` INT UNSIGNED NOT NULL,
+                `edited_by` INT NOT NULL,
+                `edited_by_name` VARCHAR(150) NOT NULL,
+                `edited_by_role` VARCHAR(100) NULL DEFAULT NULL,
+                `change_summary` TEXT NULL DEFAULT NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_rel_mod_src` (`module_table`, `source_id`, `id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
     }
 
     public function getOpenRevision(string $moduleTable, int $sourceId): ?array
@@ -221,5 +236,90 @@ class RequisitionRevisionService
             $stmt->execute();
             $stmt->close();
         }
+    }
+
+    /**
+     * Record a permanent edit audit entry (who edited, role, timestamp, change summary)
+     */
+    public function logEdit(string $moduleTable, int $sourceId, string $changeSummary = '', ?int $userId = null, ?string $userName = null, ?string $userRole = null): bool
+    {
+        if (!$this->db || $sourceId <= 0) {
+            return false;
+        }
+        try {
+            $uid   = $userId ?? (int)($_SESSION['user']['id'] ?? 0);
+            $uname = trim((string)($userName ?? ($_SESSION['user']['full_name'] ?? 'User')));
+            $urole = trim((string)($userRole ?? ($_SESSION['user']['role_name'] ?? '')));
+            $sum   = trim($changeSummary) !== '' ? trim($changeSummary) : 'Details updated';
+
+            $stmt = $this->db->prepare("
+                INSERT INTO requisition_edit_logs (module_table, source_id, edited_by, edited_by_name, edited_by_role, change_summary)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            if (!$stmt) {
+                return false;
+            }
+            $stmt->bind_param('siisss', $moduleTable, $sourceId, $uid, $uname, $urole, $sum);
+            $ok = $stmt->execute();
+            $stmt->close();
+            return (bool)$ok;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get the most recent edit log entry for a requisition
+     */
+    public function getLastEdit(string $moduleTable, int $sourceId): ?array
+    {
+        if (!$this->db || $sourceId <= 0) {
+            return null;
+        }
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM requisition_edit_logs
+                WHERE module_table = ? AND source_id = ?
+                ORDER BY id DESC LIMIT 1
+            ");
+            if (!$stmt) {
+                return null;
+            }
+            $stmt->bind_param('si', $moduleTable, $sourceId);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            return $row ?: null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Build a clean human-readable summary of changed fields
+     */
+    public static function buildChangeSummary(array $changes): string
+    {
+        $parts = [];
+        foreach ($changes as $label => $pair) {
+            if (!is_array($pair) || count($pair) < 2) {
+                continue;
+            }
+            [$old, $new] = $pair;
+            $oldStr = trim((string)$old);
+            $newStr = trim((string)$new);
+            if ($oldStr === $newStr) {
+                continue;
+            }
+            if (is_numeric($old) && is_numeric($new)) {
+                if ((float)$old == (float)$new) {
+                    continue;
+                }
+                $parts[] = "{$label}: " . number_format((float)$old, 2) . " → " . number_format((float)$new, 2);
+            } else {
+                $parts[] = "{$label} updated";
+            }
+        }
+        return !empty($parts) ? implode(' | ', $parts) : 'Details updated';
     }
 }

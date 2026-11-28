@@ -872,6 +872,12 @@ class Con_LaborRequisitionController extends Controller
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
+                $lrEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Total Amount' => [$req['total_amount'] ?? 0, $totalAmount],
+                    'Labor Count'  => [$req['labor_count'] ?? 0, $laborCount],
+                    'Purpose'      => [$req['purpose'] ?? '', $purpose],
+                ]);
+                $revSvc->logEdit('con_labor_requisitions', $id, $lrEditSum);
                 if (!empty($openRev)) {
                     $revSvc->markResubmitted('con_labor_requisitions', $id, $totalAmount, trim($_POST['resubmitted_note'] ?? ''));
                     setSuccess("Labor Requisition updated & resubmitted directly to {$openRev['return_stage_label']}.");

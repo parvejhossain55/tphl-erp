@@ -150,7 +150,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-2.5 py-1 fw-bold">CB-<?= $bill['id'] ?></span>
                 </div>
                 <div class="card-body p-4">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <div class="info-label text-uppercase text-muted small fw-bold mb-1">Bill Number</div>
                             <div class="info-value fw-bold text-primary fs-14">CB-<?= $bill['id'] ?></div>
@@ -199,7 +199,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 
                         <!-- Financial Summary Row -->
                         <div class="col-md-12 mt-3 pt-2">
-                            <div class="row g-3">
+                            <div class="row ">
                                 <div class="col-sm-6 col-md-4">
                                     <div class="border rounded-3 p-3 text-center h-100 d-flex flex-column justify-content-center">
                                         <small class="text-muted d-block mb-1">Bill Amount</small>
@@ -243,7 +243,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 
                         <!-- Approver Metadata Grid -->
                         <div class="col-md-12 border-top pt-3 mt-3">
-                            <div class="row g-3">
+                            <div class="row ">
                                 <div class="col-md-6">
                                     <div class="info-label text-uppercase text-muted small fw-bold mb-1">Submitted By</div>
                                     <div class="info-value lh-base">
@@ -1062,7 +1062,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
         <div class="card-body p-4">
 
             <!-- Summary strip -->
-            <div class="row mb-4 g-3">
+            <div class="row mb-4 ">
                 <div class="col-md-3">
                     <div class="p-3 rounded-3 bg-success bg-opacity-10 text-center">
                         <small class="text-light d-block mb-1">Total Paid by Accounts</small>

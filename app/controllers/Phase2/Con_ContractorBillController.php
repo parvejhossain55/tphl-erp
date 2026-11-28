@@ -696,6 +696,13 @@ class Con_ContractorBillController extends Controller
 
         $this->billModel->update($id, $data);
 
+        $cbEditSum = \RequisitionRevisionService::buildChangeSummary([
+            'Bill Amount' => [$bill['bill_amount'] ?? 0, $data['bill_amount'] ?? 0],
+            'Bill Type'   => [$bill['bill_type'] ?? '', $data['bill_type'] ?? ''],
+            'Description' => [$bill['work_description'] ?? '', $data['work_description'] ?? ''],
+        ]);
+        $revSvc->logEdit('contractor_bill_requests', (int)$id, $cbEditSum);
+
         if (!empty($openRev)) {
             $revSvc->markResubmitted('contractor_bill_requests', (int)$id, (float)$data['bill_amount'], trim($_POST['resubmitted_note'] ?? ''));
             $stmtArRev = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, updated_at = NOW() WHERE source_table IN ('contractor_bill_requests', 'con_contractor_bills') AND source_id = ?");

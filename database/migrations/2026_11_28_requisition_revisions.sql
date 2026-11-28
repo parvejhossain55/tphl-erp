@@ -26,3 +26,16 @@ CREATE TABLE IF NOT EXISTS `requisition_revisions` (
     KEY `idx_rev_mod_src_status` (`module_table`, `source_id`, `status`),
     KEY `idx_rev_creator_status` (`creator_user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `requisition_edit_logs` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `module_table` VARCHAR(64) NOT NULL,
+    `source_id` INT UNSIGNED NOT NULL,
+    `edited_by` INT NOT NULL,
+    `edited_by_name` VARCHAR(150) NOT NULL,
+    `edited_by_role` VARCHAR(100) NULL DEFAULT NULL,
+    `change_summary` TEXT NULL DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_rel_mod_src` (`module_table`, `source_id`, `id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

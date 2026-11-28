@@ -104,6 +104,13 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 <?php endif; ?>
 
                 <?php 
+                $revModuleTable   = 'cashout_requests';
+                $revSourceId      = (int)($request['id'] ?? 0);
+                $revCreatorUserId = (int)($request['requested_by'] ?? 0);
+                $revCanSendBack   = false;
+                $revLatest        = null;
+                include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+
                 if (!empty($ahInfo['has_request'])) {
                     $sourceTable = 'cashout_requests';
                     $sourceId = (int)$request['id'];

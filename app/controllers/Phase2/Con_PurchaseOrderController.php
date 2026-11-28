@@ -1110,6 +1110,7 @@ class Con_PurchaseOrderController extends Controller
                   || (isset($_POST['is_ajax']) && $_POST['is_ajax'] == '1');
 
         if ($result['success']) {
+            $poRevSvc->logEdit('purchase_orders', (int)$poId, 'Item #' . $itemId . ' quantity updated to ' . number_format($newQty, 3) . ($reason !== '' ? " ({$reason})" : ''));
             $msg = "Quantity updated successfully to " . number_format($newQty, 3) . ". PO amount recalculated based on CST vendor rate.";
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -1189,6 +1190,11 @@ class Con_PurchaseOrderController extends Controller
         if ($stmt) {
             $stmt->bind_param('ssi', $orderDate, $remarks, $poId);
             if ($stmt->execute()) {
+                $poEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Order Date' => [$po['order_date'] ?? '', $orderDate],
+                    'Remarks'    => [$po['remarks'] ?? '', $remarks],
+                ]);
+                $poRevSvc->logEdit('purchase_orders', $poId, $poEditSum);
                 if (!empty($openRev)) {
                     $poRevSvc->markResubmitted('purchase_orders', $poId, null, trim($_POST['resubmitted_note'] ?? ''));
                     setSuccess("Purchase Order #{$poId} updated & resubmitted directly to {$openRev['return_stage_label']}.");
