@@ -294,7 +294,7 @@ $sql = "
     WHERE t.is_recurring = 1
       AND t.parent_recurring_task_id IS NULL
       AND t.recurrence_type IS NOT NULL
-      AND (t.recurrence_end_date IS NULL OR t.recurrence_end_date = '0000-00-00' OR t.recurrence_end_date >= ?)
+      AND (t.recurrence_end_date IS NULL OR t.recurrence_end_date >= ?)
     ORDER BY t.id ASC
 ";
 
@@ -571,7 +571,7 @@ if (!$dryRun && !empty($createdTasks)) {
             }
         }
 
-        $protocol = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? 0) == 443) ? 'https://' : 'http://';
+        $protocol = (PHP_SAPI === 'cli' || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? 0) == 443) ? 'https://' : 'http://';
         $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
         $basePath = rtrim($GLOBALS['base_url'] ?? '/TPHL-ERP', '/');
         $dashboardUrl = $protocol . $host . $basePath . '/my-work-dashboard';

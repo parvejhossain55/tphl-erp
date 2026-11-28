@@ -372,7 +372,23 @@ class MailService
 
     public function triggerQueueProcessorAsync(): void
     {
-        // 1. Non-blocking cURL call with 150ms timeout
+        $script = realpath(__DIR__ . '/../../public/process_email_queue.php');
+
+        // 1. In CLI mode (Linux/Windows cron), run process_email_queue.php locally instead of cURLing localhost:8080
+        if (PHP_SAPI === 'cli' && $script && file_exists($script)) {
+            try {
+                if (DIRECTORY_SEPARATOR === '\\') {
+                    pclose(popen("start /B php " . escapeshellarg($script), "r"));
+                    return;
+                } elseif (function_exists('exec')) {
+                    $phpBin = (defined('PHP_BINARY') && PHP_BINARY) ? PHP_BINARY : 'php';
+                    exec(escapeshellcmd($phpBin) . ' ' . escapeshellarg($script) . ' > /dev/null 2>&1 &');
+                    return;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        // 2. Non-blocking HTTP cURL call with 150ms timeout (web requests / fallback)
         try {
             $url = $this->getBaseUrl() . '/process_email_queue.php';
             $ch = curl_init($url);
@@ -387,13 +403,10 @@ class MailService
             }
         } catch (\Throwable $e) {}
 
-        // 2. On Windows / CLI, also trigger background detached process
-        if (DIRECTORY_SEPARATOR === '\\') {
+        // 3. On Windows web requests, also trigger background detached process
+        if (DIRECTORY_SEPARATOR === '\\' && $script && file_exists($script)) {
             try {
-                $script = realpath(__DIR__ . '/../../public/process_email_queue.php');
-                if ($script && file_exists($script)) {
-                    pclose(popen("start /B php " . escapeshellarg($script), "r"));
-                }
+                pclose(popen("start /B php " . escapeshellarg($script), "r"));
             } catch (\Throwable $e) {}
         }
     }
