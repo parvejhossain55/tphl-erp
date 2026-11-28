@@ -282,12 +282,30 @@ class Con_PurchaseOrderController extends Controller
 
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         $isCreator = ($currentUserId == $createdBy);
+        $isAdminOverride = in_array($currentRoleId, [1, 3], true);
         $isManagement = (strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false || in_array($currentRoleId, [1, 3, 6, 30]));
-        $isNotApproved = empty($po['purchase_head_approved_by_id']) && empty($po['qc_approved_by_id']) && empty($po['op_head_approved_by_id']) && empty($po['bod_approved_by_id']);
-        $canDeletePO = ($isCreator || $isManagement) && $isNotApproved && $po['status'] !== 'Cancelled';
+        $isNotApproved = empty($po['purchase_head_approved_by_id'])
+            && empty($po['qc_approved_by_id'])
+            && empty($po['op_head_approved_by_id'])
+            && empty($po['bod_approved_by_id'])
+            && !in_array($po['status'] ?? '', ['Approved', 'Partially Received', 'Fully Received', 'Cancelled'], true);
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $poRevSvc       = new \RequisitionRevisionService($this->db);
+        $latestRevision = $poRevSvc->getLatestActiveOrResubmitted('purchase_orders', (int)$id);
+        $isPoRevOpen    = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
 
-        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 38, 13, 25, 30, 31, 23]);
-        $canEditItemQty = !$isCancelled && ($isApproverRole || $canApprovePH || $canApproveQC || $canApproveOP || $canApproveBOD || $isCreator);
+        $canDeletePO = ($isCreator || $isManagement) && $isNotApproved && $po['status'] !== 'Cancelled';
+        $canEditPO   = !$isCancelled && ($isNotApproved || $isPoRevOpen) && ($isCreator || $isAdminOverride);
+
+        // Creator can edit item quantity BEFORE anyone approves OR when sent back for review; active approvers or Admin can adjust during approval
+        $canEditItemQty = !$isCancelled && !$alreadyFinalStatus && (
+            $isAdminOverride
+            || $canApprovePH
+            || $canApproveQC
+            || $canApproveOP
+            || $canApproveBOD
+            || ($isCreator && ($isNotApproved || $isPoRevOpen))
+        );
 
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
@@ -487,6 +505,8 @@ class Con_PurchaseOrderController extends Controller
             'mgmtApproved'        => $mgmtApproved,
             'canApproveMgmt'      => $canApproveMgmt,
             'canDeletePO'         => $canDeletePO,
+            'canEditPO'           => $canEditPO,
+            'latestRevision'      => $latestRevision,
             'currentRoleId'       => $currentRoleId,
             'linkedBoq'           => $linkedBoq,
             'hasReceiving'        => $hasReceiving,
@@ -1037,17 +1057,45 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        if ($po['status'] === 'Cancelled') {
-            setError('Cannot modify quantities for a cancelled Purchase Order.');
+        if ($po['status'] === 'Cancelled' || in_array($po['status'] ?? '', ['Approved', 'Partially Received', 'Fully Received'], true)) {
+            setError('Cannot modify quantities for a cancelled, approved, or received Purchase Order.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
             exit;
         }
 
-        // Approver roles (PH, QC, Op Head, BOD, Management, Admin) or Creator
-        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 38, 13, 25, 30, 31, 23]);
-        $isCreator = ($currentUserId == (int)$po['created_by']);
-        if (!$isApproverRole && !$isCreator) {
-            setError('You do not have permission to modify quantities for this Purchase Order.');
+        // Strict Pre-Approval Lock for Creator: once any approver approves, creator is locked out
+        $creatorRole = (int)($po['creator_role_id'] ?? 0);
+        $phNeeded    = in_array($creatorRole, [23, 31], true);
+        $phApproved  = !empty($po['purchase_head_approved_by_id']);
+        $qcApproved  = !empty($po['qc_approved_by_id']);
+        $opApproved  = !empty($po['op_head_approved_by_id']);
+        $bodNeeded   = ((float)($po['total_amount'] ?? 0) > 30000);
+        $bodApproved = !empty($po['bod_approved_by_id']);
+
+        $isNotApproved   = !$phApproved && !$qcApproved && !$opApproved && !$bodApproved;
+        $isAdminOverride = in_array($currentRoleId, [1, 3], true);
+        $isCreator       = ($currentUserId === (int)($po['created_by'] ?? 0));
+
+        $canApprovePH  = in_array($currentRoleId, [17, 1, 3], true) && $phNeeded && !$phApproved;
+        $canApproveQC  = in_array($currentRoleId, [24, 1, 3], true) && (!$phNeeded || $phApproved) && !$qcApproved;
+        $canApproveOP  = in_array($currentRoleId, [20, 1, 3], true) && $qcApproved && !$opApproved;
+        $canApproveBOD = in_array($currentRoleId, [38, 1, 3], true) && $opApproved && $bodNeeded && !$bodApproved;
+        $isActiveApprover = ($canApprovePH || $canApproveQC || $canApproveOP || $canApproveBOD);
+
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $poRevSvc = new \RequisitionRevisionService($this->db);
+        $openRev  = $poRevSvc->getOpenRevision('purchase_orders', (int)$poId);
+
+        if (!$isAdminOverride && !$isActiveApprover && !($isCreator && ($isNotApproved || !empty($openRev)))) {
+            $errMsg = ($isCreator && !$isNotApproved)
+                ? 'This Purchase Order has already been approved by at least one approver. Creator can no longer modify quantities.'
+                : 'You do not have permission to modify quantities for this Purchase Order.';
+            if ((!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || (isset($_POST['is_ajax']) && $_POST['is_ajax'] == '1')) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $errMsg]);
+                exit;
+            }
+            setError($errMsg);
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
             exit;
         }
@@ -1062,6 +1110,7 @@ class Con_PurchaseOrderController extends Controller
                   || (isset($_POST['is_ajax']) && $_POST['is_ajax'] == '1');
 
         if ($result['success']) {
+            $poRevSvc->logEdit('purchase_orders', (int)$poId, 'Item #' . $itemId . ' quantity updated to ' . number_format($newQty, 3) . ($reason !== '' ? " ({$reason})" : ''));
             $msg = "Quantity updated successfully to " . number_format($newQty, 3) . ". PO amount recalculated based on CST vendor rate.";
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -1077,6 +1126,87 @@ class Con_PurchaseOrderController extends Controller
                 exit;
             }
             setError($err);
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+        exit;
+    }
+
+    /**
+     * Update PO Header Details (Order Date & Remarks) — Creator or Admin BEFORE anyone approves
+     */
+    public function update($poId)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $poId          = (int)$poId;
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $po = $this->poModel->find($poId);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+            exit;
+        }
+
+        $isNotApproved = empty($po['purchase_head_approved_by_id'])
+            && empty($po['qc_approved_by_id'])
+            && empty($po['op_head_approved_by_id'])
+            && empty($po['bod_approved_by_id'])
+            && !in_array($po['status'] ?? '', ['Approved', 'Partially Received', 'Fully Received', 'Cancelled'], true);
+
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $poRevSvc = new \RequisitionRevisionService($this->db);
+        $openRev  = $poRevSvc->getOpenRevision('purchase_orders', $poId);
+
+        $isCreator       = ($currentUserId === (int)($po['created_by'] ?? 0));
+        $isAdminOverride = in_array($currentRoleId, [1, 3], true);
+
+        if (!$isNotApproved && empty($openRev)) {
+            setError('This Purchase Order has already been approved or finalized and can no longer be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        if (!$isCreator && !$isAdminOverride) {
+            setError('Only the creator or Admin can edit Purchase Order details before approval.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        $orderDate = trim($_POST['order_date'] ?? ($po['order_date'] ?? date('Y-m-d')));
+        $remarks   = trim($_POST['remarks'] ?? '');
+
+        if (empty($orderDate)) {
+            $orderDate = date('Y-m-d');
+        }
+
+        $stmt = $this->db->prepare("UPDATE purchase_orders SET order_date = ?, remarks = ?, updated_at = NOW() WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param('ssi', $orderDate, $remarks, $poId);
+            if ($stmt->execute()) {
+                $poEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Order Date' => [$po['order_date'] ?? '', $orderDate],
+                    'Remarks'    => [$po['remarks'] ?? '', $remarks],
+                ]);
+                $poRevSvc->logEdit('purchase_orders', $poId, $poEditSum);
+                if (!empty($openRev)) {
+                    $poRevSvc->markResubmitted('purchase_orders', $poId, null, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Purchase Order #{$poId} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Purchase Order #{$poId} details updated successfully.");
+                }
+            } else {
+                setError('Failed to update Purchase Order details.');
+            }
+            $stmt->close();
+        } else {
+            setError('Database error while updating Purchase Order.');
         }
 
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");

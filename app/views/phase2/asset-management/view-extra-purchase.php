@@ -68,6 +68,23 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
             </h4>
         </div>
         <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+            <?php
+            $latestRevision = $latestRevision ?? null;
+            $isEpRevOpen    = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
+            $isExtraReqUnapproved = (($req['overall_status'] ?? 'pending') === 'pending')
+                && (($req['dept_head_status'] ?? '') !== 'approved') && empty($req['dept_head_by'])
+                && (($req['it_head_status'] ?? '') !== 'approved') && empty($req['it_head_by'])
+                && (($req['operations_status'] ?? '') !== 'approved') && empty($req['operations_by'])
+                && (($req['purchase_head_status'] ?? '') !== 'approved') && empty($req['purchase_head_by'])
+                && (($req['qc_audit_status'] ?? '') !== 'approved') && empty($req['qc_audit_by'])
+                && (($req['mgmt_status'] ?? '') !== 'approved') && empty($req['mgmt_by']);
+            $canEditExtraReq = ($isExtraReqUnapproved || $isEpRevOpen) && (((int)($req['requested_by'] ?? 0) === $userId) || in_array($roleId, [1, 3], true));
+            if ($canEditExtraReq):
+            ?>
+                <button type="button" class="btn btn-outline-warning btn-sm px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#editExtraPurchaseModal">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> <?= $isEpRevOpen ? 'Edit &amp; Resubmit' : 'Edit Request' ?>
+                </button>
+            <?php endif; ?>
             <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="btn btn-outline-secondary btn-sm px-3">
                 <i class="fa-solid fa-arrow-left me-1"></i> Back to List
             </a>
@@ -97,6 +114,20 @@ $curStepTitle = $stepTitles[$approvalStep] ?? 'Step Approval';
     <?php endif; ?>
 
     <!-- Main Content Grid -->
+    <?php
+    $epCanSendBack = !empty($canApprove) && !in_array($roleId, [33, 34, 35], true) && !in_array($req['overall_status'] ?? '', ['paid', 'purchased', 'rejected'], true);
+    $revModuleTable      = 'project_extra_assets';
+    $revSourceId         = (int)$req['id'];
+    $revCreatorUserId    = (int)($req['requested_by'] ?? 0);
+    $revCanSendBack      = $epCanSendBack;
+    $revReturnStage      = !empty($approvalStep) ? (string)$approvalStep : 'approver';
+    $revReturnStageLabel = !empty($curStepTitle) ? (string)$curStepTitle : 'Approver';
+    $revRedirectUrl      = '/asset-extra-purchase/' . (int)$req['id'];
+    $revEditModalTarget  = '#editExtraPurchaseModal';
+    $revEditLinkUrl      = '';
+    $revLatest           = $latestRevision ?? null;
+    include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+    ?>
     <div class="row ">
         <!-- LEFT COLUMN: Requisition Info & Audit Trail -->
         <div class="col-lg-7 col-xl-8">
@@ -818,3 +849,75 @@ function handleViewPageApproval(overrideStage) {
 </script>
 
 <?php include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; ?>
+
+<?php if ($canEditExtraReq ?? false): ?>
+<!-- Edit Office Procurement Request Modal (Before 1st Approval or Review Requested) -->
+<div class="modal custom-modal fade" id="editExtraPurchaseModal" tabindex="-1" aria-labelledby="editExtraPurchaseModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editExtraPurchaseModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Procurement Request #<?= (int)$req['id'] ?>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/update/<?= (int)$req['id'] ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Item / Service Name <span class="text-danger">*</span></label>
+                        <input type="text" name="item_name" class="form-control" value="<?= htmlspecialchars($req['item_name'] ?? '') ?>" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="quantity" class="form-control" value="<?= (int)($req['quantity'] ?? 1) ?>" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Estimated Unit Price (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="unit_price" class="form-control" value="<?= htmlspecialchars($req['unit_price'] ?? 0) ?>" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Justification / Remarks</label>
+                        <textarea name="justification" class="form-control" rows="3"><?= htmlspecialchars($req['justification'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isEpRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> <?= ($isEpRevOpen ?? false) ? 'Save & Resubmit' : 'Save Changes' ?>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initExtraPurchaseEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initExtraPurchaseEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editExtraPurchaseModal').length && $('#editExtraPurchaseModal').parent().prop('tagName') !== 'BODY') {
+                $('#editExtraPurchaseModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initExtraPurchaseEditModal);
+    } else {
+        initExtraPurchaseEditModal();
+    }
+})();
+</script>
+<?php endif; ?>

@@ -366,6 +366,35 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                     </a>
                                                 <?php endif; ?>
 
+                                                <?php
+                                                $epUid = (int)($_SESSION['user']['id'] ?? 0);
+                                                $epRid = (int)($_SESSION['user']['role_id'] ?? 0);
+                                                $epUnapproved = (($r['overall_status'] ?? 'pending') === 'pending')
+                                                    && (($r['dept_head_status'] ?? '') !== 'approved') && empty($r['dept_head_by'])
+                                                    && (($r['it_head_status'] ?? '') !== 'approved') && empty($r['it_head_by'])
+                                                    && (($r['operations_status'] ?? '') !== 'approved') && empty($r['operations_by'])
+                                                    && (($r['purchase_head_status'] ?? '') !== 'approved') && empty($r['purchase_head_by'])
+                                                    && (($r['qc_audit_status'] ?? '') !== 'approved') && empty($r['qc_audit_by'])
+                                                    && (($r['mgmt_status'] ?? '') !== 'approved') && empty($r['mgmt_by']);
+                                                if ($epUnapproved && (((int)($r['requested_by'] ?? 0) === $epUid) || in_array($epRid, [1, 3], true))):
+                                                    $epPayload = [
+                                                        'id'            => (int)$r['id'],
+                                                        'item_name'     => $r['item_name'] ?? '',
+                                                        'quantity'      => (int)($r['quantity'] ?? 1),
+                                                        'unit_price'    => $r['unit_price'] ?? 0,
+                                                        'justification' => $r['justification'] ?? '',
+                                                    ];
+                                                ?>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-warning text-dark btn-icon btn-edit-extra-purchase"
+                                                            title="Edit Request"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editExtraPurchaseIndexModal"
+                                                            data-item="<?= htmlspecialchars(json_encode($epPayload), ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </button>
+                                                <?php endif; ?>
+
                                                 <?php if ($canDelete): ?>
                                                     <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Delete Request"
                                                         onclick="openDeleteRequestModal(<?= $r['id'] ?>)">
@@ -1825,4 +1854,88 @@ document.addEventListener("DOMContentLoaded", function() {
 <?php endif; ?>
 
 <?php include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; ?>
+
+<!-- Edit Office Procurement Request Modal (Before 1st Approval — List View) -->
+<div class="modal custom-modal fade" id="editExtraPurchaseIndexModal" tabindex="-1" aria-labelledby="editExtraPurchaseIndexModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editExtraPurchaseIndexModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Procurement Request <span id="edit_ep_title_id"></span>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="" id="editExtraPurchaseIndexForm">
+                    <input type="hidden" name="redirect_to" value="index">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Item / Service Name <span class="text-danger">*</span></label>
+                        <input type="text" name="item_name" id="edit_ep_item_name" class="form-control" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Quantity <span class="text-danger">*</span></label>
+                            <input type="number" min="1" name="quantity" id="edit_ep_qty" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Estimated Unit Price (৳) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0" name="unit_price" id="edit_ep_unit_price" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Justification / Remarks</label>
+                        <textarea name="justification" id="edit_ep_justification" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initEpIndexEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initEpIndexEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editExtraPurchaseIndexModal').length && $('#editExtraPurchaseIndexModal').parent().prop('tagName') !== 'BODY') {
+                $('#editExtraPurchaseIndexModal').appendTo('body');
+            }
+            function populateEp(btn) {
+                var raw = btn.attr('data-item');
+                if (!raw) return;
+                try {
+                    var d = (typeof raw === 'object') ? raw : JSON.parse(raw);
+                    $('#editExtraPurchaseIndexForm').attr('action', '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/update/' + (d.id || ''));
+                    $('#edit_ep_title_id').text('#' + (d.id || ''));
+                    $('#edit_ep_item_name').val(d.item_name || '');
+                    $('#edit_ep_qty').val(d.quantity || 1);
+                    $('#edit_ep_unit_price').val(d.unit_price || 0);
+                    $('#edit_ep_justification').val(d.justification || '');
+                } catch (e) {}
+            }
+            $('#editExtraPurchaseIndexModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateEp($(e.relatedTarget));
+            });
+            $(document).on('click', '.btn-edit-extra-purchase', function() {
+                populateEp($(this));
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEpIndexEditModal);
+    } else {
+        initEpIndexEditModal();
+    }
+})();
+</script>
 

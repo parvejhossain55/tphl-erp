@@ -461,6 +461,33 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                                     </a>
                                                 <?php endif; ?>
 
+                                                <?php
+                                                $currentUserIdLand = (int)($_SESSION['user']['id'] ?? 0);
+                                                $isLandUnapproved = (($row['mgmt_status'] ?? '') === 'Pending')
+                                                    && empty($row['mgmt_by'])
+                                                    && (($row['accounts_status'] ?? '') === 'Pending')
+                                                    && empty($row['accounts_by'])
+                                                    && empty($ahInfoRow['is_op_head_approved']);
+                                                $canEditLandRow = $isLandUnapproved && (((int)($row['requested_by'] ?? 0) === $currentUserIdLand) || in_array($roleId, [1, 3], true));
+                                                if ($canEditLandRow):
+                                                    $landEditPayload = [
+                                                        'id'               => (int)$row['id'],
+                                                        'requisition_type' => $row['requisition_type'] ?? 'Other',
+                                                        'cost_purpose'     => $row['cost_purpose'] ?? '',
+                                                        'requested_amount' => $row['requested_amount'] ?? 0,
+                                                        'purpose'          => $row['purpose'] ?? '',
+                                                    ];
+                                                ?>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-warning btn-edit-land-req"
+                                                            title="Edit Requisition"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editLandReqModal"
+                                                            data-item="<?= htmlspecialchars(json_encode($landEditPayload), ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="fa-light fa-pen-to-square"></i>
+                                                    </button>
+                                                <?php endif; ?>
+
                                                 <?php if ($roleId === 1 || $roleId === 3): ?>
                                                 <form action="<?= $base_url ?>/con-land-requisitions/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this requisition?');" class="d-inline">
                                                     <input type="hidden" name="id" value="<?= $row['id'] ?>">
@@ -1121,3 +1148,89 @@ $page_script = "(function() {
 $ahInfo = null;
 include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; 
 ?>
+
+<!-- Edit Land Requisition Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editLandReqModal" tabindex="-1" aria-labelledby="editLandReqModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editLandReqModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Land Requisition
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $base_url ?>/con-land-requisitions/update" id="editLandReqForm">
+                    <input type="hidden" name="id" id="edit_land_req_id" value="">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Requisition Type <span class="text-danger">*</span></label>
+                        <select name="requisition_type" id="edit_land_req_type" class="form-select" required>
+                            <option value="Bayana">Bayana</option>
+                            <option value="Registration">Registration</option>
+                            <option value="Extra Cost">Extra Cost</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Cost Purpose (Optional)</label>
+                        <input type="text" name="cost_purpose" id="edit_land_cost_purpose" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Requested Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="requested_amount" id="edit_land_req_amount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" id="edit_land_req_purpose" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initLandEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initLandEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editLandReqModal').length && $('#editLandReqModal').parent().prop('tagName') !== 'BODY') {
+                $('#editLandReqModal').appendTo('body');
+            }
+            function populateLandEdit(btn) {
+                var raw = btn.attr('data-item');
+                if (!raw) return;
+                try {
+                    var d = (typeof raw === 'object') ? raw : JSON.parse(raw);
+                    $('#edit_land_req_id').val(d.id || '');
+                    $('#edit_land_req_type').val(d.requisition_type || 'Other');
+                    $('#edit_land_cost_purpose').val(d.cost_purpose || '');
+                    $('#edit_land_req_amount').val(d.requested_amount || '');
+                    $('#edit_land_req_purpose').val(d.purpose || '');
+                } catch (e) {}
+            }
+            $('#editLandReqModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateLandEdit($(e.relatedTarget));
+            });
+            $(document).on('click', '.btn-edit-land-req', function() {
+                populateLandEdit($(this));
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLandEditModal);
+    } else {
+        initLandEditModal();
+    }
+})();
+</script>

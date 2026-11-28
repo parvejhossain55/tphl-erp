@@ -609,6 +609,11 @@ class ApprovalRequest extends Model
             }
         }
 
+        if ($res && !empty($req['source_table']) && !empty($req['source_id'])) {
+            require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+            (new RequisitionRevisionService($this->db))->markResolved((string)$req['source_table'], (int)$req['source_id']);
+        }
+
         return $res;
     }
 
@@ -822,6 +827,11 @@ class ApprovalRequest extends Model
 
         if ($req['source_table'] === 'lead_bookings') {
             $this->db->query("UPDATE lead_bookings SET approval_status = 'approved' WHERE id = " . (int)$req['source_id']);
+        }
+
+        if ($res && !empty($req['source_table']) && !empty($req['source_id'])) {
+            require_once __DIR__ . '/../services/RequisitionRevisionService.php';
+            (new RequisitionRevisionService($this->db))->markResolved((string)$req['source_table'], (int)$req['source_id']);
         }
 
         return $res;

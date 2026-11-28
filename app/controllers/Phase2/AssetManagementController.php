@@ -754,9 +754,14 @@ class AssetManagementController extends Controller
             && in_array($rowDhStatus, ['approved', 'not_required'], true)
             && empty($opoData);
 
+        require_once dirname(dirname(__DIR__)) . '/services/RequisitionRevisionService.php';
+        $epRevSvc       = new \RequisitionRevisionService($this->db);
+        $latestRevision = $epRevSvc->getLatestActiveOrResubmitted('project_extra_assets', (int)$id);
+
         $data = [
             'page_title'             => 'Office Procurement Request #' . $id,
             'req'                    => $req,
+            'latestRevision'         => $latestRevision,
             'canApprove'             => $canApprove,
             'approvalStep'           => $step,
             'overrideWarningStage'   => $overrideWarningStage,
@@ -1466,6 +1471,109 @@ class AssetManagementController extends Controller
             }
         }
         header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+        exit;
+    }
+
+    /**
+     * Update Office Procurement / Extra Asset Purchase Requisition — Creator or Admin ONLY before 1st approval
+     */
+    public function updateExtraPurchase($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/" . (int)$id);
+            exit;
+        }
+
+        $id      = (int)$id;
+        $userId  = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId  = (int)($_SESSION['user']['role_id'] ?? 0);
+        $isAdmin = in_array($roleId, [1, 3], true);
+
+        $req = $this->model->findExtraPurchase($id);
+        if (!$req) {
+            setError("Office procurement request #{$id} not found.");
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+            exit;
+        }
+
+        $isOwner = ((int)($req['requested_by'] ?? 0) === $userId);
+        if (!$isOwner && !$isAdmin) {
+            setError('Only the creator or Admin can edit this procurement request.');
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        require_once dirname(dirname(__DIR__)) . '/services/RequisitionRevisionService.php';
+        $revSvc  = new \RequisitionRevisionService($this->db);
+        $openRev = $revSvc->getOpenRevision('project_extra_assets', $id);
+
+        $hasAnyApproval = (($req['overall_status'] ?? 'pending') !== 'pending')
+            || (($req['dept_head_status'] ?? '') === 'approved') || !empty($req['dept_head_by'])
+            || (($req['it_head_status'] ?? '') === 'approved') || !empty($req['it_head_by'])
+            || (($req['operations_status'] ?? '') === 'approved') || !empty($req['operations_by'])
+            || (($req['purchase_head_status'] ?? '') === 'approved') || !empty($req['purchase_head_by'])
+            || (($req['qc_audit_status'] ?? '') === 'approved') || !empty($req['qc_audit_by'])
+            || (($req['mgmt_status'] ?? '') === 'approved') || !empty($req['mgmt_by']);
+
+        if ($hasAnyApproval && empty($openRev)) {
+            setError('This procurement request has already been approved at one or more stages and can no longer be edited.');
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        $itemName      = trim($_POST['item_name'] ?? '');
+        $quantity      = (int)($_POST['quantity'] ?? 0);
+        $unitPrice     = (float)($_POST['unit_price'] ?? 0);
+        $justification = trim($_POST['justification'] ?? '');
+
+        if ($itemName === '' || $quantity <= 0 || $unitPrice < 0) {
+            setError('Please provide a valid item name, quantity, and unit price.');
+            header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+            exit;
+        }
+
+        $totalPrice = round($quantity * $unitPrice, 2);
+
+        $stmt = $this->db->prepare("
+            UPDATE project_extra_assets
+            SET item_name = ?, quantity = ?, unit_price = ?, total_price = ?, justification = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+        if ($stmt) {
+            $stmt->bind_param('siddsi', $itemName, $quantity, $unitPrice, $totalPrice, $justification, $id);
+            if ($stmt->execute()) {
+                $stmt->close();
+                $title = "Office Procurement: {$itemName} (Qty: {$quantity})";
+                $stmtAr = $this->db->prepare("UPDATE approval_requests SET title = ?, request_amount = ?, updated_at = NOW() WHERE source_table = 'project_extra_assets' AND source_id = ?");
+                if ($stmtAr) {
+                    $stmtAr->bind_param('sdi', $title, $totalPrice, $id);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
+                $epEditSum = \RequisitionRevisionService::buildChangeSummary([
+                    'Total Price' => [$req['total_price'] ?? 0, $totalPrice],
+                    'Quantity'    => [$req['quantity'] ?? 0, $quantity],
+                    'Item Name'   => [$req['item_name'] ?? '', $itemName],
+                ]);
+                $revSvc->logEdit('project_extra_assets', $id, $epEditSum);
+                if (!empty($openRev)) {
+                    $revSvc->markResubmitted('project_extra_assets', $id, $totalPrice, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Procurement Request #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Procurement Request #{$id} updated successfully.");
+                }
+            } else {
+                $stmt->close();
+                setError('Failed to update procurement request.');
+            }
+        } else {
+            setError('Database error while updating procurement request.');
+        }
+
+        $redirectTo = (($_POST['redirect_to'] ?? '') === 'index')
+            ? ($GLOBALS['base_url'] . "/asset-extra-purchases")
+            : ($GLOBALS['base_url'] . "/asset-extra-purchase/{$id}");
+        header("Location: " . $redirectTo);
         exit;
     }
 }

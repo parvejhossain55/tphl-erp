@@ -18,7 +18,7 @@
             <div class="col-lg-10 mx-auto">
                 <div class="card__wrapper shadow-sm">
                     <form action="<?= $GLOBALS['base_url'] ?>/con-operator-update/<?= $operator['id'] ?>" method="POST">
-                        <div class="row g-3">
+                        <div class="row ">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Operator Name <span class="text-danger">*</span></label>
                                 <input type="text" name="name" class="form-control" 

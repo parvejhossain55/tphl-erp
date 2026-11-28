@@ -256,7 +256,7 @@ $selectedStatus = $filters['status'] ?? 'All';
                 </div>
 
                 <!-- 3. Contractor / Trade Filter (Searchable Select2) -->
-                <div class="col-xl-3 col-lg-3 col-md-6">
+                <div class="col-xl-3 col-l col-md-6">
                     <select id="contractorFilterSelect" class="form-select form-select-sm select2 shadow-xs" data-placeholder="All Contractors & Trades (<?= count($contractors ?? []) ?>)" style="width: 100%;">
                         <option value="">All Contractors & Trades (<?= count($contractors ?? []) ?>)</option>
                         <?php if (!empty($contractors)): ?>

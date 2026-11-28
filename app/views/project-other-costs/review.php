@@ -21,6 +21,22 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
             </nav>
         </div>
         <div class="d-flex gap-2">
+            <?php
+            $latestRevision = $latestRevision ?? null;
+            $isOcRevOpen    = ($latestRevision && ($latestRevision['status'] ?? '') === 'open');
+            $isOtherCostUnapproved = (($request['status'] ?? '') === 'pending')
+                && (($request['dept_head_status'] ?? '') !== 'approved')
+                && empty($request['dept_head_approved_by'])
+                && empty($request['qc_audit_approved_id'])
+                && empty($request['management_apporved_by_id'])
+                && empty($request['payment_by_id']);
+            $canEditOtherCost = ($isOtherCostUnapproved || $isOcRevOpen) && (((int)($request['created_by_id'] ?? 0) === (int)($userId ?? 0)) || in_array((int)($roleId ?? 0), [1, 3], true));
+            if ($canEditOtherCost):
+            ?>
+                <button type="button" class="btn btn-outline-warning btn-sm shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editOtherCostModal">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> <?= $isOcRevOpen ? 'Edit &amp; Resubmit' : 'Edit Request' ?>
+                </button>
+            <?php endif; ?>
             <?php if ($request['status'] === 'paid'): ?>
                 <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=other_cost&cashout_request_id=<?= $request['id'] ?>&project_id=<?= $request['project_id'] ?>" class="btn btn-warning btn-sm shadow-sm">
                     <i class="bi bi-sliders me-1"></i> Settlement / Adjustment
@@ -36,6 +52,38 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
     </div>
 
     <section class="section">
+        <?php
+        $ocCanSendBack = false;
+        $ocReturnStage = 'approver';
+        $ocReturnStageLabel = 'Approver';
+        $ocRoleId = (int)($roleId ?? 0);
+        if (!in_array($ocRoleId, [33, 34, 35], true) && !in_array($request['status'] ?? '', ['paid', 'rejected'], true)) {
+            $creatorBossId = (int)($request['creator_reporting_user_id'] ?? 0);
+            if (($request['dept_head_status'] ?? '') === 'pending' && ($creatorBossId === (int)($userId ?? 0) || in_array($ocRoleId, [1, 3], true))) {
+                $ocCanSendBack = true; $ocReturnStage = 'dept_head'; $ocReturnStageLabel = 'Department Head';
+            } elseif (($request['status'] ?? '') === 'pending' && ($request['dept_head_status'] ?? '') !== 'pending' && in_array($ocRoleId, [13, 24, 25, 1, 3], true)) {
+                $ocCanSendBack = true; $ocReturnStage = 'qc'; $ocReturnStageLabel = 'QC & Internal Audit';
+            } elseif (($request['status'] ?? '') === 'qc_approved' && in_array($ocRoleId, [3, 15, 20, 22, 32, 38, 1], true)) {
+                $ocCanSendBack = true;
+                $ocReturnStage = in_array($ocRoleId, [20, 32], true) ? 'op_head' : 'mgmt';
+                $ocReturnStageLabel = in_array($ocRoleId, [20, 32], true) ? 'Admin & Operation Head' : 'Management / PM Head';
+            } elseif (($request['status'] ?? '') === 'management_approved' && !$isAhApproved && in_array($ocRoleId, [30, 1, 3], true)) {
+                $ocCanSendBack = true; $ocReturnStage = 'accounts_head'; $ocReturnStageLabel = 'Accounts Head';
+            }
+        }
+        $revModuleTable      = 'project_other_costs';
+        $revSourceId         = (int)$request['id'];
+        $revCreatorUserId    = (int)($request['created_by_id'] ?? 0);
+        $revCanSendBack      = $ocCanSendBack;
+        $revReturnStage      = $ocReturnStage;
+        $revReturnStageLabel = $ocReturnStageLabel;
+        $revRedirectUrl      = '/project-other-costs/review/' . (int)$request['id'];
+        $revEditModalTarget  = '#editOtherCostModal';
+        $revEditLinkUrl      = '';
+        $revLatest           = $latestRevision ?? null;
+        include __DIR__ . '/../layouts/revision_workflow_panel.php';
+        ?>
+
         <?php 
         if (!empty($ahInfo['has_request'])) {
             $sourceTable = 'project_other_costs';
@@ -783,5 +831,77 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
         </div>
     </section>
 </main>
+
+<?php if ($canEditOtherCost ?? false): ?>
+<!-- Edit Project Other Cost Modal (Before 1st Approval) -->
+<div class="modal custom-modal fade" id="editOtherCostModal" tabindex="-1" aria-labelledby="editOtherCostModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+        <div class="modal-content">
+            <div class="modal-header pb-3 mb-2 border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="editOtherCostModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Other Cost Request #<?= (int)$request['id'] ?>
+                </h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/update/<?= (int)$request['id'] ?>">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Cost Type <span class="text-danger">*</span></label>
+                        <select name="rcost_type" class="form-select" required>
+                            <?php foreach (($costTypes ?? ['others' => 'Others']) as $ctKey => $ctLabel): ?>
+                                <option value="<?= htmlspecialchars($ctKey) ?>" <?= (($request['rcost_type'] ?? '') === $ctKey) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars(is_array($ctLabel) ? ($ctLabel['label'] ?? $ctKey) : $ctLabel) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Requested Amount (৳) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="1" name="request_amount" class="form-control" value="<?= htmlspecialchars($request['request_amount'] ?? '') ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Purpose / Description <span class="text-danger">*</span></label>
+                        <textarea name="purpose" class="form-control" rows="3" required><?= htmlspecialchars($request['purpose'] ?? '') ?></textarea>
+                    </div>
+                    <?php if ($isOcRevOpen ?? false): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Update / Response Note to <?= htmlspecialchars($latestRevision['return_stage_label'] ?? 'Approver') ?></label>
+                        <textarea name="resubmitted_note" class="form-control" rows="2" placeholder="Briefly explain what you updated..."></textarea>
+                    </div>
+                    <?php endif; ?>
+                    <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="fa-solid fa-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function initOtherCostEditModal() {
+        if (typeof jQuery === 'undefined' || typeof bootstrap === 'undefined') {
+            setTimeout(initOtherCostEditModal, 50);
+            return;
+        }
+        jQuery(function($) {
+            if ($('#editOtherCostModal').length && $('#editOtherCostModal').parent().prop('tagName') !== 'BODY') {
+                $('#editOtherCostModal').appendTo('body');
+            }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initOtherCostEditModal);
+    } else {
+        initOtherCostEditModal();
+    }
+})();
+</script>
+<?php endif; ?>
 
 

@@ -90,6 +90,39 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 </div>
 
 <div class="container-fluid">
+    <?php
+    $cbCanSendBack = false;
+    $cbReturnStage = 'approver';
+    $cbReturnStageLabel = 'Approver';
+    $cbRoleId = (int)($userRole ?? 0);
+    if (!in_array($cbRoleId, [33, 34, 35], true) && !in_array($status ?? '', ['paid', 'fully_paid', 'rejected'], true)) {
+        if ($status === 'submitted' && ($canApprovePM ?? false)) {
+            $cbCanSendBack = true; $cbReturnStage = 'pm'; $cbReturnStageLabel = 'PM / PM Head';
+        } elseif ($status === 'verified' && empty($bill['purchase_head_approved_by_id']) && (($canApprovePurchaseHead ?? false) || ($canReviewTeamLeader ?? false))) {
+            $cbCanSendBack = true; $cbReturnStage = 'purchase_head'; $cbReturnStageLabel = 'Purchase Head / TL';
+        } elseif ($status === 'verified' && !empty($bill['purchase_head_approved_by_id']) && ($canApproveQC ?? false)) {
+            $cbCanSendBack = true; $cbReturnStage = 'qc'; $cbReturnStageLabel = 'QC & Internal Audit';
+        } elseif ($status === 'qc_approved' && ($canApproveManagement ?? false)) {
+            $cbCanSendBack = true;
+            $cbReturnStage = in_array($cbRoleId, [20, 32], true) ? 'op_head' : 'mgmt';
+            $cbReturnStageLabel = in_array($cbRoleId, [20, 32], true) ? 'Admin & Operation Head' : 'Management';
+        } elseif ($status === 'approved' && empty($ahInfo['is_accounts_head_approved']) && in_array($cbRoleId, [30, 1, 3], true)) {
+            $cbCanSendBack = true; $cbReturnStage = 'accounts_head'; $cbReturnStageLabel = 'Accounts Head';
+        }
+    }
+    $revModuleTable      = 'contractor_bill_requests';
+    $revSourceId         = (int)$bill['id'];
+    $revCreatorUserId    = (int)($bill['created_by'] ?? 0);
+    $revCanSendBack      = $cbCanSendBack;
+    $revReturnStage      = $cbReturnStage;
+    $revReturnStageLabel = $cbReturnStageLabel;
+    $revRedirectUrl      = '/con-contractor-bill/' . (int)$bill['id'];
+    $revEditModalTarget  = '';
+    $revEditLinkUrl      = $base_url . '/con-contractor-bill-edit/' . (int)$bill['id'];
+    $revLatest           = $latestRevision ?? null;
+    include __DIR__ . '/../../layouts/revision_workflow_panel.php';
+    ?>
+
     <!-- ACCOUNTS HEAD APPROVAL STATUS & ACTION CARD -->
     <?php 
     if (!empty($ahInfo['has_request'])) {
@@ -117,7 +150,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-2.5 py-1 fw-bold">CB-<?= $bill['id'] ?></span>
                 </div>
                 <div class="card-body p-4">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-6">
                             <div class="info-label text-uppercase text-muted small fw-bold mb-1">Bill Number</div>
                             <div class="info-value fw-bold text-primary fs-14">CB-<?= $bill['id'] ?></div>
@@ -166,7 +199,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 
                         <!-- Financial Summary Row -->
                         <div class="col-md-12 mt-3 pt-2">
-                            <div class="row g-3">
+                            <div class="row ">
                                 <div class="col-sm-6 col-md-4">
                                     <div class="border rounded-3 p-3 text-center h-100 d-flex flex-column justify-content-center">
                                         <small class="text-muted d-block mb-1">Bill Amount</small>
@@ -210,7 +243,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 
                         <!-- Approver Metadata Grid -->
                         <div class="col-md-12 border-top pt-3 mt-3">
-                            <div class="row g-3">
+                            <div class="row ">
                                 <div class="col-md-6">
                                     <div class="info-label text-uppercase text-muted small fw-bold mb-1">Submitted By</div>
                                     <div class="info-value lh-base">
@@ -1029,7 +1062,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
         <div class="card-body p-4">
 
             <!-- Summary strip -->
-            <div class="row mb-4 g-3">
+            <div class="row mb-4 ">
                 <div class="col-md-3">
                     <div class="p-3 rounded-3 bg-success bg-opacity-10 text-center">
                         <small class="text-light d-block mb-1">Total Paid by Accounts</small>
