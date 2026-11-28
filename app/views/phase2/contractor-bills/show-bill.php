@@ -749,17 +749,18 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             <label class="form-label fw-semibold mb-1.5">PM Verification Remarks / Note (Optional)</label>
                             <textarea name="verification_note" class="form-control form-control-sm" rows="2" placeholder="Add PM verification remarks..."></textarea>
                         </div>
-                        <div class="row gx-2 pt-1">
-                            <div class="col-6">
-                                <button type="submit" class="btn btn-info text-white w-100 fw-bold py-2" onclick="return confirm('Approve as Project Manager and forward to Head of Purchase?');">
-                                    <i class="bi bi-check-circle me-1"></i> Dept. Head Approve
+                        <div class="d-flex flex-wrap gap-2 pt-1">
+                            <button type="submit" class="btn btn-info text-white flex-grow-1 fw-bold py-2" onclick="return confirm('Approve as Project Manager and forward to Head of Purchase?');">
+                                <i class="bi bi-check-circle me-1"></i> Dept. Head Approve
+                            </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_contractor_bill_requests">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
                                 </button>
-                            </div>
-                            <div class="col-6">
-                                <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
-                                    <i class="bi bi-x-circle me-1"></i> Reject
-                                </button>
-                            </div>
+                            <?php endif; ?>
+                            <button type="button" class="btn btn-danger flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                <i class="bi bi-x-circle me-1"></i> Reject
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -813,17 +814,18 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                                 <label class="form-label fw-semibold mb-1.5">Head of Purchase Note (Optional)</label>
                                 <textarea name="purchase_head_note" class="form-control form-control-sm" rows="2" placeholder="Add Head of Purchase remarks..."></textarea>
                             </div>
-                            <div class="row gx-2 pt-1">
-                                <div class="col-6">
-                                    <button type="button" id="btnCbPhApprove" class="btn btn-primary w-100 fw-bold py-2">
-                                        <i class="bi bi-check-circle me-1"></i> Purchase Head Approve
+                            <div class="d-flex flex-wrap gap-2 pt-1">
+                                <button type="button" id="btnCbPhApprove" class="btn btn-primary flex-grow-1 fw-bold py-2">
+                                    <i class="bi bi-check-circle me-1"></i> Purchase Head Approve
+                                </button>
+                                <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                    <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_contractor_bill_requests">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
                                     </button>
-                                </div>
-                                <div class="col-6">
-                                    <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
-                                        <i class="bi bi-x-circle me-1"></i> Reject
-                                    </button>
-                                </div>
+                                <?php endif; ?>
+                                <button type="button" class="btn btn-danger flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -864,17 +866,18 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                                 <label class="form-label fw-semibold mb-1.5">QC Note (Optional)</label>
                                 <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add QC remarks..."></textarea>
                             </div>
-                            <div class="row gx-2 pt-1">
-                                <div class="col-6">
-                                    <button type="button" id="btnCbQcApprove" class="btn btn-warning w-100 fw-bold py-2">
-                                        <i class="bi bi-check-circle me-1"></i> QC Approve
+                            <div class="d-flex flex-wrap gap-2 pt-1">
+                                <button type="button" id="btnCbQcApprove" class="btn btn-success flex-grow-1 fw-bold py-2">
+                                    <i class="bi bi-check-circle me-1"></i> QC Approve
+                                </button>
+                                <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                    <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_contractor_bill_requests">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
                                     </button>
-                                </div>
-                                <div class="col-6">
-                                    <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
-                                        <i class="bi bi-x-circle me-1"></i> Reject
-                                    </button>
-                                </div>
+                                <?php endif; ?>
+                                <button type="button" class="btn btn-danger flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -950,17 +953,18 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             <label class="form-label fw-semibold mb-1.5"><?= $isOpHeadAction ? 'Operation Head Note' : 'Management Note' ?> (Optional)</label>
                             <textarea name="management_note" class="form-control form-control-sm" rows="2" placeholder="Add remarks..."></textarea>
                         </div>
-                        <div class="row gx-2 pt-1">
-                            <div class="col-6">
-                                <button type="button" id="btnCbMgmtApprove" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> w-100 fw-bold py-2">
-                                    <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Approve (Op Head)' : 'Approve Bill' ?>
+                        <div class="d-flex flex-wrap gap-2 pt-1">
+                            <button type="button" id="btnCbMgmtApprove" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> flex-grow-1 fw-bold py-2">
+                                <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Approve (Op Head)' : 'Approve Bill' ?>
+                            </button>
+                            <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                <button type="button" class="btn btn-warning text-dark flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_contractor_bill_requests">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
                                 </button>
-                            </div>
-                            <div class="col-6">
-                                <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
-                                    <i class="bi bi-x-circle me-1"></i> Reject
-                                </button>
-                            </div>
+                            <?php endif; ?>
+                            <button type="button" class="btn btn-danger flex-grow-1 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                <i class="bi bi-x-circle me-1"></i> Reject
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1006,12 +1010,12 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     All payments have been fully processed.
                 </div>
             <?php elseif ($isRejected): ?>
-                <div class="alert alert-danger text-center">
-                    <i class="bi bi-x-circle-fill fs-4 d-block mb-2"></i>
-                    <strong>This bill has been rejected.</strong>
+                <div class="p-3 rounded-3 text-center mb-3" style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;color:#991b1b;">
+                    <i class="bi bi-x-circle-fill fs-4 d-block mb-1 text-danger"></i>
+                    <strong style="color:#991b1b;">This bill has been rejected.</strong>
                     <?php if (!empty($bill['rejection_reason']) || !empty($bill['management_note'])): ?>
-                        <div class="mt-2 text-start p-2 bg-white rounded border fst-italic">
-                            "<?= htmlspecialchars($bill['rejection_reason'] ?? $bill['management_note']) ?>"
+                        <div class="mt-2 text-start p-2 bg-white rounded border fst-italic small" style="color:#1f2937;border-color:#fecaca !important;">
+                            "<?= htmlspecialchars(trim($bill['rejection_reason'] ?? $bill['management_note'])) ?>"
                         </div>
                     <?php endif; ?>
                 </div>

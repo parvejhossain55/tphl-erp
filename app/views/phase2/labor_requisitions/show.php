@@ -176,7 +176,7 @@ $steps[] = [
                 && empty($req['pm_approved_by'])
                 && empty($req['qc_approved_by'])
                 && empty($req['management_approved_by']);
-            $canEditLaborReq = ($isLrUnapproved || $isLrRevOpen) && ($isOwner || in_array((int)$userRole, [1, 3], true));
+            $canEditLaborReq = ($isLrUnapproved || $isLrRevOpen || ($req['status'] ?? '') === 'rejected') && ($isOwner || in_array((int)$userRole, [1, 3], true));
             if ($canEditLaborReq):
             ?>
                 <button type="button" class="btn btn-outline-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editLaborReqModal">
@@ -484,10 +484,15 @@ $steps[] = [
                 </div>
                 <div class="card-body">
                     <p class="fs-13 text-muted mb-3">Review and approve or reject this labor requisition.</p>
-                    <div class="action-btn-group">
+                    <div class="action-btn-group d-flex flex-wrap gap-2">
                         <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#pmApproveModal">
                             <i class="fa-solid fa-thumbs-up me-1"></i> Approve Requisition
                         </button>
+                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                            <button type="button" class="btn btn-warning text-dark btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_con_labor_requisitions">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                            </button>
+                        <?php endif; ?>
                         <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#pmRejectModal">
                             <i class="fa-solid fa-thumbs-down me-1"></i> Reject
                         </button>
@@ -542,10 +547,15 @@ $steps[] = [
                         <span class="text-muted fs-12 fw-semibold">Requested Amount:</span>
                         <span class="fs-16 fw-bold text-dark">৳ <?= number_format($req['total_amount'], 2) ?></span>
                     </div>
-                    <div class="action-btn-group">
+                    <div class="action-btn-group d-flex flex-wrap gap-2">
                         <button class="btn btn-sm fw-semibold text-white" style="background:#20c997" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
                             <i class="fa-solid fa-check me-1"></i> QC Approve & Forward
                         </button>
+                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                            <button type="button" class="btn btn-warning text-dark btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_con_labor_requisitions">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                            </button>
+                        <?php endif; ?>
                         <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#qcRejectModal">
                             <i class="fa-solid fa-xmark me-1"></i> Reject
                         </button>
@@ -640,8 +650,8 @@ $steps[] = [
                         <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
                     <?php endif; ?>
 
-                    <div class="row gx-2">
-                        <div class="col-6">
+                    <div class="d-flex flex-wrap gap-2">
+                        <div class="flex-grow-1">
                             <?php if ($isMgmtLockedLabor): ?>
                                 <button type="button" class="btn btn-secondary w-100 fw-bold py-2 disabled" title="Awaiting Admin & Operation Head approval">
                                     <i class="fa-solid fa-lock me-1"></i> Locked (> ৳10,000)
@@ -656,7 +666,14 @@ $steps[] = [
                                 </button>
                             <?php endif; ?>
                         </div>
-                        <div class="col-6">
+                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                            <div class="flex-grow-1">
+                                <button type="button" class="btn btn-warning text-dark w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_con_labor_requisitions">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                </button>
+                            </div>
+                        <?php endif; ?>
+                        <div class="flex-grow-1">
                             <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
                                 <i class="fa-solid fa-ban me-1"></i> Reject
                             </button>
@@ -1007,7 +1024,7 @@ $steps[] = [
 <div class="modal fade" id="pmRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger"><i class="fa-solid fa-thumbs-down me-2"></i>Reject Requisition (PM / PM Head)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger text-white"><h5 class="modal-title text-white fw-bold" style="color:#fff !important;"><i class="fa-solid fa-thumbs-down me-2"></i>Reject Requisition (PM / PM Head)</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Rejection Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>
@@ -1129,7 +1146,7 @@ $steps[] = [
 <div class="modal fade" id="qcRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-qc-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">QC & Internal Audit Rejection</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger text-white"><h5 class="modal-title text-white fw-bold" style="color:#fff !important;">QC & Internal Audit Rejection</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>

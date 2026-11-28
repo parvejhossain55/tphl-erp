@@ -148,7 +148,7 @@ html[data-theme-mode="dark"] .transport-details-box .transport-purpose-box,
                 !empty($req['approved_by']) ||
                 !empty($req['paid_by'])
             );
-            $canEditReq = (!$isRequisitionApproved || $isFrRevOpen) && ($isOwner || in_array($sessionRoleId, [1, 3], true));
+            $canEditReq = (!$isRequisitionApproved || $isFrRevOpen || ($requisition['status'] ?? '') === 'rejected' || ($requisition['dept_head_status'] ?? '') === 'rejected') && ($isOwner || in_array($sessionRoleId, [1, 3], true));
             $canDeleteReq = !$isRequisitionApproved && ($isOwner || $isAdmin);
             if ($canEditReq):
             ?>
@@ -1393,9 +1393,9 @@ if ($canShowQcModal):
 <div class="modal fade" id="qcRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-qc" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10">
-                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (QC &amp; Internal Audit)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white fw-bold" style="color:#fff !important;"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (QC &amp; Internal Audit)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
@@ -1484,9 +1484,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="deptRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-dept" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10">
-                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Department Head)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white fw-bold" style="color:#fff !important;"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Department Head)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
@@ -1618,9 +1618,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="mgmtRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10">
-                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Management)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white fw-bold" style="color:#fff !important;"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Management)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
@@ -1643,9 +1643,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="opHeadRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10">
-                <h5 class="modal-title text-danger"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Operation Head)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white fw-bold" style="color:#fff !important;"><i class="fa-solid fa-xmark me-1"></i> Reject Requisition (Operation Head)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
@@ -1723,7 +1723,7 @@ if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'
 <div class="modal fade" id="extraFundModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/extra-fund/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">Request Extra Fund</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger text-white"><h5 class="modal-title text-white fw-bold" style="color:#fff !important;">Request Extra Fund</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="p-2.5 px-3 mb-3 rounded-2 border border-warning bg-warning-subtle text-dark fs-12">Original: <strong>&#2547; <?php echo number_format($req['amount'],2); ?></strong> | Spent: <strong>&#2547; <?php echo number_format($totalSpent,2); ?></strong></div>
                 <div class="mb-3"><label class="form-label">Extra Amount (&#2547;) <span class="text-danger">*</span></label>

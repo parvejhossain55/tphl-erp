@@ -444,6 +444,8 @@ class LandRequisitionController extends Controller {
         $stmt->bind_param("sisi", $status, $mgmt_by, $note, $id);
 
         if ($stmt->execute()) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('land_fund_requisitions', (int)$id);
             $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
             if ($isMgmt && $status === 'Approved') {
                 $this->db->query("
@@ -641,13 +643,17 @@ class LandRequisitionController extends Controller {
             }
         }
 
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        $landRevSvc = new \RequisitionRevisionService($this->db);
+        $openRev    = $landRevSvc->getOpenRevision('land_fund_requisitions', $id);
+
         $hasAnyApproval = ($req['mgmt_status'] ?? '') !== 'Pending'
             || !empty($req['mgmt_by'])
             || ($req['accounts_status'] ?? '') !== 'Pending'
             || !empty($req['accounts_by'])
             || $arApproved;
 
-        if ($hasAnyApproval) {
+        if ($hasAnyApproval && empty($openRev) && empty($landRevSvc->getRejectionStatus('land_fund_requisitions', $id)['is_rejected'])) {
             setError('This land requisition has already been approved or processed and can no longer be edited.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
             exit;
@@ -682,15 +688,18 @@ class LandRequisitionController extends Controller {
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
-                require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
-                $landRevSvc = new \RequisitionRevisionService($this->db);
                 $landEditSum = \RequisitionRevisionService::buildChangeSummary([
                     'Amount'  => [$req['requested_amount'] ?? 0, $requestedAmount],
                     'Type'    => [$req['requisition_type'] ?? '', $requisitionType],
                     'Purpose' => [$req['purpose'] ?? '', $purpose],
                 ]);
                 $landRevSvc->logEdit('land_fund_requisitions', $id, $landEditSum);
-                setSuccess("Land Requisition #{$id} updated successfully.");
+                if (!empty($openRev)) {
+                    $landRevSvc->markResubmitted('land_fund_requisitions', $id, $requestedAmount, trim($_POST['resubmitted_note'] ?? ''));
+                    setSuccess("Land Requisition #{$id} updated & resubmitted directly to {$openRev['return_stage_label']}.");
+                } else {
+                    setSuccess("Land Requisition #{$id} updated successfully.");
+                }
             } else {
                 $stmt->close();
                 setError('Failed to update land requisition.');

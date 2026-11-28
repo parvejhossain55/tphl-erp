@@ -16,6 +16,16 @@ $statusMap = [
 ];
 ?>
 <?php if (!empty($bills)): ?>
+    <?php
+    $cbEditMap = [];
+    if (function_exists('db')) {
+        $cbDb = db();
+        if ($cbDb) {
+            require_once __DIR__ . '/../../../../services/RequisitionRevisionService.php';
+            $cbEditMap = (new RequisitionRevisionService($cbDb))->getLastEditMap('contractor_bill_requests');
+        }
+    }
+    ?>
     <?php foreach ($bills as $i => $b): ?>
         <?php
         $badge = $statusMap[$b['status']] ?? 'secondary';
@@ -73,6 +83,15 @@ $statusMap = [
                 <div class="fw-medium text-dark"><?= htmlspecialchars($b['created_by_name'] ?? '-') ?></div>
                 <?php if (!empty($b['created_at'])): ?>
                     <div class="text-muted" style="font-size: 10.5px;"><?= date('d M Y, h:i A', strtotime($b['created_at'])) ?></div>
+                <?php endif; ?>
+                <?php $cbEdit = $cbEditMap[(int)($b['id'] ?? 0)] ?? null; ?>
+                <?php if (!empty($cbEdit)): ?>
+                    <div class="mt-1" style="font-size:10px; color:#b45309; line-height:1.25;" title="<?= htmlspecialchars($cbEdit['change_summary'] ?? 'Edited') ?>">
+                        <i class="bi bi-pencil-square me-1"></i>Edited: <strong><?= htmlspecialchars($cbEdit['edited_by_name']) ?></strong>
+                        <?php if (!empty($cbEdit['created_at'])): ?>
+                            <div class="text-muted" style="font-size:9.5px;"><?= date('d M Y, h:i A', strtotime($cbEdit['created_at'])) ?></div>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </td>
             <td>

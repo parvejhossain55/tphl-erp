@@ -5,6 +5,18 @@
  */
 $startOffset = (int)($pagination['offset'] ?? 0);
 ?>
+<?php
+$vprEditMap = [];
+if (!empty($requests)) {
+    $vprDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+    if ($vprDbConn) {
+        if (!class_exists('RequisitionRevisionService')) {
+            require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+        }
+        $vprEditMap = (new RequisitionRevisionService($vprDbConn))->getLastEditMap('vendor_payment_requests');
+    }
+}
+?>
 <?php if (!empty($requests)): ?>
     <?php foreach ($requests as $index => $req): ?>
         <?php
@@ -104,6 +116,13 @@ $startOffset = (int)($pagination['offset'] ?? 0);
                         <i class="bi bi-clock me-1"></i><?= date('d M Y, h:i A', strtotime($req['created_at'])) ?>
                     </div>
                 <?php endif; ?>
+                <?php $vprLastEdit = $vprEditMap[(int)$req['id']] ?? null; ?>
+                <?php if ($vprLastEdit): ?>
+                    <div class="text-primary mt-1" style="font-size: 10px; line-height: 1.25;" title="<?= htmlspecialchars($vprLastEdit['change_summary'] ?? 'Updated') ?>">
+                        <i class="bi bi-pencil-square me-1"></i><strong>Edited:</strong> <?= htmlspecialchars($vprLastEdit['edited_by_name'] ?? 'User') ?>
+                        <div class="text-muted" style="font-size: 9.5px;"><?= !empty($vprLastEdit['created_at']) ? date('d M Y, h:i A', strtotime($vprLastEdit['created_at'])) : '' ?></div>
+                    </div>
+                <?php endif; ?>
             </td>
             <td>
                 <div class="small" style="font-size: 11px; line-height: 1.35;">
@@ -187,8 +206,10 @@ $startOffset = (int)($pagination['offset'] ?? 0);
                     <?php
                     $vprRowUid = (int)($_SESSION['user']['id'] ?? 0);
                     $vprRowRid = (int)($_SESSION['user']['role_id'] ?? 0);
+                    $vprRowTlByOther = !empty($req['purchase_team_leader_by_id'])
+                        && (int)$req['purchase_team_leader_by_id'] !== (int)($req['created_by'] ?? 0);
                     $vprRowUnapproved = in_array($req['status'] ?? '', ['Draft', 'Submitted'], true)
-                        && empty($req['purchase_team_leader_by_id'])
+                        && !$vprRowTlByOther
                         && empty($req['purchase_head_approved_by_id'])
                         && empty($req['qc_approved_by_id'])
                         && empty($req['approved_by']);

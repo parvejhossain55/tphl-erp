@@ -197,6 +197,16 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                         </thead>
                         <tbody>
                             <?php if (!empty($requests)): ?>
+                                <?php
+                                $coEditMap = [];
+                                if (function_exists('db')) {
+                                    $coDb = db();
+                                    if ($coDb) {
+                                        require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+                                        $coEditMap = (new RequisitionRevisionService($coDb))->getLastEditMap('cashout_requests');
+                                    }
+                                }
+                                ?>
                                 <?php foreach ($requests as $request): ?>
                                     <?php
 
@@ -337,7 +347,18 @@ $userRoleName = $roleNames[$userRole ?? 2] ?? 'Employee';
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= date('d M, Y', strtotime($request['created_at'])) ?></td>
+                                        <td>
+                                            <?= date('d M, Y', strtotime($request['created_at'])) ?>
+                                            <?php $coEdit = $coEditMap[(int)($request['id'] ?? 0)] ?? null; ?>
+                                            <?php if (!empty($coEdit)): ?>
+                                                <div class="mt-1" style="font-size:10px; color:#b45309; line-height:1.25;" title="<?= htmlspecialchars($coEdit['change_summary'] ?? 'Edited') ?>">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edited: <strong><?= htmlspecialchars($coEdit['edited_by_name']) ?></strong>
+                                                    <?php if (!empty($coEdit['created_at'])): ?>
+                                                        <div class="text-muted" style="font-size:9.5px;"><?= date('d M Y, h:i A', strtotime($coEdit['created_at'])) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-nowrap">
                                             <div class="d-flex align-items-center gap-1 flex-nowrap">
                                                 <a href="<?= $GLOBALS['base_url'] ?>/view-cashout-request?id=<?= $request['id'] ?>"

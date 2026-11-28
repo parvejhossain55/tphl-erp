@@ -318,6 +318,7 @@ return [
 
     // Central Requisition Revision (Send Back for Review)
     'requisition-revision/send-back' => ['controller' => 'RequisitionRevisionController', 'method' => 'sendBack'],
+    'requisition-revision/resubmit-rejected' => ['controller' => 'RequisitionRevisionController', 'method' => 'resubmitRejected'],
 ];
 
 

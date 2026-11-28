@@ -30,7 +30,7 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 && empty($request['qc_audit_approved_id'])
                 && empty($request['management_apporved_by_id'])
                 && empty($request['payment_by_id']);
-            $canEditOtherCost = ($isOtherCostUnapproved || $isOcRevOpen) && (((int)($request['created_by_id'] ?? 0) === (int)($userId ?? 0)) || in_array((int)($roleId ?? 0), [1, 3], true));
+            $canEditOtherCost = ($isOtherCostUnapproved || $isOcRevOpen || ($request['status'] ?? '') === 'rejected' || ($request['dept_head_status'] ?? '') === 'rejected') && (((int)($request['created_by_id'] ?? 0) === (int)($userId ?? 0)) || in_array((int)($roleId ?? 0), [1, 3], true));
             if ($canEditOtherCost):
             ?>
                 <button type="button" class="btn btn-outline-warning btn-sm shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editOtherCostModal">
@@ -586,10 +586,15 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <label class="form-label fw-bold">Department Head Note (Optional)</label>
                                         <textarea class="form-control" name="dept_head_approval_note" rows="3" placeholder="Enter remarks..."></textarea>
                                     </div>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex flex-wrap gap-2">
                                         <button type="submit" name="dept_head_status" value="approved" class="btn btn-success flex-grow-1" onclick="return confirm('Are you sure you want to approve this request?');">
                                             <i class="bi bi-check-circle me-1"></i> Approve
                                         </button>
+                                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                            <button type="button" class="btn btn-warning text-dark fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_project_other_costs">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="submit" name="dept_head_status" value="rejected" class="btn btn-danger flex-grow-1" onclick="return confirm('Are you sure you want to reject this request?');">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>
@@ -607,10 +612,15 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <label class="form-label fw-bold">QC Note (Optional)</label>
                                         <textarea class="form-control" name="qc_audit_note" rows="3" placeholder="Enter remarks..."></textarea>
                                     </div>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex flex-wrap gap-2">
                                         <button type="submit" name="action" value="approve" class="btn btn-success btn-lg flex-grow-1" onclick="return confirm('Are you sure you want to approve this request?');">
                                             <i class="bi bi-check-circle me-1"></i> Submit QC Approval
                                         </button>
+                                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                            <button type="button" class="btn btn-warning text-dark btn-lg fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_project_other_costs">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg flex-grow-1" onclick="return confirm('Are you sure you want to reject this request?');">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>
@@ -653,10 +663,15 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                         <label class="form-label fw-bold"><?= $isOpHeadAction ? 'Operation Head Note' : 'Management Note' ?> (Optional)</label>
                                         <textarea class="form-control" name="management_apporved_note" rows="3" placeholder="Enter remarks..."></textarea>
                                     </div>
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex flex-wrap gap-2">
                                         <button type="button" id="btnPocMgmtApprove" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> btn-lg flex-grow-1">
                                             <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Submit Op Head Approval' : 'Submit Mgmt Approval' ?>
                                         </button>
+                                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                            <button type="button" class="btn btn-warning text-dark btn-lg fw-bold flex-grow-1" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_project_other_costs">
+                                                <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg flex-grow-1" onclick="document.getElementById('pocMgmtActionInput').value='reject'; return confirm('Are you sure you want to reject this request?');">
                                             <i class="bi bi-x-circle me-1"></i> Reject
                                         </button>

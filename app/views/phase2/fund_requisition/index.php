@@ -2063,6 +2063,28 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 <div class="fs-11 text-secondary"><?= htmlspecialchars($req['requester_designation_name']) ?></div>
             <?php endif; ?>
             <span class="fs-10 text-muted"><?= htmlspecialchars($req['department_name'] ?? 'N/A') ?></span>
+            <?php
+            static $frEditMap = null;
+            if ($frEditMap === null) {
+                $frEditMap = [];
+                if (function_exists('db')) {
+                    $frDb = db();
+                    if ($frDb) {
+                        require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+                        $frEditMap = (new RequisitionRevisionService($frDb))->getLastEditMap('fund_requisitions');
+                    }
+                }
+            }
+            $frEdit = $frEditMap[(int)($req['id'] ?? 0)] ?? null;
+            if (!empty($frEdit)):
+            ?>
+                <div class="mt-1" style="font-size:10px; color:#b45309; line-height:1.25;" title="<?= htmlspecialchars($frEdit['change_summary'] ?? 'Edited') ?>">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>Edited: <strong><?= htmlspecialchars($frEdit['edited_by_name']) ?></strong>
+                    <?php if (!empty($frEdit['created_at'])): ?>
+                        <div class="text-muted" style="font-size:9.5px;"><?= date('d M Y, h:i A', strtotime($frEdit['created_at'])) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </td>
         <td>
             <?= !empty($req['project_name']) ? htmlspecialchars($req['project_name']) : '<span class="text-muted fs-11">Office General</span>' ?>

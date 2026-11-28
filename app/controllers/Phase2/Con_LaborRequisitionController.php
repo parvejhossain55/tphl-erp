@@ -293,6 +293,8 @@ class Con_LaborRequisitionController extends Controller
             $note
         );
 
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        (new \RequisitionRevisionService($this->db))->markResolved('con_labor_requisitions', (int)$id);
         $_SESSION['success'] = 'Labor Requisition — ' . $attr['approval_label'] . '.';
         $this->back($id);
     }
@@ -354,6 +356,8 @@ class Con_LaborRequisitionController extends Controller
 
         $note = trim($_POST['qc_note'] ?? '');
         $this->model->qcApprove((int)$id, $this->userId, $qcAmount, $note);
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        (new \RequisitionRevisionService($this->db))->markResolved('con_labor_requisitions', (int)$id);
         $this->syncToApprovalRequests((int)$id);
         $_SESSION['success'] = 'QC & Internal Audit Head approved amount ৳' . number_format($qcAmount, 2) . ' and forwarded to Management for payment authorization.';
         $this->back($id);
@@ -384,6 +388,8 @@ class Con_LaborRequisitionController extends Controller
 
         $note = trim($_POST['pm_payment_note'] ?? '');
         $this->model->pmPaymentApprove((int)$id, $this->userId, $pmAmount, $note);
+        require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+        (new \RequisitionRevisionService($this->db))->markResolved('con_labor_requisitions', (int)$id);
         $this->syncToApprovalRequests((int)$id);
         $_SESSION['success'] = 'PM verified amount ৳' . number_format($pmAmount, 2) . ' and forwarded to Management for payment approval.';
         $this->back($id);
@@ -489,6 +495,8 @@ class Con_LaborRequisitionController extends Controller
         }
 
         if ($this->model->managementApprove((int)$id, $this->userId, $finalApprovedAmount, $note)) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('con_labor_requisitions', (int)$id);
             $this->syncToApprovalRequests((int)$id, 'approved', $finalApprovedAmount, $note);
             $escBypassNote = $this->db->real_escape_string(($note ?: 'Approved by Management') . ' (Management Override)');
             if ($isMgmtUser) {
@@ -836,7 +844,7 @@ class Con_LaborRequisitionController extends Controller
             || !empty($req['qc_approved_by'])
             || !empty($req['management_approved_by']);
 
-        if ($hasAnyApproval && empty($openRev)) {
+        if ($hasAnyApproval && empty($openRev) && empty($revSvc->getRejectionStatus('con_labor_requisitions', $id)['is_rejected'])) {
             setError('This labor requisition has already been approved at one or more stages and can no longer be edited.');
             $this->back($id);
         }

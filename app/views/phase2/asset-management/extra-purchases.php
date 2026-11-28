@@ -217,6 +217,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                     'received'              => ['Received & In Asset Tracker', '#15803d', '#dcfce7'],
                                     'rejected'              => ['Rejected', '#dc2626', '#fee2e2'],
                                 ];
+                                $epEditMap = [];
+                                if (function_exists('db')) {
+                                    $epDb = db();
+                                    if ($epDb) {
+                                        require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+                                        $epEditMap = (new RequisitionRevisionService($epDb))->getLastEditMap('project_extra_assets');
+                                    }
+                                }
                                 ?>
                                 <?php foreach ($requests as $index => $r):
                                     $dhStatus  = $r['dept_head_status'] ?? 'not_required';
@@ -267,6 +275,15 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             <div class="fw-semibold text-dark"><?= htmlspecialchars(!empty($r['requested_by_name']) ? $r['requested_by_name'] : 'System Admin') ?></div>
                                             <?php if (!empty($r['department_name'])): ?>
                                                 <small class="text-muted fs-10"><?= htmlspecialchars($r['department_name']) ?></small>
+                                            <?php endif; ?>
+                                            <?php $epEdit = $epEditMap[(int)($r['id'] ?? 0)] ?? null; ?>
+                                            <?php if (!empty($epEdit)): ?>
+                                                <div class="mt-1" style="font-size:10px; color:#b45309; line-height:1.25;" title="<?= htmlspecialchars($epEdit['change_summary'] ?? 'Edited') ?>">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edited: <strong><?= htmlspecialchars($epEdit['edited_by_name']) ?></strong>
+                                                    <?php if (!empty($epEdit['created_at'])): ?>
+                                                        <div class="text-muted" style="font-size:9.5px;"><?= date('d M Y, h:i A', strtotime($epEdit['created_at'])) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
                                             <?php endif; ?>
                                         </td>
                                         <!-- Step 1: Dept Head -->

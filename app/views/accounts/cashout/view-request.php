@@ -69,17 +69,26 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                     <?php
                     $coUserId = (int)($_SESSION['user']['id'] ?? 0);
                     $coRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                    $coRevLatest = null;
+                    $coDbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                    if ($coDbConn && !empty($request['id'])) {
+                        if (!class_exists('RequisitionRevisionService')) {
+                            require_once __DIR__ . '/../../../services/RequisitionRevisionService.php';
+                        }
+                        $coRevLatest = (new RequisitionRevisionService($coDbConn))->getLatestActiveOrResubmitted('cashout_requests', (int)$request['id']);
+                    }
+                    $isCoRevOpen = ($coRevLatest && ($coRevLatest['status'] ?? '') === 'open');
                     $isCashoutUnapproved = (($request['status'] ?? '') === 'pending')
                         && empty($request['qc_approved_by_id'])
                         && empty($request['approved_by'])
                         && !$isAlreadyApproved
                         && empty($ahInfo['is_op_head_approved'])
                         && empty($ahInfo['is_accounts_head_approved']);
-                    $canEditCashout = $isCashoutUnapproved && (((int)($request['requested_by'] ?? 0) === $coUserId) || in_array($coRoleId, [1, 3], true));
+                    $canEditCashout = ($isCashoutUnapproved || $isCoRevOpen || strtolower($request['status'] ?? '') === 'rejected') && (((int)($request['requested_by'] ?? 0) === $coUserId) || in_array($coRoleId, [1, 3], true));
                     if ($canEditCashout):
                     ?>
                         <button type="button" class="btn btn-outline-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editCashoutModal">
-                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit Request
+                            <i class="fa-solid fa-pen-to-square me-1"></i> <?= $isCoRevOpen ? 'Edit &amp; Resubmit' : 'Edit Request' ?>
                         </button>
                     <?php endif; ?>
                     <a href="<?= $GLOBALS['base_url'] ?><?= isset($_GET['redirect']) && $_GET['redirect'] === 'client-refunds' ? '/client-refunds' : '/cashout-requests' ?>" class="btn btn-secondary">
@@ -104,11 +113,30 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 <?php endif; ?>
 
                 <?php 
-                $revModuleTable   = 'cashout_requests';
-                $revSourceId      = (int)($request['id'] ?? 0);
-                $revCreatorUserId = (int)($request['requested_by'] ?? 0);
-                $revCanSendBack   = false;
-                $revLatest        = null;
+                $coCanSendBack = false;
+                $coReturnStage = 'approver';
+                $coReturnStageLabel = 'Approver';
+                if (!in_array($coRoleId, [33, 34, 35], true) && !in_array($displayStatus, ['fully_paid', 'rejected'], true)) {
+                    if ($displayStatus === 'pending' && ($canApproveQC ?? false)) {
+                        $coCanSendBack = true; $coReturnStage = 'qc'; $coReturnStageLabel = 'QC & Internal Audit';
+                    } elseif (in_array($displayStatus, ['qc_approved', 'pending'], true) && ($canApproveOrReject ?? false)) {
+                        $coCanSendBack = true;
+                        $coReturnStage = in_array($coRoleId, [20, 32], true) ? 'op_head' : 'mgmt';
+                        $coReturnStageLabel = in_array($coRoleId, [20, 32], true) ? 'Admin & Operation Head' : 'Management';
+                    } elseif ($displayStatus === 'approved' && !$isAhApproved && in_array($coRoleId, [30, 1, 3], true)) {
+                        $coCanSendBack = true; $coReturnStage = 'accounts_head'; $coReturnStageLabel = 'Accounts Head';
+                    }
+                }
+                $revModuleTable      = 'cashout_requests';
+                $revSourceId         = (int)($request['id'] ?? 0);
+                $revCreatorUserId    = (int)($request['requested_by'] ?? 0);
+                $revCanSendBack      = $coCanSendBack;
+                $revReturnStage      = $coReturnStage;
+                $revReturnStageLabel = $coReturnStageLabel;
+                $revRedirectUrl      = '/view-cashout-request?id=' . (int)($request['id'] ?? 0);
+                $revEditModalTarget  = '#editCashoutModal';
+                $revEditLinkUrl      = '';
+                $revLatest           = $coRevLatest;
                 include __DIR__ . '/../../layouts/revision_workflow_panel.php';
 
                 if (!empty($ahInfo['has_request'])) {
@@ -476,6 +504,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                                 <i class="fa-solid fa-stamp me-2"></i> Approve as Operation Head
                                             </button>
                                         </form>
+                                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                            <button type="button" class="btn btn-warning text-dark fw-bold w-100 mb-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_cashout_requests">
+                                                <i class="fa-solid fa-rotate-left me-2"></i> Send Back for Review
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
                                             data-bs-target="#rejectModal">
                                             <i class="fa-light fa-times me-2"></i> Reject Request
@@ -535,6 +568,11 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             }
                                         });
                                         </script>
+                                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                            <button type="button" class="btn btn-warning text-dark fw-bold w-100 mb-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_cashout_requests">
+                                                <i class="fa-solid fa-rotate-left me-2"></i> Send Back for Review
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
                                             data-bs-target="#rejectModal">
                                             <i class="fa-light fa-times me-2"></i> Reject Request
@@ -549,10 +587,15 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                                 <label class="form-label fw-semibold">QC Note (Optional)</label>
                                                 <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
                                             </div>
-                                            <button type="submit" class="btn btn-warning w-100 mb-2">
+                                            <button type="submit" class="btn btn-success w-100 mb-2">
                                                 <i class="fa-light fa-shield-check me-2"></i> QC Approve
                                             </button>
                                         </form>
+                                        <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                            <button type="button" class="btn btn-warning text-dark fw-bold w-100 mb-2" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_cashout_requests">
+                                                <i class="fa-solid fa-rotate-left me-2"></i> Send Back for Review
+                                            </button>
+                                        <?php endif; ?>
                                         <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
                                             data-bs-target="#rejectModal">
                                             <i class="fa-light fa-times me-2"></i> Reject Request

@@ -858,6 +858,8 @@ class Con_PurchaseRequestController extends Controller
         }
 
         if ($stmt && $stmt->execute()) {
+            require_once __DIR__ . '/../../services/RequisitionRevisionService.php';
+            (new \RequisitionRevisionService($this->db))->markResolved('purchase_requests', (int)$id);
             setSuccess($successMsg);
 
             // Record in central construction approval log

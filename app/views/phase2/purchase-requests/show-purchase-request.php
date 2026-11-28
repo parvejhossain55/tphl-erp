@@ -167,7 +167,7 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                     <p class="text-muted mb-2" style="font-size:13px;">
                                         This requisition's Purchase Order was rejected. Please review the note below, edit quantities or delete unneeded items, and re-run CST & PO generation.
                                     </p>
-                                    <div class="p-3 rounded bg-white border border-danger-subtle mt-2" style="max-width:720px;">
+                                    <div class="p-3 rounded bg-white text-dark border border-danger-subtle mt-2" style="max-width:720px;">
                                         <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                                             <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size:11px;">
                                                 <i class="bi bi-chat-quote-fill me-1"></i> Approver Note / Instructions
@@ -516,10 +516,15 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                 <div class="mb-2 w-100">
                                     <textarea name="approval_note" class="form-control" rows="2" placeholder="Approval / Rejection Note"></textarea>
                                 </div>
-                                <div class="d-flex gap-2">
+                                <div class="d-flex flex-wrap gap-2">
                                     <button type="button" onclick="document.getElementById('pr_status_input').value='Approved'; confirmAction(this, 'Approve Purchase Request?')" class="btn btn-success btn-sm">
                                         <i class="bi bi-check-circle me-1"></i> Approve PR
                                     </button>
+                                    <?php if (!empty($revCanSendBack) && empty($revIsOpen)): ?>
+                                        <button type="button" class="btn btn-warning text-dark btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#sendBackReviewModal_purchase_requests">
+                                            <i class="fa-solid fa-rotate-left me-1"></i> Send Back for Review
+                                        </button>
+                                    <?php endif; ?>
                                     <button type="button" onclick="document.getElementById('pr_status_input').value='Rejected'; confirmAction(this, 'Reject this PR?')" class="btn btn-danger btn-sm">
                                         <i class="bi bi-x-circle me-1"></i> Reject PR
                                     </button>
